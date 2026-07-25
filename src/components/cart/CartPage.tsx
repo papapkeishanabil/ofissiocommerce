@@ -77,7 +77,7 @@ export function CartPage() {
         </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">
-          <CartSummary showCheckout />
+          <CartSummary showActions />
         </aside>
       </div>
     </div>

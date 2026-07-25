@@ -5,6 +5,7 @@
 
 import type { ReactNode } from "react";
 
+import { AuthModal } from "@/components/auth/AuthModal";
 import { CommerceWorkspace } from "./CommerceWorkspace";
 import { OfistantPanel } from "./OfistantPanel";
 import { MobileOfistantFab } from "./MobileOfistantFab";
@@ -26,6 +27,9 @@ export function AppShell({ children }: AppShellProps) {
 
       {/* Mobile: floating Ofistant trigger + bottom sheet */}
       <MobileOfistantFab />
+
+      {/* Global auth modal (driven by ui-store) */}
+      <AuthModal />
     </div>
   );
 }

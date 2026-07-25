@@ -31,6 +31,8 @@ interface CartState {
   clear: () => void;
   totalQty: () => number;
   totalEstimatedPrice: () => number;
+  /** Returns a snapshot of the current cart (for checkout/quote conversion). */
+  snapshot: () => CartLineItem[];
 }
 
 export const useCartStore = create<CartState>()(
@@ -118,6 +120,8 @@ export const useCartStore = create<CartState>()(
 
       totalEstimatedPrice: () =>
         get().items.reduce((acc, it) => acc + it.estimatedPrice, 0),
+
+      snapshot: () => [...get().items],
     }),
     {
       name: "ofissio-cart-v1",

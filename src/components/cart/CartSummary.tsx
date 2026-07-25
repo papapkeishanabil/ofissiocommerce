@@ -1,16 +1,24 @@
 // src/components/cart/CartSummary.tsx
-// Order summary block — used in both cart page and (later) checkout.
+// Order summary block — used in cart page and checkout.
+
+"use client";
+
+import { useRouter } from "next/navigation";
 
 import { formatIDR } from "@/types/product";
-import { useCartItems } from "@/hooks/use-cart";
-import { useCartHydrated } from "@/hooks/use-cart";
+import { useCartItems, useCartHydrated } from "@/hooks/use-cart";
+import { useGatedAction } from "@/hooks/use-gated-action";
+
+import { Button } from "@/components/ui/Button";
 
 interface CartSummaryProps {
-  /** show "checkout disabled" placeholder (Phase 4 enables real checkout) */
-  showCheckout?: boolean;
+  /** show checkout + request-quote CTAs (cart page). default false */
+  showActions?: boolean;
 }
 
-export function CartSummary({ showCheckout = false }: CartSummaryProps) {
+export function CartSummary({ showActions = false }: CartSummaryProps) {
+  const router = useRouter();
+  const { attempt } = useGatedAction();
   const items = useCartItems();
   const hydrated = useCartHydrated();
 
@@ -29,6 +37,13 @@ export function CartSummary({ showCheckout = false }: CartSummaryProps) {
     );
   }
 
+  function handleCheckout() {
+    if (attempt("checkout")) router.push("/checkout");
+  }
+  function handleQuote() {
+    if (attempt("request_quote")) router.push("/quote");
+  }
+
   return (
     <div className="rounded-2xl border border-line bg-surface p-5">
       <h2 className="text-sm font-bold text-ink">Ringkasan</h2>
@@ -36,12 +51,7 @@ export function CartSummary({ showCheckout = false }: CartSummaryProps) {
       <dl className="mt-3 space-y-2 text-sm">
         <Row label={`Subtotal (${totalQty} pcs)`} value={formatIDR(subtotal)} />
         <Row label="PPN 11% (estimasi)" value={formatIDR(estimatedTax)} muted />
-        <Row
-          label="Ongkos kirim"
-          value="Dihitung saat checkout"
-          muted
-          italic
-        />
+        <Row label="Ongkos kirim" value="Dihitung saat checkout" muted italic />
       </dl>
 
       <div className="mt-4 flex items-center justify-between border-t border-line pt-3">
@@ -49,11 +59,19 @@ export function CartSummary({ showCheckout = false }: CartSummaryProps) {
         <span className="text-xl font-bold text-ink">{formatIDR(total)}</span>
       </div>
 
-      {showCheckout && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800">
-          Checkout &amp; pembayaran aktif di Phase 4 (iPaymu). Saat ini keranjang
-          tersimpan lokal di browser Anda.
-        </p>
+      {showActions && (
+        <div className="mt-4 space-y-2">
+          <Button className="w-full" onClick={handleCheckout}>
+            Checkout
+          </Button>
+          <Button className="w-full" variant="outline" onClick={handleQuote}>
+            Request Quotation
+          </Button>
+          <p className="text-center text-[11px] text-ink-muted">
+            Checkout &amp; quotation butuh login. Anda akan diminta masuk bila
+            belum.
+          </p>
+        </div>
       )}
     </div>
   );
