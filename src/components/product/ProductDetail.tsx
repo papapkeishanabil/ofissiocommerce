@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { Product } from "@/types/product";
 import { formatIDR } from "@/types/product";
@@ -11,6 +11,7 @@ import { emptySizeMatrix } from "@/types/cart";
 import type { SizeMatrix } from "@/types/industry";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
+import { afterConfirmItemAdded } from "@/lib/ofistant/ofistant.rules";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -63,7 +64,41 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const [error, setError] = useState<string | null>(null);
 
   const addToCart = useCartStore((s) => s.add);
-  const showPostAdd = useOfistantStore((s) => s.showPostAdd);
+
+  // Sync Ofistant context: this product is now the "selected" one, and the
+  // user's color/size choices are reflected so Ofistant can pre-fill an
+  // ADD_TO_CART action with the right payload.
+  useEffect(() => {
+    useOfistantStore.getState().setContext({
+      selectedProductId: product.id,
+      selectedProductSlug: product.slug,
+      selectedColor: color,
+      sizeMatrix: sizes,
+      journeyStage: "CONFIGURING_PRODUCT",
+      viewedProductIds: [
+        product.id,
+        ...useOfistantStore
+          .getState()
+          .context.viewedProductIds.filter((id) => id !== product.id),
+      ].slice(0, 12),
+    });
+  }, [product.id, product.slug, color, sizes]);
+
+  function notifyOfistantPostAdd(name: string) {
+    useOfistantStore.setState((s) => ({
+      context: afterConfirmItemAdded(s.context),
+      messages: [
+        ...s.messages,
+        {
+          id: `assistant-add-${Date.now()}`,
+          role: "assistant" as const,
+          text: `Produk ${name} sudah ditambahkan ke keranjang. Apakah ingin lanjut mencari produk pelengkap?`,
+          ts: Date.now(),
+        },
+      ],
+      quickReplies: ["Lanjut eksplor produk", "Lihat keranjang", "Checkout"],
+    }));
+  }
 
   const totalQty = useMemo(
     () => Object.values(sizes).reduce((a, b) => a + (b || 0), 0),
@@ -87,7 +122,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
     setError(null);
     setAdded(true);
     if (result.lineId) {
-      showPostAdd(product.name, result.lineId);
+      notifyOfistantPostAdd(product.name);
     }
   }
 

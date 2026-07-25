@@ -3,7 +3,6 @@
 "use client";
 
 import { useCartItems, useCartHydrated } from "@/hooks/use-cart";
-import { useOfistantStore } from "@/stores/ofistant-store";
 import { ShoppingCart, Sparkles } from "lucide-react";
 
 import { ButtonLink } from "@/components/ui/Button";
@@ -13,7 +12,6 @@ import { CartSummary } from "./CartSummary";
 export function CartPage() {
   const items = useCartItems();
   const hydrated = useCartHydrated();
-  const resetToWelcome = useOfistantStore((s) => s.resetToWelcome);
 
   // SSR-safe: render skeleton until hydration complete
   if (!hydrated) {
@@ -66,7 +64,7 @@ export function CartPage() {
           ))}
 
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-            <ButtonLink href="/catalog" variant="ghost" onClick={() => resetToWelcome()}>
+            <ButtonLink href="/catalog" variant="ghost">
               <Sparkles className="h-4 w-4" />
               Lanjut eksplor produk
             </ButtonLink>

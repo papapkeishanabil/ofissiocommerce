@@ -11,6 +11,7 @@ import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
+import { afterConfirmItemAdded } from "@/lib/ofistant/ofistant.rules";
 import { Clock, Layers, Package } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -29,8 +30,24 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
   const addToCart = useCartStore((s) => s.add);
-  const showPostAdd = useOfistantStore((s) => s.showPostAdd);
   const [error, setError] = useState<string | null>(null);
+
+  // Notify Ofistant via its store (rule-based era: just push a message).
+  function notifyOfistantPostAdd(name: string) {
+    useOfistantStore.setState((s) => ({
+      context: afterConfirmItemAdded(s.context),
+      messages: [
+        ...s.messages,
+        {
+          id: `assistant-add-${Date.now()}`,
+          role: "assistant" as const,
+          text: `Produk ${name} sudah ditambahkan ke keranjang. Apakah ingin lanjut mencari produk pelengkap?`,
+          ts: Date.now(),
+        },
+      ],
+      quickReplies: ["Lanjut eksplor produk", "Lihat keranjang", "Checkout"],
+    }));
+  }
 
   const color = product.colors[0] ?? "Default";
 
@@ -54,7 +71,7 @@ export function ProductCard({ product }: ProductCardProps) {
     }
     setError(null);
     if (result.lineId) {
-      showPostAdd(product.name, result.lineId);
+      notifyOfistantPostAdd(product.name);
     }
   }
 

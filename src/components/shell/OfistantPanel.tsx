@@ -1,177 +1,213 @@
 // src/components/shell/OfistantPanel.tsx
-// Ofistant placeholder (Phase 1):
-//  - welcome message + industry quick choices
-//  - on add-to-cart anywhere in the app, shows the post-add prompt
-//    with "Lanjut eksplor produk" / "Lihat keranjang".
-//
-// Real AI is deferred to Phase 7.
+// Ofistant live chat panel (Phase 3): rule-based agent with structured actions.
+// AI real (LLM tool-calling) is wired in Phase 7 by swapping the brain in
+// lib/ofistant/ofistant.service.ts — the UI here stays unchanged.
 
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Headset, RotateCcw, Sparkles, X } from "lucide-react";
 
-import { INDUSTRY_META } from "@/data/industries";
 import { useOfistantStore } from "@/stores/ofistant-store";
-import { Sparkles, X } from "lucide-react";
+import { useOfistantAction } from "@/hooks/use-ofistant-action";
 
 import { Badge } from "@/components/ui/Badge";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
+import { ChatComposer } from "@/components/ofistant/ChatComposer";
+import { ChatMessageView } from "@/components/ofistant/ChatMessageView";
+import { QuickReplies } from "@/components/ofistant/QuickReplies";
+import { TypingIndicator } from "@/components/ofistant/TypingIndicator";
 
 interface OfistantPanelProps {
-  /** when true, render a close button (used inside mobile bottom sheet) */
+  /** when provided, render a close button (used in mobile bottom sheet) */
   onClose?: () => void;
 }
 
 export function OfistantPanel({ onClose }: OfistantPanelProps) {
-  const router = useRouter();
-  const view = useOfistantStore((s) => s.view);
-  const selectIndustry = useOfistantStore((s) => s.selectIndustry);
-  const resetToWelcome = useOfistantStore((s) => s.resetToWelcome);
-  const [pending, setPending] = useState<string | null>(null);
+  const messages = useOfistantStore((s) => s.messages);
+  const typing = useOfistantStore((s) => s.typing);
+  const quickReplies = useOfistantStore((s) => s.quickReplies);
+  const pendingAction = useOfistantStore((s) => s.pendingAction);
+  const init = useOfistantStore((s) => s.init);
+  const sendUserTurn = useOfistantStore((s) => s.sendUserTurn);
+  const confirmPendingAction = useOfistantStore((s) => s.confirmPendingAction);
+  const dismissPendingAction = useOfistantStore((s) => s.dismissPendingAction);
+  const reset = useOfistantStore((s) => s.reset);
+  const hydrated = useOfistantStore((s) => s.hydrated);
 
-  function handlePick(industry: string) {
-    setPending(industry);
-    selectIndustry(industry);
-    // Navigate the workspace (right panel) to filtered catalog.
-    router.push(`/catalog?industri=${encodeURIComponent(industry)}`);
-    setPending(null);
+  const { dispatch } = useOfistantAction();
+  const [busy, setBusy] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Bootstrap welcome message on mount.
+  useEffect(() => {
+    init();
+  }, [init]);
+
+  // Auto-scroll to bottom on new messages / typing.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, typing, pendingAction]);
+
+  function handleSend(text: string) {
+    sendUserTurn(text);
   }
 
+  function handleQuickReply(text: string) {
+    sendUserTurn(text, { viaQuickReply: true });
+  }
+
+  async function handleConfirm() {
+    const action = confirmPendingAction();
+    if (!action) return;
+    setBusy(true);
+    dispatch(action);
+    // Small delay for UX feedback before clearing busy.
+    setTimeout(() => setBusy(false), 350);
+    // Push a soft confirmation message from the assistant.
+    useOfistantStore.setState((s) => ({
+      messages: [
+        ...s.messages,
+        {
+          id: `assistant-confirm-${Date.now()}`,
+          role: "assistant",
+          text:
+            action.type === "ADD_TO_CART"
+              ? "Berhasil ditambahkan ke keranjang. Mau lanjut mencari produk pelengkap, atau langsung ke keranjang?"
+              : "Selesai.",
+          ts: Date.now(),
+        },
+      ],
+      quickReplies:
+        action.type === "ADD_TO_CART"
+          ? ["Lanjut eksplor produk", "Lihat keranjang", "Checkout"]
+          : [],
+    }));
+  }
+
+  function handleCancel() {
+    dismissPendingAction();
+    useOfistantStore.setState((s) => ({
+      messages: [
+        ...s.messages,
+        {
+          id: `assistant-cancel-${Date.now()}`,
+          role: "assistant",
+          text: "Baik, saya batalkan. Beri tahu saya jika ada yang ingin disesuaikan.",
+          ts: Date.now(),
+        },
+      ],
+    }));
+  }
+
+  function handleHumanHandoff() {
+    sendUserTurn("Hubungi sales");
+  }
+
+  const lastPendingMsgId = pendingAction?.messageId ?? null;
+
   return (
-    <div className="flex h-dvh w-full flex-col">
+    <div className="flex h-dvh w-full flex-col bg-surface-muted">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-line px-5 py-4">
+      <div className="flex items-center justify-between border-b border-line bg-surface px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm">
             <Sparkles className="h-5 w-5" />
           </span>
           <div>
-            <p className="text-sm font-bold text-ink">Ofistant</p>
-            <p className="text-[11px] text-ink-muted">Asisten Pengadaan</p>
+            <p className="flex items-center gap-1.5 text-sm font-bold text-ink">
+              Ofistant
+              <Badge tone="success" className="px-1.5 py-0 text-[9px]">
+                online
+              </Badge>
+            </p>
+            <p className="text-[10px] text-ink-muted">Asisten Pengadaan Seragam</p>
           </div>
         </div>
-        {onClose && (
+        <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={onClose}
-            aria-label="Tutup Ofistant"
-            className="grid h-9 w-9 place-items-center rounded-lg text-ink-muted hover:bg-slate-100 lg:hidden"
+            onClick={reset}
+            disabled={!hydrated || messages.length <= 1}
+            aria-label="Mulai percakapan baru"
+            title="Mulai percakapan baru"
+            className="grid h-8 w-8 place-items-center rounded-lg text-ink-muted hover:bg-slate-100 disabled:opacity-40"
           >
-            <X className="h-5 w-5" />
+            <RotateCcw className="h-4 w-4" />
           </button>
-        )}
-      </div>
-
-      {/* Body (scrollable) */}
-      <div className="flex-1 overflow-y-auto px-5 py-5">
-        {view.kind === "welcome" && (
-          <WelcomeView onPick={handlePick} pending={pending} />
-        )}
-        {view.kind === "post-add" && (
-          <PostAddView
-            productName={view.productName}
-            onExploreMore={() => resetToWelcome()}
-          />
-        )}
-      </div>
-
-      {/* Footer note */}
-      <div className="border-t border-line px-5 py-3">
-        <p className="text-[11px] leading-relaxed text-ink-muted">
-          <Badge tone="brand" className="mr-1">
-            Beta
-          </Badge>
-          Ofistant sedang dalam mode asisten statis. AI real aktif di Phase 7.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function WelcomeView({
-  onPick,
-  pending,
-}: {
-  onPick: (industry: string) => void;
-  pending: string | null;
-}) {
-  return (
-    <div className="space-y-5">
-      {/* Bubble from Ofistant */}
-      <div className="rounded-2xl rounded-tl-md bg-brand-50 px-4 py-3 text-sm leading-relaxed text-ink">
-        Halo, selamat datang di Ofissio. Saya Ofistant, asisten pengadaan
-        seragam perusahaan Anda. Seragam untuk industri apa yang sedang Anda
-        cari?
-      </div>
-
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          Pilih industri
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {INDUSTRY_META.map((m) => (
+          {onClose && (
             <button
-              key={m.name}
               type="button"
-              onClick={() => onPick(m.name)}
-              disabled={pending !== null}
-              className="group flex flex-col items-start gap-1 rounded-xl border border-line bg-surface px-3 py-2.5 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/40 disabled:opacity-50"
+              onClick={onClose}
+              aria-label="Tutup Ofistant"
+              className="grid h-8 w-8 place-items-center rounded-lg text-ink-muted hover:bg-slate-100 lg:hidden"
             >
-              <span className="text-sm font-semibold text-ink">{m.name}</span>
-              <span className="text-[11px] leading-snug text-ink-muted">
-                {m.tagline}
-              </span>
+              <X className="h-5 w-5" />
             </button>
-          ))}
+          )}
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-4 overflow-y-auto px-4 py-4"
+        aria-live="polite"
+      >
+        {messages.map((m) => (
+          <ChatMessageView
+            key={m.id}
+            message={m}
+            isPendingConfirm={
+              !!pendingAction &&
+              lastPendingMsgId === m.id &&
+              !!m.requiresConfirm
+            }
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+            busy={busy}
+          />
+        ))}
+
+        {typing && (
+          <div className="flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
+            <div className="rounded-2xl rounded-tl-md bg-surface px-3 py-2 shadow-sm ring-1 ring-line">
+              <TypingIndicator />
+            </div>
+          </div>
+        )}
+
+        {!typing && quickReplies.length > 0 && !pendingAction && (
+          <QuickReplies options={quickReplies} onPick={handleQuickReply} />
+        )}
+      </div>
+
+      {/* Composer + handoff */}
+      <div className="space-y-2 border-t border-line bg-surface px-4 py-3">
+        <ChatComposer onSubmit={handleSend} disabled={typing} />
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={handleHumanHandoff}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink-muted hover:text-brand-700"
+          >
+            <Headset className="h-3.5 w-3.5" />
+            Hubungi Sales
+          </button>
+          <span className="text-[10px] text-ink-muted">
+            Powered by Ofistant (rule-based · LLM Phase 7)
+          </span>
         </div>
       </div>
     </div>
   );
 }
 
-function PostAddView({
-  productName,
-  onExploreMore,
-}: {
-  productName: string;
-  onExploreMore: () => void;
-}) {
-  return (
-    <div className="space-y-5">
-      <div className="rounded-2xl rounded-tl-md bg-emerald-50 px-4 py-3 text-sm leading-relaxed text-emerald-900">
-        <p className="font-semibold">Berhasil ditambahkan ✓</p>
-        <p className="mt-1 text-emerald-800">
-          <span className="font-medium">{productName}</span> sudah masuk
-          keranjang.
-        </p>
-      </div>
-
-      <div className="rounded-2xl rounded-tl-md bg-brand-50 px-4 py-3 text-sm leading-relaxed text-ink">
-        Produk sudah ditambahkan ke keranjang. Apakah ingin lanjut mencari
-        produk pelengkap?
-      </div>
-
-      <div className="space-y-2">
-        <Button
-          className="w-full"
-          variant="primary"
-          onClick={onExploreMore}
-        >
-          Lanjut eksplor produk
-        </Button>
-        <ButtonLink href="/cart" className="w-full" variant="outline">
-          Lihat keranjang
-        </ButtonLink>
-      </div>
-
-      <Link
-        href="/catalog"
-        className="block text-center text-xs font-medium text-brand-700 hover:underline"
-      >
-        Lihat semua produk →
-      </Link>
-    </div>
-  );
-}
+// Unused export kept to satisfy callers that imported the old shape (Phase 2).
+// Remove once ProductCard/CartPage stop referencing it.
+export const _legacyButtonLinkCompat = Button;

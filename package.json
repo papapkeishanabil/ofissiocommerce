@@ -4,7 +4,7 @@
   "private": true,
   "description": "Ofissio — Conversational B2B commerce platform for corporate uniform procurement.",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 8000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
