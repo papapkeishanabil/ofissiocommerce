@@ -30,7 +30,7 @@ export function SizeQuantityMatrix({
   const meetsMoq = total >= moq;
   const listId = useId();
 
-  function setSize(s: Size, qty: number) {
+  function setSize(s: Size, qty: unknown) {
     onChange({ ...value, [s]: toNonNegInt(qty) });
   }
 

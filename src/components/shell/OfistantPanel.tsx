@@ -6,6 +6,8 @@
 //
 // Real AI is deferred to Phase 7.
 
+"use client";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

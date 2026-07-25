@@ -1,6 +1,8 @@
 // src/components/shell/WorkspaceHeader.tsx
 // Top bar of the commerce workspace: brand + cart access (easy on mobile).
 
+"use client";
+
 import Link from "next/link";
 
 import { useCartCount, useCartHydrated } from "@/hooks/use-cart";

@@ -23,7 +23,7 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
   const updateLineSizes = useCartStore((s) => s.updateLineSizes);
   const removeLine = useCartStore((s) => s.removeLine);
 
-  function setSize(size: (typeof SIZES)[number], qty: number) {
+  function setSize(size: (typeof SIZES)[number], qty: unknown) {
     updateLineSizes(item.id, {
       ...item.sizes,
       [size]: toNonNegInt(qty),

@@ -1,6 +1,8 @@
 // src/components/shell/CartButton.tsx
 // Lightweight cart badge button used in headers/footers.
 
+"use client";
+
 import Link from "next/link";
 
 import { useCartCount, useCartHydrated } from "@/hooks/use-cart";

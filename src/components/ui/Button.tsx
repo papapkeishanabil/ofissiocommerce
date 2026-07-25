@@ -1,6 +1,6 @@
 // src/components/ui/Button.tsx
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -49,13 +49,12 @@ export function Button({
   );
 }
 
-interface ButtonLinkProps {
+interface ButtonLinkProps
+  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   href: string;
   children: ReactNode;
   variant?: Variant;
   size?: Size;
-  className?: string;
-  "aria-label"?: string;
 }
 
 export function ButtonLink({
