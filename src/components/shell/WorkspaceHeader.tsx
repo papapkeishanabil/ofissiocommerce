@@ -18,15 +18,15 @@ export function WorkspaceHeader() {
   const openAuth = useUIStore((s) => s.openAuth);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-line bg-surface/90 px-4 backdrop-blur lg:px-6">
+    <header className="glass-light sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-line px-4 shadow-soft-xs lg:px-6">
       <Link
         href="/"
-        className="flex shrink-0 items-center gap-2 font-bold tracking-tight text-ink"
+        className="flex shrink-0 items-center gap-2 font-bold tracking-tight text-ink transition-opacity hover:opacity-80"
       >
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
+        <span className="font-display grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-soft-sm">
           O
         </span>
-        <span className="text-base">
+        <span className="font-display text-base">
           Ofissio<span className="text-brand-600">.</span>
         </span>
       </Link>

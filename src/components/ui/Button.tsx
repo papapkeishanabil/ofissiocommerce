@@ -9,15 +9,15 @@ type Size = "sm" | "md" | "lg" | "icon";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600 disabled:bg-brand-300",
+    "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 focus-visible:outline-brand-600 disabled:bg-brand-300 shadow-soft-sm hover:shadow-soft-md",
   secondary:
-    "bg-slate-900 text-white hover:bg-slate-800 focus-visible:outline-slate-900 disabled:bg-slate-400",
+    "bg-slate-900 text-white hover:bg-slate-800 focus-visible:outline-slate-900 disabled:bg-slate-400 shadow-soft-sm",
   ghost:
     "bg-transparent text-ink hover:bg-slate-100 focus-visible:outline-slate-400",
   outline:
-    "border border-line bg-surface text-ink hover:bg-slate-50 focus-visible:outline-slate-400",
+    "border border-line bg-surface text-ink hover:bg-slate-50 hover:border-brand-300 focus-visible:outline-slate-400",
   danger:
-    "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600 disabled:bg-red-300",
+    "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600 disabled:bg-red-300 shadow-soft-sm",
 };
 
 const SIZES: Record<Size, string> = {
@@ -28,7 +28,7 @@ const SIZES: Record<Size, string> = {
 };
 
 const BASE =
-  "inline-flex items-center justify-center rounded-lg font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-100";
+  "inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-100 disabled:active:scale-100";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
