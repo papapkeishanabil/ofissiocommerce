@@ -12,9 +12,11 @@ interface CommerceWorkspaceProps {
 
 export function CommerceWorkspace({ children }: CommerceWorkspaceProps) {
   return (
-    <main className="flex min-h-dvh flex-1 flex-col">
+    <main className="flex h-dvh min-w-0 flex-1 flex-col overflow-hidden">
       <WorkspaceHeader />
-      <div className="flex-1">{children}</div>
+      {/* Independent scroll container so the workspace scrolls separately
+          from the Ofistant panel. */}
+      <div className="flex-1 overflow-y-auto">{children}</div>
     </main>
   );
 }

@@ -16,9 +16,9 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="flex min-h-dvh w-full flex-col bg-surface-muted lg:flex-row">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-surface-muted lg:flex-row">
       {/* Desktop: persistent left panel */}
-      <aside className="hidden lg:flex lg:w-[400px] lg:shrink-0 lg:border-r lg:border-line lg:bg-surface">
+      <aside className="hidden lg:flex lg:h-dvh lg:w-[400px] lg:shrink-0 lg:overflow-hidden lg:border-r lg:border-line lg:bg-surface">
         <OfistantPanel />
       </aside>
 

@@ -109,7 +109,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const lastPendingMsgId = pendingAction?.messageId ?? null;
 
   return (
-    <div className="flex h-dvh w-full flex-col bg-surface-muted">
+    <div className="flex h-full w-full flex-col bg-surface-muted">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-line bg-surface px-4 py-3">
         <div className="flex items-center gap-2">
