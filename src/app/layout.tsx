@@ -1,21 +1,22 @@
 // src/app/layout.tsx
 
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Inter } from "next/font/google";
+import { Inter, Manrope } from "next/font/google";
 
 import { AppShell } from "@/components/shell/AppShell";
 import "./globals.css";
 
-// Self-hosted fonts via next/font (no external request at runtime, no CLS).
-// Bricolage Grotesque = editorial display headline font (distinctive, premium)
-// Inter = body/UI workhorse (legible, neutral).
+// Fonts aligned with the Ofissio Workwear homepage reference:
+//   Headlines: Manrope (geometric, bold, premium)
+//   Body / UI: Inter Variable
+// Both self-hosted via next/font (no runtime external request, no CLS).
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
 });
 
-const bricolage = Bricolage_Grotesque({
+const manrope = Manrope({
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
   variable: "--font-display-font",
@@ -51,7 +52,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="id" className={`${inter.variable} ${bricolage.variable}`}>
+    <html lang="id" className={`${inter.variable} ${manrope.variable}`}>
       <body>
         <AppShell>{children}</AppShell>
       </body>

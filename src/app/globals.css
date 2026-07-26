@@ -89,20 +89,18 @@ body {
 .shadow-glow-brand { box-shadow: 0 12px 32px rgba(20, 39, 102, 0.28); }
 .shadow-glow-ochre { box-shadow: 0 12px 32px rgba(220, 152, 20, 0.28); }
 
-/* ===== Editorial type scale (Bricolage Grotesque optimized) ===== */
+/* ===== Editorial type scale (Manrope-optimized — geometric premium) ===== */
 .type-display {
   font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.02;
-  font-variation-settings: "wdth" 100;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
 }
 .type-display-tight {
   font-family: var(--font-display);
   font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 0.98;
-  font-variation-settings: "wdth" 95;
+  letter-spacing: -0.028em;
+  line-height: 1.02;
 }
 .type-eyebrow {
   font-family: var(--font-sans);
