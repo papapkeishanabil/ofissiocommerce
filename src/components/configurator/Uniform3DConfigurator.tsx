@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { CameraPresetControls } from "./CameraPresetControls";
 import { EmbroideryZoneSelector } from "./EmbroideryZoneSelector";
+import { GenerateGLBButton } from "./GenerateGLBButton";
 import { LogoPlacementControls } from "./LogoPlacementControls";
 import { LogoUploadPanel } from "./LogoUploadPanel";
 import { Photo360Viewer } from "./Photo360Viewer";
@@ -76,7 +77,18 @@ export function Uniform3DConfigurator({
     fileId: string;
   } | null>(null);
 
-  if (!model || !config) {
+  // When Meshy.ai generates a real GLB, override the registry entry so the
+  // viewer swaps from depth/photo360 mode into true GLB rendering.
+  const [generatedGlbUrl, setGeneratedGlbUrl] = useState<string | null>(null);
+  const effectiveModel = useMemo(
+    () =>
+      generatedGlbUrl && model
+        ? { ...model, glbUrl: generatedGlbUrl, depth3D: null, depth3DDual: null, photo360: null }
+        : model,
+    [generatedGlbUrl, model],
+  );
+
+  if (!effectiveModel || !config) {
     return (
       <div className="rounded-2xl border border-dashed border-line bg-surface-muted px-6 py-10 text-center">
         <p className="text-sm font-semibold text-ink">Preview 3D belum tersedia</p>
@@ -135,40 +147,40 @@ export function Uniform3DConfigurator({
       {/* LEFT: 3D viewer + camera controls */}
       <div className="space-y-3">
         <div className="relative h-[420px] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:h-[460px] lg:h-[500px]">
-          {model.depth3DDual ? (
+          {effectiveModel.depth3DDual ? (
             <Depth3DViewer
-              colorImageSrc={model.depth3DDual.front.colorImage}
-              depthImageSrc={model.depth3DDual.front.depthImage}
-              depthStrength={model.depth3DDual.front.depthStrength ?? 0.6}
-              backColorImageSrc={model.depth3DDual.back.colorImage}
-              backDepthImageSrc={model.depth3DDual.back.depthImage}
-              backDepthStrength={model.depth3DDual.back.depthStrength ?? 0.6}
+              colorImageSrc={effectiveModel.depth3DDual.front.colorImage}
+              depthImageSrc={effectiveModel.depth3DDual.front.depthImage}
+              depthStrength={effectiveModel.depth3DDual.front.depthStrength ?? 0.6}
+              backColorImageSrc={effectiveModel.depth3DDual.back.colorImage}
+              backDepthImageSrc={effectiveModel.depth3DDual.back.depthImage}
+              backDepthStrength={effectiveModel.depth3DDual.back.depthStrength ?? 0.6}
               placements={config.placements}
               highlightZone={selectedZone}
               onCanvasReady={({ domElement }) => {
                 canvasElRef.current = domElement;
               }}
             />
-          ) : model.depth3D ? (
+          ) : effectiveModel.depth3D ? (
             <Depth3DViewer
-              colorImageSrc={model.depth3D.colorImage}
-              depthImageSrc={model.depth3D.depthImage}
-              depthStrength={model.depth3D.depthStrength ?? 0.6}
+              colorImageSrc={effectiveModel.depth3D.colorImage}
+              depthImageSrc={effectiveModel.depth3D.depthImage}
+              depthStrength={effectiveModel.depth3D.depthStrength ?? 0.6}
               placements={config.placements}
               highlightZone={selectedZone}
               onCanvasReady={({ domElement }) => {
                 canvasElRef.current = domElement;
               }}
             />
-          ) : model.photo360 ? (
+          ) : effectiveModel.photo360 ? (
             <Photo360Viewer
-              photoSet={model.photo360}
+              photoSet={effectiveModel.photo360}
               placements={config.placements}
               highlightZone={selectedZone}
             />
           ) : (
             <Uniform3DViewer
-              model={model}
+              model={effectiveModel!}
               color={config.color}
               placements={config.placements}
               activeCamera={config.activeCamera}
@@ -178,13 +190,13 @@ export function Uniform3DConfigurator({
               }}
             />
           )}
-          {(model.depth3D || model.depth3DDual) && (
+          {(effectiveModel.depth3D || effectiveModel.depth3DDual) && (
             <Badge
               tone="brand"
               className="absolute left-3 top-3 bg-white/90"
             >
               <Sparkles className="h-3 w-3" />
-              Model 3D dari foto · depth AI{model.depth3DDual ? " · 360°" : ""}
+              Model 3D dari foto · depth AI{effectiveModel.depth3DDual ? " · 360°" : ""}
             </Badge>
           )}
           {isFallback && (
@@ -196,7 +208,7 @@ export function Uniform3DConfigurator({
               Preview model prosedural
             </Badge>
           )}
-          {model.photo360 && (
+          {effectiveModel.photo360 && (
             <Badge
               tone="brand"
               className="absolute left-3 top-3 bg-white/90"
@@ -204,14 +216,14 @@ export function Uniform3DConfigurator({
               Foto produk asli · 360°
             </Badge>
           )}
-          {!model.photo360 && (
+          {!effectiveModel.photo360 && (
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[10px] font-medium text-ink-muted shadow-soft-xs backdrop-blur">
               Drag untuk rotate · scroll untuk zoom
             </div>
           )}
         </div>
         {/* Camera preset only applies to 3D model mode (photo360 uses drag) */}
-        {!model.photo360 && (
+        {!effectiveModel.photo360 && (
           <CameraPresetControls
             value={config.activeCamera}
             onChange={(p) => setActiveCamera(p)}
@@ -310,6 +322,20 @@ export function Uniform3DConfigurator({
               }}
             />
           </>
+        )}
+
+        {/* AI 3D upgrade (only when not already in GLB mode) */}
+        {!generatedGlbUrl && (
+          <GenerateGLBButton
+            imageUrl={
+              effectiveModel.depth3DDual?.front.colorImage ??
+              effectiveModel.depth3D?.colorImage ??
+              effectiveModel.photo360?.frames[0]?.src ??
+              ""
+            }
+            model3dId={effectiveModel.model3dId}
+            onGenerated={(url) => setGeneratedGlbUrl(url)}
+          />
         )}
 
         {/* Summary + actions */}
