@@ -125,10 +125,10 @@ export function Uniform3DConfigurator({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
       {/* LEFT: 3D viewer + camera controls */}
       <div className="space-y-3">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:aspect-[4/3] lg:aspect-[5/4]">
+        <div className="relative h-[420px] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:h-[460px] lg:h-[500px]">
           <Uniform3DViewer
             model={model}
             color={config.color}

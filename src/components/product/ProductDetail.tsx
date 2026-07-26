@@ -24,6 +24,7 @@ import {
   Shirt,
   Sparkles,
   Truck,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -361,8 +362,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
               <div className="mt-5 space-y-3">
                 <button
                   type="button"
-                  onClick={() => setShow3D((v) => !v)}
-                  aria-expanded={show3D}
+                  onClick={() => setShow3D(true)}
                   className="flex w-full items-center justify-between rounded-xl border border-brand-200 bg-brand-50/40 px-4 py-2.5 text-left transition-all hover:border-brand-400 hover:bg-brand-50"
                 >
                   <span className="flex items-center gap-2">
@@ -377,25 +377,11 @@ export function ProductDetail({ product }: ProductDetailProps) {
                         {uniform3DConfig.placements.length} bordir
                       </span>
                     )}
-                    <span className="text-[10px] font-semibold text-brand-700">
-                      {show3D ? "Tutup" : "Buka"}
-                    </span>
+                    <span className="text-[10px] font-semibold text-brand-700">Buka</span>
                   </span>
                 </button>
 
-                {show3D && (
-                  <Uniform3DConfigurator
-                    product={product}
-                    initialColor={color}
-                    onSave={(cfg) => {
-                      setUniform3DConfig(cfg);
-                      setShow3D(false);
-                    }}
-                    onCancel={() => setShow3D(false)}
-                  />
-                )}
-
-                {uniform3DConfig && uniform3DConfig.placements.length > 0 && !show3D && (
+                {uniform3DConfig && uniform3DConfig.placements.length > 0 && (
                   <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-[11px]">
                     {uniform3DConfig.snapshots.front && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -500,6 +486,47 @@ export function ProductDetail({ product }: ProductDetailProps) {
           </div>
         </div>
       </div>
+
+      {/* 3D configurator modal — full-screen so the canvas gets real width
+          on every viewport. Lazy-loaded; only mounts when customer opens it. */}
+      {show3D && (
+        <div
+          className="fixed inset-0 z-[70] flex flex-col bg-ink/60 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Konfigurator 3D bordir"
+        >
+          <div className="flex items-center justify-between border-b border-line bg-surface px-4 py-3 lg:px-6">
+            <div>
+              <p className="type-display text-sm font-bold text-ink">
+                Preview 3D &amp; Bordir Logo
+              </p>
+              <p className="text-[11px] text-ink-muted">{product.name}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShow3D(false)}
+              aria-label="Tutup konfigurator"
+              className="grid h-9 w-9 place-items-center rounded-lg text-ink-muted hover:bg-slate-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-surface-muted p-4 lg:p-6">
+            <div className="mx-auto w-full max-w-6xl">
+              <Uniform3DConfigurator
+                product={product}
+                initialColor={color}
+                onSave={(cfg) => {
+                  setUniform3DConfig(cfg);
+                  setShow3D(false);
+                }}
+                onCancel={() => setShow3D(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
