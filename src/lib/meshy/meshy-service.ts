@@ -93,6 +93,69 @@ export async function createImageTo3D(
   }
 }
 
+export interface MeshyMultiImageInput {
+  /** 1–4 public image URLs */
+  imageUrls: string[];
+  prompt?: string;
+  aiModel?: string;
+  enablePbr?: boolean;
+  shouldRemesh?: boolean;
+}
+
+/**
+ * Multi-Image to 3D — accepts 1–4 image URLs and generates ONE solid GLB mesh.
+ * This is the path to a "real" 3D model (volumetrik, not slide/quad-plane).
+ *
+ * Docs: https://docs.meshy.ai/en/api/multi-image-to-3d
+ * Endpoint: POST https://api.meshy.ai/v2/multi-image-to-3d
+ */
+export async function createMultiImageTo3D(
+  input: MeshyMultiImageInput,
+): Promise<{ ok: true; task: MeshyTask } | { ok: false; reason: string }> {
+  const apiKey = process.env.MESHY_API_KEY;
+  if (!apiKey) {
+    return { ok: true, task: mockTask({ imageUrl: input.imageUrls[0] ?? "" }) };
+  }
+
+  if (input.imageUrls.length === 0 || input.imageUrls.length > 4) {
+    return { ok: false, reason: "Jumlah gambar harus 1–4." };
+  }
+
+  try {
+    const res = await fetch(`${MESHY_BASE}/v2/multi-image-to-3d`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image_urls: input.imageUrls,
+        prompt: input.prompt,
+        ai_model: input.aiModel ?? "meshy-5",
+        enable_pbr: input.enablePbr ?? true,
+        should_remesh: input.shouldRemesh ?? true,
+        output_formats: ["glb"],
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, reason: `Meshy multi-image error ${res.status}: ${text.slice(0, 200)}` };
+    }
+    const data = (await res.json()) as { result?: string };
+    return {
+      ok: true,
+      task: {
+        id: data.result ?? crypto.randomUUID(),
+        status: "IN_QUEUE",
+        startTime: Date.now(),
+      },
+    };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "Network error" };
+  }
+}
+
 /** Poll a task for status + final model URLs. */
 export async function pollImageTo3D(
   taskId: string,

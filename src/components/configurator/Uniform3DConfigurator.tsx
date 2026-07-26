@@ -353,10 +353,26 @@ export function Uniform3DConfigurator({
         {!generatedGlbUrl && (
           <GenerateGLBButton
             imageUrl={
+              effectiveModel.depth3DQuad?.front.colorImage ??
               effectiveModel.depth3DDual?.front.colorImage ??
               effectiveModel.depth3D?.colorImage ??
               effectiveModel.photo360?.frames[0]?.src ??
               ""
+            }
+            multiImageUrls={
+              effectiveModel.depth3DQuad
+                ? [
+                    effectiveModel.depth3DQuad.front.colorImage,
+                    effectiveModel.depth3DQuad.back.colorImage,
+                    effectiveModel.depth3DQuad.left.colorImage,
+                    effectiveModel.depth3DQuad.right.colorImage,
+                  ]
+                : effectiveModel.depth3DDual
+                  ? [
+                      effectiveModel.depth3DDual.front.colorImage,
+                      effectiveModel.depth3DDual.back.colorImage,
+                    ]
+                  : undefined
             }
             model3dId={effectiveModel.model3dId}
             onGenerated={(url) => setGeneratedGlbUrl(url)}

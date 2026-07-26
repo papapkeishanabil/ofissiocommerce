@@ -15,8 +15,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 
 interface GenerateGLBButtonProps {
-  /** product photo URL that Meshy can fetch publicly */
+  /** primary product photo URL (single-image mode) */
   imageUrl: string;
+  /** optional additional photo URLs for multi-image mode (1–4 total).
+   *  When provided, the button triggers multi-image-to-3d → 1 solid GLB. */
+  multiImageUrls?: string[];
   /** model3d id, used to label the generated model */
   model3dId: string;
   onGenerated: (glbUrl: string) => void;
@@ -26,6 +29,7 @@ type Phase = "idle" | "creating" | "polling" | "done" | "error";
 
 export function GenerateGLBButton({
   imageUrl,
+  multiImageUrls,
   model3dId,
   onGenerated,
 }: GenerateGLBButtonProps) {
@@ -39,14 +43,19 @@ export function GenerateGLBButton({
     setReason(null);
     setProgress(0);
 
-    // 1. Create task
+    // 1. Create task — prefer multi-image when we have 4 angles (→ 1 solid GLB)
+    const payload: { imageUrl?: string; imageUrls?: string[]; prompt: string } = {
+      prompt: `Workwear shirt ${model3dId}, photorealistic, neutral pose, all 4 sides`,
+    };
+    if (multiImageUrls && multiImageUrls.length >= 2) {
+      payload.imageUrls = multiImageUrls.slice(0, 4);
+    } else {
+      payload.imageUrl = imageUrl;
+    }
     const createRes = await fetch("/api/3d/meshy/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        imageUrl,
-        prompt: `Workwear shirt ${model3dId}, photorealistic, neutral pose`,
-      }),
+      body: JSON.stringify(payload),
     });
     const createJson = (await createRes.json()) as {
       ok: boolean;
