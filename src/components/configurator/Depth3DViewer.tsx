@@ -20,9 +20,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+import type { RefObject } from "react";
 
 import type { LogoPlacement } from "@/types/uniform-3d";
 import { ZONE_ANCHORS } from "@/data/uniform-3d";
@@ -75,6 +76,7 @@ export function Depth3DViewer({
   const [back, setBack] = useState<LoadedImage | null>(null);
   const [left, setLeft] = useState<LoadedImage | null>(null);
   const [right, setRight] = useState<LoadedImage | null>(null);
+  const quadGroupRef = useRef<THREE.Group | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -164,47 +166,55 @@ export function Depth3DViewer({
       <ambientLight intensity={0.85} />
       <directionalLight position={[3, 4, 5]} intensity={1.0} />
       <directionalLight position={[-3, 1, -2]} intensity={0.3} color="#a8baff" />
-      {/* Front mesh — visible when camera is in front (z > 0) */}
-      <DisplacedMesh
-        color={front.color}
-        depth={front.depth}
-        aspect={front.aspect}
-        depthStrength={depthStrength}
-        face="front"
-        placements={placements}
-        highlightZone={highlightZone}
-      />
-      {/* Back mesh — flipped, only built if back photo provided */}
-      {back && (
+      {/* Wrap 4 mesh in a group so QuadVisibilityController can traverse &
+          hide non-facing meshes each frame (eliminates overlap). */}
+      <group ref={quadGroupRef}>
+        {/* Front mesh — visible when camera is in front (z > 0) */}
         <DisplacedMesh
-          color={back.color}
-          depth={back.depth}
-          aspect={back.aspect}
-          depthStrength={backDepthStrength ?? depthStrength}
-          face="back"
+          color={front.color}
+          depth={front.depth}
+          aspect={front.aspect}
+          depthStrength={depthStrength}
+          face="front"
           placements={placements}
           highlightZone={highlightZone}
         />
-      )}
-      {/* Left mesh — rotated 90° around Y, photo texture from left side */}
-      {left && (
-        <DisplacedMesh
-          color={left.color}
-          depth={left.depth}
-          aspect={left.aspect}
-          depthStrength={leftDepthStrength ?? depthStrength}
-          face="left"
-        />
-      )}
-      {/* Right mesh — rotated -90° around Y */}
-      {right && (
-        <DisplacedMesh
-          color={right.color}
-          depth={right.depth}
-          aspect={right.aspect}
-          depthStrength={rightDepthStrength ?? depthStrength}
-          face="right"
-        />
+        {/* Back mesh — flipped, only built if back photo provided */}
+        {back && (
+          <DisplacedMesh
+            color={back.color}
+            depth={back.depth}
+            aspect={back.aspect}
+            depthStrength={backDepthStrength ?? depthStrength}
+            face="back"
+            placements={placements}
+            highlightZone={highlightZone}
+          />
+        )}
+        {/* Left mesh — rotated 90° around Y, photo texture from left side */}
+        {left && (
+          <DisplacedMesh
+            color={left.color}
+            depth={left.depth}
+            aspect={left.aspect}
+            depthStrength={leftDepthStrength ?? depthStrength}
+            face="left"
+          />
+        )}
+        {/* Right mesh — rotated -90° around Y */}
+        {right && (
+          <DisplacedMesh
+            color={right.color}
+            depth={right.depth}
+            aspect={right.aspect}
+            depthStrength={rightDepthStrength ?? depthStrength}
+            face="right"
+          />
+        )}
+      </group>
+      {/* Only attach visibility controller when 3+ sides are loaded (quad). */}
+      {left && right && (
+        <QuadVisibilityController groupRef={quadGroupRef} />
       )}
       <OrbitControls
         target={[0, 0, 0]}
@@ -215,6 +225,49 @@ export function Depth3DViewer({
       />
     </Canvas>
   );
+}
+
+/**
+ * Quad visibility controller. Each frame, computes which side of the model
+ * faces the camera and shows only the 1–2 nearest meshes (others hidden via
+ * `visible=false`). Eliminates the "X-ray see-through / overlap" artifact
+ * you get when all 4 displaced planes render simultaneously.
+ *
+ * We tag each child group with userData.face so we can identify them.
+ */
+function QuadVisibilityController({
+  groupRef,
+}: {
+  groupRef: RefObject<THREE.Group | null>;
+}) {
+  useFrame(({ camera }) => {
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    // facing direction (the face whose outward normal aligns with -dir)
+    const facingX = -dir.x;
+    const facingZ = -dir.z;
+    const useSideAxis = Math.abs(facingX) > Math.abs(facingZ);
+
+    const root = groupRef.current;
+    if (!root) return;
+    root.children.forEach((child) => {
+      if (child.type !== "Group") return;
+      const face = child.userData?.face as string | undefined;
+      if (!face) return;
+      let vis = false;
+      if (useSideAxis) {
+        vis =
+          (face === "left" && facingX > 0) ||
+          (face === "right" && facingX < 0);
+      } else {
+        vis =
+          (face === "front" && facingZ > 0) ||
+          (face === "back" && facingZ < 0);
+      }
+      child.visible = vis;
+    });
+  });
+  return null;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -328,7 +381,14 @@ function DisplacedMesh({
   const groupScale: [number, number, number] = face === "back" ? [-1, 1, 1] : [1, 1, 1];
 
   return (
-    <group rotation={groupRotation} scale={groupScale}>
+    <group
+      rotation={groupRotation}
+      scale={groupScale}
+      userData={{ face }}
+      ref={(g) => {
+        if (g) g.userData.face = face;
+      }}
+    >
       <mesh geometry={geometry} material={material} castShadow receiveShadow />
       {/* Logo placements only on the front mesh (chest zones); back zones
           (upper_back/middle_back) shown on back mesh. */}
