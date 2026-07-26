@@ -1,10 +1,13 @@
 // src/components/ofistant/ChatMessageView.tsx
+// Modern AI-grade chat bubbles. AI messages feel crafted (gradient avatar,
+// subtle surface, depth), user messages feel direct (filled, right-aligned).
+
 "use client";
 
 import type { ChatMessage } from "@/lib/ofistant/ofistant.types";
 import { describeActionType } from "@/lib/ofistant/ofistant.actions";
 import { cn } from "@/lib/utils";
-import { Sparkles, User } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 import { ActionPreviewCard } from "./ActionPreviewCard";
 import type { AddToCartAction } from "@/lib/ofistant/ofistant.actions";
@@ -31,35 +34,63 @@ export function ChatMessageView({
     message.action?.type === "ADD_TO_CART";
 
   return (
-    <div className={cn("flex gap-2", isUser ? "flex-row-reverse" : "flex-row")}>
+    <div
+      className={cn(
+        "group/msg flex gap-2.5",
+        isUser ? "flex-row-reverse" : "flex-row",
+      )}
+    >
+      {/* Avatar — AI gets the branded mark, user gets initials */}
       <span
-        className={cn(
-          "grid h-7 w-7 shrink-0 place-items-center rounded-full text-white",
-          isUser ? "bg-slate-700" : "bg-gradient-to-br from-brand-500 to-brand-700",
-        )}
         aria-hidden
+        className={cn(
+          "grid h-8 w-8 shrink-0 place-items-center rounded-full text-white shadow-soft-sm",
+          isUser
+            ? "bg-ink"
+            : "bg-gradient-to-br from-brand-500 via-brand-700 to-brand-900 ring-2 ring-white",
+        )}
       >
-        {isUser ? <User className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+        {isUser ? (
+          <span className="type-display text-[11px] font-bold">You</span>
+        ) : (
+          <Sparkles className="h-4 w-4 text-ochre-300" strokeWidth={2.4} />
+        )}
       </span>
 
-      <div className={cn("flex max-w-[85%] flex-col gap-1.5", isUser ? "items-end" : "items-start")}>
+      <div
+        className={cn(
+          "flex max-w-[82%] flex-col gap-1.5",
+          isUser ? "items-end" : "items-start",
+        )}
+      >
+        {/* Bubble */}
         <div
           className={cn(
-            "rounded-2xl px-3 py-2 text-sm leading-relaxed",
+            "rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed transition-shadow",
             isUser
-              ? "rounded-tr-md bg-brand-600 text-white"
-              : "rounded-tl-md bg-surface text-ink shadow-sm ring-1 ring-line",
+              ? "rounded-tr-sm bg-brand-700 text-white shadow-soft-sm"
+              : "rounded-tl-sm border border-line bg-surface text-ink shadow-soft-sm",
           )}
         >
           {message.text}
         </div>
 
+        {/* Inline action badge */}
         {message.action && !showActionPreview && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-ink-muted">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold",
+              isUser
+                ? "bg-brand-50 text-brand-700"
+                : "bg-cool-100 text-brand-700 ring-1 ring-brand-100",
+            )}
+          >
+            <span className="h-1 w-1 rounded-full bg-ochre-500" />
             → {describeActionType(message.action.type)}
           </span>
         )}
 
+        {/* Confirmation preview card (ADD_TO_CART) */}
         {showActionPreview && message.action?.type === "ADD_TO_CART" && (
           <ActionPreviewCard
             action={message.action as AddToCartAction}
@@ -69,7 +100,8 @@ export function ChatMessageView({
           />
         )}
 
-        <time className="px-1 text-[9px] text-ink-muted">
+        {/* Timestamp — subtle, only on hover */}
+        <time className="px-1 text-[9px] text-ink-subtle opacity-0 transition-opacity group-hover/msg:opacity-100">
           {new Date(message.ts).toLocaleTimeString("id-ID", {
             hour: "2-digit",
             minute: "2-digit",

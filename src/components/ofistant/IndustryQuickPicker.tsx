@@ -1,8 +1,8 @@
 // src/components/ofistant/IndustryQuickPicker.tsx
-// Prominent industry quick picker shown in Ofistant on first welcome.
-// Replaces the generic text chips with branded cards (icon + name + tagline)
-// so the conversational entry point to filtering feels intentional, not
-// secondary to a top nav.
+// Prominent industry quick picker shown on first welcome. Branded cards that
+// feel like curated AI starting points, not a generic grid.
+
+import { ArrowUpRight } from "lucide-react";
 
 import { INDUSTRY_META } from "@/data/industries";
 
@@ -12,30 +12,37 @@ interface IndustryQuickPickerProps {
 
 export function IndustryQuickPicker({ onPick }: IndustryQuickPickerProps) {
   return (
-    <div className="mt-1">
-      <p className="type-eyebrow mb-2 px-1 text-ink-subtle">
-        Pilih industri
-      </p>
+    <div className="mt-1.5 space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <p className="type-eyebrow text-ink-subtle">Mulai dari industri</p>
+        <span className="text-[9px] text-ink-subtle">{INDUSTRY_META.length} opsi</span>
+      </div>
       <div className="grid grid-cols-2 gap-1.5">
         {INDUSTRY_META.map((m, i) => (
           <button
             key={m.name}
             type="button"
             onClick={() => onPick(m.name)}
-            className="group flex flex-col items-start gap-0.5 rounded-xl border border-line bg-surface px-2.5 py-2 text-left transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/40 hover:shadow-soft-sm"
+            className="group relative flex flex-col items-start gap-0.5 overflow-hidden rounded-xl border border-line bg-surface p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-soft-sm"
           >
-            <div className="flex w-full items-center justify-between">
-              <span className="type-display text-base font-bold leading-none text-brand-700 transition-colors group-hover:text-brand-700">
+            {/* gradient wash on hover */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-700/0 to-brand-700/0 opacity-0 transition-opacity duration-200 group-hover:from-brand-700 group-hover:to-brand-900 group-hover:opacity-100"
+            />
+            <div className="relative flex w-full items-center justify-between">
+              <span className="type-display text-lg font-extrabold leading-none text-brand-700 transition-colors group-hover:text-ochre-400">
                 {m.name.charAt(0)}
               </span>
-              <span className="type-mono-label text-[9px] text-ink-subtle">
-                {String(i + 1).padStart(2, "0")}
-              </span>
+              <ArrowUpRight
+                className="h-3 w-3 text-ink-subtle opacity-0 transition-all group-hover:text-white group-hover:opacity-100"
+                strokeWidth={2.4}
+              />
             </div>
-            <span className="text-[11px] font-semibold leading-tight text-ink">
+            <span className="relative text-[11px] font-bold leading-tight text-ink transition-colors group-hover:text-white">
               {m.name}
             </span>
-            <span className="line-clamp-1 text-[9px] leading-tight text-ink-muted">
+            <span className="relative line-clamp-1 text-[9px] leading-tight text-ink-muted transition-colors group-hover:text-brand-100">
               {m.tagline}
             </span>
           </button>

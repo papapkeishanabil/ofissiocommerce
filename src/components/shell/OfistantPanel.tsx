@@ -11,7 +11,6 @@ import { Headset, RotateCcw, Sparkles, X } from "lucide-react";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { useOfistantAction } from "@/hooks/use-ofistant-action";
 
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ChatComposer } from "@/components/ofistant/ChatComposer";
 import { ChatMessageView } from "@/components/ofistant/ChatMessageView";
@@ -118,21 +117,39 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const lastPendingMsgId = pendingAction?.messageId ?? null;
 
   return (
-    <div className="flex h-full w-full flex-col bg-surface-muted">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-line bg-surface px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm">
-            <Sparkles className="h-5 w-5" />
-          </span>
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-muted">
+      {/* Atmospheric navy gradient at the top of the panel */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-44"
+        style={{
+          background:
+            "radial-gradient(400px 200px at 20% 0%, rgba(74,107,216,0.18), transparent 70%)," +
+            "linear-gradient(180deg, #eff4ff 0%, transparent 100%)",
+        }}
+      />
+
+      {/* Header — AI identity card */}
+      <header className="relative flex items-center justify-between border-b border-line bg-surface/80 px-4 py-3.5 backdrop-blur">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-600 via-brand-700 to-brand-900 text-white shadow-soft-sm">
+              <Sparkles className="h-5 w-5 text-ochre-300" strokeWidth={2.4} />
+            </span>
+            {/* live dot */}
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface bg-emerald-500" />
+          </div>
           <div>
-            <p className="flex items-center gap-1.5 text-sm font-bold text-ink">
+            <p className="type-display flex items-center gap-1.5 text-[15px] font-bold leading-tight text-ink">
               Ofistant
-              <Badge tone="success" className="px-1.5 py-0 text-[9px]">
-                online
-              </Badge>
+              <span className="rounded bg-brand-50 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-brand-700">
+                AI
+              </span>
             </p>
-            <p className="text-[10px] text-ink-muted">Asisten Pengadaan Seragam</p>
+            <p className="flex items-center gap-1 text-[10px] text-ink-muted">
+              <span className="inline-block h-1 w-1 rounded-full bg-emerald-500" />
+              Asisten Pengadaan · siap membantu
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -157,12 +174,12 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
             </button>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 space-y-4 overflow-y-auto px-4 py-4"
+        className="relative flex-1 space-y-4 overflow-y-auto px-4 py-4"
         aria-live="polite"
       >
         {messages.map((m) => (
@@ -201,19 +218,20 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
       </div>
 
       {/* Composer + handoff */}
-      <div className="space-y-2 border-t border-line bg-surface px-4 py-3">
+      <div className="relative space-y-2 border-t border-line bg-surface px-4 py-3.5">
         <ChatComposer onSubmit={handleSend} disabled={typing} />
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={handleHumanHandoff}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink-muted hover:text-brand-700"
+            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-[10px] font-semibold text-ink-muted transition-all hover:border-brand-300 hover:text-brand-700"
           >
-            <Headset className="h-3.5 w-3.5" />
+            <Headset className="h-3 w-3" />
             Hubungi Sales
           </button>
-          <span className="text-[10px] text-ink-muted">
-            Powered by Ofistant (rule-based · LLM Phase 7)
+          <span className="flex items-center gap-1 text-[9px] text-ink-subtle">
+            <Sparkles className="h-2.5 w-2.5 text-brand-400" />
+            Ofistant AI · B2B commerce
           </span>
         </div>
       </div>
