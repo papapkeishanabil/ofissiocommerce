@@ -24,8 +24,8 @@ export interface TripoTask {
   error?: string;
 }
 
-/** Step 1: Upload a local /public image file to Tripo, get image_token. */
-async function uploadFile(publicPath: string): Promise<{ ok: true; token: string } | { ok: false; reason: string }> {
+/** Step 1: Upload a local /public image file to Tripo, get image_token + ext. */
+async function uploadFile(publicPath: string): Promise<{ ok: true; token: string; ext: string } | { ok: false; reason: string }> {
   const apiKey = process.env.TRIPO_API_KEY!;
   const fsPath = resolve(process.cwd(), "public", publicPath.replace(/^\//, ""));
   const fileBuffer = readFileSync(fsPath);
@@ -51,7 +51,7 @@ async function uploadFile(publicPath: string): Promise<{ ok: true; token: string
     if (!token) {
       return { ok: false, reason: "Tripo upload: no token in response." };
     }
-    return { ok: true, token };
+    return { ok: true, token, ext };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "Network error" };
   }
@@ -72,7 +72,7 @@ export async function createTripoTask(
 
   // 2. Create generation task
   try {
-    const res = await fetch(`${TRIPO_BASE}/generation`, {
+    const res = await fetch(`${TRIPO_BASE}/generation/image-to-model`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -80,7 +80,7 @@ export async function createTripoTask(
       },
       body: JSON.stringify({
         file: {
-          type: ext === "webp" ? "webp" : ext === "jpg" ? "jpg" : "png",
+          type: upload.ext === "webp" ? "webp" : upload.ext === "jpg" ? "jpg" : "png",
           file_token: upload.token,
         },
         model: "v3.1-20260211",
