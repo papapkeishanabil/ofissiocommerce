@@ -228,43 +228,71 @@ export function Depth3DViewer({
 }
 
 /**
- * Quad visibility controller. Each frame, computes which side of the model
- * faces the camera and shows only the 1–2 nearest meshes (others hidden via
- * `visible=false`). Eliminates the "X-ray see-through / overlap" artifact
- * you get when all 4 displaced planes render simultaneously.
+ * Quad visibility controller with CROSS-FADE. Instead of binary visible/hidden,
+ * each frame we compute how aligned each face's outward normal is with the
+ * camera's viewing direction, then set material opacity proportionally.
  *
- * We tag each child group with userData.face so we can identify them.
+ * Result: smooth transition between front→side→back→side as the customer
+ * rotates, instead of a hard "snap" between faces.
+ *
+ * Face normals (outward):
+ *   front  = +Z, back = -Z, left = +X, right = -X
  */
 function QuadVisibilityController({
   groupRef,
 }: {
   groupRef: RefObject<THREE.Group | null>;
 }) {
-  useFrame(({ camera }) => {
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    // facing direction (the face whose outward normal aligns with -dir)
-    const facingX = -dir.x;
-    const facingZ = -dir.z;
-    const useSideAxis = Math.abs(facingX) > Math.abs(facingZ);
+  const camDir = useRef(new THREE.Vector3());
 
+  useFrame(({ camera }) => {
     const root = groupRef.current;
     if (!root) return;
+
+    camera.getWorldDirection(camDir.current);
+    // The direction FROM camera TO origin = -camDir. We want faces whose
+    // outward normal aligns with this "toward camera" vector.
+    const towardCamX = -camDir.current.x;
+    const towardCamZ = -camDir.current.z;
+
     root.children.forEach((child) => {
       if (child.type !== "Group") return;
       const face = child.userData?.face as string | undefined;
       if (!face) return;
-      let vis = false;
-      if (useSideAxis) {
-        vis =
-          (face === "left" && facingX > 0) ||
-          (face === "right" && facingX < 0);
+
+      // Compute dot product of face normal with "toward camera" direction.
+      // Range: 1 (face directly toward camera) → -1 (face directly away).
+      let alignment = 0;
+      if (face === "front") alignment = towardCamZ;       // normal +Z
+      else if (face === "back") alignment = -towardCamZ;  // normal -Z
+      else if (face === "left") alignment = towardCamX;   // normal +X
+      else if (face === "right") alignment = -towardCamX; // normal -X
+
+      // Smoothstep fade: fully visible when alignment > 0.3,
+      // fully hidden when alignment < -0.2, smooth blend between.
+      let opacity: number;
+      if (alignment > 0.3) {
+        opacity = 1;
+      } else if (alignment < -0.2) {
+        opacity = 0;
       } else {
-        vis =
-          (face === "front" && facingZ > 0) ||
-          (face === "back" && facingZ < 0);
+        // Linear interpolate in the -0.2..0.3 range
+        opacity = (alignment + 0.2) / 0.5;
       }
-      child.visible = vis;
+      opacity = Math.max(0, Math.min(1, opacity));
+
+      // Apply to all Mesh materials inside this group
+      child.visible = opacity > 0.01;
+      child.traverse((grandchild) => {
+        if (grandchild.type === "Mesh") {
+          const mesh = grandchild as THREE.Mesh;
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          if (mat) {
+            mat.transparent = true;
+            mat.opacity = opacity;
+          }
+        }
+      });
     });
   });
   return null;
