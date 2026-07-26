@@ -36,6 +36,15 @@ export interface Photo360Set {
   >;
 }
 
+export interface Depth3DSet {
+  /** color photo path under /public (the original product photo) */
+  colorImage: string;
+  /** pre-computed depth map PNG (grayscale, brighter = nearer) */
+  depthImage: string;
+  /** displacement strength in model units (~0.5 default) */
+  depthStrength?: number;
+}
+
 export interface Model3DEntry {
   /** matches Product.id */
   productId: string;
@@ -43,8 +52,10 @@ export interface Model3DEntry {
   model3dId: string;
   /** path under /public — null = skip GLB */
   glbUrl: string | null;
-  /** 360° photo set — null = skip photo mode. Takes priority over procedural. */
+  /** 360° photo set — null = skip photo mode */
   photo360: Photo360Set | null;
+  /** AI depth → 3D mesh. Highest accuracy-without-GLB option. */
+  depth3D: Depth3DSet | null;
   /** base tint used by procedural fallback shape (hex). */
   fallbackColor: string;
 }
@@ -59,31 +70,18 @@ export const MODEL_3D_REGISTRY: Model3DEntry[] = [
     model3dId: "kl-rip-201-v1",
     glbUrl: null,
     photo360: null, // Ripstop: no photos yet, uses procedural
+    depth3D: null,
     fallbackColor: "#1f3a8a",
   },
   {
     productId: "p-012",
     model3dId: "kk-006-v1",
     glbUrl: null,
-    photo360: {
-      // 6 frames. Angles are best-guess until photos are tagged precisely;
-      // the spin viewer interpolates between nearest frames.
-      frames: [
-        { src: "/products/kk-006/KK-006-3.jpeg", angle: 0, label: "Depan" },
-        { src: "/products/kk-006/KK-006-4.jpeg", angle: 60, label: "Samping Kanan" },
-        { src: "/products/kk-006/KK-006-5.jpeg", angle: 120, label: "Belakang Kanan" },
-        { src: "/products/kk-006/KK-006-6.jpeg", angle: 180, label: "Belakang" },
-        { src: "/products/kk-006/KK-006-7.jpeg", angle: 240, label: "Belakang Kiri" },
-        { src: "/products/kk-006/KK-006-8.jpeg", angle: 300, label: "Samping Kiri" },
-      ],
-      // Overlays tuned for typical product photo framing (subject centered,
-      // ~40% width). Adjust per product after seeing real photos.
-      zoneOverlays: {
-        left_chest: { xPct: 38, yPct: 32, maxWidthPct: 18 },
-        right_chest: { xPct: 58, yPct: 32, maxWidthPct: 18 },
-        upper_back: { xPct: 46, yPct: 22, maxWidthPct: 24 },
-        middle_back: { xPct: 46, yPct: 45, maxWidthPct: 24 },
-      },
+    photo360: null, // depth3D takes priority (true 3D rotation)
+    depth3D: {
+      colorImage: "/products/kk-006/KK-006-3.jpeg",
+      depthImage: "/products/kk-006/KK-006-3-depth.png",
+      depthStrength: 0.6,
     },
     fallbackColor: "#9ca3af",
   },

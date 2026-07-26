@@ -26,7 +26,12 @@ import { LogoUploadPanel } from "./LogoUploadPanel";
 import { Photo360Viewer } from "./Photo360Viewer";
 import { PreviewSnapshotPanel } from "./PreviewSnapshotPanel";
 
-// Lazy-load the R3F canvas + three.js bundle (only used when no photo360 set).
+// Lazy-load the R3F canvases (three.js bundle). Photo360 is plain HTML so it
+// doesn't need to be lazy.
+const Depth3DViewer = dynamic(
+  () => import("./Depth3DViewer").then((m) => m.Depth3DViewer),
+  { ssr: false, loading: () => <ViewerSkeleton /> },
+);
 const Uniform3DViewer = dynamic(
   () => import("./Uniform3DViewer").then((m) => m.Uniform3DViewer),
   {
@@ -130,7 +135,18 @@ export function Uniform3DConfigurator({
       {/* LEFT: 3D viewer + camera controls */}
       <div className="space-y-3">
         <div className="relative h-[420px] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:h-[460px] lg:h-[500px]">
-          {model.photo360 ? (
+          {model.depth3D ? (
+            <Depth3DViewer
+              colorImageSrc={model.depth3D.colorImage}
+              depthImageSrc={model.depth3D.depthImage}
+              depthStrength={model.depth3D.depthStrength ?? 0.6}
+              placements={config.placements}
+              highlightZone={selectedZone}
+              onCanvasReady={({ domElement }) => {
+                canvasElRef.current = domElement;
+              }}
+            />
+          ) : model.photo360 ? (
             <Photo360Viewer
               photoSet={model.photo360}
               placements={config.placements}
@@ -147,6 +163,15 @@ export function Uniform3DConfigurator({
                 canvasElRef.current = domElement;
               }}
             />
+          )}
+          {model.depth3D && (
+            <Badge
+              tone="brand"
+              className="absolute left-3 top-3 bg-white/90"
+            >
+              <Sparkles className="h-3 w-3" />
+              Model 3D dari foto · depth AI
+            </Badge>
           )}
           {isFallback && (
             <Badge
