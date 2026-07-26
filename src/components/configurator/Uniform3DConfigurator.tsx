@@ -135,7 +135,21 @@ export function Uniform3DConfigurator({
       {/* LEFT: 3D viewer + camera controls */}
       <div className="space-y-3">
         <div className="relative h-[420px] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:h-[460px] lg:h-[500px]">
-          {model.depth3D ? (
+          {model.depth3DDual ? (
+            <Depth3DViewer
+              colorImageSrc={model.depth3DDual.front.colorImage}
+              depthImageSrc={model.depth3DDual.front.depthImage}
+              depthStrength={model.depth3DDual.front.depthStrength ?? 0.6}
+              backColorImageSrc={model.depth3DDual.back.colorImage}
+              backDepthImageSrc={model.depth3DDual.back.depthImage}
+              backDepthStrength={model.depth3DDual.back.depthStrength ?? 0.6}
+              placements={config.placements}
+              highlightZone={selectedZone}
+              onCanvasReady={({ domElement }) => {
+                canvasElRef.current = domElement;
+              }}
+            />
+          ) : model.depth3D ? (
             <Depth3DViewer
               colorImageSrc={model.depth3D.colorImage}
               depthImageSrc={model.depth3D.depthImage}
@@ -164,13 +178,13 @@ export function Uniform3DConfigurator({
               }}
             />
           )}
-          {model.depth3D && (
+          {(model.depth3D || model.depth3DDual) && (
             <Badge
               tone="brand"
               className="absolute left-3 top-3 bg-white/90"
             >
               <Sparkles className="h-3 w-3" />
-              Model 3D dari foto · depth AI
+              Model 3D dari foto · depth AI{model.depth3DDual ? " · 360°" : ""}
             </Badge>
           )}
           {isFallback && (

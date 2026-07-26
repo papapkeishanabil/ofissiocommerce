@@ -32,6 +32,10 @@ interface Depth3DViewerProps {
   depthImageSrc: string;
   /** depth strength (model units). Higher = more 3D pop. ~0.4 default. */
   depthStrength?: number;
+  /** optional back side (color + depth) for full 360° rotation. */
+  backColorImageSrc?: string;
+  backDepthImageSrc?: string;
+  backDepthStrength?: number;
   placements?: LogoPlacement[];
   highlightZone?: string | null;
   onCanvasReady?: (gl: { domElement: HTMLCanvasElement }) => void;
@@ -47,30 +51,46 @@ export function Depth3DViewer({
   colorImageSrc,
   depthImageSrc,
   depthStrength = 0.5,
+  backColorImageSrc,
+  backDepthImageSrc,
+  backDepthStrength,
   placements = [],
   highlightZone,
   onCanvasReady,
 }: Depth3DViewerProps) {
-  const [loaded, setLoaded] = useState<LoadedImage | null>(null);
+  const [front, setFront] = useState<LoadedImage | null>(null);
+  const [back, setBack] = useState<LoadedImage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoaded(null);
+    setFront(null);
+    setBack(null);
     setError(null);
-    Promise.all([loadImage(colorImageSrc), loadImage(depthImageSrc)])
-      .then(([color, depth]) => {
+
+    const frontP = Promise.all([loadImage(colorImageSrc), loadImage(depthImageSrc)])
+      .then(([color, depth]) => ({ color, depth, aspect: color.naturalWidth / color.naturalHeight }));
+
+    const backP = backColorImageSrc && backDepthImageSrc
+      ? Promise.all([loadImage(backColorImageSrc), loadImage(backDepthImageSrc)])
+          .then(([color, depth]) => ({ color, depth, aspect: color.naturalWidth / color.naturalHeight }))
+      : Promise.resolve(null);
+
+    Promise.all([frontP, backP])
+      .then(([f, b]) => {
         if (cancelled) return;
-        setLoaded({ color, depth, aspect: color.naturalWidth / color.naturalHeight });
+        setFront(f);
+        setBack(b);
       })
       .catch((e) => {
         if (cancelled) return;
         setError(e?.message ?? "Gagal memuat depth 3D.");
       });
+
     return () => {
       cancelled = true;
     };
-  }, [colorImageSrc, depthImageSrc]);
+  }, [colorImageSrc, depthImageSrc, backColorImageSrc, backDepthImageSrc]);
 
   if (error) {
     return (
@@ -80,7 +100,7 @@ export function Depth3DViewer({
     );
   }
 
-  if (!loaded) {
+  if (!front) {
     return (
       <div className="grid h-full w-full place-items-center bg-gradient-to-br from-cool-100 to-cool-200">
         <div className="flex flex-col items-center gap-2 text-ink-muted">
@@ -103,14 +123,26 @@ export function Depth3DViewer({
       <ambientLight intensity={0.85} />
       <directionalLight position={[3, 4, 5]} intensity={1.0} />
       <directionalLight position={[-3, 1, -2]} intensity={0.3} color="#a8baff" />
+      {/* Front mesh — visible when camera is in front (z > 0) */}
       <DisplacedMesh
-        color={loaded.color}
-        depth={loaded.depth}
-        aspect={loaded.aspect}
+        color={front.color}
+        depth={front.depth}
+        aspect={front.aspect}
         depthStrength={depthStrength}
+        face="front"
         placements={placements}
         highlightZone={highlightZone}
       />
+      {/* Back mesh — flipped, only built if back photo provided */}
+      {back && (
+        <DisplacedMesh
+          color={back.color}
+          depth={back.depth}
+          aspect={back.aspect}
+          depthStrength={backDepthStrength ?? depthStrength}
+          face="back"
+        />
+      )}
       <OrbitControls
         target={[0, 0, 0]}
         minDistance={1.6}
@@ -137,7 +169,9 @@ interface DisplacedMeshProps {
   depth: HTMLImageElement;
   aspect: number;
   depthStrength: number;
-  placements: LogoPlacement[];
+  /** which side this mesh represents — affects facing & logo anchors */
+  face?: "front" | "back";
+  placements?: LogoPlacement[];
   highlightZone?: string | null;
 }
 
@@ -146,7 +180,8 @@ function DisplacedMesh({
   depth,
   aspect,
   depthStrength,
-  placements,
+  face = "front",
+  placements = [],
   highlightZone,
 }: DisplacedMeshProps) {
   // Build displaced geometry + texture once per image change.
@@ -170,7 +205,7 @@ function DisplacedMesh({
     for (let i = 0; i < pos.count; i++) {
       // depth pixel: luminance from RGB (grayscale image → R=G=B)
       const lum = depthData[i * 4]! / 255; // 0 (far) .. 1 (near)
-      // Displace +Z (toward camera) when near. Invert + scale.
+      // Displace +Z (toward viewer) when near.
       pos.setZ(i, (lum - 0.5) * depthStrength);
     }
     pos.needsUpdate = true;
@@ -183,44 +218,59 @@ function DisplacedMesh({
     return { geometry: geo, texture: tex };
   }, [color, depth, aspect, depthStrength]);
 
-  // Reuse meshStandardMaterial so lighting gives the surface depth cues.
   const material = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
         map: texture,
-        side: THREE.DoubleSide, // visible from the back too (mirrored)
+        side: THREE.FrontSide,
         roughness: 0.85,
         metalness: 0.02,
       }),
     [texture],
   );
 
+  // Back mesh: flip 180° around Y so it faces -Z (away from front), and
+  // mirror X scale so the back photo reads correctly (not mirrored) when
+  // viewed from behind the front mesh.
+  const groupRotation: [number, number, number] = face === "back" ? [0, Math.PI, 0] : [0, 0, 0];
+  const groupScale: [number, number, number] = face === "back" ? [-1, 1, 1] : [1, 1, 1];
+
   return (
-    <group>
+    <group rotation={groupRotation} scale={groupScale}>
       <mesh geometry={geometry} material={material} castShadow receiveShadow />
-      {placements.map((p) => {
-        const anchor = ZONE_ANCHORS[p.zone];
-        if (!anchor) return null;
-        const width = (p.widthCm / 30) * 0.9;
-        const height = (p.heightCm / 30) * 0.9;
-        const isHi = highlightZone === p.zone;
-        return (
-          <mesh
-            key={p.zone}
-            position={[anchor.x, anchor.y, anchor.z + 0.05]}
-            rotation={[0, 0, (p.rotation * Math.PI) / 180]}
-          >
-            <planeGeometry args={[width, height]} />
-            <meshStandardMaterial
-              color={p.logoPreviewUrl ? "#ffffff" : "#f8fafc"}
-              emissive="#dc9814"
-              emissiveIntensity={isHi ? 0.35 : 0.12}
-              roughness={0.6}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        );
-      })}
+      {/* Logo placements only on the front mesh (chest zones); back zones
+          (upper_back/middle_back) shown on back mesh. */}
+      {placements
+        .filter((p) => {
+          const isBackZone = p.zone === "upper_back" || p.zone === "middle_back";
+          return face === "back" ? isBackZone : !isBackZone;
+        })
+        .map((p) => {
+          const anchor = ZONE_ANCHORS[p.zone];
+          if (!anchor) return null;
+          const width = (p.widthCm / 30) * 0.9;
+          const height = (p.heightCm / 30) * 0.9;
+          const isHi = highlightZone === p.zone;
+          // For back mesh, the Z anchor needs to be negated (we're flipped).
+          const zPos = face === "back" ? -anchor.z + 0.05 : anchor.z + 0.05;
+          const xPos = face === "back" ? -anchor.x : anchor.x;
+          return (
+            <mesh
+              key={`${face}-${p.zone}`}
+              position={[xPos, anchor.y, zPos]}
+              rotation={[0, 0, (p.rotation * Math.PI) / 180]}
+            >
+              <planeGeometry args={[width, height]} />
+              <meshStandardMaterial
+                color={p.logoPreviewUrl ? "#ffffff" : "#f8fafc"}
+                emissive="#dc9814"
+                emissiveIntensity={isHi ? 0.35 : 0.12}
+                roughness={0.6}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          );
+        })}
     </group>
   );
 }

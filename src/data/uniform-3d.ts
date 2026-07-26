@@ -45,6 +45,16 @@ export interface Depth3DSet {
   depthStrength?: number;
 }
 
+/**
+ * Dual-side depth 3D: front + back photo each with their own depth map.
+ * The viewer builds two displaced meshes back-to-back so the customer can
+ * rotate a full 360° and see the correct photo on each side.
+ */
+export interface Depth3DDualSet {
+  front: Depth3DSet;
+  back: Depth3DSet;
+}
+
 export interface Model3DEntry {
   /** matches Product.id */
   productId: string;
@@ -54,8 +64,10 @@ export interface Model3DEntry {
   glbUrl: string | null;
   /** 360° photo set — null = skip photo mode */
   photo360: Photo360Set | null;
-  /** AI depth → 3D mesh. Highest accuracy-without-GLB option. */
+  /** AI depth → 3D mesh (single side). Lower priority than depth3DDual. */
   depth3D: Depth3DSet | null;
+  /** AI depth → 3D mesh (front + back). Highest accuracy-without-GLB. */
+  depth3DDual: Depth3DDualSet | null;
   /** base tint used by procedural fallback shape (hex). */
   fallbackColor: string;
 }
@@ -71,17 +83,26 @@ export const MODEL_3D_REGISTRY: Model3DEntry[] = [
     glbUrl: null,
     photo360: null, // Ripstop: no photos yet, uses procedural
     depth3D: null,
+    depth3DDual: null,
     fallbackColor: "#1f3a8a",
   },
   {
     productId: "p-012",
     model3dId: "kk-006-v1",
     glbUrl: null,
-    photo360: null, // depth3D takes priority (true 3D rotation)
-    depth3D: {
-      colorImage: "/products/kk-006/KK-006-3.jpeg",
-      depthImage: "/products/kk-006/KK-006-3-depth.png",
-      depthStrength: 0.6,
+    photo360: null,
+    depth3D: null,
+    depth3DDual: {
+      front: {
+        colorImage: "/products/kk-006/KK-006-front.webp",
+        depthImage: "/products/kk-006/KK-006-front-depth.png",
+        depthStrength: 0.6,
+      },
+      back: {
+        colorImage: "/products/kk-006/KK-006-back.webp",
+        depthImage: "/products/kk-006/KK-006-back-depth.png",
+        depthStrength: 0.6,
+      },
     },
     fallbackColor: "#9ca3af",
   },
