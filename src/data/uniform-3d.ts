@@ -37,10 +37,14 @@ export interface Photo360Set {
 }
 
 export interface Depth3DSet {
-  /** color photo path under /public (the original product photo) */
+  /** color photo path under /public (background removed, transparent) */
   colorImage: string;
   /** pre-computed depth map PNG (grayscale, brighter = nearer) */
   depthImage: string;
+  /** silhouette mask PNG (white = product, black = background). Vertices in
+   *  the black region are discarded from the mesh so we don't render a "wall"
+   *  around the product when rotating. */
+  maskImage?: string;
   /** displacement strength in model units (~0.5 default) */
   depthStrength?: number;
 }
@@ -94,13 +98,15 @@ export const MODEL_3D_REGISTRY: Model3DEntry[] = [
     depth3D: null,
     depth3DDual: {
       front: {
-        colorImage: "/products/kk-006/KK-006-front.webp",
+        colorImage: "/products/kk-006/KK-006-front-nobg.webp",
         depthImage: "/products/kk-006/KK-006-front-depth.png",
+        maskImage: "/products/kk-006/KK-006-front-mask.png",
         depthStrength: 0.6,
       },
       back: {
-        colorImage: "/products/kk-006/KK-006-back.webp",
+        colorImage: "/products/kk-006/KK-006-back-nobg.webp",
         depthImage: "/products/kk-006/KK-006-back-depth.png",
+        maskImage: "/products/kk-006/KK-006-back-mask.png",
         depthStrength: 0.6,
       },
     },

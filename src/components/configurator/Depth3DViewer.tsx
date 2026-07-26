@@ -197,22 +197,38 @@ function DisplacedMesh({
     dctx.drawImage(depth, 0, 0, SEG + 1, SEG + 1);
     const depthData = dctx.getImageData(0, 0, SEG + 1, SEG + 1).data;
 
+    // Pull alpha pixels from the (no-bg) color image at the same resolution.
+    // Vertices in fully transparent regions (background) get Z=0 so they
+    // don't poke through as a "wall" when the mesh is viewed from the side.
+    const aCanvas = document.createElement("canvas");
+    aCanvas.width = SEG + 1;
+    aCanvas.height = SEG + 1;
+    const actx = aCanvas.getContext("2d")!;
+    actx.drawImage(color, 0, 0, SEG + 1, SEG + 1);
+    const alphaData = actx.getImageData(0, 0, SEG + 1, SEG + 1).data;
+
     // Plane sized to image aspect so the texture doesn't stretch.
     const width = aspect >= 1 ? 1.6 : 1.6 * aspect;
     const height = aspect >= 1 ? 1.6 / aspect : 1.6;
     const geo = new THREE.PlaneGeometry(width, height, SEG, SEG);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) {
-      // depth pixel: luminance from RGB (grayscale image → R=G=B)
       const lum = depthData[i * 4]! / 255; // 0 (far) .. 1 (near)
-      // Displace +Z (toward viewer) when near.
-      pos.setZ(i, (lum - 0.5) * depthStrength);
+      const alpha = alphaData[i * 4 + 3]! / 255; // 0 (bg) .. 1 (product)
+      // Displace +Z (toward viewer) when near AND inside the product silhouette.
+      // Background vertices are flattened to z=0.
+      const z = alpha > 0.1 ? (lum - 0.5) * depthStrength : 0;
+      pos.setZ(i, z);
     }
     pos.needsUpdate = true;
     geo.computeVertexNormals();
 
     const tex = new THREE.Texture(color);
     tex.colorSpace = THREE.SRGBColorSpace;
+    // Force RGBA so the alpha channel (no-bg transparency) is preserved and
+    // alphaTest in the material can discard background fragments.
+    tex.format = THREE.RGBAFormat;
+    tex.premultiplyAlpha = false;
     tex.needsUpdate = true;
 
     return { geometry: geo, texture: tex };
@@ -222,7 +238,12 @@ function DisplacedMesh({
     () =>
       new THREE.MeshStandardMaterial({
         map: texture,
-        side: THREE.FrontSide,
+        // Foto sudah no-bg (RGBA) → pakai alpha channel untuk discard
+        // background pixel supaya hanya produk yang ter-render (bukan "wall"
+        // background disekitar produk saat di-rotate).
+        transparent: true,
+        alphaTest: 0.5,
+        side: THREE.DoubleSide,
         roughness: 0.85,
         metalness: 0.02,
       }),
