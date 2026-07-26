@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { ProductImagePlaceholder } from "@/components/catalog/ProductImagePlaceholder";
 import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
@@ -128,11 +129,26 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-8 lg:py-8">
+      <Breadcrumbs
+        items={[
+          { label: "Beranda", href: "/" },
+          { label: "Katalog", href: "/catalog" },
+          ...(product.industries[0]
+            ? [
+                {
+                  label: product.industries[0],
+                  href: `/catalog?industri=${encodeURIComponent(product.industries[0])}`,
+                },
+              ]
+            : []),
+          { label: product.name },
+        ]}
+      />
       <ButtonLink
         href="/catalog"
         variant="ghost"
         size="sm"
-        className="mb-4 -ml-2"
+        className="mb-4 mt-2 -ml-2 lg:hidden"
       >
         <ArrowLeft className="h-4 w-4" />
         Kembali ke katalog

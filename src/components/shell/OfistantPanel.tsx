@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ChatComposer } from "@/components/ofistant/ChatComposer";
 import { ChatMessageView } from "@/components/ofistant/ChatMessageView";
+import { IndustryQuickPicker } from "@/components/ofistant/IndustryQuickPicker";
 import { QuickReplies } from "@/components/ofistant/QuickReplies";
 import { TypingIndicator } from "@/components/ofistant/TypingIndicator";
 
@@ -34,9 +35,17 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const dismissPendingAction = useOfistantStore((s) => s.dismissPendingAction);
   const reset = useOfistantStore((s) => s.reset);
   const hydrated = useOfistantStore((s) => s.hydrated);
+  const journeyStage = useOfistantStore((s) => s.context.journeyStage);
+  const messagesCount = useOfistantStore((s) => s.messages.length);
 
   const { dispatch } = useOfistantAction();
   const [busy, setBusy] = useState(false);
+
+  // Show the prominent industry quick picker only on first welcome state
+  // (before the user has interacted). After interaction, regular quick replies
+  // chips take over so the picker doesn't get in the way.
+  const showIndustryPicker =
+    journeyStage === "NEW_VISITOR" && messagesCount <= 1 && !typing;
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -171,6 +180,10 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
           />
         ))}
 
+        {showIndustryPicker && (
+          <IndustryQuickPicker onPick={handleQuickReply} />
+        )}
+
         {typing && (
           <div className="flex items-center gap-2">
             <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white">
@@ -182,7 +195,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
           </div>
         )}
 
-        {!typing && quickReplies.length > 0 && !pendingAction && (
+        {!typing && quickReplies.length > 0 && !pendingAction && !showIndustryPicker && (
           <QuickReplies options={quickReplies} onPick={handleQuickReply} />
         )}
       </div>
