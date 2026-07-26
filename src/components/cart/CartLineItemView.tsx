@@ -56,7 +56,31 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
                 {item.customization}
               </Badge>
             )}
+            {item.uniform3DConfig && item.uniform3DConfig.placements.length > 0 && (
+              <Badge tone="success">
+                {item.uniform3DConfig.placements.length} bordir ·{" "}
+                {item.uniform3DConfig.placements
+                  .map((p) => p.zone.replace(/_/g, " "))
+                  .join(", ")}
+              </Badge>
+            )}
           </div>
+          {item.uniform3DConfig &&
+            item.uniform3DConfig.placements.length > 0 &&
+            item.uniform3DConfig.snapshots.front && (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.uniform3DConfig.snapshots.front}
+                  alt="Pratinjau bordir"
+                  className="h-9 w-9 rounded border border-line object-cover"
+                />
+                <span className="text-[10px] text-ink-muted">
+                  Logo:{" "}
+                  {item.uniform3DConfig.placements[0]?.logoFileName ?? "—"}
+                </span>
+              </div>
+            )}
         </div>
         <div className="text-right">
           <p className="text-sm font-bold text-ink">

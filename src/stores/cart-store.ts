@@ -25,6 +25,7 @@ interface CartState {
     color: string;
     sizes: SizeMatrix;
     customization?: string | null;
+    uniform3DConfig?: import("@/types/uniform-3d").Uniform3DConfig | null;
   }) => { ok: boolean; reason?: string; lineId?: string };
   updateLineSizes: (lineId: string, sizes: SizeMatrix) => void;
   removeLine: (lineId: string) => void;
@@ -42,7 +43,7 @@ export const useCartStore = create<CartState>()(
       hydrated: false,
       setHydrated: () => set({ hydrated: true }),
 
-      add: ({ product, color, sizes, customization = null }) => {
+      add: ({ product, color, sizes, customization = null, uniform3DConfig = null }) => {
         const totalQty = sumSizeMatrix(sizes);
         if (totalQty <= 0) {
           return { ok: false, reason: "Quantitas belum diisi." };
@@ -92,6 +93,7 @@ export const useCartStore = create<CartState>()(
           unitPrice,
           estimatedPrice,
           customization,
+          uniform3DConfig: uniform3DConfig ?? undefined,
         };
         set({ items: [...existing, line] });
         return { ok: true, lineId: id };

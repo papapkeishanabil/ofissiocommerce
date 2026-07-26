@@ -307,6 +307,34 @@ const addToCart: Rule = ({ text, ctx }) => {
   };
 };
 
+const open3DConfigurator: Rule = ({ text, ctx }) => {
+  const d = detectIntent(text);
+  if (d.intent !== "ASK_3D_CONFIGURATOR") return null;
+  // Ofistant cannot toggle ProductDetail's local "show 3D" state directly;
+  // it guides the user to the right product + instructs them. If no product
+  // is selected yet, send them to catalog first.
+  if (!ctx.selectedProductSlug) {
+    return {
+      message:
+        "Untuk atur bordir logo via preview 3D, saya buka katalog dulu — pilih produk yang didukung konfigurator 3D (mis. Kemeja Lapangan Ripstop), lalu klik tombol “Preview 3D & Bordir Logo”.",
+      action: { type: "SHOW_PRODUCTS", payload: {} },
+      quickReplies: ["Kemeja Lapangan Ripstop", "Lihat keranjang"],
+    };
+  }
+  const product = getProductBySlug(ctx.selectedProductSlug);
+  return {
+    message: product
+      ? `Baik, di halaman ${product.name} klik tombol “Preview 3D & Bordir Logo” untuk upload logo dan atur posisi bordir (dada, lengan, punggung). Saya sudah arahkan ke produknya.`
+      : "Di halaman produk yang didukung 3D, klik tombol “Preview 3D & Bordir Logo”.",
+    action: {
+      type: "OPEN_PRODUCT_DETAIL",
+      payload: { slug: ctx.selectedProductSlug, reason: "Membuka tab 3D" },
+    },
+    quickReplies: ["Tambah ke keranjang", "Hubungi sales"],
+    contextPatch: { journeyStage: "CONFIGURING_PRODUCT" },
+  };
+};
+
 const exploreMore: Rule = ({ text, ctx }) => {
   const t = text.toLowerCase();
   if (!/\b(lanjut eksplor|tambah.*lain|produk pelengkap|complementary|lainnya)\b/.test(t)) {
@@ -378,6 +406,7 @@ export const RULES: Rule[] = [
   quotation,
   register,
   tracking,
+  open3DConfigurator,
   addToCart,
   exploreMore,
   selectIndustry,

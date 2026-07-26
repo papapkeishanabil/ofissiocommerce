@@ -315,6 +315,37 @@ export const PRODUCTS: Product[] = [
     ],
     accentColor: "#1e40af",
   },
+  {
+    id: "p-011",
+    slug: "kemeja-lapangan-ripstop",
+    name: "Kemeja Lapangan Ripstop",
+    sku: "KL-RIP-201",
+    industries: ["Pertambangan", "Konstruksi", "Manufaktur", "Security"],
+    category: "Kemeja Lapangan",
+    priceFrom: 165000,
+    moq: 15,
+    leadTimeDays: 10,
+    fulfillment: "MADE_TO_ORDER",
+    description:
+      "Kemeja lapangan berkain ripstop anti-sobek dengan grid pattern khas. Cocok untuk pekerja lapangan di area tambang, konstruksi, dan industri berat. Didukung preview 3D & konfigurasi bordir logo.",
+    material: "Ripstop poly-katun 230 gsm, tear-resistant grid weave",
+    colors: ["Navy", "Orange Safety", "Khaki", "Dark Green"],
+    specs: [
+      { label: "Gramatur", value: "230 gsm" },
+      { label: "Pola", value: "Ripstop grid" },
+      { label: "Tutup Tombol", value: "Hidden placket" },
+      { label: "Kantong", value: "2 dada + 1 lengan" },
+    ],
+    sizeChart: [
+      { size: "S", chest: 102, length: 70 },
+      { size: "M", chest: 108, length: 72 },
+      { size: "L", chest: 114, length: 74 },
+      { size: "XL", chest: 120, length: 76 },
+      { size: "2XL", chest: 126, length: 78 },
+      { size: "3XL", chest: 132, length: 80 },
+    ],
+    accentColor: "#1f3a8a",
+  },
 ];
 
 // --- Lookup helpers (single source of truth for routing & filtering) ---

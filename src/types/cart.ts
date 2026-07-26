@@ -1,5 +1,6 @@
 // src/types/cart.ts
 import type { SizeMatrix } from "./industry";
+import type { Uniform3DConfig } from "./uniform-3d";
 
 export interface CartLineItem {
   /** stable id derived from productId + color (one line per product+color) */
@@ -18,6 +19,8 @@ export interface CartLineItem {
   estimatedPrice: number;
   /** placeholder for future customization (logo/bordir) */
   customization: string | null;
+  /** full 3D embroidery config — present when customer used the 3D tab */
+  uniform3DConfig?: Uniform3DConfig | null;
 }
 
 export function emptySizeMatrix(): SizeMatrix {

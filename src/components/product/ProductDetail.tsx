@@ -2,12 +2,14 @@
 
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import type { Product } from "@/types/product";
 import { formatIDR } from "@/types/product";
 import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
+import { getModel3DForProduct } from "@/data/uniform-3d";
 import type { SizeMatrix } from "@/types/industry";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
@@ -29,6 +31,23 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { ProductImagePlaceholder } from "@/components/catalog/ProductImagePlaceholder";
 import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
+
+// Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
+// when the customer actually opens the 3D tab on a supported product.
+const Uniform3DConfigurator = dynamic(
+  () =>
+    import("@/components/configurator/Uniform3DConfigurator").then(
+      (m) => m.Uniform3DConfigurator,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid h-64 place-items-center rounded-2xl border border-line bg-surface-muted">
+        <div className="text-xs text-ink-muted">Memuat konfigurator 3D…</div>
+      </div>
+    ),
+  },
+);
 
 interface ProductDetailProps {
   product: Product;
@@ -63,8 +82,15 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const [customization, setCustomization] = useState<string>("");
   const [added, setAdded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uniform3DConfig, setUniform3DConfig] =
+    useState<import("@/types/uniform-3d").Uniform3DConfig | null>(null);
+  const [show3D, setShow3D] = useState(false);
 
   const addToCart = useCartStore((s) => s.add);
+  const has3DSupport = useMemo(
+    () => !!getModel3DForProduct(product.id),
+    [product.id],
+  );
 
   // Sync Ofistant context: this product is now the "selected" one, and the
   // user's color/size choices are reflected so Ofistant can pre-fill an
@@ -114,6 +140,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
       color,
       sizes,
       customization: customization.trim() || null,
+      uniform3DConfig: uniform3DConfig ?? null,
     });
     if (!result.ok) {
       setError(result.reason ?? "Gagal menambahkan ke keranjang.");
@@ -328,25 +355,85 @@ export function ProductDetail({ product }: ProductDetailProps) {
               </table>
             </details>
 
-            {/* Customization placeholder */}
-            <div className="mt-5 rounded-xl border border-dashed border-brand-300 bg-brand-50/40 p-3">
-              <p className="flex items-center gap-1.5 text-xs font-bold text-brand-800">
-                <Sparkles className="h-3.5 w-3.5" />
-                Logo / Bordir (placeholder)
-              </p>
-              <p className="mt-1 text-[11px] leading-snug text-brand-900/70">
-                Konfigurator 3D bordir logo aktif di Phase 8. Untuk sementara,
-                tulis catatan kustomisasi di bawah ini.
-              </p>
-              <input
-                type="text"
-                value={customization}
-                onChange={(e) => setCustomization(e.target.value)}
-                placeholder="cth: bordir logo di dada kiri, 8cm"
-                maxLength={120}
-                className="mt-2 h-9 w-full rounded-lg border border-brand-200 bg-surface px-3 text-xs text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-              />
-            </div>
+            {/* Customization: 3D configurator for supported products,
+                plain-text notes for the rest. */}
+            {has3DSupport ? (
+              <div className="mt-5 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setShow3D((v) => !v)}
+                  aria-expanded={show3D}
+                  className="flex w-full items-center justify-between rounded-xl border border-brand-200 bg-brand-50/40 px-4 py-2.5 text-left transition-all hover:border-brand-400 hover:bg-brand-50"
+                >
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-brand-700" />
+                    <span className="text-xs font-bold text-brand-800">
+                      Preview 3D &amp; Bordir Logo
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {uniform3DConfig && uniform3DConfig.placements.length > 0 && (
+                      <span className="rounded-full bg-ochre-500 px-2 py-0.5 text-[9px] font-bold text-white">
+                        {uniform3DConfig.placements.length} bordir
+                      </span>
+                    )}
+                    <span className="text-[10px] font-semibold text-brand-700">
+                      {show3D ? "Tutup" : "Buka"}
+                    </span>
+                  </span>
+                </button>
+
+                {show3D && (
+                  <Uniform3DConfigurator
+                    product={product}
+                    initialColor={color}
+                    onSave={(cfg) => {
+                      setUniform3DConfig(cfg);
+                      setShow3D(false);
+                    }}
+                    onCancel={() => setShow3D(false)}
+                  />
+                )}
+
+                {uniform3DConfig && uniform3DConfig.placements.length > 0 && !show3D && (
+                  <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-[11px]">
+                    {uniform3DConfig.snapshots.front && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={uniform3DConfig.snapshots.front}
+                        alt="Snapshot 3D"
+                        className="h-10 w-10 rounded border border-line object-cover"
+                      />
+                    )}
+                    <span className="text-ink-muted">
+                      {uniform3DConfig.placements.length} titik bordir dikonfigurasi.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setUniform3DConfig(null)}
+                      className="ml-auto text-[10px] font-semibold text-red-600 hover:underline"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-xl border border-dashed border-line bg-surface-muted p-3">
+                <p className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                  <Sparkles className="h-3.5 w-3.5 text-brand-700" />
+                  Catatan kustomisasi
+                </p>
+                <input
+                  type="text"
+                  value={customization}
+                  onChange={(e) => setCustomization(e.target.value)}
+                  placeholder="cth: bordir logo di dada kiri, 8cm"
+                  maxLength={120}
+                  className="mt-2 h-9 w-full rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                />
+              </div>
+            )}
 
             {/* Total + CTA */}
             <div className="mt-5 border-t border-line pt-4">

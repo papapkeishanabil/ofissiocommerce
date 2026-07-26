@@ -21,6 +21,7 @@ export type Intent =
   | "ASK_REGISTER"
   | "ASK_QUOTATION"
   | "ASK_TRACKING"
+  | "ASK_3D_CONFIGURATOR"
   | "ASK_HUMAN"
   | "ASK_HELP"
   | "UNKNOWN";
@@ -137,6 +138,10 @@ export function detectIntent(text: string): DetectedIntent {
 
   if (/\b(tracking|lacak|status (order|pengiriman|produksi)|where.*order|pesanan saya)\b/.test(t)) {
     return { intent: "ASK_TRACKING" };
+  }
+
+  if (/\b(3d|3 d|preview 3d|konfigur.*3d|atur bordir|bordir logo|logo bordir|embroidery|lihat 3d)\b/.test(t)) {
+    return { intent: "ASK_3D_CONFIGURATOR" };
   }
 
   if (/\b(quotation|penawaran|quote|rfq|request.*(quote|penawaran))\b/.test(t)) {
