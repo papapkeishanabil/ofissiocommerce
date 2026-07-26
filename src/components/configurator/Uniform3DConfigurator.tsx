@@ -147,7 +147,27 @@ export function Uniform3DConfigurator({
       {/* LEFT: 3D viewer + camera controls */}
       <div className="space-y-3">
         <div className="relative h-[420px] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:h-[460px] lg:h-[500px]">
-          {effectiveModel.depth3DDual ? (
+          {effectiveModel.depth3DQuad ? (
+            <Depth3DViewer
+              colorImageSrc={effectiveModel.depth3DQuad.front.colorImage}
+              depthImageSrc={effectiveModel.depth3DQuad.front.depthImage}
+              depthStrength={effectiveModel.depth3DQuad.front.depthStrength ?? 0.55}
+              backColorImageSrc={effectiveModel.depth3DQuad.back.colorImage}
+              backDepthImageSrc={effectiveModel.depth3DQuad.back.depthImage}
+              backDepthStrength={effectiveModel.depth3DQuad.back.depthStrength ?? 0.55}
+              leftColorImageSrc={effectiveModel.depth3DQuad.left.colorImage}
+              leftDepthImageSrc={effectiveModel.depth3DQuad.left.depthImage}
+              leftDepthStrength={effectiveModel.depth3DQuad.left.depthStrength ?? 0.55}
+              rightColorImageSrc={effectiveModel.depth3DQuad.right.colorImage}
+              rightDepthImageSrc={effectiveModel.depth3DQuad.right.depthImage}
+              rightDepthStrength={effectiveModel.depth3DQuad.right.depthStrength ?? 0.55}
+              placements={config.placements}
+              highlightZone={selectedZone}
+              onCanvasReady={({ domElement }) => {
+                canvasElRef.current = domElement;
+              }}
+            />
+          ) : effectiveModel.depth3DDual ? (
             <Depth3DViewer
               colorImageSrc={effectiveModel.depth3DDual.front.colorImage}
               depthImageSrc={effectiveModel.depth3DDual.front.depthImage}
@@ -190,13 +210,18 @@ export function Uniform3DConfigurator({
               }}
             />
           )}
-          {(effectiveModel.depth3D || effectiveModel.depth3DDual) && (
+          {(effectiveModel.depth3D || effectiveModel.depth3DDual || effectiveModel.depth3DQuad) && (
             <Badge
               tone="brand"
               className="absolute left-3 top-3 bg-white/90"
             >
               <Sparkles className="h-3 w-3" />
-              Model 3D dari foto · depth AI{effectiveModel.depth3DDual ? " · 360°" : ""}
+              Model 3D dari foto · depth AI
+              {effectiveModel.depth3DQuad
+                ? " · 4-sisi volumetrik"
+                : effectiveModel.depth3DDual
+                  ? " · 360°"
+                  : ""}
             </Badge>
           )}
           {isFallback && (

@@ -59,6 +59,19 @@ export interface Depth3DDualSet {
   back: Depth3DSet;
 }
 
+/**
+ * Quad-side depth 3D: 4 photos (front/back/left/right) each with their own
+ * depth map. The viewer builds 4 displaced meshes arranged in a cross "+"
+ * shape — gives true volumetric feel when rotating, since every 90° face
+ * shows the correct photo. Highest accuracy without a real GLB model.
+ */
+export interface Depth3DQuadSet {
+  front: Depth3DSet;
+  back: Depth3DSet;
+  left: Depth3DSet;
+  right: Depth3DSet;
+}
+
 export interface Model3DEntry {
   /** matches Product.id */
   productId: string;
@@ -70,8 +83,10 @@ export interface Model3DEntry {
   photo360: Photo360Set | null;
   /** AI depth → 3D mesh (single side). Lower priority than depth3DDual. */
   depth3D: Depth3DSet | null;
-  /** AI depth → 3D mesh (front + back). Highest accuracy-without-GLB. */
+  /** AI depth → 3D mesh (front + back). */
   depth3DDual: Depth3DDualSet | null;
+  /** AI depth → 3D mesh (front+back+left+right). Highest priority without GLB. */
+  depth3DQuad: Depth3DQuadSet | null;
   /** base tint used by procedural fallback shape (hex). */
   fallbackColor: string;
 }
@@ -88,6 +103,7 @@ export const MODEL_3D_REGISTRY: Model3DEntry[] = [
     photo360: null, // Ripstop: no photos yet, uses procedural
     depth3D: null,
     depth3DDual: null,
+    depth3DQuad: null,
     fallbackColor: "#1f3a8a",
   },
   {
@@ -96,18 +112,31 @@ export const MODEL_3D_REGISTRY: Model3DEntry[] = [
     glbUrl: null,
     photo360: null,
     depth3D: null,
-    depth3DDual: {
+    depth3DDual: null,
+    depth3DQuad: {
       front: {
         colorImage: "/products/kk-006/KK-006-front-nobg.webp",
         depthImage: "/products/kk-006/KK-006-front-depth.png",
         maskImage: "/products/kk-006/KK-006-front-mask.png",
-        depthStrength: 0.6,
+        depthStrength: 0.55,
       },
       back: {
         colorImage: "/products/kk-006/KK-006-back-nobg.webp",
         depthImage: "/products/kk-006/KK-006-back-depth.png",
         maskImage: "/products/kk-006/KK-006-back-mask.png",
-        depthStrength: 0.6,
+        depthStrength: 0.55,
+      },
+      left: {
+        colorImage: "/products/kk-006/KK-006-left-nobg.webp",
+        depthImage: "/products/kk-006/KK-006-left-depth.png",
+        maskImage: "/products/kk-006/KK-006-left-mask.png",
+        depthStrength: 0.55,
+      },
+      right: {
+        colorImage: "/products/kk-006/KK-006-right-nobg.webp",
+        depthImage: "/products/kk-006/KK-006-right-depth.png",
+        maskImage: "/products/kk-006/KK-006-right-mask.png",
+        depthStrength: 0.55,
       },
     },
     fallbackColor: "#9ca3af",

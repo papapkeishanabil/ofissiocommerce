@@ -36,6 +36,13 @@ interface Depth3DViewerProps {
   backColorImageSrc?: string;
   backDepthImageSrc?: string;
   backDepthStrength?: number;
+  /** optional left + right sides for quad volumetric mesh. */
+  leftColorImageSrc?: string;
+  leftDepthImageSrc?: string;
+  leftDepthStrength?: number;
+  rightColorImageSrc?: string;
+  rightDepthImageSrc?: string;
+  rightDepthStrength?: number;
   placements?: LogoPlacement[];
   highlightZone?: string | null;
   onCanvasReady?: (gl: { domElement: HTMLCanvasElement }) => void;
@@ -54,33 +61,58 @@ export function Depth3DViewer({
   backColorImageSrc,
   backDepthImageSrc,
   backDepthStrength,
+  leftColorImageSrc,
+  leftDepthImageSrc,
+  leftDepthStrength,
+  rightColorImageSrc,
+  rightDepthImageSrc,
+  rightDepthStrength,
   placements = [],
   highlightZone,
   onCanvasReady,
 }: Depth3DViewerProps) {
   const [front, setFront] = useState<LoadedImage | null>(null);
   const [back, setBack] = useState<LoadedImage | null>(null);
+  const [left, setLeft] = useState<LoadedImage | null>(null);
+  const [right, setRight] = useState<LoadedImage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setFront(null);
     setBack(null);
+    setLeft(null);
+    setRight(null);
     setError(null);
 
-    const frontP = Promise.all([loadImage(colorImageSrc), loadImage(depthImageSrc)])
-      .then(([color, depth]) => ({ color, depth, aspect: color.naturalWidth / color.naturalHeight }));
+    const loaders: Promise<LoadedImage | null>[] = [
+      // front (always)
+      Promise.all([loadImage(colorImageSrc), loadImage(depthImageSrc)])
+        .then(([color, depth]) => ({ color, depth, aspect: color.naturalWidth / color.naturalHeight })),
+      // back (optional)
+      backColorImageSrc && backDepthImageSrc
+        ? Promise.all([loadImage(backColorImageSrc), loadImage(backDepthImageSrc)])
+            .then(([color, depth]) => ({ color, depth, aspect: color.naturalWidth / color.naturalHeight }))
+        : Promise.resolve(null),
+      // left (optional)
+      leftColorImageSrc && leftDepthImageSrc
+        ? Promise.all([loadImage(leftColorImageSrc), loadImage(leftDepthImageSrc)])
+            .then(([color, depth]) => ({ color, depth, aspect: color.naturalWidth / color.naturalHeight }))
+        : Promise.resolve(null),
+      // right (optional)
+      rightColorImageSrc && rightDepthImageSrc
+        ? Promise.all([loadImage(rightColorImageSrc), loadImage(rightDepthImageSrc)])
+            .then(([color, depth]) => ({ color, depth, aspect: color.naturalWidth / color.naturalHeight }))
+        : Promise.resolve(null),
+    ];
 
-    const backP = backColorImageSrc && backDepthImageSrc
-      ? Promise.all([loadImage(backColorImageSrc), loadImage(backDepthImageSrc)])
-          .then(([color, depth]) => ({ color, depth, aspect: color.naturalWidth / color.naturalHeight }))
-      : Promise.resolve(null);
-
-    Promise.all([frontP, backP])
-      .then(([f, b]) => {
+    Promise.all(loaders)
+      .then(([f, b, l, r]) => {
         if (cancelled) return;
-        setFront(f);
-        setBack(b);
+        setFront(f ?? null);
+        setBack(b ?? null);
+        setLeft(l ?? null);
+        setRight(r ?? null);
       })
       .catch((e) => {
         if (cancelled) return;
@@ -90,7 +122,16 @@ export function Depth3DViewer({
     return () => {
       cancelled = true;
     };
-  }, [colorImageSrc, depthImageSrc, backColorImageSrc, backDepthImageSrc]);
+  }, [
+    colorImageSrc,
+    depthImageSrc,
+    backColorImageSrc,
+    backDepthImageSrc,
+    leftColorImageSrc,
+    leftDepthImageSrc,
+    rightColorImageSrc,
+    rightDepthImageSrc,
+  ]);
 
   if (error) {
     return (
@@ -141,6 +182,28 @@ export function Depth3DViewer({
           aspect={back.aspect}
           depthStrength={backDepthStrength ?? depthStrength}
           face="back"
+          placements={placements}
+          highlightZone={highlightZone}
+        />
+      )}
+      {/* Left mesh — rotated 90° around Y, photo texture from left side */}
+      {left && (
+        <DisplacedMesh
+          color={left.color}
+          depth={left.depth}
+          aspect={left.aspect}
+          depthStrength={leftDepthStrength ?? depthStrength}
+          face="left"
+        />
+      )}
+      {/* Right mesh — rotated -90° around Y */}
+      {right && (
+        <DisplacedMesh
+          color={right.color}
+          depth={right.depth}
+          aspect={right.aspect}
+          depthStrength={rightDepthStrength ?? depthStrength}
+          face="right"
         />
       )}
       <OrbitControls
@@ -170,7 +233,7 @@ interface DisplacedMeshProps {
   aspect: number;
   depthStrength: number;
   /** which side this mesh represents — affects facing & logo anchors */
-  face?: "front" | "back";
+  face?: "front" | "back" | "left" | "right";
   placements?: LogoPlacement[];
   highlightZone?: string | null;
 }
@@ -253,7 +316,15 @@ function DisplacedMesh({
   // Back mesh: flip 180° around Y so it faces -Z (away from front), and
   // mirror X scale so the back photo reads correctly (not mirrored) when
   // viewed from behind the front mesh.
-  const groupRotation: [number, number, number] = face === "back" ? [0, Math.PI, 0] : [0, 0, 0];
+  // Left/right meshes: rotate ±90° around Y so they face ±X.
+  const groupRotation: [number, number, number] =
+    face === "back"
+      ? [0, Math.PI, 0]
+      : face === "left"
+        ? [0, Math.PI / 2, 0]
+        : face === "right"
+          ? [0, -Math.PI / 2, 0]
+          : [0, 0, 0];
   const groupScale: [number, number, number] = face === "back" ? [-1, 1, 1] : [1, 1, 1];
 
   return (
