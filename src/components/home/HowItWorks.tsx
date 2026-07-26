@@ -1,96 +1,80 @@
 // src/components/home/HowItWorks.tsx
-// 4-step procurement timeline with gradient progress line + numbered nodes.
+// Bold editorial 4-step timeline. Big numbers, minimal decoration.
 
 const STEPS = [
   {
     n: "01",
     title: "Pilih Produk",
     desc: "Pilih dari katalog ready stock kami sesuai kebutuhan tim Anda.",
-    icon: "📦",
   },
   {
     n: "02",
     title: "Kirim Logo",
-    desc: "Upload logo perusahaan Anda dan tentukan posisi bordir.",
-    icon: "🎨",
+    desc: "Upload logo perusahaan Anda dan tentukan posisi bordir yang diinginkan.",
   },
   {
     n: "03",
     title: "Proses Bordir",
     desc: "Tim kami menjahit logo dengan presisi tinggi di fasilitas in-house.",
-    icon: "✂️",
   },
   {
     n: "04",
     title: "Kirim ke Perusahaan",
     desc: "Produk dikirim langsung ke alamat tim Anda, siap dipakai.",
-    icon: "🚚",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section className="relative overflow-hidden bg-surface py-16 lg:py-24">
-      <div className="mx-auto w-full max-w-7xl px-4 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-600">
+    <section className="relative overflow-hidden bg-brand-700 py-20 text-white lg:py-28">
+      {/* atmosphere */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-80"
+        style={{
+          background:
+            "radial-gradient(800px 500px at 100% 0%, rgba(220,152,20,0.12), transparent 60%)," +
+            "radial-gradient(600px 400px at 0% 100%, rgba(0,18,74,0.6), transparent 60%)",
+        }}
+      />
+
+      <div className="relative mx-auto w-full max-w-7xl px-4 lg:px-8">
+        <div className="max-w-3xl">
+          <span className="type-eyebrow text-ochre-400">
+            <span className="mr-2 inline-block h-px w-8 bg-ochre-400 align-middle" />
             Cara Order
           </span>
           <h2
-            className="font-display mt-4 font-extrabold tracking-tight text-ink-strong"
-            style={{ fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}
+            className="type-display mt-5"
+            style={{ fontSize: "clamp(2rem, 4.5vw, 3.5rem)" }}
           >
-            4 langkah, selesai dalam{" "}
-            <span className="text-gradient-brand">hitungan hari.</span>
+            4 langkah, selesai
+            <br />
+            dalam hitungan hari.
           </h2>
         </div>
 
-        <div className="relative mt-14">
-          {/* gradient progress line (desktop) */}
-          <div
-            aria-hidden
-            className="absolute left-0 right-0 top-9 hidden h-1 lg:block"
-          >
-            <div className="mx-auto h-full w-[78%] rounded-full bg-gradient-to-r from-brand-200 via-brand-400 to-ochre-400" />
-          </div>
-
-          <ol className="relative grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-            {STEPS.map((s, i) => (
-              <li
-                key={s.n}
-                className="group relative flex flex-col items-center text-center"
+        {/* steps — horizontal on desktop, big numbers dominant */}
+        <div className="mt-16 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/5 sm:grid-cols-2 lg:grid-cols-4">
+          {STEPS.map((s) => (
+            <div key={s.n} className="group bg-brand-700/40 p-8">
+              <span
+                className="type-display-tight block text-ochre-400"
+                style={{ fontSize: "clamp(3rem, 6vw, 4.5rem)" }}
               >
-                {/* node */}
-                <div className="relative z-10">
-                  <div className="font-display grid h-[72px] w-[72px] place-items-center rounded-full border-4 border-surface bg-gradient-to-br from-brand-600 to-brand-800 text-lg font-extrabold text-white shadow-soft-md transition-transform duration-300 group-hover:scale-110">
-                    <span className="absolute text-2xl opacity-30">
-                      {s.icon}
-                    </span>
-                    <span className="relative">{s.n}</span>
-                  </div>
-                  {/* pulse dot on hover */}
-                  <span
-                    aria-hidden
-                    className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-ochre-400 opacity-0 shadow-glow-ochre transition-opacity duration-300 group-hover:opacity-100"
-                  />
-                </div>
-                <h4 className="font-display mt-5 text-base font-bold text-ink-strong">
-                  {s.title}
-                </h4>
-                <p className="mt-2 max-w-[16rem] text-sm leading-relaxed text-ink-muted">
-                  {s.desc}
-                </p>
-
-                {/* arrow connector (mobile) */}
-                {i < STEPS.length - 1 && (
-                  <div
-                    aria-hidden
-                    className="mt-6 h-8 w-px bg-gradient-to-b from-brand-300 to-brand-100 sm:hidden"
-                  />
-                )}
-              </li>
-            ))}
-          </ol>
+                {s.n}
+              </span>
+              <h3
+                className="type-display mt-4 text-2xl"
+                style={{ fontWeight: 600 }}
+              >
+                {s.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-brand-100">
+                {s.desc}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </section>

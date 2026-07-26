@@ -11,7 +11,6 @@ import { formatIDR } from "@/types/product";
 import { fulfillmentLabel } from "@/types/industry";
 import { ArrowRight } from "lucide-react";
 
-import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { ProductImagePlaceholder } from "@/components/catalog/ProductImagePlaceholder";
 import { HeroIntro } from "./HeroIntro";
@@ -33,64 +32,60 @@ export function HomePage() {
       <HowItWorks />
 
       {/* 4. Industries */}
-      <section className="relative overflow-hidden bg-surface py-16 lg:py-24">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-50"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(20,39,102,0.05) 1px, transparent 0)",
-            backgroundSize: "28px 28px",
-          }}
-        />
-        <div className="relative mx-auto w-full max-w-7xl px-4 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-600">
-              Pilih industri
-            </span>
-            <h2
-              className="font-display mt-4 font-extrabold tracking-tight text-ink-strong"
-              style={{ fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}
-            >
-              Solusi seragam berdasarkan{" "}
-              <span className="text-gradient-brand">industri.</span>
-            </h2>
-            <p className="mt-3 text-sm text-ink-muted lg:text-base">
+      <section className="bg-surface-muted py-20 lg:py-28">
+        <div className="mx-auto w-full max-w-7xl px-4 lg:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div className="max-w-2xl">
+              <span className="type-eyebrow text-brand-600">
+                <span className="mr-2 inline-block h-px w-8 bg-brand-600 align-middle" />
+                Pilih industri
+              </span>
+              <h2
+                className="type-display mt-5 text-ink-strong"
+                style={{ fontSize: "clamp(2rem, 4.5vw, 3.5rem)" }}
+              >
+                Solusi seragam
+                <br />
+                berdasarkan <span className="text-brand-600">industri.</span>
+              </h2>
+            </div>
+            <p className="max-w-xs text-sm text-ink-muted">
               Klik kartu untuk melihat produk yang relevan dengan industri Anda.
             </p>
           </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* industry list — bold editorial, list-style rows on desktop */}
+          <div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
             {INDUSTRY_META.map((m, i) => (
               <Link
                 key={m.name}
                 href={`/catalog?industri=${encodeURIComponent(m.name)}`}
-                className="hover-lift group relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-line bg-surface p-6 shadow-soft-sm hover:border-brand-300 hover:shadow-soft-lg"
+                className="group relative flex flex-col justify-between bg-surface p-7 transition-colors duration-300 hover:bg-brand-700"
               >
-                {/* gradient hover wash */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-600 to-brand-800 opacity-0 transition-opacity duration-300 group-hover:opacity-[0.04]"
-                />
-                <div className="relative flex items-center justify-between">
-                  <span className="font-display grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 transition-all duration-300 group-hover:from-brand-600 group-hover:to-brand-800 group-hover:text-white">
-                    <IndustryGlyph index={i} />
+                <div className="flex items-start justify-between">
+                  <span
+                    className="type-display-tight text-3xl text-ink-strong transition-colors group-hover:text-ochre-400"
+                  >
+                    {m.name.charAt(0)}
                   </span>
-                  <span className="font-mono text-[10px] font-bold text-ink-subtle transition-colors group-hover:text-brand-500">
+                  <span className="type-mono-label text-ink-subtle transition-colors group-hover:text-brand-200">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                 </div>
-                <div className="relative">
-                  <h3 className="font-display text-base font-bold text-ink-strong">
+                <div className="mt-12">
+                  <h3
+                    className="type-display text-lg text-ink-strong transition-colors group-hover:text-white"
+                    style={{ fontWeight: 600 }}
+                  >
                     {m.name}
                   </h3>
-                  <p className="mt-1 text-[12px] leading-snug text-ink-muted">
+                  <p className="mt-1 text-xs leading-snug text-ink-muted transition-colors group-hover:text-brand-100">
                     {m.tagline}
                   </p>
-                </div>
-                <div className="relative mt-1 flex items-center gap-1 text-[11px] font-semibold text-brand-600 opacity-0 transition-all duration-300 group-hover:opacity-100">
-                  Lihat produk
-                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                  <div className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-brand-600 transition-colors group-hover:text-ochre-400">
+                    Lihat produk
+                    <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                  </div>
                 </div>
               </Link>
             ))}
@@ -99,82 +94,81 @@ export function HomePage() {
       </section>
 
       {/* 5. Featured products */}
-      <section className="bg-cool-100 py-16 lg:py-24">
+      <section className="bg-surface py-20 lg:py-28">
         <div className="mx-auto w-full max-w-7xl px-4 lg:px-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-6">
             <div className="max-w-2xl">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-600 shadow-soft-xs">
+              <span className="type-eyebrow text-brand-600">
+                <span className="mr-2 inline-block h-px w-8 bg-brand-600 align-middle" />
                 Produk unggulan
               </span>
               <h2
-                className="font-display mt-4 font-extrabold tracking-tight text-ink-strong"
-                style={{ fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}
+                className="type-display mt-5 text-ink-strong"
+                style={{ fontSize: "clamp(2rem, 4.5vw, 3.5rem)" }}
               >
-                Pilihan <span className="text-gradient-brand">populer.</span>
+                Pilihan <span className="text-brand-600">populer.</span>
               </h2>
-              <p className="mt-2 text-sm text-ink-muted lg:text-base">
+              <p className="mt-3 text-sm text-ink-muted lg:text-base">
                 Sebagian produk dapat dipakai lintas industri.
               </p>
             </div>
-            <ButtonLink
-              href="/catalog"
-              variant="outline"
-              className="group bg-surface"
-            >
+            <ButtonLink href="/catalog" variant="outline" className="group">
               Lihat semua produk
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </ButtonLink>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {featured.map((p) => (
               <Link
                 key={p.id}
                 href={`/product/${p.slug}`}
-                className="hover-lift group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft-sm hover:shadow-soft-lg"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-brand-300 hover:shadow-soft-lg"
               >
-                <div className="relative">
+                <div className="relative overflow-hidden">
                   <ProductImagePlaceholder
                     name={p.name}
                     accentColor={p.accentColor}
                     category={p.category}
-                    className="aspect-[4/3] w-full transition-transform duration-500 group-hover:scale-[1.04]"
+                    className="aspect-[4/3] w-full transition-transform duration-700 group-hover:scale-105"
                   />
-                  {/* badge overlay */}
-                  <div className="absolute left-3 top-3">
+                  <div className="absolute left-4 top-4">
                     <span
                       className={
-                        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide shadow-soft-sm " +
+                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider " +
                         (p.fulfillment === "READY_STOCK"
-                          ? "bg-emerald-500 text-white"
+                          ? "bg-emerald-600 text-white"
                           : "bg-ochre-500 text-white")
                       }
                     >
-                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
                       {fulfillmentLabel(p.fulfillment)}
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-1 flex-col gap-2 p-5">
-                  <div className="flex items-center justify-between text-[11px] text-ink-subtle">
-                    <span className="font-semibold uppercase tracking-wide">
-                      {p.category}
-                    </span>
-                    <span className="font-mono">{p.sku}</span>
+                <div className="flex flex-1 flex-col gap-3 p-6">
+                  <div className="flex items-center justify-between type-mono-label text-ink-subtle">
+                    <span>{p.category}</span>
+                    <span>{p.sku}</span>
                   </div>
-                  <span className="font-display text-base font-bold leading-snug text-ink-strong transition-colors group-hover:text-brand-600">
+                  <h3
+                    className="type-display text-lg leading-snug text-ink-strong transition-colors group-hover:text-brand-700"
+                    style={{ fontWeight: 600 }}
+                  >
                     {p.name}
-                  </span>
+                  </h3>
                   <div className="mt-auto flex items-end justify-between pt-4">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wide text-ink-subtle">
+                      <p className="text-[10px] uppercase tracking-wider text-ink-subtle">
                         Mulai dari
                       </p>
-                      <p className="font-display text-xl font-extrabold text-ink-strong">
+                      <p
+                        className="type-display text-2xl text-ink-strong"
+                        style={{ fontWeight: 700 }}
+                      >
                         {formatIDR(p.priceFrom)}
                       </p>
                     </div>
-                    <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-50 text-brand-600 transition-all duration-300 group-hover:bg-brand-600 group-hover:text-white">
+                    <span className="grid h-10 w-10 place-items-center rounded-full border border-line text-ink-strong transition-all duration-300 group-hover:border-brand-700 group-hover:bg-brand-700 group-hover:text-white">
                       <ArrowRight className="h-4 w-4" />
                     </span>
                   </div>
@@ -186,11 +180,4 @@ export function HomePage() {
       </section>
     </div>
   );
-}
-
-// Small glyph set for industry cards (varied icons per index)
-function IndustryGlyph({ index }: { index: number }) {
-  const glyphs = ["⛏️", "🏗️", "🏭", "🏨", "⚕️", "🍴", "🛡️", "💼"];
-  const g = glyphs[index % glyphs.length] ?? "👔";
-  return <span className="text-xl leading-none">{g}</span>;
 }

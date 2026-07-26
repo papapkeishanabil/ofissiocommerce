@@ -74,7 +74,7 @@ export function CustomerDashboard() {
           Dashboard
         </p>
         <h1 className="mt-1 text-2xl font-bold text-ink lg:text-3xl">
-          Halo, {user.fullName.split(" ")[0]} 👋
+          Halo, {user.fullName.split(" ")[0]}.
         </h1>
         <p className="mt-1 text-sm text-ink-muted">
           {roleLabel(user.role)} di{" "}

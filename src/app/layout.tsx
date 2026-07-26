@@ -1,24 +1,24 @@
 // src/app/layout.tsx
 
 import type { Metadata, Viewport } from "next";
-import { Inter, Manrope } from "next/font/google";
+import { Bricolage_Grotesque, Inter } from "next/font/google";
 
 import { AppShell } from "@/components/shell/AppShell";
 import "./globals.css";
 
 // Self-hosted fonts via next/font (no external request at runtime, no CLS).
-// CSS variables --font-inter / --font-manrope are consumed by globals.css
-// tokens (--font-sans / --font-display) so Tailwind utilities resolve to them.
+// Bricolage Grotesque = editorial display headline font (distinctive, premium)
+// Inter = body/UI workhorse (legible, neutral).
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
 });
 
-const manrope = Manrope({
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
-  variable: "--font-manrope",
+  variable: "--font-display-font",
   display: "swap",
 });
 
@@ -51,7 +51,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="id" className={`${inter.variable} ${manrope.variable}`}>
+    <html lang="id" className={`${inter.variable} ${bricolage.variable}`}>
       <body>
         <AppShell>{children}</AppShell>
       </body>

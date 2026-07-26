@@ -49,7 +49,7 @@
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display:
-    var(--font-manrope), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    var(--font-display-font), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ===== Base ===== */
@@ -80,14 +80,44 @@ body {
 /* Display font for headlines — Tailwind v4 auto-generates the `font-display`
    utility from the --font-display token above. No manual class needed. */
 
-/* ===== Modern layered shadows (navy-tinted, never harsh black) ===== */
-.shadow-soft-xs { box-shadow: 0 1px 2px rgba(20, 39, 102, 0.06); }
-.shadow-soft-sm { box-shadow: 0 2px 6px rgba(20, 39, 102, 0.06), 0 1px 2px rgba(20, 39, 102, 0.04); }
-.shadow-soft-md { box-shadow: 0 4px 12px rgba(20, 39, 102, 0.08), 0 2px 4px rgba(20, 39, 102, 0.04); }
-.shadow-soft-lg { box-shadow: 0 12px 32px rgba(20, 39, 102, 0.10), 0 4px 8px rgba(20, 39, 102, 0.06); }
-.shadow-soft-xl { box-shadow: 0 24px 48px rgba(20, 39, 102, 0.14), 0 8px 16px rgba(20, 39, 102, 0.06); }
-.shadow-glow-brand { box-shadow: 0 8px 24px rgba(20, 39, 102, 0.25); }
-.shadow-glow-ochre { box-shadow: 0 8px 24px rgba(220, 152, 20, 0.30); }
+/* ===== Modern layered shadows (neutral, refined — never harsh black) ===== */
+.shadow-soft-xs { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+.shadow-soft-sm { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.04); }
+.shadow-soft-md { box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 0 8px 20px rgba(15, 23, 42, 0.06); }
+.shadow-soft-lg { box-shadow: 0 4px 8px rgba(15, 23, 42, 0.05), 0 16px 40px rgba(15, 23, 42, 0.08); }
+.shadow-soft-xl { box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06), 0 24px 56px rgba(15, 23, 42, 0.10); }
+.shadow-glow-brand { box-shadow: 0 12px 32px rgba(20, 39, 102, 0.28); }
+.shadow-glow-ochre { box-shadow: 0 12px 32px rgba(220, 152, 20, 0.28); }
+
+/* ===== Editorial type scale (Bricolage Grotesque optimized) ===== */
+.type-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+  font-variation-settings: "wdth" 100;
+}
+.type-display-tight {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+  font-variation-settings: "wdth" 95;
+}
+.type-eyebrow {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+}
+.type-mono-label {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+}
 
 /* Glassmorphism utilities */
 .glass {
