@@ -23,9 +23,10 @@ import { CameraPresetControls } from "./CameraPresetControls";
 import { EmbroideryZoneSelector } from "./EmbroideryZoneSelector";
 import { LogoPlacementControls } from "./LogoPlacementControls";
 import { LogoUploadPanel } from "./LogoUploadPanel";
+import { Photo360Viewer } from "./Photo360Viewer";
 import { PreviewSnapshotPanel } from "./PreviewSnapshotPanel";
 
-// Lazy-load the R3F canvas + three.js bundle.
+// Lazy-load the R3F canvas + three.js bundle (only used when no photo360 set).
 const Uniform3DViewer = dynamic(
   () => import("./Uniform3DViewer").then((m) => m.Uniform3DViewer),
   {
@@ -129,16 +130,24 @@ export function Uniform3DConfigurator({
       {/* LEFT: 3D viewer + camera controls */}
       <div className="space-y-3">
         <div className="relative h-[420px] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:h-[460px] lg:h-[500px]">
-          <Uniform3DViewer
-            model={model}
-            color={config.color}
-            placements={config.placements}
-            activeCamera={config.activeCamera}
-            highlightZone={selectedZone}
-            onCanvasReady={({ domElement }) => {
-              canvasElRef.current = domElement;
-            }}
-          />
+          {model.photo360 ? (
+            <Photo360Viewer
+              photoSet={model.photo360}
+              placements={config.placements}
+              highlightZone={selectedZone}
+            />
+          ) : (
+            <Uniform3DViewer
+              model={model}
+              color={config.color}
+              placements={config.placements}
+              activeCamera={config.activeCamera}
+              highlightZone={selectedZone}
+              onCanvasReady={({ domElement }) => {
+                canvasElRef.current = domElement;
+              }}
+            />
+          )}
           {isFallback && (
             <Badge
               tone="neutral"
@@ -148,14 +157,27 @@ export function Uniform3DConfigurator({
               Preview model prosedural
             </Badge>
           )}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[10px] font-medium text-ink-muted shadow-soft-xs backdrop-blur">
-            Drag untuk rotate · scroll untuk zoom
-          </div>
+          {model.photo360 && (
+            <Badge
+              tone="brand"
+              className="absolute left-3 top-3 bg-white/90"
+            >
+              Foto produk asli · 360°
+            </Badge>
+          )}
+          {!model.photo360 && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[10px] font-medium text-ink-muted shadow-soft-xs backdrop-blur">
+              Drag untuk rotate · scroll untuk zoom
+            </div>
+          )}
         </div>
-        <CameraPresetControls
-          value={config.activeCamera}
-          onChange={(p) => setActiveCamera(p)}
-        />
+        {/* Camera preset only applies to 3D model mode (photo360 uses drag) */}
+        {!model.photo360 && (
+          <CameraPresetControls
+            value={config.activeCamera}
+            onChange={(p) => setActiveCamera(p)}
+          />
+        )}
         <PreviewSnapshotPanel
           snapshots={config.snapshots}
           onCapture={captureSnapshot}

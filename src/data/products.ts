@@ -346,6 +346,37 @@ export const PRODUCTS: Product[] = [
     ],
     accentColor: "#1f3a8a",
   },
+  {
+    id: "p-012",
+    slug: "kemeja-kantor-kk-006",
+    name: "Kemeja Kantor KK-006 (Color Block)",
+    sku: "KK-006",
+    industries: ["Corporate", "Perhotelan", "Security"],
+    category: "Kemeja Kantor",
+    priceFrom: 135000,
+    moq: 20,
+    leadTimeDays: 9,
+    fulfillment: "MADE_TO_ORDER",
+    description:
+      "Kemeja kantor color-block premium dengan kombinasi abu, panel merah, dan trim navy. Potongan relaxed-fit short-sleeve, cocok untuk staf frontliner dan corporate. Didukung preview 360° dari foto asli produk + konfigurasi bordir logo.",
+    material: "Katun-poly premium 180 gsm, color-block panel",
+    colors: ["Abu Color Block", "Navy Color Block", "Black Color Block"],
+    specs: [
+      { label: "Gramatur", value: "180 gsm" },
+      { label: "Potongan", value: "Relaxed fit" },
+      { label: "Lengan", value: "Short sleeve" },
+      { label: "Panel", value: "Color-block 3-tone" },
+    ],
+    sizeChart: [
+      { size: "S", chest: 104, length: 70 },
+      { size: "M", chest: 110, length: 72 },
+      { size: "L", chest: 116, length: 74 },
+      { size: "XL", chest: 122, length: 76 },
+      { size: "2XL", chest: 128, length: 78 },
+      { size: "3XL", chest: 134, length: 80 },
+    ],
+    accentColor: "#9ca3af",
+  },
 ];
 
 // --- Lookup helpers (single source of truth for routing & filtering) ---
