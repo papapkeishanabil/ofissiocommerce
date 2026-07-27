@@ -163,8 +163,6 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
         const isBackZone = zone === "upper_back" || zone === "middle_back";
         const isLeftSleeve = zone === "left_sleeve";
         const isRightSleeve = zone === "right_sleeve";
-        // Offset per zona: lengan lebih tipis dari dada, offset lebih kecil
-        const zOffset = isBackZone ? -0.25 : (isLeftSleeve || isRightSleeve) ? 0.15 : 0.30;
         const hasPlacement = placements.some((p) => p.zone === zone);
         const isHi = highlightZone === zone;
         if (hasPlacement) return null;
@@ -176,7 +174,7 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
         return (
           <mesh
             key={`marker-${zone}`}
-            position={[anchor.x, anchor.y, anchor.z + zOffset]}
+            position={[anchor.x, anchor.y, anchor.z]}
             rotation={[0, markerRotY, 0]}
           >
             <circleGeometry args={[0.04, 16]} />
@@ -200,11 +198,10 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
         const isBackZone = p.zone === "upper_back" || p.zone === "middle_back";
         const isLeftSleeve = p.zone === "left_sleeve";
         const isRightSleeve = p.zone === "right_sleeve";
-        const zOffset = isBackZone ? -0.25 : (isLeftSleeve || isRightSleeve) ? 0.15 : 0.30;
         const pos: [number, number, number] = [
           p.surfacePoint?.[0] ?? anchor.x,
           p.surfacePoint?.[1] ?? anchor.y,
-          p.surfacePoint?.[2] ?? (anchor.z + zOffset),
+          p.surfacePoint?.[2] ?? anchor.z,
         ];
 
         // Plane orientation per zone:
