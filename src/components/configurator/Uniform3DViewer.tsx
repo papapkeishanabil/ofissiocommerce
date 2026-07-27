@@ -7,7 +7,7 @@
 
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Environment, useGLTF } from "@react-three/drei";
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import type {
