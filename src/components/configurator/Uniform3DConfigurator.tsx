@@ -108,27 +108,34 @@ export function Uniform3DConfigurator({
 
   function commitPlacement(widthCm: number, rotation: 0 | 90 | 180 | 270) {
     if (!selectedZone || !pendingLogo) return;
+    commitPlacementWithLogo(pendingLogo, widthCm, rotation);
+  }
+
+  function commitPlacementWithLogo(
+    logo: { previewUrl: string; fileName: string; fileId: string },
+    widthCm: number,
+    rotation: 0 | 90 | 180 | 270,
+  ) {
+    if (!selectedZone) return;
     const heightCm = parseFloat((widthCm / 2.5).toFixed(1));
-    // Default surface position from ZONE_ANCHORS — logo placed slightly
-    // outside the mesh surface (offset along normal direction).
     const anchor = ZONE_ANCHORS[selectedZone];
     const placement: LogoPlacement = {
       zone: selectedZone,
-      logoFileId: pendingLogo.fileId,
-      logoFileName: pendingLogo.fileName,
-      logoPreviewUrl: pendingLogo.previewUrl,
+      logoFileId: logo.fileId,
+      logoFileName: logo.fileName,
+      logoPreviewUrl: logo.previewUrl,
       widthCm,
       heightCm,
       rotation,
       technique: "embroidery",
-      surfacePoint: [anchor.x, anchor.y, anchor.z + 0.03],
+      surfacePoint: [anchor.x, anchor.y, anchor.z + 0.05],
       surfaceNormal: selectedZone === "upper_back" || selectedZone === "middle_back"
-        ? [0, 0, -1]   // punggung: normal menghadap belakang
+        ? [0, 0, -1]
         : selectedZone === "left_sleeve"
-          ? [-1, 0, 0]  // lengan kiri: normal menghadap kiri
+          ? [-1, 0, 0]
           : selectedZone === "right_sleeve"
-            ? [1, 0, 0]  // lengan kanan: normal menghadap kanan
-            : [0, 0, 1], // dada: normal menghadap depan
+            ? [1, 0, 0]
+            : [0, 0, 1],
     };
     addOrUpdatePlacement(placement);
   }
@@ -348,9 +355,11 @@ export function Uniform3DConfigurator({
               previewUrl={pendingLogo?.previewUrl}
               fileName={pendingLogo?.fileName}
               onUploaded={({ previewUrl, fileName, fileId }) => {
-                setPendingLogo({ previewUrl, fileName, fileId });
-                // auto-commit with default size so it appears on the model
-                commitPlacement(8, 0);
+                const logo = { previewUrl, fileName, fileId };
+                setPendingLogo(logo);
+                // Pass logo directly to commitPlacement (can't rely on state
+                // because setPendingLogo is async — state not updated yet).
+                commitPlacementWithLogo(logo, 8, 0);
               }}
               onClear={() => {
                 setPendingLogo(null);
