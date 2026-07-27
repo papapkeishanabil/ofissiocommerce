@@ -15,7 +15,7 @@ import {
   type EmbroideryZone,
   type LogoPlacement,
 } from "@/types/uniform-3d";
-import { getModel3DForProduct } from "@/data/uniform-3d";
+import { getModel3DForProduct, ZONE_ANCHORS } from "@/data/uniform-3d";
 import { useUniform3DConfig } from "@/hooks/use-uniform-3d-config";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -108,9 +108,10 @@ export function Uniform3DConfigurator({
 
   function commitPlacement(widthCm: number, rotation: 0 | 90 | 180 | 270) {
     if (!selectedZone || !pendingLogo) return;
-    // Derive height from typical logo aspect 2.5:1 (W:H). Real logo aspect
-    // detection deferred to Phase 8.
     const heightCm = parseFloat((widthCm / 2.5).toFixed(1));
+    // Default surface position from ZONE_ANCHORS — logo placed slightly
+    // outside the mesh surface (offset along normal direction).
+    const anchor = ZONE_ANCHORS[selectedZone];
     const placement: LogoPlacement = {
       zone: selectedZone,
       logoFileId: pendingLogo.fileId,
@@ -120,6 +121,14 @@ export function Uniform3DConfigurator({
       heightCm,
       rotation,
       technique: "embroidery",
+      surfacePoint: [anchor.x, anchor.y, anchor.z + 0.03],
+      surfaceNormal: selectedZone === "upper_back" || selectedZone === "middle_back"
+        ? [0, 0, -1]   // punggung: normal menghadap belakang
+        : selectedZone === "left_sleeve"
+          ? [-1, 0, 0]  // lengan kiri: normal menghadap kiri
+          : selectedZone === "right_sleeve"
+            ? [1, 0, 0]  // lengan kanan: normal menghadap kanan
+            : [0, 0, 1], // dada: normal menghadap depan
     };
     addOrUpdatePlacement(placement);
   }

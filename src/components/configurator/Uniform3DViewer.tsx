@@ -162,8 +162,8 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
         const anchor = ZONE_ANCHORS[p.zone];
 
         // If customer clicked on surface (raycast), use that exact point.
-        // Otherwise, use the default zone anchor position.
-        const pos = p.surfacePoint ?? [anchor.x, anchor.y, anchor.z + 0.02];
+        // Otherwise, use the default zone anchor position (+ offset).
+        const pos = p.surfacePoint ?? [anchor.x, anchor.y, anchor.z + 0.03];
         const norm = p.surfaceNormal ?? [0, 0, 1];
 
         // Orient plane to face along the surface normal
