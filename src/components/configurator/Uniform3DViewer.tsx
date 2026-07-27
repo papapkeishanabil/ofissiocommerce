@@ -190,8 +190,6 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
 
       {/* Logo placements — auto-placed at ZONE_ANCHORS, raycast for fine-tune */}
       {placements.map((p) => {
-        const w = (p.widthCm / 30) * 0.9;
-        const h = (p.heightCm / 30) * 0.9;
         const isHi = highlightZone === p.zone;
         const anchor = ZONE_ANCHORS[p.zone];
 
@@ -204,27 +202,34 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
           p.surfacePoint?.[2] ?? anchor.z,
         ];
 
-        // Plane orientation per zone:
-        //   dada    → face +Z (depan)
-        //   punggung → face -Z (belakang)
-        //   lengan kiri → face +X (kiri, keluar dari body)
-        //   lengan kanan → face -X (kanan, keluar dari body)
+        // Plane orientation per zona
         let rotY: number;
-        if (isBackZone) rotY = Math.PI;
-        else if (isLeftSleeve) rotY = -Math.PI / 2;  // face +X
-        else if (isRightSleeve) rotY = Math.PI / 2;   // face -X
-        else rotY = 0;  // dada: face +Z
+        let flipX = false; // flip texture supaya tidak mirror
+        if (isBackZone) { rotY = Math.PI; flipX = true; }
+        else if (isLeftSleeve) { rotY = -Math.PI / 2; flipX = true; }
+        else if (isRightSleeve) { rotY = Math.PI / 2; flipX = false; }
+        else { rotY = 0; flipX = false; }
+
+        // Hitung dimensi plane dari aspect ratio texture asli (jangan stretch)
+        const tex = p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl, () => forceTick((n: number) => n + 1)) : null;
+        const imgW = tex?.image?.naturalWidth ?? 0;
+        const imgH = tex?.image?.naturalHeight ?? 0;
+        const logoAspect = imgW > 0 && imgH > 0 ? imgW / imgH : p.widthCm / p.heightCm;
+        const baseW = (p.widthCm / 30) * 0.9;
+        const w = baseW;
+        const h = baseW / logoAspect;
 
         return (
           <mesh
             key={p.zone}
             position={pos}
             rotation={[0, rotY, (p.rotation * Math.PI) / 180]}
+            scale={[flipX ? -1 : 1, 1, 1]}
           >
             <planeGeometry args={[w, h]} />
-            {p.logoPreviewUrl ? (
+            {tex ? (
               <meshBasicMaterial
-                map={logoTexture(p.logoPreviewUrl, () => forceTick((n: number) => n + 1))}
+                map={tex}
                 side={THREE.DoubleSide}
                 transparent
                 toneMapped={false}
