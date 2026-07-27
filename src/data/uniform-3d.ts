@@ -164,14 +164,14 @@ export const CAMERA_PRESET_VIEWS: Record<
   string,
   { position: [number, number, number]; target: [number, number, number] }
 > = {
-  front: { position: [0, 0.3, 3.2], target: [0, 0.2, 0] },
-  back: { position: [0, 0.3, -3.2], target: [0, 0.2, 0] },
-  left: { position: [-3.2, 0.3, 0], target: [0, 0.2, 0] },
-  right: { position: [3.2, 0.3, 0], target: [0, 0.2, 0] },
-  right_chest: { position: [1.4, 0.55, 1.9], target: [0.28, 0.45, 0] },
-  left_chest: { position: [-1.4, 0.55, 1.9], target: [-0.28, 0.45, 0] },
-  right_sleeve: { position: [-3.2, 0.3, 0], target: [-0.69, 0.35, 0] },
-  left_sleeve: { position: [3.2, 0.3, 0], target: [0.69, 0.35, 0] },
+  front: { position: [0, 0, 3.2], target: [0, 0, 0] },
+  back: { position: [0, 0, -3.2], target: [0, 0, 0] },
+  left: { position: [3.2, 0, 0], target: [0, 0, 0] },
+  right: { position: [-3.2, 0, 0], target: [0, 0, 0] },
+  right_chest: { position: [-1.4, 0.1, 2.0], target: [-0.18, 0.28, 0] },
+  left_chest: { position: [1.4, 0.1, 2.0], target: [0.18, 0.28, 0] },
+  right_sleeve: { position: [-3.2, 0, 0], target: [-0.69, 0.35, 0] },
+  left_sleeve: { position: [3.2, 0, 0], target: [0.69, 0.35, 0] },
 };
 
 /**
