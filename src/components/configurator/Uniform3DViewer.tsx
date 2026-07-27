@@ -110,8 +110,8 @@ function GLBModel({ url }: { url: string }) {
     const center = box.getCenter(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 0.001);
 
-    // Scale so model height ≈ 2.8 units (fills viewer generously).
-    const targetHeight = 2.8;
+    // Scale so model height ≈ 2.24 units (2.8 × 0.8 = fills viewer without clipping).
+    const targetHeight = 2.24;
     const scale = targetHeight / maxDim;
 
     // Apply transform directly to cloned scene — apply scale to meshes,
