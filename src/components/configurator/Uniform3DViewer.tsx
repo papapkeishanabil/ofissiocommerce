@@ -212,8 +212,9 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
 
         // Hitung dimensi plane dari aspect ratio texture asli (jangan stretch)
         const tex = p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl, () => forceTick((n: number) => n + 1)) : null;
-        const imgW = tex?.image?.naturalWidth ?? 0;
-        const imgH = tex?.image?.naturalHeight ?? 0;
+        const imgEl = tex?.image as HTMLImageElement | undefined;
+        const imgW = imgEl?.naturalWidth ?? 0;
+        const imgH = imgEl?.naturalHeight ?? 0;
         const logoAspect = imgW > 0 && imgH > 0 ? imgW / imgH : p.widthCm / p.heightCm;
         const baseW = (p.widthCm / 30) * 0.9;
         const w = baseW;
