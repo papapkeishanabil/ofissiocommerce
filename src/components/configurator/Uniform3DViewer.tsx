@@ -114,12 +114,21 @@ function GLBModel({ url }: { url: string }) {
     const targetHeight = 1.76;
     const scale = targetHeight / maxDim;
 
-    // Apply transform directly to cloned scene — apply scale to meshes,
-    // then offset position to center the model at origin.
+    // Apply transform + material override to cloned scene.
     cloned.traverse((child) => {
       if (child.type === "Mesh") {
-        child.scale.multiplyScalar(scale);
-        child.position.sub(center.multiplyScalar(scale));
+        const mesh = child as THREE.Mesh;
+        // Scale + center
+        mesh.scale.multiplyScalar(scale);
+        mesh.position.sub(center.multiplyScalar(scale));
+        // Override material: fabric should be matte, not glossy.
+        // Tripo3D defaults often produce shiny/plastic look for apparel.
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (mat && mat.isMeshStandardMaterial) {
+          mat.metalness = 0.0;
+          mat.roughness = 0.92;
+          mat.envMapIntensity = 0.4;
+        }
       }
     });
 
