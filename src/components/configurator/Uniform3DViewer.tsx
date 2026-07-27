@@ -156,14 +156,13 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
 
       {/* Logo placements — auto-placed at ZONE_ANCHORS, raycast for fine-tune */}
       {placements.map((p) => {
-        const w = (p.widthCm / 30) * 0.9;
-        const h = (p.heightCm / 30) * 0.9;
+        // DEBUG: pakai ukuran besar dulu supaya pasti visible
+        const w = 0.35;
+        const h = 0.14;
         const isHi = highlightZone === p.zone;
         const anchor = ZONE_ANCHORS[p.zone];
 
-        // If customer clicked on surface (raycast), use that exact point.
-        // Otherwise, use the default zone anchor position (+ offset).
-        const pos = p.surfacePoint ?? [anchor.x, anchor.y, anchor.z + 0.03];
+        const pos = p.surfacePoint ?? [anchor.x, anchor.y, anchor.z + 0.05];
         const norm = p.surfaceNormal ?? [0, 0, 1];
 
         // Orient plane to face along the surface normal
