@@ -146,7 +146,7 @@ export function Uniform3DConfigurator({
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
       {/* LEFT: 3D viewer + camera controls */}
       <div className="space-y-3">
-        <div className="relative h-[420px] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:h-[460px] lg:h-[500px]">
+        <div className="relative h-[520px] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:h-[560px] lg:h-[620px]">
           {effectiveModel.depth3DQuad ? (
             <Depth3DViewer
               colorImageSrc={effectiveModel.depth3DQuad.front.colorImage}
