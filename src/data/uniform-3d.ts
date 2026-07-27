@@ -175,6 +175,19 @@ export const CAMERA_PRESET_VIEWS: Record<
 };
 
 /**
+ * Mapping zona bordir → camera preset.
+ * Saat customer pilih zona, camera otomatis berputar ke sudut ini.
+ */
+export const ZONE_CAMERA_MAP: Record<EmbroideryZone, string> = {
+  left_chest: "front",
+  right_chest: "front",
+  left_sleeve: "left_sleeve",
+  right_sleeve: "right_sleeve",
+  upper_back: "back",
+  middle_back: "back",
+};
+
+/**
  * For 360° photo mode: which angle ranges show which zone.
  * Front zones (chests) are visible from front-ish angles; back zones from
  * back-ish angles. Sleeves are visible from side angles.

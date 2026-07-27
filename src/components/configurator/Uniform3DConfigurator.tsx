@@ -15,7 +15,7 @@ import {
   type EmbroideryZone,
   type LogoPlacement,
 } from "@/types/uniform-3d";
-import { getModel3DForProduct, ZONE_ANCHORS } from "@/data/uniform-3d";
+import { getModel3DForProduct, ZONE_ANCHORS, ZONE_CAMERA_MAP } from "@/data/uniform-3d";
 import { useUniform3DConfig } from "@/hooks/use-uniform-3d-config";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -334,6 +334,11 @@ export function Uniform3DConfigurator({
           selectedZone={selectedZone}
           onSelect={(z) => {
             setSelectedZone(z);
+            // Auto-rotate camera ke zona yang dipilih
+            const camPreset = ZONE_CAMERA_MAP[z];
+            if (camPreset) {
+              setActiveCamera(camPreset as CameraPreset);
+            }
             // reset pending upload when switching zones without commit
             const existing = getPlacement(z);
             if (existing) {
