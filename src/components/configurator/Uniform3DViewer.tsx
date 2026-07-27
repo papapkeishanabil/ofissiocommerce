@@ -50,6 +50,7 @@ export function Uniform3DViewer({
       onCreated={({ gl }) => onCanvasReady?.({ domElement: gl.domElement })}
       style={{ width: "100%", height: "100%", background: "transparent" }}
     >
+      <CameraRig activeCamera={activeCamera} />
       {/* Lighting */}
       <ambientLight intensity={0.55} />
       <directionalLight
@@ -99,6 +100,38 @@ export function Uniform3DViewer({
       />
     </Canvas>
   );
+}
+
+/**
+ * CameraRig — smoothly move camera to the active preset position when
+ * activeCamera changes. Uses lerp for animated transition.
+ */
+function CameraRig({ activeCamera }: { activeCamera: CameraPreset }) {
+  const target = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
+  const targetPos = useRef(new THREE.Vector3(...target.position));
+  const targetLook = useRef(new THREE.Vector3(...target.target));
+
+  // Update target when preset changes
+  useEffect(() => {
+    const v = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
+    targetPos.current.set(...v.position);
+    targetLook.current.set(...v.target);
+  }, [activeCamera]);
+
+  useFrame(({ camera }) => {
+    // Lerp camera position toward target
+    camera.position.lerp(targetPos.current, 0.08);
+    // Lerp lookAt target
+    const controls = (camera as any).userData?.controls;
+    if (controls) {
+      controls.target.lerp(targetLook.current, 0.08);
+      controls.update();
+    } else {
+      camera.lookAt(targetLook.current);
+    }
+  });
+
+  return null;
 }
 
 // GLB loader — auto-centers + scales + supports raycast click for logo.
