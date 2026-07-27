@@ -392,6 +392,18 @@ export function Uniform3DConfigurator({
                 removePlacement(selectedZone);
                 setPendingLogo(null);
               }}
+              onChangePosition={(axis, val) => {
+                if (!currentPlacement) return;
+                const pt = currentPlacement.surfacePoint
+                  ? [...currentPlacement.surfacePoint] as [number, number, number]
+                  : [ZONE_ANCHORS[selectedZone].x, ZONE_ANCHORS[selectedZone].y, ZONE_ANCHORS[selectedZone].z + 0.3];
+                const idx = axis === "x" ? 0 : axis === "y" ? 1 : 2;
+                pt[idx] = val;
+                addOrUpdatePlacement({
+                  ...currentPlacement,
+                  surfacePoint: pt,
+                });
+              }}
             />
           </>
         )}

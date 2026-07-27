@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/Button";
 interface LogoPlacementControlsProps {
   zone: EmbroideryZone;
   placement: LogoPlacement | null;
-  /** only meaningful when placement exists (logo uploaded) */
   onChangeSize: (widthCm: number) => void;
   onChangeRotation: (rotation: 0 | 90 | 180 | 270) => void;
   onRemove: () => void;
+  /** Fine-tune position offsets (added to zone anchor) */
+  onChangePosition?: (axis: "x" | "y" | "z", offset: number) => void;
 }
 
 export function LogoPlacementControls({
@@ -22,6 +23,7 @@ export function LogoPlacementControls({
   onChangeSize,
   onChangeRotation,
   onRemove,
+  onChangePosition,
 }: LogoPlacementControlsProps) {
   if (!placement) {
     return (
@@ -32,7 +34,6 @@ export function LogoPlacementControls({
     );
   }
 
-  // Approximate aspect 2.5:1 for typical chest logo; height derived.
   const widthCm = placement.widthCm;
   const heightCm = placement.heightCm;
 
@@ -98,6 +99,38 @@ export function LogoPlacementControls({
           ))}
         </div>
       </div>
+
+      {/* Position fine-tune (X/Y/Z sliders) */}
+      {onChangePosition && (
+        <div className="space-y-2 border-t border-line pt-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-subtle">
+            Geser posisi
+          </p>
+          {(["x", "y", "z"] as const).map((axis) => {
+            const val = (placement.surfacePoint?.[axis === "x" ? 0 : axis === "y" ? 1 : 2] ?? 0);
+            const anchorOffset = 0; // relative to default anchor
+            return (
+              <div key={axis} className="flex items-center gap-2">
+                <span className="w-4 text-[10px] font-bold uppercase text-ink-subtle">
+                  {axis === "x" ? "↔" : axis === "y" ? "↕" : "⇄"} {axis}
+                </span>
+                <input
+                  type="range"
+                  min={-1}
+                  max={1}
+                  step={0.01}
+                  value={val}
+                  onChange={(e) => onChangePosition(axis, parseFloat(e.target.value))}
+                  className="flex-1 accent-brand-700"
+                />
+                <span className="w-10 text-right font-mono text-[9px] text-ink-muted">
+                  {val.toFixed(2)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
