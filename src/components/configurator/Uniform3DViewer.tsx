@@ -206,8 +206,8 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
         let rotY: number;
         let flipX = false; // flip texture supaya tidak mirror
         if (isBackZone) { rotY = Math.PI; flipX = true; }
-        else if (isLeftSleeve) { rotY = -Math.PI / 2; flipX = true; }
-        else if (isRightSleeve) { rotY = 3 * Math.PI / 2; flipX = true; }
+        else if (isLeftSleeve) { rotY = -Math.PI / 2; flipX = false; }
+        else if (isRightSleeve) { rotY = -Math.PI / 2; flipX = true; }
         else { rotY = 0; flipX = false; }
 
         // Hitung dimensi plane dari aspect ratio texture asli (jangan stretch)
