@@ -107,8 +107,8 @@ export function LogoPlacementControls({
             Geser posisi
           </p>
           {(["x", "y", "z"] as const).map((axis) => {
-            const val = (placement.surfacePoint?.[axis === "x" ? 0 : axis === "y" ? 1 : 2] ?? 0);
-            const anchorOffset = 0; // relative to default anchor
+            const idx = axis === "x" ? 0 : axis === "y" ? 1 : 2;
+            const val = placement.surfacePoint?.[idx] ?? 0;
             return (
               <div key={axis} className="flex items-center gap-2">
                 <span className="w-4 text-[10px] font-bold uppercase text-ink-subtle">
@@ -116,8 +116,8 @@ export function LogoPlacementControls({
                 </span>
                 <input
                   type="range"
-                  min={-1}
-                  max={1}
+                  min={-2}
+                  max={2}
                   step={0.01}
                   value={val}
                   onChange={(e) => onChangePosition(axis, parseFloat(e.target.value))}
