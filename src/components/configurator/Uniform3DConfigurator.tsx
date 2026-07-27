@@ -128,7 +128,7 @@ export function Uniform3DConfigurator({
       heightCm,
       rotation,
       technique: "embroidery",
-      surfacePoint: [anchor.x, anchor.y, anchor.z + 0.05],
+      surfacePoint: [anchor.x, anchor.y, anchor.z] as [number, number, number],
       surfaceNormal: selectedZone === "upper_back" || selectedZone === "middle_back"
         ? [0, 0, -1]
         : selectedZone === "left_sleeve"
