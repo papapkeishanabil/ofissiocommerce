@@ -82,8 +82,8 @@ export function Uniform3DViewer({
       />
 
       <OrbitControls
-        target={[0, -0.15, 0]}
-        minDistance={1.2}
+        target={[0, 0, 0]}
+        minDistance={1.0}
         maxDistance={6}
         enablePan={false}
         // Allow free rotate/zoom between presets; preset change animates via key.
@@ -98,30 +98,33 @@ export function Uniform3DViewer({
 
 function GLBModel({ url }: { url: string }) {
   const { scene } = useGLTF(url);
-  const groupRef = useRef<THREE.Group>(null);
 
-  // Clone scene so we can apply transforms without affecting the cached one.
-  // Then compute bounding box and auto-fit to target height.
-  const cloned = useMemo(() => scene.clone(true), [scene]);
+  // Clone + auto-fit SYNCHRONOUSLY (not in useEffect) so the transform
+  // is applied before the model ever renders a single frame.
+  const fitted = useMemo(() => {
+    const cloned = scene.clone(true);
 
-  useEffect(() => {
-    if (!groupRef.current) return;
-    // Compute box from the CLONED scene's geometry, not the wrapper group.
-    const box = new THREE.Box3().setFromObject(groupRef.current);
+    // Compute bounding box from the cloned scene's geometry.
+    const box = new THREE.Box3().setFromObject(cloned);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-    // Target 2.4 units so model fills the viewer generously.
-    const scale = 2.4 / maxDim;
-    groupRef.current.scale.setScalar(scale);
-    groupRef.current.position.x = -center.x * scale;
-    groupRef.current.position.y = -center.y * scale;
-    groupRef.current.position.z = -center.z * scale;
-  }, [cloned]);
 
-  return (
-    <group ref={groupRef}>
-      <primitive object={cloned} />
-    </group>
-  );
+    // Scale so model height ≈ 2.8 units (fills viewer generously).
+    const targetHeight = 2.8;
+    const scale = targetHeight / maxDim;
+
+    // Apply transform directly to cloned scene — apply scale to meshes,
+    // then offset position to center the model at origin.
+    cloned.traverse((child) => {
+      if (child.type === "Mesh") {
+        child.scale.multiplyScalar(scale);
+        child.position.sub(center.multiplyScalar(scale));
+      }
+    });
+
+    return cloned;
+  }, [scene]);
+
+  return <primitive object={fitted} />;
 }
