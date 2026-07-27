@@ -209,16 +209,24 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
             rotation={[0, rotY, (p.rotation * Math.PI) / 180]}
           >
             <planeGeometry args={[w, h]} />
-            <meshStandardMaterial
-              color="#ffffff"
-              emissive={isHi ? "#dc9814" : "#f59e0b"}
-              emissiveIntensity={isHi ? 0.5 : 0.3}
-              roughness={0.5}
-              side={THREE.DoubleSide}
-              transparent
-              opacity={0.95}
-              map={p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl, () => forceTick((n: number) => n + 1)) : undefined}
-            />
+            {p.logoPreviewUrl ? (
+              <meshBasicMaterial
+                map={logoTexture(p.logoPreviewUrl, () => forceTick((n: number) => n + 1))}
+                side={THREE.DoubleSide}
+                transparent
+                toneMapped={false}
+              />
+            ) : (
+              <meshStandardMaterial
+                color="#ffffff"
+                emissive={isHi ? "#dc9814" : "#f59e0b"}
+                emissiveIntensity={isHi ? 0.5 : 0.3}
+                roughness={0.5}
+                side={THREE.DoubleSide}
+                transparent
+                opacity={0.95}
+              />
+            )}
           </mesh>
         );
       })}
