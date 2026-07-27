@@ -21,7 +21,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { CameraPresetControls } from "./CameraPresetControls";
 import { EmbroideryZoneSelector } from "./EmbroideryZoneSelector";
-import { GenerateGLBButton } from "./GenerateGLBButton";
 import { LogoPlacementControls } from "./LogoPlacementControls";
 import { LogoUploadPanel } from "./LogoUploadPanel";
 import { Photo360Viewer } from "./Photo360Viewer";
@@ -347,36 +346,6 @@ export function Uniform3DConfigurator({
               }}
             />
           </>
-        )}
-
-        {/* AI 3D upgrade (only when not already in GLB mode) */}
-        {!generatedGlbUrl && (
-          <GenerateGLBButton
-            imageUrl={
-              effectiveModel.depth3DQuad?.front.colorImage ??
-              effectiveModel.depth3DDual?.front.colorImage ??
-              effectiveModel.depth3D?.colorImage ??
-              effectiveModel.photo360?.frames[0]?.src ??
-              ""
-            }
-            multiImageUrls={
-              effectiveModel.depth3DQuad
-                ? [
-                    effectiveModel.depth3DQuad.front.colorImage,
-                    effectiveModel.depth3DQuad.back.colorImage,
-                    effectiveModel.depth3DQuad.left.colorImage,
-                    effectiveModel.depth3DQuad.right.colorImage,
-                  ]
-                : effectiveModel.depth3DDual
-                  ? [
-                      effectiveModel.depth3DDual.front.colorImage,
-                      effectiveModel.depth3DDual.back.colorImage,
-                    ]
-                  : undefined
-            }
-            model3dId={effectiveModel.model3dId}
-            onGenerated={(url) => setGeneratedGlbUrl(url)}
-          />
         )}
 
         {/* Summary + actions */}
