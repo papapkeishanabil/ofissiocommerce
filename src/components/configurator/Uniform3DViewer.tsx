@@ -202,13 +202,14 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
           p.surfacePoint?.[2] ?? anchor.z,
         ];
 
-        // Plane orientation per zona
+        // Plane orientation per zona — rotasi Y supaya plane menghadap KELUAR dari kemeja.
+        // Three.js rotasi Y: rotY=PI/2 → face +X, rotY=-PI/2 → face -X
         let rotY: number;
-        let flipX = false; // flip texture supaya tidak mirror
-        if (isBackZone) { rotY = Math.PI; flipX = true; }
-        else if (isLeftSleeve) { rotY = -Math.PI / 2; flipX = false; }
-        else if (isRightSleeve) { rotY = -Math.PI / 2; flipX = true; }
-        else { rotY = 0; flipX = false; }
+        let flipX = false;
+        if (isBackZone) { rotY = Math.PI; flipX = true; }           // face -Z, flip karena 180°
+        else if (isLeftSleeve) { rotY = Math.PI / 2; flipX = false; }  // face +X (lengan kiri di X+)
+        else if (isRightSleeve) { rotY = -Math.PI / 2; flipX = false; } // face -X (lengan kanan di X-)
+        else { rotY = 0; flipX = false; }                             // face +Z (dada)
 
         // Hitung dimensi plane dari aspect ratio texture asli (jangan stretch)
         const tex = p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl, () => forceTick((n: number) => n + 1)) : null;
