@@ -109,36 +109,11 @@ export const MODEL_3D_REGISTRY: Model3DEntry[] = [
   {
     productId: "p-012",
     model3dId: "kk-006-v1",
-    glbUrl: null,
+    glbUrl: "/3d/kk-006.glb",
     photo360: null,
     depth3D: null,
     depth3DDual: null,
-    depth3DQuad: {
-      front: {
-        colorImage: "/products/kk-006/KK-006-front-nobg.webp",
-        depthImage: "/products/kk-006/KK-006-front-depth.png",
-        maskImage: "/products/kk-006/KK-006-front-mask.png",
-        depthStrength: 0.55,
-      },
-      back: {
-        colorImage: "/products/kk-006/KK-006-back-nobg.webp",
-        depthImage: "/products/kk-006/KK-006-back-depth.png",
-        maskImage: "/products/kk-006/KK-006-back-mask.png",
-        depthStrength: 0.55,
-      },
-      left: {
-        colorImage: "/products/kk-006/KK-006-left-nobg.webp",
-        depthImage: "/products/kk-006/KK-006-left-depth.png",
-        maskImage: "/products/kk-006/KK-006-left-mask.png",
-        depthStrength: 0.55,
-      },
-      right: {
-        colorImage: "/products/kk-006/KK-006-right-nobg.webp",
-        depthImage: "/products/kk-006/KK-006-right-depth.png",
-        maskImage: "/products/kk-006/KK-006-right-mask.png",
-        depthStrength: 0.55,
-      },
-    },
+    depth3DQuad: null,
     fallbackColor: "#9ca3af",
   },
 ];
