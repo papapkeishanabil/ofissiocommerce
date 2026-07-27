@@ -7,7 +7,7 @@
 
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Environment, useGLTF } from "@react-three/drei";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
 import type {
@@ -100,30 +100,28 @@ function GLBModel({ url }: { url: string }) {
   const { scene } = useGLTF(url);
   const groupRef = useRef<THREE.Group>(null);
 
-  // Auto-fit: compute bounding box, center to origin, scale to ~2 units tall,
-  // and nudge down so the model sits nicely in the viewer frame.
+  // Clone scene so we can apply transforms without affecting the cached one.
+  // Then compute bounding box and auto-fit to target height.
+  const cloned = useMemo(() => scene.clone(true), [scene]);
+
   useEffect(() => {
     if (!groupRef.current) return;
+    // Compute box from the CLONED scene's geometry, not the wrapper group.
     const box = new THREE.Box3().setFromObject(groupRef.current);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-
-    // Target height ~1.8 units (fits well in camera fov 38° at distance 3.2)
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const targetHeight = 1.8;
-    const scale = maxDim > 0 ? targetHeight / maxDim : 1;
-
+    const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+    // Target 2.4 units so model fills the viewer generously.
+    const scale = 2.4 / maxDim;
     groupRef.current.scale.setScalar(scale);
-    // Re-center after scaling, then shift down slightly so model is vertically
-    // centered in the viewport (not floating at top).
     groupRef.current.position.x = -center.x * scale;
-    groupRef.current.position.y = -center.y * scale - 0.15;
+    groupRef.current.position.y = -center.y * scale;
     groupRef.current.position.z = -center.z * scale;
-  }, [scene]);
+  }, [cloned]);
 
   return (
     <group ref={groupRef}>
-      <primitive object={scene} />
+      <primitive object={cloned} />
     </group>
   );
 }
