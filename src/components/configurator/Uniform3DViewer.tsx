@@ -161,16 +161,22 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
       {(Object.keys(ZONE_ANCHORS) as EmbroideryZone[]).map((zone) => {
         const anchor = ZONE_ANCHORS[zone];
         const isBackZone = zone === "upper_back" || zone === "middle_back";
+        const isLeftSleeve = zone === "left_sleeve";
+        const isRightSleeve = zone === "right_sleeve";
         const zOffset = isBackZone ? -0.35 : 0.35;
         const hasPlacement = placements.some((p) => p.zone === zone);
         const isHi = highlightZone === zone;
-        // Skip rendering marker if this zone already has a placement (logo covers it)
         if (hasPlacement) return null;
+        let markerRotY: number;
+        if (isBackZone) markerRotY = Math.PI;
+        else if (isLeftSleeve) markerRotY = -Math.PI / 2;
+        else if (isRightSleeve) markerRotY = Math.PI / 2;
+        else markerRotY = 0;
         return (
           <mesh
             key={`marker-${zone}`}
             position={[anchor.x, anchor.y, anchor.z + zOffset]}
-            rotation={[0, isBackZone ? Math.PI : 0, 0]}
+            rotation={[0, markerRotY, 0]}
           >
             <circleGeometry args={[0.04, 16]} />
             <meshBasicMaterial
@@ -191,6 +197,8 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
         const anchor = ZONE_ANCHORS[p.zone];
 
         const isBackZone = p.zone === "upper_back" || p.zone === "middle_back";
+        const isLeftSleeve = p.zone === "left_sleeve";
+        const isRightSleeve = p.zone === "right_sleeve";
         const zOffset = isBackZone ? -0.35 : 0.35;
         const pos: [number, number, number] = [
           p.surfacePoint?.[0] ?? anchor.x,
@@ -198,9 +206,16 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
           p.surfacePoint?.[2] ?? (anchor.z + zOffset),
         ];
 
-        // Plane always faces outward (front zones face +Z, back zones face -Z).
-        // No complex lookAt — just simple rotation.
-        const rotY = isBackZone ? Math.PI : 0;
+        // Plane orientation per zone:
+        //   dada    → face +Z (depan)
+        //   punggung → face -Z (belakang)
+        //   lengan kiri → face +X (kiri, keluar dari body)
+        //   lengan kanan → face -X (kanan, keluar dari body)
+        let rotY: number;
+        if (isBackZone) rotY = Math.PI;
+        else if (isLeftSleeve) rotY = -Math.PI / 2;  // face +X
+        else if (isRightSleeve) rotY = Math.PI / 2;   // face -X
+        else rotY = 0;  // dada: face +Z
 
         return (
           <mesh
