@@ -149,8 +149,8 @@ export const ZONE_ANCHORS: Record<EmbroideryZone, { x: number; y: number; z: num
   left_chest:   { x:  0.18, y:  0.28, z:  0.16 },
   right_chest:  { x: -0.18, y:  0.28, z:  0.16 },
   // Lengan — di area lengan, sisi luar (sesuai screenshot referensi)
-  left_sleeve:  { x:  0.55, y:  0.05, z: -0.05 },
-  right_sleeve: { x: -0.55, y:  0.05, z: -0.05 },
+  left_sleeve:  { x:  0.55, y:  0.35, z:  0.00 },
+  right_sleeve: { x: -0.55, y:  0.35, z:  0.00 },
   // Punggung — belakang kemeja (z-)
   upper_back:   { x:  0.00, y:  0.35, z: -0.16 },
   middle_back:  { x:  0.00, y:  0.05, z: -0.16 },
