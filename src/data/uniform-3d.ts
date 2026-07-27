@@ -170,8 +170,8 @@ export const CAMERA_PRESET_VIEWS: Record<
   right: { position: [3.2, 0.3, 0], target: [0, 0.2, 0] },
   right_chest: { position: [1.4, 0.55, 1.9], target: [0.28, 0.45, 0] },
   left_chest: { position: [-1.4, 0.55, 1.9], target: [-0.28, 0.45, 0] },
-  right_sleeve: { position: [2.2, 0.35, 1.1], target: [0.62, 0.25, 0] },
-  left_sleeve: { position: [-2.2, 0.35, 1.1], target: [-0.62, 0.25, 0] },
+  right_sleeve: { position: [-3.2, 0.3, 0], target: [-0.69, 0.35, 0] },
+  left_sleeve: { position: [3.2, 0.3, 0], target: [0.69, 0.35, 0] },
 };
 
 /**
