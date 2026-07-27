@@ -271,8 +271,8 @@ export function Uniform3DConfigurator({
             </div>
           )}
           {effectiveModel.glbUrl && selectedZone && pendingLogo && (
-            <div className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-full bg-ochre-500 px-4 py-1.5 text-[11px] font-bold text-white shadow-soft-md animate-pulse">
-              👆 Klik di kemeja untuk tempel logo
+            <div className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-full bg-ochre-500/90 px-4 py-1.5 text-[11px] font-semibold text-white shadow-soft-md">
+              Logo menempel di {selectedZone.replace(/_/g, " ")} · klik kemeja untuk geser
             </div>
           )}
         </div>

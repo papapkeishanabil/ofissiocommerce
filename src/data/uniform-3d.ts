@@ -123,19 +123,37 @@ export function getModel3DForProduct(productId: string): Model3DEntry | undefine
 }
 
 /**
- * 3D anchor positions (in model-space units) for each embroidery zone.
- * Used by BOTH the fallback shape and any future GLB (via named empties /
- * hardcoded offsets). Coordinates are tuned for the procedural shirt.
+ * 3D anchor positions for each embroidery zone. Coordinates are in world
+ * space, tuned for a fitted GLB model (~1.76 unit tall, ~0.75 wide).
  *
- * Convention: x = right(+)/left(-), y = up(+)/down(-), z = front(+)/back(-).
+ * Convention (customer looking at front of shirt):
+ *   x = right(+) / left(−)
+ *   y = up(+) / down(−)
+ *   z = front(+) / back(−)
+ *
+ * Diagram (front view):
+ *
+ *         ┌── kerah ──┐
+ *    Lengan          Lengan
+ *     Kiri            Kanan
+ *   ┌────┤  Dada   ├────┐
+ *   │    │  Kiri   │    │
+ *   │    │  ◉      │    │
+ *   │    │      ◉  │    │
+ *   │    │  Dada   │    │
+ *   │    │  Kanan  │    │
+ *   └────┴─────────┴────┘
  */
 export const ZONE_ANCHORS: Record<EmbroideryZone, { x: number; y: number; z: number }> = {
-  left_chest: { x: -0.28, y: 0.45, z: 0.42 },
-  right_chest: { x: 0.28, y: 0.45, z: 0.42 },
-  left_sleeve: { x: -0.62, y: 0.25, z: 0.05 },
-  right_sleeve: { x: 0.62, y: 0.25, z: 0.05 },
-  upper_back: { x: 0, y: 0.65, z: -0.42 },
-  middle_back: { x: 0, y: 0.15, z: -0.42 },
+  // Dada — di bagian depan kemeja (z positif), sekitar 1/3 dari atas
+  left_chest:   { x: -0.18, y:  0.15, z:  0.16 },  // Dada Kiri (kiri customer)
+  right_chest:  { x:  0.18, y:  0.15, z:  0.16 },  // Dada Kanan
+  // Lengan — di area bahu/lengan atas (samping body)
+  left_sleeve:  { x: -0.45, y:  0.30, z:  0.05 },
+  right_sleeve: { x:  0.45, y:  0.30, z:  0.05 },
+  // Punggung — di bagian belakang kemeja (z negatif)
+  upper_back:   { x:  0.00, y:  0.35, z: -0.16 },  // Punggung Atas (sekitar kerah belakang)
+  middle_back:  { x:  0.00, y: -0.05, z: -0.16 },  // Punggung Tengah (tengah punggung)
 };
 
 /**

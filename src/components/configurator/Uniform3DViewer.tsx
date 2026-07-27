@@ -154,17 +154,17 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
     <group>
       <primitive object={fitted} onPointerDown={handleClick} />
 
-      {/* Logo placements — oriented to surface normal at placement position */}
+      {/* Logo placements — auto-placed at ZONE_ANCHORS, raycast for fine-tune */}
       {placements.map((p) => {
         const w = (p.widthCm / 30) * 0.9;
         const h = (p.heightCm / 30) * 0.9;
         const isHi = highlightZone === p.zone;
-        // For GLB, logo position comes from raycast click stored in
-        // placement metadata. Fall back to ZONE_ANCHORS if no raycast data.
         const anchor = ZONE_ANCHORS[p.zone];
-        // If placement has customPosition (from raycast), use it
-        const pos = (p as any).surfacePoint ?? [anchor.x, anchor.y, anchor.z + 0.02];
-        const norm = (p as any).surfaceNormal ?? [0, 0, 1];
+
+        // If customer clicked on surface (raycast), use that exact point.
+        // Otherwise, use the default zone anchor position.
+        const pos = p.surfacePoint ?? [anchor.x, anchor.y, anchor.z + 0.02];
+        const norm = p.surfaceNormal ?? [0, 0, 1];
 
         // Orient plane to face along the surface normal
         const lookAt = new THREE.Vector3(pos[0] + norm[0], pos[1] + norm[1], pos[2] + norm[2]);
@@ -180,18 +180,44 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
             quaternion={dummy.quaternion}
           >
             <planeGeometry args={[w, h]} />
-            <meshStandardMaterial
-              color={p.logoPreviewUrl ? "#ffffff" : "#f8fafc"}
-              emissive="#dc9814"
-              emissiveIntensity={isHi ? 0.35 : 0.12}
-              roughness={0.6}
-              side={THREE.DoubleSide}
-              transparent
-              opacity={0.92}
-            />
+            {p.logoPreviewUrl ? (
+              <meshBasicMaterial
+                map={logoTexture(p.logoPreviewUrl)}
+                transparent
+                side={THREE.DoubleSide}
+              />
+            ) : (
+              <meshStandardMaterial
+                color="#f8fafc"
+                emissive="#dc9814"
+                emissiveIntensity={isHi ? 0.35 : 0.12}
+                roughness={0.6}
+                side={THREE.DoubleSide}
+                transparent
+                opacity={0.92}
+              />
+            )}
           </mesh>
         );
       })}
     </group>
   );
+}
+
+// Cache textures so we don't re-create on every render frame.
+const _texCache = new Map<string, THREE.Texture>();
+function logoTexture(url: string): THREE.Texture {
+  let tex = _texCache.get(url);
+  if (!tex) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = url;
+    tex = new THREE.Texture(img);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    img.onload = () => {
+      tex!.needsUpdate = true;
+    };
+    _texCache.set(url, tex);
+  }
+  return tex;
 }
