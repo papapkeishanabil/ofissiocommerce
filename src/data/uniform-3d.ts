@@ -147,11 +147,12 @@ export function getModel3DForProduct(productId: string): Model3DEntry | undefine
 export const ZONE_ANCHORS: Record<EmbroideryZone, { x: number; y: number; z: number }> = {
   // Dada — depan kemeja (z+). X dari sudut pandang PEMAKAI kemeja:
   //   kanan pemakai = X negatif (kiri di layar), kiri pemakai = X positif
-  left_chest:   { x:  0.18, y:  0.28, z:  0.16 },  // Dada Kiri pemakai (kanan di layar)
-  right_chest:  { x: -0.18, y:  0.28, z:  0.16 },  // Dada Kanan pemakai (kiri di layar)
-  // Lengan — samping body
-  left_sleeve:  { x:  0.45, y:  0.35, z:  0.05 },  // Lengan Kiri pemakai
-  right_sleeve: { x: -0.45, y:  0.35, z:  0.05 },  // Lengan Kanan pemakai
+  left_chest:   { x:  0.18, y:  0.28, z:  0.16 },
+  right_chest:  { x: -0.18, y:  0.28, z:  0.16 },
+  // Lengan — di area lengan atas (dekat bahu, ke luar dari body).
+  // Kemeja short-sleeve: lengan sekitar y=0.3, x lebih jauh ke luar.
+  left_sleeve:  { x:  0.60, y:  0.20, z:  0.10 },
+  right_sleeve: { x: -0.60, y:  0.20, z:  0.10 },
   // Punggung — belakang kemeja (z-)
   upper_back:   { x:  0.00, y:  0.35, z: -0.16 },
   middle_back:  { x:  0.00, y:  0.05, z: -0.16 },
