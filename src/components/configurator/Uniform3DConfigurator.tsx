@@ -207,6 +207,31 @@ export function Uniform3DConfigurator({
               onCanvasReady={({ domElement }) => {
                 canvasElRef.current = domElement;
               }}
+              onSurfaceClick={(hit) => {
+                // Customer clicked on the GLB surface — if a zone is selected
+                // and a logo is uploaded, snap the logo to the click point.
+                if (!selectedZone || !pendingLogo) return;
+                const existing = getPlacement(selectedZone);
+                const placement: LogoPlacement = existing
+                  ? {
+                      ...existing,
+                      surfacePoint: hit.point,
+                      surfaceNormal: hit.normal,
+                    }
+                  : {
+                      zone: selectedZone,
+                      logoFileId: pendingLogo.fileId,
+                      logoFileName: pendingLogo.fileName,
+                      logoPreviewUrl: pendingLogo.previewUrl,
+                      widthCm: 8,
+                      heightCm: 3.2,
+                      rotation: 0,
+                      technique: "embroidery",
+                      surfacePoint: hit.point,
+                      surfaceNormal: hit.normal,
+                    };
+                addOrUpdatePlacement(placement);
+              }}
             />
           )}
           {(effectiveModel.depth3D || effectiveModel.depth3DDual || effectiveModel.depth3DQuad) && (
@@ -243,6 +268,11 @@ export function Uniform3DConfigurator({
           {!effectiveModel.photo360 && (
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[10px] font-medium text-ink-muted shadow-soft-xs backdrop-blur">
               Drag untuk rotate · scroll untuk zoom
+            </div>
+          )}
+          {effectiveModel.glbUrl && selectedZone && pendingLogo && (
+            <div className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-full bg-ochre-500 px-4 py-1.5 text-[11px] font-bold text-white shadow-soft-md animate-pulse">
+              👆 Klik di kemeja untuk tempel logo
             </div>
           )}
         </div>

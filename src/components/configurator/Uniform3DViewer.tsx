@@ -14,7 +14,7 @@ import type {
   CameraPreset,
   LogoPlacement,
 } from "@/types/uniform-3d";
-import { CAMERA_PRESET_VIEWS, type Model3DEntry } from "@/data/uniform-3d";
+import { CAMERA_PRESET_VIEWS, ZONE_ANCHORS, type Model3DEntry } from "@/data/uniform-3d";
 import { ProceduralShirt } from "./ProceduralShirt";
 
 interface Uniform3DViewerProps {
@@ -24,6 +24,8 @@ interface Uniform3DViewerProps {
   activeCamera: CameraPreset;
   highlightZone?: string | null;
   onCanvasReady?: (gl: { domElement: HTMLCanvasElement }) => void;
+  /** Raycast: customer klik surface → dapat posisi + normal untuk logo */
+  onSurfaceClick?: (hit: { point: [number, number, number]; normal: [number, number, number] }) => void;
 }
 
 export function Uniform3DViewer({
@@ -33,6 +35,7 @@ export function Uniform3DViewer({
   activeCamera,
   highlightZone,
   onCanvasReady,
+  onSurfaceClick,
 }: Uniform3DViewerProps) {
   const view = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
   const isGLB = !!model.glbUrl;
@@ -60,7 +63,12 @@ export function Uniform3DViewer({
       <Suspense fallback={null}>
         {/* Real GLB path (Phase 8+) — guarded by glbUrl */}
         {model.glbUrl ? (
-          <GLBModel url={model.glbUrl} />
+          <GLBModel
+            url={model.glbUrl}
+            placements={placements}
+            highlightZone={highlightZone}
+            onSurfaceClick={onSurfaceClick}
+          />
         ) : (
           <ProceduralShirt
             color={color}
@@ -86,43 +94,39 @@ export function Uniform3DViewer({
         minDistance={1.0}
         maxDistance={6}
         enablePan={false}
-        // Allow free rotate/zoom between presets; preset change animates via key.
         makeDefault
       />
     </Canvas>
   );
 }
 
-// GLB loader — only used when model.glbUrl is set. Auto-centers + scales
-// the model to fit the viewer frame nicely.
+// GLB loader — auto-centers + scales + supports raycast click for logo.
 
-function GLBModel({ url }: { url: string }) {
+interface GLBModelProps {
+  url: string;
+  placements?: LogoPlacement[];
+  highlightZone?: string | null;
+  onSurfaceClick?: (hit: { point: [number, number, number]; normal: [number, number, number] }) => void;
+}
+
+function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBModelProps) {
   const { scene } = useGLTF(url);
 
-  // Clone + auto-fit SYNCHRONOUSLY (not in useEffect) so the transform
-  // is applied before the model ever renders a single frame.
+  // Clone + auto-fit SYNCHRONOUSLY so transform applied before first render.
   const fitted = useMemo(() => {
     const cloned = scene.clone(true);
-
-    // Compute bounding box from the cloned scene's geometry.
     const box = new THREE.Box3().setFromObject(cloned);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-
-    // Scale so model height ≈ 1.76 units (2.2 × 0.8 = fills viewer comfortably).
     const targetHeight = 1.76;
     const scale = targetHeight / maxDim;
 
-    // Apply transform + material override to cloned scene.
     cloned.traverse((child) => {
       if (child.type === "Mesh") {
         const mesh = child as THREE.Mesh;
-        // Scale + center
         mesh.scale.multiplyScalar(scale);
         mesh.position.sub(center.multiplyScalar(scale));
-        // Override material: fabric should be matte, not glossy.
-        // Tripo3D defaults often produce shiny/plastic look for apparel.
         const mat = mesh.material as THREE.MeshStandardMaterial;
         if (mat && mat.isMeshStandardMaterial) {
           mat.metalness = 0.0;
@@ -131,9 +135,63 @@ function GLBModel({ url }: { url: string }) {
         }
       }
     });
-
     return cloned;
   }, [scene]);
 
-  return <primitive object={fitted} />;
+  // Raycast click → get surface point + normal
+  const handleClick = (e: any) => {
+    if (!onSurfaceClick) return;
+    e.stopPropagation();
+    const point: [number, number, number] = [e.point.x, e.point.y, e.point.z];
+    const n = e.face?.normal;
+    const normal: [number, number, number] = n
+      ? [n.x, n.y, n.z]
+      : [0, 0, 1];
+    onSurfaceClick({ point, normal });
+  };
+
+  return (
+    <group>
+      <primitive object={fitted} onPointerDown={handleClick} />
+
+      {/* Logo placements — oriented to surface normal at placement position */}
+      {placements.map((p) => {
+        const w = (p.widthCm / 30) * 0.9;
+        const h = (p.heightCm / 30) * 0.9;
+        const isHi = highlightZone === p.zone;
+        // For GLB, logo position comes from raycast click stored in
+        // placement metadata. Fall back to ZONE_ANCHORS if no raycast data.
+        const anchor = ZONE_ANCHORS[p.zone];
+        // If placement has customPosition (from raycast), use it
+        const pos = (p as any).surfacePoint ?? [anchor.x, anchor.y, anchor.z + 0.02];
+        const norm = (p as any).surfaceNormal ?? [0, 0, 1];
+
+        // Orient plane to face along the surface normal
+        const lookAt = new THREE.Vector3(pos[0] + norm[0], pos[1] + norm[1], pos[2] + norm[2]);
+        const dummy = new THREE.Object3D();
+        dummy.position.set(pos[0], pos[1], pos[2]);
+        dummy.lookAt(lookAt);
+        dummy.rotateZ((p.rotation * Math.PI) / 180);
+
+        return (
+          <mesh
+            key={p.zone}
+            position={pos as [number, number, number]}
+            quaternion={dummy.quaternion}
+          >
+            <planeGeometry args={[w, h]} />
+            <meshStandardMaterial
+              color={p.logoPreviewUrl ? "#ffffff" : "#f8fafc"}
+              emissive="#dc9814"
+              emissiveIntensity={isHi ? 0.35 : 0.12}
+              roughness={0.6}
+              side={THREE.DoubleSide}
+              transparent
+              opacity={0.92}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
 }

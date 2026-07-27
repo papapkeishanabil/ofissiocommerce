@@ -65,6 +65,10 @@ export interface LogoPlacement {
   /** degrees, 0 / 90 / 180 / 270 */
   rotation: number;
   technique: EmbroideryTechnique;
+  /** Raycast surface point [x,y,z] — set when customer clicks on GLB surface */
+  surfacePoint?: [number, number, number];
+  /** Surface normal [x,y,z] at click point — logo oriented to face this */
+  surfaceNormal?: [number, number, number];
 }
 
 /** Camera presets the customer can switch between. */
