@@ -157,15 +157,13 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
 
       {/* Logo placements — auto-placed at ZONE_ANCHORS, raycast for fine-tune */}
       {placements.map((p) => {
-        const w = 0.35;
-        const h = 0.14;
+        const w = (p.widthCm / 30) * 0.9;
+        const h = (p.heightCm / 30) * 0.9;
         const isHi = highlightZone === p.zone;
         const anchor = ZONE_ANCHORS[p.zone];
 
-        // Position: anchor + generous Z offset so plane is OUTSIDE the mesh.
-        // For front zones (z+), offset further +Z. For back zones (z-), offset -Z.
         const isBackZone = p.zone === "upper_back" || p.zone === "middle_back";
-        const zOffset = isBackZone ? -0.5 : 0.5;
+        const zOffset = isBackZone ? -0.35 : 0.35;
         const pos: [number, number, number] = [
           p.surfacePoint?.[0] ?? anchor.x,
           p.surfacePoint?.[1] ?? anchor.y,
