@@ -6,8 +6,9 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
-import { Suspense } from "react";
+import { OrbitControls, ContactShadows, Environment, useGLTF } from "@react-three/drei";
+import { Suspense, useEffect, useRef } from "react";
+import * as THREE from "three";
 
 import type {
   CameraPreset,
@@ -34,6 +35,7 @@ export function Uniform3DViewer({
   onCanvasReady,
 }: Uniform3DViewerProps) {
   const view = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
+  const isGLB = !!model.glbUrl;
 
   return (
     <Canvas
@@ -80,9 +82,9 @@ export function Uniform3DViewer({
       />
 
       <OrbitControls
-        target={view.target}
-        minDistance={1.6}
-        maxDistance={5}
+        target={[0, -0.15, 0]}
+        minDistance={1.2}
+        maxDistance={6}
         enablePan={false}
         // Allow free rotate/zoom between presets; preset change animates via key.
         makeDefault
@@ -91,12 +93,37 @@ export function Uniform3DViewer({
   );
 }
 
-// GLB loader — only used when model.glbUrl is set. Imported dynamically so
-// the drei useGLTF + draco decoder stay out of the fallback code path.
-import { useGLTF } from "@react-three/drei";
+// GLB loader — only used when model.glbUrl is set. Auto-centers + scales
+// the model to fit the viewer frame nicely.
 
 function GLBModel({ url }: { url: string }) {
   const { scene } = useGLTF(url);
-  // Clone so we don't mutate a cached scene across instances.
-  return <primitive object={scene} />;
+  const groupRef = useRef<THREE.Group>(null);
+
+  // Auto-fit: compute bounding box, center to origin, scale to ~2 units tall,
+  // and nudge down so the model sits nicely in the viewer frame.
+  useEffect(() => {
+    if (!groupRef.current) return;
+    const box = new THREE.Box3().setFromObject(groupRef.current);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    // Target height ~1.8 units (fits well in camera fov 38° at distance 3.2)
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const targetHeight = 1.8;
+    const scale = maxDim > 0 ? targetHeight / maxDim : 1;
+
+    groupRef.current.scale.setScalar(scale);
+    // Re-center after scaling, then shift down slightly so model is vertically
+    // centered in the viewport (not floating at top).
+    groupRef.current.position.x = -center.x * scale;
+    groupRef.current.position.y = -center.y * scale - 0.15;
+    groupRef.current.position.z = -center.z * scale;
+  }, [scene]);
+
+  return (
+    <group ref={groupRef}>
+      <primitive object={scene} />
+    </group>
+  );
 }
