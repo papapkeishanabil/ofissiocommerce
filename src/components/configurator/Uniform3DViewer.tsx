@@ -103,31 +103,51 @@ export function Uniform3DViewer({
 }
 
 /**
- * CameraRig — smoothly move camera to the active preset position when
- * activeCamera changes. Uses lerp for animated transition.
+ * CameraRig — orbit camera smoothly to the active preset position.
+ * Keeps constant distance from center so camera ROTATES around the model,
+ * never flies through it.
  */
 function CameraRig({ activeCamera }: { activeCamera: CameraPreset }) {
-  const target = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
-  const targetPos = useRef(new THREE.Vector3(...target.position));
-  const targetLook = useRef(new THREE.Vector3(...target.target));
+  const targetView = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
+  const desiredPos = useRef(new THREE.Vector3(...targetView.position));
+  const desiredTarget = useRef(new THREE.Vector3(...targetView.target));
 
-  // Update target when preset changes
   useEffect(() => {
     const v = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
-    targetPos.current.set(...v.position);
-    targetLook.current.set(...v.target);
+    desiredPos.current.set(...v.position);
+    desiredTarget.current.set(...v.target);
   }, [activeCamera]);
 
   useFrame(({ camera }) => {
-    // Lerp camera position toward target
-    camera.position.lerp(targetPos.current, 0.08);
-    // Lerp lookAt target
+    // Lerp target FIRST (snap to center quickly)
     const controls = (camera as any).userData?.controls;
+    const ctrlsTarget = controls?.target ?? new THREE.Vector3();
+
+    // Get current direction from target to camera (normalized)
+    const currentDir = new THREE.Vector3().subVectors(camera.position, ctrlsTarget);
+    const currentDist = currentDir.length();
+    currentDir.normalize();
+
+    // Get desired direction from desired target to desired position
+    const desiredDir = new THREE.Vector3().subVectors(desiredPos.current, desiredTarget.current);
+    const desiredDist = desiredDir.length();
+    desiredDir.normalize();
+
+    // Slerp direction (smooth rotation) — this makes camera orbit, not fly through
+    const slerpedDir = currentDir.clone().slerp(desiredDir, 0.06);
+    // Keep distance stable (use desired distance)
+    const dist = THREE.MathUtils.lerp(currentDist, desiredDist, 0.06);
+
+    // New camera position = target + slerpedDir * dist
+    const newPos = desiredTarget.current.clone().add(slerpedDir.multiplyScalar(dist));
+    camera.position.copy(newPos);
+
+    // Update controls target (lerp gently)
     if (controls) {
-      controls.target.lerp(targetLook.current, 0.08);
+      controls.target.lerp(desiredTarget.current, 0.1);
       controls.update();
     } else {
-      camera.lookAt(targetLook.current);
+      camera.lookAt(desiredTarget.current);
     }
   });
 
