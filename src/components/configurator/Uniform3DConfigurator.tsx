@@ -394,8 +394,8 @@ export function Uniform3DConfigurator({
               }}
               onChangePosition={(axis, val) => {
                 if (!currentPlacement) return;
-                const pt = currentPlacement.surfacePoint
-                  ? [...currentPlacement.surfacePoint] as [number, number, number]
+                const pt: [number, number, number] = currentPlacement.surfacePoint
+                  ? [currentPlacement.surfacePoint[0], currentPlacement.surfacePoint[1], currentPlacement.surfacePoint[2]]
                   : [ZONE_ANCHORS[selectedZone].x, ZONE_ANCHORS[selectedZone].y, ZONE_ANCHORS[selectedZone].z + 0.3];
                 const idx = axis === "x" ? 0 : axis === "y" ? 1 : 2;
                 pt[idx] = val;
