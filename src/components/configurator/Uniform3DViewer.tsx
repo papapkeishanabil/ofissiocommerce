@@ -12,6 +12,7 @@ import * as THREE from "three";
 
 import type {
   CameraPreset,
+  EmbroideryZone,
   LogoPlacement,
 } from "@/types/uniform-3d";
 import { CAMERA_PRESET_VIEWS, ZONE_ANCHORS, type Model3DEntry } from "@/data/uniform-3d";
@@ -154,6 +155,33 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
   return (
     <group>
       <primitive object={fitted} onPointerDown={handleClick} />
+
+      {/* Debug zone markers — show ALL zones as colored dots so customer
+          can see where each zone is without uploading logo first. */}
+      {(Object.keys(ZONE_ANCHORS) as EmbroideryZone[]).map((zone) => {
+        const anchor = ZONE_ANCHORS[zone];
+        const isBackZone = zone === "upper_back" || zone === "middle_back";
+        const zOffset = isBackZone ? -0.35 : 0.35;
+        const hasPlacement = placements.some((p) => p.zone === zone);
+        const isHi = highlightZone === zone;
+        // Skip rendering marker if this zone already has a placement (logo covers it)
+        if (hasPlacement) return null;
+        return (
+          <mesh
+            key={`marker-${zone}`}
+            position={[anchor.x, anchor.y, anchor.z + zOffset]}
+            rotation={[0, isBackZone ? Math.PI : 0, 0]}
+          >
+            <circleGeometry args={[0.04, 16]} />
+            <meshBasicMaterial
+              color={isHi ? "#dc9814" : "#4a6bd8"}
+              side={THREE.DoubleSide}
+              transparent
+              opacity={0.8}
+            />
+          </mesh>
+        );
+      })}
 
       {/* Logo placements — auto-placed at ZONE_ANCHORS, raycast for fine-tune */}
       {placements.map((p) => {
