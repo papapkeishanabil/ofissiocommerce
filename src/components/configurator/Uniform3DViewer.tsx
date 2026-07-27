@@ -154,7 +154,7 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
 
   return (
     <group>
-      <primitive object={fitted} onPointerDown={handleClick} />
+      <primitive object={fitted} />
 
       {/* Debug zone markers — show ALL zones as colored dots so customer
           can see where each zone is without uploading logo first. */}
