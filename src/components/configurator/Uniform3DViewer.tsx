@@ -180,23 +180,16 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
             quaternion={dummy.quaternion}
           >
             <planeGeometry args={[w, h]} />
-            {p.logoPreviewUrl ? (
-              <meshBasicMaterial
-                map={logoTexture(p.logoPreviewUrl)}
-                transparent
-                side={THREE.DoubleSide}
-              />
-            ) : (
-              <meshStandardMaterial
-                color="#f8fafc"
-                emissive="#dc9814"
-                emissiveIntensity={isHi ? 0.35 : 0.12}
-                roughness={0.6}
-                side={THREE.DoubleSide}
-                transparent
-                opacity={0.92}
-              />
-            )}
+            <meshStandardMaterial
+              color="#ffffff"
+              emissive={isHi ? "#dc9814" : "#f59e0b"}
+              emissiveIntensity={isHi ? 0.5 : 0.3}
+              roughness={0.5}
+              side={THREE.DoubleSide}
+              transparent
+              opacity={0.95}
+              map={p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl) : undefined}
+            />
           </mesh>
         );
       })}
@@ -211,12 +204,17 @@ function logoTexture(url: string): THREE.Texture {
   if (!tex) {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = url;
     tex = new THREE.Texture(img);
     tex.colorSpace = THREE.SRGBColorSpace;
+    // Force needsUpdate on load AND check if image already loaded (cached)
     img.onload = () => {
       tex!.needsUpdate = true;
     };
+    img.src = url;
+    // If image was cached, onload already fired before we attached handler
+    if (img.complete && img.naturalWidth > 0) {
+      tex.needsUpdate = true;
+    }
     _texCache.set(url, tex);
   }
   return tex;
