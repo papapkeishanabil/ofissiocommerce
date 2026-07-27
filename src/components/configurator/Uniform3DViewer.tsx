@@ -133,13 +133,13 @@ function CameraRig({ activeCamera }: { activeCamera: CameraPreset }) {
     const desiredDist = desiredDir.length();
     desiredDir.normalize();
 
-    // Slerp direction (smooth rotation) — this makes camera orbit, not fly through
-    const slerpedDir = currentDir.clone().slerp(desiredDir, 0.06);
+    // Lerp direction (smooth rotation) on normalized vectors — camera orbits
+    const lerpDir = currentDir.clone().lerp(desiredDir, 0.06);
     // Keep distance stable (use desired distance)
     const dist = THREE.MathUtils.lerp(currentDist, desiredDist, 0.06);
 
     // New camera position = target + slerpedDir * dist
-    const newPos = desiredTarget.current.clone().add(slerpedDir.multiplyScalar(dist));
+    const newPos = desiredTarget.current.clone().add(lerpDir.multiplyScalar(dist));
     camera.position.copy(newPos);
 
     // Update controls target (lerp gently)
