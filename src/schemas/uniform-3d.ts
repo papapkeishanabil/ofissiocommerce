@@ -22,12 +22,12 @@ export const logoPlacementSchema = z.object({
   logoFileId: z.string().min(1),
   logoFileName: z.string().min(1),
   logoPreviewUrl: z.string().optional(),
-  // Safe embroidery width: 3cm (sleeve/compact) to 12cm (full back)
   widthCm: z.coerce.number().min(3, "Lebar minimal 3 cm").max(12, "Lebar maksimal 12 cm"),
-  // Height auto-derived but clamped for sanity
   heightCm: z.coerce.number().min(1, "Tinggi minimal 1 cm").max(12, "Tinggi maksimal 12 cm"),
   rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]),
   technique: embroideryTechniqueSchema,
+  surfacePoint: z.tuple([z.number(), z.number(), z.number()]).optional(),
+  surfaceNormal: z.tuple([z.number(), z.number(), z.number()]).optional(),
 });
 export type LogoPlacementForm = z.infer<typeof logoPlacementSchema>;
 
