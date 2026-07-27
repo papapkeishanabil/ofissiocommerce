@@ -157,27 +157,30 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
 
       {/* Logo placements — auto-placed at ZONE_ANCHORS, raycast for fine-tune */}
       {placements.map((p) => {
-        // DEBUG: pakai ukuran besar dulu supaya pasti visible
         const w = 0.35;
         const h = 0.14;
         const isHi = highlightZone === p.zone;
         const anchor = ZONE_ANCHORS[p.zone];
 
-        const pos = p.surfacePoint ?? [anchor.x, anchor.y, anchor.z + 0.05];
-        const norm = p.surfaceNormal ?? [0, 0, 1];
+        // Position: anchor + generous Z offset so plane is OUTSIDE the mesh.
+        // For front zones (z+), offset further +Z. For back zones (z-), offset -Z.
+        const isBackZone = p.zone === "upper_back" || p.zone === "middle_back";
+        const zOffset = isBackZone ? -0.5 : 0.5;
+        const pos: [number, number, number] = [
+          p.surfacePoint?.[0] ?? anchor.x,
+          p.surfacePoint?.[1] ?? anchor.y,
+          p.surfacePoint?.[2] ?? (anchor.z + zOffset),
+        ];
 
-        // Orient plane to face along the surface normal
-        const lookAt = new THREE.Vector3(pos[0] + norm[0], pos[1] + norm[1], pos[2] + norm[2]);
-        const dummy = new THREE.Object3D();
-        dummy.position.set(pos[0], pos[1], pos[2]);
-        dummy.lookAt(lookAt);
-        dummy.rotateZ((p.rotation * Math.PI) / 180);
+        // Plane always faces outward (front zones face +Z, back zones face -Z).
+        // No complex lookAt — just simple rotation.
+        const rotY = isBackZone ? Math.PI : 0;
 
         return (
           <mesh
             key={p.zone}
-            position={pos as [number, number, number]}
-            quaternion={dummy.quaternion}
+            position={pos}
+            rotation={[0, rotY, (p.rotation * Math.PI) / 180]}
           >
             <planeGeometry args={[w, h]} />
             <meshStandardMaterial
@@ -188,7 +191,7 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
               side={THREE.DoubleSide}
               transparent
               opacity={0.95}
-              map={p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl, () => forceTick((n) => n + 1)) : undefined}
+              map={p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl, () => forceTick((n: number) => n + 1)) : undefined}
             />
           </mesh>
         );
