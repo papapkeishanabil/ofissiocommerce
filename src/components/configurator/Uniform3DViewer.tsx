@@ -111,6 +111,7 @@ interface GLBModelProps {
 
 function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBModelProps) {
   const { scene } = useGLTF(url);
+  const [, forceTick] = useState(0);
 
   // Clone + auto-fit SYNCHRONOUSLY so transform applied before first render.
   const fitted = useMemo(() => {
@@ -187,7 +188,7 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
               side={THREE.DoubleSide}
               transparent
               opacity={0.95}
-              map={p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl) : undefined}
+              map={p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl, () => forceTick((n) => n + 1)) : undefined}
             />
           </mesh>
         );
@@ -196,25 +197,21 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
   );
 }
 
-// Cache textures so we don't re-create on every render frame.
+// Cache textures + force re-render when loaded.
 const _texCache = new Map<string, THREE.Texture>();
-function logoTexture(url: string): THREE.Texture {
+const _loadedUrls = new Set<string>();
+function logoTexture(url: string, onLoaded?: () => void): THREE.Texture {
   let tex = _texCache.get(url);
   if (!tex) {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    tex = new THREE.Texture(img);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    // Force needsUpdate on load AND check if image already loaded (cached)
-    img.onload = () => {
+    tex = new THREE.TextureLoader().load(url, () => {
+      tex!.colorSpace = THREE.SRGBColorSpace;
       tex!.needsUpdate = true;
-    };
-    img.src = url;
-    // If image was cached, onload already fired before we attached handler
-    if (img.complete && img.naturalWidth > 0) {
-      tex.needsUpdate = true;
-    }
+      _loadedUrls.add(url);
+      onLoaded?.();
+    });
     _texCache.set(url, tex);
+  } else if (_loadedUrls.has(url)) {
+    tex.needsUpdate = true;
   }
   return tex;
 }
