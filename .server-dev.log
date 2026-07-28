@@ -8,7 +8,13 @@
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 3.1s
- ○ Compiling /catalog ...
- ✓ Compiled /catalog in 8.9s (829 modules)
- GET /catalog 200 in 11350ms
+ ✓ Ready in 2s
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 5.8s (875 modules)
+ GET /dashboard 200 in 6898ms
+ ○ Compiling /api/tracking/orders ...
+ ✓ Compiled /api/tracking/orders in 620ms (888 modules)
+ GET /api/tracking/orders 200 in 782ms
+ ○ Compiling /cart ...
+ ✓ Compiled /cart in 1082ms (857 modules)
+ GET /cart 200 in 1956ms

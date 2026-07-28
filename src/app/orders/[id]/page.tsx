@@ -2,7 +2,7 @@
 
 import type { Metadata } from "next";
 
-import { OrderDetailPage } from "@/components/checkout/OrderDetailPage";
+import { OrderTrackingPage } from "@/features/tracking/OrderTrackingPage";
 
 export const metadata: Metadata = { title: "Detail Order" };
 
@@ -12,5 +12,5 @@ interface PageProps {
 
 export default async function Page({ params }: PageProps) {
   const { id } = await params;
-  return <OrderDetailPage id={id} />;
+  return <OrderTrackingPage id={id} />;
 }

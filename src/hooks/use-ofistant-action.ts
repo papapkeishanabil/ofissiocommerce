@@ -13,6 +13,7 @@ import {
   type OfistantAction,
 } from "@/lib/ofistant/ofistant.actions";
 import { productService } from "@/features/products/product.service";
+import { getPrimaryActiveOrder } from "@/features/tracking/tracking.service";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -22,13 +23,26 @@ export function useOfistantAction() {
   const router = useRouter();
   const addToCart = useCartStore((s) => s.add);
   const showPostAddLegacy = useOfistantStore((s) => s.setContext);
+  const setOfistantContext = useOfistantStore((s) => s.setContext);
   const openAuth = useUIStore((s) => s.openAuth);
   const isAuthed = useAuthStore((s) => !!s.session);
+  const session = useAuthStore((s) => s.session);
 
   const pendingIdRef = useRef<string | null>(null);
 
   // Subscribe to one-shot actions emitted by the store (non-confirming).
   const pendingAction = useOfistantStore((s) => s.pendingAction);
+
+  useEffect(() => {
+    setOfistantContext({
+      companyId: session?.company.id ?? null,
+      companyName: session?.company.companyName ?? null,
+    });
+  }, [
+    session?.company.companyName,
+    session?.company.id,
+    setOfistantContext,
+  ]);
 
   useEffect(() => {
     if (!pendingAction) return;
@@ -124,8 +138,14 @@ export function useOfistantAction() {
           return { ok: true };
         }
         case "OPEN_ORDER_TRACKING": {
-          // Phase 9 placeholder — go to dashboard for now.
-          router.push("/dashboard");
+          const requestedId =
+            action.payload?.orderId ?? action.payload?.order_id ?? null;
+          const fallbackOrder = getPrimaryActiveOrder({
+            companyId: session?.company.id,
+            companyName: session?.company.companyName,
+          });
+          const targetOrderId = requestedId ?? fallbackOrder?.id ?? null;
+          router.push(targetOrderId ? `/orders/${targetOrderId}` : "/dashboard");
           return { ok: true };
         }
         case "ADD_TO_CART": {
@@ -148,7 +168,15 @@ export function useOfistantAction() {
         }
       }
     },
-    [router, isAuthed, openAuth, showPostAddLegacy, executeAddToCart],
+    [
+      router,
+      isAuthed,
+      session?.company.companyName,
+      session?.company.id,
+      openAuth,
+      showPostAddLegacy,
+      executeAddToCart,
+    ],
   );
 
   return { dispatch };

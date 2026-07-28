@@ -1,8 +1,10 @@
 import "server-only";
 
 import { ipaymuProvider } from "./providers/ipaymu.provider";
+import { upsertTrackingFromPaymentOrder } from "@/features/tracking/tracking-payment.integration";
 import {
   findPaymentByReference,
+  findPaymentOrder,
   hasProcessedPaymentEvent,
   markPaymentEventProcessed,
   updateOrderAfterPayment,
@@ -38,9 +40,16 @@ export async function processIpaymuCallback(
   const status = ipaymuProvider.mapProviderStatusToInternalStatus(
     callback.providerStatus,
   );
-  updatePaymentStatus(payment.id, status, parsed);
+  const updatedPayment = updatePaymentStatus(payment.id, status, parsed);
   if (status === "paid") {
-    updateOrderAfterPayment(payment.orderId, "payment_received");
+    const updatedOrder = updateOrderAfterPayment(
+      payment.orderId,
+      "payment_received",
+    );
+    const order = updatedOrder ?? findPaymentOrder(payment.orderId);
+    if (updatedPayment && order) {
+      upsertTrackingFromPaymentOrder({ payment: updatedPayment, order });
+    }
   } else if (status === "failed" || status === "expired") {
     updateOrderAfterPayment(payment.orderId, "payment_failed");
   }

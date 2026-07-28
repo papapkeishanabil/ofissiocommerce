@@ -45,6 +45,8 @@ export interface SizeMatrixSnapshot {
 
 /** Ofistant's memory of the current session. */
 export interface OfistantContext {
+  companyId: string | null;
+  companyName: string | null;
   selectedIndustry: string | null;
   selectedProductId: string | null;
   selectedProductSlug: string | null;
@@ -65,6 +67,8 @@ export interface OfistantContext {
 
 export function emptyContext(): OfistantContext {
   return {
+    companyId: null,
+    companyName: null,
     selectedIndustry: null,
     selectedProductId: null,
     selectedProductSlug: null,

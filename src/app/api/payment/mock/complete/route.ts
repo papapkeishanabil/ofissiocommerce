@@ -33,6 +33,7 @@ export async function POST(request: Request) {
       ok: true,
       idempotent: result.idempotent,
       payment: getPaymentStatus(parsed.data.paymentId),
+      tracking: result.tracking,
     });
   } catch {
     return NextResponse.json(

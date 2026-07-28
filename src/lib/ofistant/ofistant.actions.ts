@@ -66,7 +66,12 @@ export type RequestQuotationAction = z.infer<typeof requestQuotationSchema>;
 
 export const openOrderTrackingSchema = z.object({
   type: z.literal("OPEN_ORDER_TRACKING"),
-  payload: z.object({ orderId: z.string().optional() }).optional(),
+  payload: z
+    .object({
+      orderId: z.string().optional(),
+      order_id: z.string().optional(),
+    })
+    .optional(),
 });
 export type OpenOrderTrackingAction = z.infer<typeof openOrderTrackingSchema>;
 

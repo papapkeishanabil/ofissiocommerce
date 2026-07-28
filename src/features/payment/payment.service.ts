@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { getValidatedCheckoutCart } from "@/features/checkout/checkout-cart.service";
 import { shippingService } from "@/features/shipping/shipping.service";
+import { upsertTrackingFromPaymentOrder } from "@/features/tracking/tracking-payment.integration";
 
 import { getPaymentRuntimeConfig } from "./payment.config";
 import {
@@ -144,15 +145,24 @@ export function completeMockPayment(
     throw new Error("Mock payment tidak ditemukan.");
   }
   if (payment.status === status) {
-    return { payment, idempotent: true };
+    const order = findPaymentOrder(payment.orderId);
+    const tracking =
+      status === "paid" && order
+        ? upsertTrackingFromPaymentOrder({ payment, order }).tracking
+        : null;
+    return { payment, idempotent: true, tracking };
   }
   const updated = updatePaymentStatus(paymentId, status, {
     mode: "mock",
     simulatedStatus: status,
   });
-  updateOrderAfterPayment(
+  const order = updateOrderAfterPayment(
     payment.orderId,
     status === "paid" ? "payment_received" : "payment_failed",
   );
-  return { payment: updated!, idempotent: false };
+  const tracking =
+    status === "paid" && updated && order
+      ? upsertTrackingFromPaymentOrder({ payment: updated, order }).tracking
+      : null;
+  return { payment: updated!, idempotent: false, tracking };
 }

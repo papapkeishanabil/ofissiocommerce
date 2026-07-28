@@ -6,6 +6,7 @@
 // To add a new intent/rule: append a rule function to RULES below.
 
 import { productService } from "@/features/products/product.service";
+import { getOfistantOrderStatusText } from "@/features/tracking/tracking.service";
 import { emptySizeMatrix } from "@/types/cart";
 import { SIZES } from "@/types/industry";
 
@@ -263,14 +264,20 @@ const register: Rule = ({ text }) => {
   };
 };
 
-const tracking: Rule = ({ text }) => {
+const tracking: Rule = ({ text, ctx }) => {
   const d = detectIntent(text);
   if (d.intent !== "ASK_TRACKING") return null;
+  const trackingStatus = getOfistantOrderStatusText({
+    companyId: ctx.companyId,
+    companyName: ctx.companyName,
+  });
   return {
-    message:
-      "Pelacakan order & produksi aktif penuh di Phase 9. Untuk sementara, Anda bisa cek order di dashboard setelah checkout.",
-    action: { type: "OPEN_ORDER_TRACKING", payload: {} },
-    quickReplies: ["Buka dashboard", "Hubungi sales"],
+    message: trackingStatus.text,
+    action: {
+      type: "OPEN_ORDER_TRACKING",
+      payload: trackingStatus.order ? { order_id: trackingStatus.order.id } : {},
+    },
+    quickReplies: ["Hubungi sales", "Lihat katalog"],
   };
 };
 

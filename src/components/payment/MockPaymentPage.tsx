@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { cacheClientTrackingOrders } from "@/features/tracking/tracking.service";
+import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { formatIDR } from "@/types/product";
 
 interface PaymentStatusView {
@@ -39,6 +41,7 @@ export function MockPaymentPage({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     if (!paymentId) {
@@ -60,6 +63,9 @@ export function MockPaymentPage({
         throw new Error(result.message);
       }
       setPayment(result.payment);
+      if (result.payment.status === "paid") {
+        void cacheTrackingOrder(result.payment.orderId);
+      }
       setMessage(null);
     } catch {
       setMessage("Status pembayaran belum dapat diverifikasi.");
@@ -84,12 +90,19 @@ export function MockPaymentPage({
       const result = (await response.json()) as {
         ok: boolean;
         payment?: PaymentStatusView;
+        tracking?: CustomerTrackingOrder | null;
         message?: string;
       };
       if (!response.ok || !result.payment) {
         throw new Error(result.message);
       }
       setPayment(result.payment);
+      if (result.tracking) {
+        cacheClientTrackingOrders([result.tracking]);
+        setTrackingOrderId(result.tracking.id);
+      } else if (result.payment.status === "paid") {
+        await cacheTrackingOrder(result.payment.orderId);
+      }
       setMessage(
         status === "paid"
           ? "Pembayaran mock berhasil dikonfirmasi."
@@ -99,6 +112,24 @@ export function MockPaymentPage({
       setMessage("Status pembayaran belum dapat diverifikasi.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function cacheTrackingOrder(orderId: string) {
+    try {
+      const response = await fetch(
+        `/api/tracking/orders/${encodeURIComponent(orderId)}`,
+        { cache: "no-store" },
+      );
+      const result = (await response.json()) as {
+        ok: boolean;
+        order?: CustomerTrackingOrder;
+      };
+      if (!response.ok || !result.order) return;
+      cacheClientTrackingOrders([result.order]);
+      setTrackingOrderId(result.order.id);
+    } catch {
+      // Tracking remains available through dashboard API; cache is best effort.
     }
   }
 
@@ -227,6 +258,14 @@ export function MockPaymentPage({
               Kembali ke katalog
             </ButtonLink>
             <ButtonLink href="/dashboard">Buka dashboard</ButtonLink>
+            {(trackingOrderId ?? (paid ? payment?.orderId : null)) && (
+              <ButtonLink
+                href={`/orders/${trackingOrderId ?? payment!.orderId}`}
+                variant="outline"
+              >
+                Buka tracking order
+              </ButtonLink>
+            )}
           </div>
         </div>
       </section>
