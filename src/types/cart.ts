@@ -9,6 +9,13 @@ export interface CartLineItem {
   productSlug: string;
   productName: string;
   sku: string;
+  /** immutable purchasing snapshot from the canonical product service */
+  priceFrom?: number;
+  moq?: number;
+  fulfillmentType?: string;
+  transactionMode?: string;
+  model3dId?: string;
+  model3dUrl?: string;
   color: string;
   /** quantity per size */
   sizes: SizeMatrix;
@@ -21,6 +28,7 @@ export interface CartLineItem {
   customization: string | null;
   /** full 3D embroidery config — present when customer used the 3D tab */
   uniform3DConfig?: Uniform3DConfig | null;
+  embroideryPlacements?: Uniform3DConfig["placements"];
 }
 
 export function emptySizeMatrix(): SizeMatrix {

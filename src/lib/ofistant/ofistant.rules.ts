@@ -5,11 +5,7 @@
 //
 // To add a new intent/rule: append a rule function to RULES below.
 
-import {
-  getAllProducts,
-  getProductBySlug,
-  getProductsByIndustry,
-} from "@/data/products";
+import { productService } from "@/features/products/product.service";
 import { emptySizeMatrix } from "@/types/cart";
 import { SIZES } from "@/types/industry";
 
@@ -42,7 +38,7 @@ function address(ctx: OfistantContext): string {
 }
 
 function pickRecommendedForIndustry(industry: string, limit = 3) {
-  const list = getProductsByIndustry(industry);
+  const list = productService.getProductsByIndustry(industry);
   return list.slice(0, limit);
 }
 
@@ -50,7 +46,7 @@ function buildAddToCartActionFromSelected(
   ctx: OfistantContext,
 ): AddToCartAction | null {
   if (!ctx.selectedProductSlug) return null;
-  const product = getProductBySlug(ctx.selectedProductSlug);
+  const product = productService.getProductBySlug(ctx.selectedProductSlug);
   if (!product) return null;
   const color = ctx.selectedColor ?? product.colors[0] ?? "Default";
   let sizeMatrix = ctx.sizeMatrix;
@@ -120,6 +116,12 @@ const selectIndustry: Rule = ({ text, ctx }) => {
   const d = detectIntent(text);
   if (d.intent !== "SELECT_INDUSTRY" || !d.industry) return null;
   const recs = pickRecommendedForIndustry(d.industry, 3);
+  if (!recs.length) {
+    return {
+      message: "Saat ini belum ada produk yang siap ditampilkan untuk industri tersebut. Tim Ofissio dapat membantu menyiapkan rekomendasi manual.",
+      contextPatch: withSelectedIndustry(ctx, d.industry),
+    };
+  }
   const names = recs.map((p) => p.category.toLowerCase()).join(", ");
   return {
     message: `Baik ${address(ctx)}, untuk industri ${d.industry} biasanya kebutuhan utamanya ${names}. Saya tampilkan rekomendasinya di sebelah kanan.`,
@@ -147,6 +149,12 @@ const recommendAfterContext: Rule = ({ text, ctx }) => {
     };
   }
   const recs = pickRecommendedForIndustry(industry, 3);
+  if (!recs.length) {
+    return {
+      message: "Saat ini belum ada produk yang siap ditampilkan untuk industri tersebut. Tim Ofissio dapat membantu menyiapkan rekomendasi manual.",
+      contextPatch: withSelectedIndustry(ctx, industry),
+    };
+  }
   const top = recs[0];
   return {
     message: `Untuk ${industry}, saya sarankan mulai dari ${top?.name ?? "produk kami"}. Saya buka rekomendasi yang paling sesuai.`,
@@ -164,10 +172,10 @@ const openProductByCategory: Rule = ({ text, ctx }) => {
   if (d.intent !== "OPEN_PRODUCT" || !d.category) return null;
   // Find a product matching the category (prefer current industry).
   const candidates = ctx.selectedIndustry
-    ? getProductsByIndustry(ctx.selectedIndustry).filter(
+    ? productService.getProductsByIndustry(ctx.selectedIndustry).filter(
         (p) => p.category === d.category,
       )
-    : getAllProducts().filter((p) => p.category === d.category);
+    : productService.getPublishedProducts().filter((p) => p.category === d.category);
   const pick = candidates[0];
   if (!pick) {
     return {
@@ -277,7 +285,7 @@ const addToCart: Rule = ({ text, ctx }) => {
       quickReplies: ["Pertambangan", "Konstruksi", "Corporate"],
     };
   }
-  const product = getProductBySlug(ctx.selectedProductSlug);
+  const product = productService.getProductBySlug(ctx.selectedProductSlug);
   if (!product) return null;
   const action = buildAddToCartActionFromSelected(ctx);
   if (!action) return null;
@@ -321,7 +329,7 @@ const open3DConfigurator: Rule = ({ text, ctx }) => {
       quickReplies: ["Kemeja Lapangan Ripstop", "Lihat keranjang"],
     };
   }
-  const product = getProductBySlug(ctx.selectedProductSlug);
+  const product = productService.getProductBySlug(ctx.selectedProductSlug);
   return {
     message: product
       ? `Baik, di halaman ${product.name} klik tombol “Preview 3D & Bordir Logo” untuk upload logo dan atur posisi bordir (dada, lengan, punggung). Saya sudah arahkan ke produknya.`
@@ -352,7 +360,7 @@ const exploreMore: Rule = ({ text, ctx }) => {
   }
   // suggest a complementary category the user hasn't viewed
   const viewed = new Set(ctx.viewedProductIds);
-  const complementary = getProductsByIndustry(industry).filter(
+  const complementary = productService.getProductsByIndustry(industry).filter(
     (p) => !viewed.has(p.id),
   );
   const next = complementary[0];

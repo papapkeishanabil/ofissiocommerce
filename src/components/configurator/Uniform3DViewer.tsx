@@ -320,9 +320,7 @@ function GLBModel({ url, placements = [], highlightZone, onModelReady, onSurface
 
         // Hitung dimensi plane dari aspect ratio texture asli (jangan stretch)
         const tex = p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl, () => forceTick((n: number) => n + 1)) : null;
-        const imgEl = tex?.image as HTMLImageElement | undefined;
-        const imgW = imgEl?.naturalWidth ?? 0;
-        const imgH = imgEl?.naturalHeight ?? 0;
+        const { width: imgW, height: imgH } = textureImageDimensions(tex);
         const logoAspect = imgW > 0 && imgH > 0 ? imgW / imgH : p.widthCm / p.heightCm;
         const baseW = (p.widthCm / 30) * 0.9;
         const w = baseW;
@@ -488,9 +486,9 @@ function EmbroideryDecal({
   const texture = placement.logoPreviewUrl
     ? logoTexture(placement.logoPreviewUrl, onTextureLoaded)
     : null;
-  const image = texture?.image as HTMLImageElement | undefined;
-  const aspect = image?.naturalWidth && image.naturalHeight
-    ? image.naturalWidth / image.naturalHeight
+  const imageSize = textureImageDimensions(texture);
+  const aspect = imageSize.width > 0 && imageSize.height > 0
+    ? imageSize.width / imageSize.height
     : placement.widthCm / placement.heightCm;
   const width = (placement.widthCm / 30) * 0.9;
   const height = width / aspect;
@@ -577,6 +575,17 @@ function EmbroideryDecal({
 // Cache textures + force re-render when loaded.
 const _texCache = new Map<string, THREE.Texture>();
 const _loadedUrls = new Set<string>();
+
+function textureImageDimensions(texture: THREE.Texture | null | undefined) {
+  const image = texture?.image as
+    | { naturalWidth?: number; naturalHeight?: number; width?: number; height?: number }
+    | undefined;
+  return {
+    width: image?.naturalWidth ?? image?.width ?? 0,
+    height: image?.naturalHeight ?? image?.height ?? 0,
+  };
+}
+
 function logoTexture(url: string, onLoaded?: () => void): THREE.Texture {
   let tex = _texCache.get(url);
   if (!tex) {

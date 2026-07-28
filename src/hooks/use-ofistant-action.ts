@@ -12,7 +12,7 @@ import {
   type AddToCartAction,
   type OfistantAction,
 } from "@/lib/ofistant/ofistant.actions";
-import { getProductBySlug } from "@/data/products";
+import { productService } from "@/features/products/product.service";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -43,7 +43,7 @@ export function useOfistantAction() {
 
   const executeAddToCart = useCallback(
     (action: AddToCartAction): { ok: boolean; reason?: string } => {
-      const product = getProductBySlug(action.payload.productSlug);
+      const product = productService.getProductBySlug(action.payload.productSlug);
       if (!product) {
         return { ok: false, reason: "Produk tidak ditemukan." };
       }
@@ -87,7 +87,11 @@ export function useOfistantAction() {
           return { ok: true };
         }
         case "OPEN_PRODUCT_DETAIL": {
-          router.push(`/product/${action.payload.slug}`);
+          const product = productService.getProductBySlug(action.payload.slug);
+          if (!product) {
+            return { ok: false, reason: "Produk belum published atau model GLB tidak valid." };
+          }
+          router.push(`/product/${product.slug}`);
           return { ok: true };
         }
         case "SHOW_PRODUCT_COMPARISON": {

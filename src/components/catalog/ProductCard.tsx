@@ -5,7 +5,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import type { Product } from "@/types/product";
+import type { OfissioProduct } from "@/features/products/product.types";
 import { formatIDR } from "@/types/product";
 import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
@@ -19,7 +19,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { ProductImagePlaceholder } from "./ProductImagePlaceholder";
 
 interface ProductCardProps {
-  product: Product;
+  product: OfissioProduct;
 }
 
 /**
@@ -93,6 +93,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <Badge tone={product.fulfillment === "READY_STOCK" ? "success" : "amber"}>
             {fulfillmentLabel(product.fulfillment)}
           </Badge>
+          <Badge tone="brand">3D tersedia</Badge>
         </div>
       </button>
 

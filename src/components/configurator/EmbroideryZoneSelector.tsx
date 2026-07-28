@@ -1,7 +1,7 @@
 // src/components/configurator/EmbroideryZoneSelector.tsx
 "use client";
 
-import { EMBROIDERY_ZONES, zoneLabel, type EmbroideryZone } from "@/types/uniform-3d";
+import { zoneLabel, type EmbroideryZone } from "@/types/uniform-3d";
 import { CheckCircle2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -9,18 +9,20 @@ interface EmbroideryZoneSelectorProps {
   selectedZone: EmbroideryZone | null;
   onSelect: (zone: EmbroideryZone) => void;
   placedZones: Set<EmbroideryZone>;
+  zones: EmbroideryZone[];
 }
 
 export function EmbroideryZoneSelector({
   selectedZone,
   onSelect,
   placedZones,
+  zones,
 }: EmbroideryZoneSelectorProps) {
   return (
     <div>
       <p className="type-eyebrow mb-2 text-ink-subtle">Zona bordir</p>
       <div className="grid grid-cols-2 gap-1.5">
-        {EMBROIDERY_ZONES.map((z) => {
+        {zones.map((z) => {
           const isPlaced = placedZones.has(z);
           const isSelected = selectedZone === z;
           return (

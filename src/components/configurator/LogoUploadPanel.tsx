@@ -18,6 +18,7 @@ interface LogoUploadPanelProps {
     fileName: string;
     previewUrl: string;
     fileId: string;
+    aspectRatio: number;
   }) => void;
   onClear: () => void;
 }
@@ -42,7 +43,19 @@ export function LogoUploadPanel({
     const url = URL.createObjectURL(file);
     // Phase 8 will replace this with object-storage upload + AV scan.
     const fileId = `LOGO-${Date.now().toString(36).toUpperCase()}`;
-    onUploaded({ file, fileName: file.name, previewUrl: url, fileId });
+    const image = new Image();
+    image.onload = () => {
+      const aspectRatio =
+        image.naturalWidth > 0 && image.naturalHeight > 0
+          ? image.naturalWidth / image.naturalHeight
+          : 1;
+      onUploaded({ file, fileName: file.name, previewUrl: url, fileId, aspectRatio });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      setError("Dimensi logo tidak dapat dibaca.");
+    };
+    image.src = url;
   }
 
   return (

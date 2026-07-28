@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-import { getAllProducts } from "@/data/products";
+import { productService } from "@/features/products/product.service";
 import { INDUSTRIES, CATEGORIES } from "@/types/industry";
 import { PackageOpen } from "lucide-react";
 
@@ -18,7 +18,7 @@ interface ProductCatalogProps {
 
 export function ProductCatalog({ industry, category }: ProductCatalogProps) {
   const products = useMemo(() => {
-    let list = getAllProducts();
+    let list = productService.getPublishedProducts();
     if (industry) {
       list = list.filter((p) =>
         p.industries.includes(industry as (typeof INDUSTRIES)[number]),
@@ -64,7 +64,7 @@ export function ProductCatalog({ industry, category }: ProductCatalogProps) {
         <div className="grid place-items-center rounded-2xl border border-dashed border-line bg-surface px-6 py-16 text-center">
           <PackageOpen className="mb-3 h-12 w-12 text-slate-300" />
           <p className="text-sm font-semibold text-ink">
-            Tidak ada produk untuk filter ini.
+            Belum ada produk published dengan model 3D yang valid.
           </p>
           <p className="mt-1 text-xs text-ink-muted">
             Coba industri atau kategori lain.

@@ -1,20 +1,21 @@
 // src/components/configurator/CameraPresetControls.tsx
 "use client";
 
-import { CAMERA_PRESETS, cameraLabel, type CameraPreset } from "@/types/uniform-3d";
+import { cameraLabel, type CameraPreset } from "@/types/uniform-3d";
 import { cn } from "@/lib/utils";
 
 interface CameraPresetControlsProps {
   value: CameraPreset;
   onChange: (preset: CameraPreset) => void;
+  presets: CameraPreset[];
 }
 
-export function CameraPresetControls({ value, onChange }: CameraPresetControlsProps) {
+export function CameraPresetControls({ value, onChange, presets }: CameraPresetControlsProps) {
   return (
     <div>
       <p className="type-eyebrow mb-2 text-ink-subtle">Sudut pandang</p>
       <div className="flex flex-wrap gap-1.5">
-        {CAMERA_PRESETS.map((p) => (
+        {presets.map((p) => (
           <button
             key={p}
             type="button"

@@ -6,7 +6,7 @@
 import Link from "next/link";
 
 import { INDUSTRY_META } from "@/data/industries";
-import { getAllProducts } from "@/data/products";
+import { productService } from "@/features/products/product.service";
 import { formatIDR } from "@/types/product";
 import { fulfillmentLabel } from "@/types/industry";
 import { ArrowRight } from "lucide-react";
@@ -18,7 +18,7 @@ import { WhyOfissio } from "./WhyOfissio";
 import { HowItWorks } from "./HowItWorks";
 
 export function HomePage() {
-  const featured = getAllProducts().slice(0, 3);
+  const featured = productService.getPublishedProducts().slice(0, 3);
 
   return (
     <div>

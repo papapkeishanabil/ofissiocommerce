@@ -9,7 +9,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Save, Sparkles } from "lucide-react";
 
-import type { Product } from "@/types/product";
+import type { OfissioProduct } from "@/features/products/product.types";
 import {
   type CameraPreset,
   type EmbroideryZone,
@@ -25,6 +25,7 @@ import { LogoPlacementControls } from "./LogoPlacementControls";
 import { LogoUploadPanel } from "./LogoUploadPanel";
 import { Photo360Viewer } from "./Photo360Viewer";
 import { PreviewSnapshotPanel } from "./PreviewSnapshotPanel";
+import { ModelViewerErrorBoundary } from "./ModelViewerErrorBoundary";
 
 // Lazy-load the R3F canvases (three.js bundle). Photo360 is plain HTML so it
 // doesn't need to be lazy.
@@ -41,7 +42,7 @@ const Uniform3DViewer = dynamic(
 );
 
 interface Uniform3DConfiguratorProps {
-  product: Product;
+  product: OfissioProduct;
   initialColor: string;
   onSave: (config: import("@/types/uniform-3d").Uniform3DConfig) => void;
   onCancel: () => void;
@@ -53,7 +54,20 @@ export function Uniform3DConfigurator({
   onSave,
   onCancel,
 }: Uniform3DConfiguratorProps) {
-  const model = useMemo(() => getModel3DForProduct(product.id), [product.id]);
+  const model = useMemo(() => {
+    if (!product.model_3d) return undefined;
+    const registered = getModel3DForProduct(product.id);
+    return {
+      productId: product.id,
+      model3dId: product.model_3d.id,
+      glbUrl: product.model_3d.url,
+      photo360: registered?.photo360 ?? null,
+      depth3D: registered?.depth3D ?? null,
+      depth3DDual: registered?.depth3DDual ?? null,
+      depth3DQuad: registered?.depth3DQuad ?? null,
+      fallbackColor: registered?.fallbackColor ?? product.accentColor,
+    };
+  }, [product]);
   const {
     config,
     isFallback,
@@ -75,6 +89,7 @@ export function Uniform3DConfigurator({
     previewUrl: string;
     fileName: string;
     fileId: string;
+    aspectRatio: number;
   } | null>(null);
 
   // When Meshy.ai generates a real GLB, override the registry entry so the
@@ -91,6 +106,16 @@ export function Uniform3DConfigurator({
   useEffect(() => {
     setViewerReady(!effectiveModel?.glbUrl);
   }, [effectiveModel?.glbUrl]);
+
+  useEffect(() => {
+    if (selectedZone && product.embroidery_zones.includes(selectedZone)) return;
+    setSelectedZone(product.embroidery_zones[0] ?? null);
+  }, [product.embroidery_zones, selectedZone]);
+
+  useEffect(() => {
+    if (product.camera_presets.includes(config?.activeCamera ?? "front")) return;
+    setActiveCamera(product.camera_presets[0] ?? "front");
+  }, [config?.activeCamera, product.camera_presets, setActiveCamera]);
 
   if (!effectiveModel || !config) {
     return (
@@ -117,12 +142,12 @@ export function Uniform3DConfigurator({
   }
 
   function commitPlacementWithLogo(
-    logo: { previewUrl: string; fileName: string; fileId: string },
+    logo: { previewUrl: string; fileName: string; fileId: string; aspectRatio: number },
     widthCm: number,
     rotation: 0 | 90 | 180 | 270,
   ) {
     if (!selectedZone) return;
-    const heightCm = parseFloat((widthCm / 2.5).toFixed(1));
+    const heightCm = parseFloat((widthCm / logo.aspectRatio).toFixed(1));
     const anchor = ZONE_ANCHORS[selectedZone];
     const placement: LogoPlacement = {
       zone: selectedZone,
@@ -226,17 +251,21 @@ export function Uniform3DConfigurator({
               highlightZone={selectedZone}
             />
           ) : (
-            <Uniform3DViewer
-              model={effectiveModel!}
-              color={config.color}
-              placements={config.placements}
-              activeCamera={config.activeCamera}
-              highlightZone={selectedZone}
-              onModelReady={() => setViewerReady(true)}
-              onCanvasReady={({ domElement }) => {
-                canvasElRef.current = domElement;
-              }}
-              onSurfaceClick={(hit) => {
+            <ModelViewerErrorBoundary
+              resetKey={effectiveModel.glbUrl ?? effectiveModel.model3dId}
+              onError={() => setViewerReady(true)}
+            >
+              <Uniform3DViewer
+                model={effectiveModel!}
+                color={config.color}
+                placements={config.placements}
+                activeCamera={config.activeCamera}
+                highlightZone={selectedZone}
+                onModelReady={() => setViewerReady(true)}
+                onCanvasReady={({ domElement }) => {
+                  canvasElRef.current = domElement;
+                }}
+                onSurfaceClick={(hit) => {
                 // Customer clicked on the GLB surface — if a zone is selected
                 // and a logo is uploaded, snap the logo to the click point.
                 if (!selectedZone || !pendingLogo) return;
@@ -259,9 +288,10 @@ export function Uniform3DConfigurator({
                       surfacePoint: hit.point,
                       surfaceNormal: hit.normal,
                     };
-                addOrUpdatePlacement(placement);
-              }}
-            />
+                  addOrUpdatePlacement(placement);
+                }}
+              />
+            </ModelViewerErrorBoundary>
           )}
           {(effectiveModel.depth3D || effectiveModel.depth3DDual || effectiveModel.depth3DQuad) && (
             <Badge
@@ -318,6 +348,7 @@ export function Uniform3DConfigurator({
           <CameraPresetControls
             value={config.activeCamera}
             onChange={(p) => setActiveCamera(p)}
+            presets={product.camera_presets}
           />
         )}
         <PreviewSnapshotPanel
@@ -356,6 +387,7 @@ export function Uniform3DConfigurator({
         </div>
 
         <EmbroideryZoneSelector
+          zones={product.embroidery_zones}
           selectedZone={selectedZone}
           onSelect={(z) => {
             setSelectedZone(z);
@@ -371,6 +403,7 @@ export function Uniform3DConfigurator({
                 previewUrl: existing.logoPreviewUrl ?? "",
                 fileName: existing.logoFileName,
                 fileId: existing.logoFileId,
+                aspectRatio: existing.widthCm / existing.heightCm,
               });
             } else {
               setPendingLogo(null);
@@ -384,8 +417,8 @@ export function Uniform3DConfigurator({
             <LogoUploadPanel
               previewUrl={pendingLogo?.previewUrl}
               fileName={pendingLogo?.fileName}
-              onUploaded={({ previewUrl, fileName, fileId }) => {
-                const logo = { previewUrl, fileName, fileId };
+              onUploaded={({ previewUrl, fileName, fileId, aspectRatio }) => {
+                const logo = { previewUrl, fileName, fileId, aspectRatio };
                 setPendingLogo(logo);
                 // Pass logo directly to commitPlacement (can't rely on state
                 // because setPendingLogo is async — state not updated yet).
@@ -407,7 +440,9 @@ export function Uniform3DConfigurator({
                 const next: LogoPlacement = {
                   ...currentPlacement,
                   widthCm: w,
-                  heightCm: parseFloat((w / 2.5).toFixed(1)),
+                  heightCm: parseFloat(
+                    (w / (currentPlacement.widthCm / currentPlacement.heightCm)).toFixed(1),
+                  ),
                 };
                 addOrUpdatePlacement(next);
               }}

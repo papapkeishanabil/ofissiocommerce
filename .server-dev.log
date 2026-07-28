@@ -4,80 +4,11 @@
 
    ▲ Next.js 15.5.4
    - Local:        http://localhost:8000
-   - Network:      http://192.168.1.54:8000
+   - Network:      http://172.20.16.1:8000
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 3.2s
- ○ Compiling /product/[slug] ...
- ✓ Compiled /product/[slug] in 5.2s (2017 modules)
- GET /product/kemeja-kantor-kk-006 200 in 8412ms
- GET /product/kemeja-kantor-kk-006 200 in 483ms
- ○ Compiling / ...
- ✓ Compiled / in 25s (2040 modules)
- GET / 200 in 32001ms
- ✓ Compiled in 7.3s (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 574ms
- GET /product/kemeja-kantor-kk-006 200 in 1403ms
- GET /product/kemeja-kantor-kk-006 200 in 3188ms
- ✓ Compiled in 3s (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 396ms
- ✓ Compiled in 824ms (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 209ms
- ✓ Compiled in 983ms (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 275ms
- ✓ Compiled in 866ms (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 137ms
- ✓ Compiled in 1086ms (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 162ms
- GET /product/kemeja-kantor-kk-006 200 in 1287ms
- GET /product/kemeja-kantor-kk-006 200 in 1829ms
- ✓ Compiled in 1204ms (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 226ms
- GET /product/kemeja-kantor-kk-006 200 in 1500ms
- GET /product/kemeja-kantor-kk-006 200 in 569ms
- GET /product/kemeja-kantor-kk-006 200 in 797ms
- ✓ Compiled in 1367ms (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 229ms
- GET /product/kemeja-kantor-kk-006 200 in 856ms
- GET /product/kemeja-kantor-kk-006 200 in 1848ms
- ✓ Compiled in 1352ms (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 195ms
- ✓ Compiled in 1293ms (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 169ms
- GET /product/kemeja-kantor-kk-006 200 in 1644ms
- ✓ Compiled in 2s (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 201ms
- ✓ Compiled in 5.4s (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 325ms
- GET /product/kemeja-kantor-kk-006 200 in 1016ms
- GET /product/kemeja-kantor-kk-006 200 in 1072ms
- GET /product/kemeja-kantor-kk-006 200 in 400ms
- ✓ Compiled in 9.9s (2031 modules)
- GET /product/kemeja-kantor-kk-006 200 in 1699ms
- GET /product/kemeja-kantor-kk-006 200 in 1695ms
- GET /product/kemeja-kantor-kk-006 200 in 1267ms
- GET /product/kemeja-kantor-kk-006 200 in 2433ms
+ ✓ Ready in 6.4s
  ○ Compiling /catalog ...
- ✓ Compiled /catalog in 2.8s (2036 modules)
- GET /catalog?industri=Corporate 200 in 3321ms
- GET /product/kemeja-kantor-kk-006 200 in 167ms
- ✓ Compiled in 10.8s (2050 modules)
- GET /product/kemeja-kantor-kk-006 200 in 1313ms
- GET /product/kemeja-kantor-kk-006 200 in 215ms
- ✓ Compiled in 760ms (2050 modules)
- GET /product/kemeja-kantor-kk-006 200 in 317ms
- GET /product/kemeja-kantor-kk-006 200 in 317ms
- GET /product/kemeja-kantor-kk-006 200 in 1191ms
- ✓ Compiled in 29.7s (2050 modules)
- GET /product/kemeja-kantor-kk-006 200 in 2409ms
- GET /product/kemeja-kantor-kk-006 200 in 337ms
- GET /product/kemeja-kantor-kk-006 200 in 1407ms
- ○ Compiling / ...
- ✓ Compiled / in 2.2s (1128 modules)
- GET /product/kemeja-kantor-kk-006 200 in 1553ms
- GET /product/kemeja-kantor-kk-006 200 in 1570ms
- GET / 200 in 4050ms
- GET /product/kemeja-kantor-kk-006 200 in 538ms
- GET /catalog?industri=Corporate 200 in 118ms
- GET /product/kemeja-kantor-kk-006 200 in 90ms
+ ✓ Compiled /catalog in 13.1s (815 modules)
+ GET /catalog 200 in 17005ms

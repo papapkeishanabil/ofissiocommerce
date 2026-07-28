@@ -5,8 +5,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { Product } from "@/types/product";
 import { formatIDR } from "@/types/product";
+import type { OfissioProduct } from "@/features/products/product.types";
 import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
 import { getModel3DForProduct } from "@/data/uniform-3d";
@@ -34,6 +34,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { ProductImagePlaceholder } from "@/components/catalog/ProductImagePlaceholder";
 import { SmartFloatingPreview } from "@/features/product-preview/components/SmartFloatingPreview";
 import { ProductPreviewModal } from "@/features/product-preview/components/ProductPreviewModal";
+
 import { useFloatingPreviewState } from "@/features/product-preview/hooks/useFloatingPreviewState";
 import { useProductHeroVisibility } from "@/features/product-preview/hooks/useProductHeroVisibility";
 import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
@@ -56,7 +57,7 @@ const Uniform3DConfigurator = dynamic(
 );
 
 interface ProductDetailProps {
-  product: Product;
+  product: OfissioProduct;
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -92,6 +93,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
     useState<import("@/types/uniform-3d").Uniform3DConfig | null>(null);
   const [show3D, setShow3D] = useState(false);
   const [showFloatingPreviewModal, setShowFloatingPreviewModal] = useState(false);
+
   const heroRef = useRef<HTMLDivElement>(null);
   const desktopPreviewButtonRef = useRef<HTMLButtonElement>(null);
   const mobilePreviewButtonRef = useRef<HTMLButtonElement>(null);
@@ -103,9 +105,31 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const authModalOpen = useUIStore((s) => s.authModalOpen);
   const cartDrawerOpen = useUIStore((s) => s.cartDrawerOpen);
   const product3DModel = useMemo(
-    () => getModel3DForProduct(product.id),
-    [product.id],
+    () => {
+      if (!product.model_3d) return undefined;
+      const registered = getModel3DForProduct(product.id);
+      return {
+        productId: product.id,
+        model3dId: product.model_3d.id,
+        glbUrl: product.model_3d.url,
+        photo360: registered?.photo360 ?? null,
+        depth3D: registered?.depth3D ?? null,
+        depth3DDual: registered?.depth3DDual ?? null,
+        depth3DQuad: registered?.depth3DQuad ?? null,
+        fallbackColor: registered?.fallbackColor ?? product.accentColor,
+      };
+    },
+    [product],
   );
+
+  useEffect(() => {
+    if (!show3D) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShow3D(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [show3D]);
   const has3DSupport = !!product3DModel;
 
   // Start loading the heavy configurator and GLB while the customer reads the
@@ -447,6 +471,14 @@ export function ProductDetail({ product }: ProductDetailProps) {
                     <span className="text-[10px] font-semibold text-brand-700">Buka</span>
                   </span>
                 </button>
+
+                {product.model_3d && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 rounded-lg bg-slate-50 px-3 py-2 text-[10px] text-ink-muted">
+                    <span>Model: <strong className="text-ink">{product.model_3d.filename}</strong></span>
+                    <span>Versi: <strong className="text-ink">{product.model_3d.version}</strong></span>
+                    <span>Sumber: <strong className="capitalize text-ink">{product.model_3d.source}</strong></span>
+                  </div>
+                )}
 
                 {uniform3DConfig && uniform3DConfig.placements.length > 0 && (
                   <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-[11px]">

@@ -6,7 +6,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import type { Product } from "@/types/product";
 import {
   type CartLineItem,
   emptySizeMatrix,
@@ -14,6 +13,9 @@ import {
   sumSizeMatrix,
 } from "@/types/cart";
 import type { SizeMatrix } from "@/types/industry";
+import { validateProductForCart } from "@/features/products/product.validation";
+import type { OfissioProduct } from "@/features/products/product.types";
+import { mapOfissioProductToCartItem } from "@/features/products/product.mapper";
 
 interface CartState {
   items: CartLineItem[];
@@ -21,7 +23,7 @@ interface CartState {
   /** Marks store as hydrated after rehydration (avoids SSR mismatch). */
   setHydrated: () => void;
   add: (input: {
-    product: Product;
+    product: OfissioProduct;
     color: string;
     sizes: SizeMatrix;
     customization?: string | null;
@@ -44,6 +46,8 @@ export const useCartStore = create<CartState>()(
       setHydrated: () => set({ hydrated: true }),
 
       add: ({ product, color, sizes, customization = null, uniform3DConfig = null }) => {
+        const validation = validateProductForCart(product);
+        if (!validation.ok) return { ok: false, reason: validation.reason };
         const totalQty = sumSizeMatrix(sizes);
         if (totalQty <= 0) {
           return { ok: false, reason: "Quantitas belum diisi." };
@@ -76,6 +80,9 @@ export const useCartStore = create<CartState>()(
             totalQty: mergedQty,
             estimatedPrice: cur.unitPrice * mergedQty,
             customization: customization ?? cur.customization,
+            uniform3DConfig: uniform3DConfig ?? cur.uniform3DConfig,
+            embroideryPlacements:
+              uniform3DConfig?.placements ?? cur.embroideryPlacements,
           };
           set({ items: next });
           return { ok: true, lineId: id };
@@ -94,6 +101,8 @@ export const useCartStore = create<CartState>()(
           estimatedPrice,
           customization,
           uniform3DConfig: uniform3DConfig ?? undefined,
+          embroideryPlacements: uniform3DConfig?.placements,
+          ...mapOfissioProductToCartItem(product),
         };
         set({ items: [...existing, line] });
         return { ok: true, lineId: id };
