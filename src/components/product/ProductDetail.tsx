@@ -302,7 +302,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
         {/* Right: configurator (sticky) */}
         <div className="space-y-4">
-          <div className="rounded-2xl border border-line bg-surface p-5 lg:sticky lg:top-20">
+          <div className="rounded-2xl border border-line bg-surface p-5">
             {/* Title block */}
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -543,13 +543,14 @@ export function ProductDetail({ product }: ProductDetailProps) {
                 </p>
               )}
             </div>
-          </div>
 
-          {/* Trust row */}
-          <div className="grid grid-cols-3 gap-2 text-center text-[11px] text-ink-muted">
-            <TrustItem icon={<Truck className="h-4 w-4" />} text="Tracking produksi & kirim" />
-            <TrustItem icon={<Shirt className="h-4 w-4" />} text="Bordir logo kustom" />
-            <TrustItem icon={<Layers className="h-4 w-4" />} text="Size matrix fleksibel" />
+            {/* Kept inside the purchase card so it never slides underneath
+                the CTA when the product workspace scrolls. */}
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-4 text-center text-[11px] text-ink-muted">
+              <TrustItem icon={<Truck className="h-4 w-4" />} text="Tracking produksi & kirim" />
+              <TrustItem icon={<Shirt className="h-4 w-4" />} text="Bordir logo kustom" />
+              <TrustItem icon={<Layers className="h-4 w-4" />} text="Size matrix fleksibel" />
+            </div>
           </div>
         </div>
       </div>

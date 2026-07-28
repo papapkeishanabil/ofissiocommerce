@@ -47,7 +47,7 @@ export function SmartFloatingPreview({
       <aside
         aria-label="Preview produk ringkas"
         className={cn(
-          "fixed bottom-6 z-40 hidden w-56 overflow-hidden rounded-2xl border border-line bg-surface shadow-soft-lg transition duration-200 ease-out lg:block lg:right-[min(32vw,440px)]",
+          "fixed top-16 z-40 hidden w-56 overflow-hidden rounded-2xl border border-line bg-surface shadow-soft-lg transition duration-200 ease-out lg:block lg:right-4",
           motionClass,
         )}
       >
