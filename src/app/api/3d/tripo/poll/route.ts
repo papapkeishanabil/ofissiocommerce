@@ -1,19 +1,34 @@
 // src/app/api/3d/tripo/poll/route.ts
+
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
 import { pollTripoTask } from "@/lib/tripo/tripo-service";
+import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
+import { safeErrorResponse } from "@/lib/security/safe-error-response";
+import { parseQueryParams } from "@/lib/security/validate-input";
 
 export const runtime = "nodejs";
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const taskId = url.searchParams.get("taskId");
-  if (!taskId) {
-    return NextResponse.json({ ok: false, reason: "taskId wajib diisi" }, { status: 400 });
-  }
+const pollQuerySchema = z.object({
+  taskId: z.string().trim().min(1).max(200),
+});
 
-  const result = await pollTripoTask(taskId);
-  if (!result.ok) {
-    return NextResponse.json({ ok: false, reason: result.reason }, { status: 502 });
+export async function GET(req: Request) {
+  try {
+    rateLimitOrThrow({
+      key: createRateLimitKey(req, "3d.tripo.poll"),
+      limit: 60,
+      windowMs: 60_000,
+    });
+    const { taskId } = parseQueryParams(pollQuerySchema, req);
+
+    const result = await pollTripoTask(taskId);
+    if (!result.ok) {
+      return NextResponse.json({ ok: false, reason: result.reason }, { status: 502 });
+    }
+    return NextResponse.json(result);
+  } catch (error) {
+    return safeErrorResponse(error, "Status task 3D belum tersedia.", 400);
   }
-  return NextResponse.json(result);
 }

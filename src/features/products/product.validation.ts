@@ -2,11 +2,26 @@ import type { OfissioProduct } from "./product.types";
 export type ProductValidation = { ok: true } | { ok: false; reason: string };
 export function validateProduct3DModel(product: Pick<OfissioProduct, "model_3d" | "has_3d_model" | "status">): ProductValidation {
   const model = product.model_3d;
-  if (!product.has_3d_model || !model?.id || !model.url || !model.version || !model.source || !model.is_required || model.file_type !== "glb" || !model.url.endsWith(".glb") || !model.filename.endsWith(".glb")) return { ok: false, reason: "Model GLB produk tidak valid." };
+  if (
+    !product.has_3d_model ||
+    !model?.id ||
+    !model.url ||
+    !model.version ||
+    !model.source ||
+    !model.filename ||
+    !model.is_required ||
+    model.file_type !== "glb" ||
+    !model.url.toLowerCase().endsWith(".glb") ||
+    !model.filename.toLowerCase().endsWith(".glb")
+  ) return { ok: false, reason: "Model GLB produk tidak valid." };
   return { ok: true };
 }
 export function validateProductForCatalog(product: OfissioProduct): ProductValidation {
   if (product.status !== "published") return { ok: false, reason: "Produk belum published." };
+  if (!product.sku.trim()) return { ok: false, reason: "SKU wajib." };
+  if (product.supports_embroidery && !product.embroidery_zones.length) {
+    return { ok: false, reason: "Zona bordir wajib." };
+  }
   return validateProduct3DModel(product);
 }
 export function validateProductForCart(product: OfissioProduct): ProductValidation {

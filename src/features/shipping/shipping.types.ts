@@ -14,6 +14,8 @@ export interface ShippingRate {
 }
 
 export interface ShippingRateRequest {
+  companyId?: string;
+  userId?: string;
   origin: {
     city: string;
     postalCode: string;
@@ -39,6 +41,8 @@ export type ShipmentStatus =
   | "returned";
 
 export interface CreateShipmentInput {
+  companyId?: string;
+  userId?: string;
   orderId: string;
   shippingRateId: string;
   recipient: {
@@ -53,6 +57,7 @@ export interface CreateShipmentInput {
 export interface ShipmentRecord {
   id: string;
   orderId: string;
+  companyId: string | null;
   shippingRateId: string;
   provider: ShippingProvider;
   trackingNumber: string | null;

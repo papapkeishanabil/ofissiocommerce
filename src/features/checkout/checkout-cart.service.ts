@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { productService } from "@/features/products/product.service";
+import { productServerService } from "@/features/products/product.server-service";
 import type { SizeMatrix } from "@/types/industry";
 
 import type {
@@ -27,13 +27,13 @@ function sumSizes(sizes: SizeMatrix) {
   return Object.values(sizes).reduce((total, quantity) => total + quantity, 0);
 }
 
-function validateAndPriceItem(
+async function validateAndPriceItem(
   input: SyncCheckoutCartInput["items"][number],
-): ValidatedCheckoutCartItem {
-  const product = productService.getProductById(input.productId);
+): Promise<ValidatedCheckoutCartItem> {
+  const product = await productServerService.getProductById(input.productId);
   if (!product) throw new Error("Produk tidak ditemukan.");
 
-  const validation = productService.validateProductForCart(product);
+  const validation = productServerService.validateProductForCart(product);
   if (!validation.ok) throw new Error(validation.reason);
   if (!product.model_3d) throw new Error("Model GLB produk tidak valid.");
   if (!product.available_colors.includes(input.selectedColor)) {
@@ -47,6 +47,9 @@ function validateAndPriceItem(
 
   return {
     productId: product.id,
+    source: product.source,
+    sourceId: product.source_id,
+    productSlug: product.slug,
     productName: product.name,
     sku: product.sku,
     selectedColor: input.selectedColor,
@@ -63,9 +66,9 @@ function validateAndPriceItem(
   };
 }
 
-export function syncCheckoutCart(input: SyncCheckoutCartInput): CheckoutCartRecord {
+export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<CheckoutCartRecord> {
   const parsed = syncCheckoutCartSchema.parse(input);
-  const items = parsed.items.map(validateAndPriceItem);
+  const items = await Promise.all(parsed.items.map(validateAndPriceItem));
   const now = new Date();
   const record: CheckoutCartRecord = {
     id: `cart_${randomUUID()}`,
@@ -84,11 +87,11 @@ export function syncCheckoutCart(input: SyncCheckoutCartInput): CheckoutCartReco
   return record;
 }
 
-export function getValidatedCheckoutCart(
+export async function getValidatedCheckoutCart(
   cartId: string,
   companyId: string,
   userId: string,
-): CheckoutCartRecord {
+): Promise<CheckoutCartRecord> {
   const stored = checkoutCarts.get(cartId);
   if (!stored) throw new Error("Cart checkout tidak ditemukan atau sudah kedaluwarsa.");
   if (stored.companyId !== companyId || stored.userId !== userId) {
@@ -101,14 +104,16 @@ export function getValidatedCheckoutCart(
 
   // Rebuild from canonical product data on every payment attempt. Stored
   // price/model snapshots are never the final source of truth.
-  const items = stored.items.map((item) =>
-    validateAndPriceItem({
-      productId: item.productId,
-      selectedColor: item.selectedColor,
-      sizeMatrix: item.sizeMatrix,
-      customization: item.customization,
-      embroideryPlacements: item.embroideryPlacements,
-    }),
+  const items = await Promise.all(
+    stored.items.map((item) =>
+      validateAndPriceItem({
+        productId: item.productId,
+        selectedColor: item.selectedColor,
+        sizeMatrix: item.sizeMatrix,
+        customization: item.customization,
+        embroideryPlacements: item.embroideryPlacements,
+      }),
+    ),
   );
   return {
     ...stored,

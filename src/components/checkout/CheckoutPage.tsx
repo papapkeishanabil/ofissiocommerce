@@ -16,7 +16,7 @@ import { useCartHydrated, useCartItems } from "@/hooks/use-cart";
 import { useCartStore } from "@/stores/cart-store";
 import { useUIStore } from "@/stores/ui-store";
 import { formatIDR } from "@/types/product";
-import type { Address } from "@/types/account";
+import type { Address, Company } from "@/types/account";
 import type { ShippingRate } from "@/features/shipping/shipping.types";
 import {
   CheckCircle2,
@@ -30,6 +30,19 @@ import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { CompanyProfileForm } from "@/components/company/CompanyProfileForm";
 import { CompanyAddressForm } from "@/components/company/CompanyAddressForm";
+
+/** Check only profile fields (excludes address). */
+function isProfileFieldsComplete(c: Company): boolean {
+  return (
+    !!c.companyName &&
+    !!c.industry &&
+    c.employeeCount > 0 &&
+    !!c.phone &&
+    !!c.picName &&
+    !!c.picEmail &&
+    !!c.picWhatsapp
+  );
+}
 
 export function CheckoutPage() {
   const router = useRouter();
@@ -48,6 +61,7 @@ export function CheckoutPage() {
   >(null);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [backendSubtotal, setBackendSubtotal] = useState<number | null>(null);
+  const [profileSaved, setProfileSaved] = useState(false);
 
   const clientSubtotal = useMemo(
     () => items.reduce((a, it) => a + it.estimatedPrice, 0),
@@ -117,8 +131,10 @@ export function CheckoutPage() {
     );
   }
 
-  // Step 2: complete profile.
-  if (!isProfileComplete || !session) {
+  // Step 2: complete profile (fields only, not address).
+  const profileFieldsComplete = session ? isProfileFieldsComplete(session.company) : false;
+
+  if (!session || !profileFieldsComplete) {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-8 lg:px-8">
         <header className="mb-5">
@@ -130,8 +146,21 @@ export function CheckoutPage() {
             Data ini dipakai untuk faktur, quotation, dan pengiriman.
           </p>
         </header>
+
+        {profileSaved && (
+          <div
+            role="status"
+            className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          >
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+            Profil perusahaan berhasil disimpan. Silakan lanjut ke alamat pengiriman.
+          </div>
+        )}
+
         <div className="rounded-2xl border border-line bg-surface p-5">
-          <CompanyProfileForm />
+          <CompanyProfileForm
+            onSuccess={() => setProfileSaved(true)}
+          />
         </div>
       </div>
     );
@@ -201,7 +230,7 @@ export function CheckoutPage() {
   }
 
   async function handleCheckShipping() {
-    if (!selectedAddress) return;
+    if (!selectedAddress || !session) return;
     setShippingLoading(true);
     setCheckoutMessage(null);
     try {
@@ -210,6 +239,8 @@ export function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          companyId: session.company.id,
+          userId: session.user.id,
           // The server replaces this placeholder with its configured origin.
           origin: { city: "Bandung", postalCode: "40115" },
           destination: {

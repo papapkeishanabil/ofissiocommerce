@@ -9,6 +9,8 @@ export const createPaymentSchema = z.object({
 
 export const paymentStatusQuerySchema = z.object({
   paymentId: z.string().trim().min(1).max(120),
+  companyId: z.string().trim().min(1).max(100).optional(),
+  userId: z.string().trim().min(1).max(100).optional(),
 });
 
 /**
@@ -27,4 +29,6 @@ export const paymentCallbackSchema = z
 export const mockPaymentCompletionSchema = z.object({
   paymentId: z.string().trim().min(1).max(120),
   status: z.enum(["paid", "failed"]),
+  companyId: z.string().trim().min(1).max(100).optional(),
+  userId: z.string().trim().min(1).max(100).optional(),
 });

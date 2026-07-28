@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-import { productService } from "@/features/products/product.service";
+import type { OfissioProduct } from "@/features/products/product.types";
 import { INDUSTRIES, CATEGORIES } from "@/types/industry";
 import { PackageOpen } from "lucide-react";
 
@@ -10,15 +10,16 @@ import { Badge } from "@/components/ui/Badge";
 import { ProductCard } from "./ProductCard";
 
 interface ProductCatalogProps {
+  products: OfissioProduct[];
   /** industry filter (from query string) */
   industry?: string;
   /** category filter */
   category?: string;
 }
 
-export function ProductCatalog({ industry, category }: ProductCatalogProps) {
-  const products = useMemo(() => {
-    let list = productService.getPublishedProducts();
+export function ProductCatalog({ products, industry, category }: ProductCatalogProps) {
+  const filteredProducts = useMemo(() => {
+    let list = products;
     if (industry) {
       list = list.filter((p) =>
         p.industries.includes(industry as (typeof INDUSTRIES)[number]),
@@ -28,7 +29,7 @@ export function ProductCatalog({ industry, category }: ProductCatalogProps) {
       list = list.filter((p) => p.category === category);
     }
     return list;
-  }, [industry, category]);
+  }, [products, industry, category]);
 
   const activeIndustry = INDUSTRIES.find((i) => i === industry);
   const activeCategory = CATEGORIES.find((c) => c === category);
@@ -60,7 +61,7 @@ export function ProductCatalog({ industry, category }: ProductCatalogProps) {
         )}
       </header>
 
-      {products.length === 0 ? (
+      {filteredProducts.length === 0 ? (
         <div className="grid place-items-center rounded-2xl border border-dashed border-line bg-surface px-6 py-16 text-center">
           <PackageOpen className="mb-3 h-12 w-12 text-slate-300" />
           <p className="text-sm font-semibold text-ink">
@@ -72,7 +73,7 @@ export function ProductCatalog({ industry, category }: ProductCatalogProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {products.map((p) => (
+          {filteredProducts.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
         </div>

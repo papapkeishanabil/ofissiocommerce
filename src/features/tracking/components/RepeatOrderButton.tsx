@@ -7,6 +7,7 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { productService } from "@/features/products/product.service";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
+import { useAuth } from "@/hooks/use-auth";
 import { useCartStore } from "@/stores/cart-store";
 
 interface RepeatOrderButtonProps {
@@ -18,6 +19,7 @@ export function RepeatOrderButton({ order, compact }: RepeatOrderButtonProps) {
   const router = useRouter();
   const addToCart = useCartStore((state) => state.add);
   const [message, setMessage] = useState<string | null>(null);
+  const { session } = useAuth();
 
   function handleRepeatOrder() {
     setMessage(null);
@@ -46,6 +48,20 @@ export function RepeatOrderButton({ order, compact }: RepeatOrderButtonProps) {
     }
 
     setMessage(`${copied} item berhasil dicopy ke cart.`);
+    if (session) {
+      void fetch("/api/security/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: session.company.id,
+          userId: session.user.id,
+          action: "repeat_order",
+          entityType: "tracking_order",
+          entityId: order.id,
+          metadata: { itemCount: copied },
+        }),
+      }).catch(() => undefined);
+    }
     router.push("/cart");
   }
 

@@ -64,6 +64,8 @@ export interface PaymentOrderRecord {
   shippingRateId: string | null;
   calculation: PaymentCalculation;
   status: PaymentOrderStatus;
+  woocommerceOrderId?: string | null;
+  orderSyncStatus?: "not_synced" | "synced" | "failed";
   createdAt: string;
   updatedAt: string;
 }

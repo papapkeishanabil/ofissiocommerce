@@ -12,6 +12,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { getOptionalServerEnv } from "@/lib/security/server-only-secret";
+
 const MESHY_BASE = "https://api.meshy.ai";
 
 /**
@@ -29,7 +31,7 @@ function publicFileToDataUri(publicPath: string): string {
 }
 
 export function isMeshyConfigured(): boolean {
-  return !!process.env.MESHY_API_KEY;
+  return !!getOptionalServerEnv("MESHY_API_KEY");
 }
 
 export interface MeshyCreateInput {
@@ -68,7 +70,7 @@ export interface MeshyTask {
 export async function createImageTo3D(
   input: MeshyCreateInput,
 ): Promise<{ ok: true; task: MeshyTask } | { ok: false; reason: string }> {
-  const apiKey = process.env.MESHY_API_KEY;
+  const apiKey = getOptionalServerEnv("MESHY_API_KEY");
   if (!apiKey) {
     // MOCK: return a synthetic task so the UI is demoable without key.
     return {
@@ -95,8 +97,7 @@ export async function createImageTo3D(
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      return { ok: false, reason: `Meshy error ${res.status}: ${text.slice(0, 200)}` };
+      return { ok: false, reason: `Meshy belum dapat memproses request (${res.status}).` };
     }
     const data = (await res.json()) as { result?: string; status?: string };
     return {
@@ -132,7 +133,7 @@ export interface MeshyMultiImageInput {
 export async function createMultiImageTo3D(
   input: MeshyMultiImageInput,
 ): Promise<{ ok: true; task: MeshyTask } | { ok: false; reason: string }> {
-  const apiKey = process.env.MESHY_API_KEY;
+  const apiKey = getOptionalServerEnv("MESHY_API_KEY");
   if (!apiKey) {
     return { ok: true, task: mockTask({ imageUrl: input.imageUrls[0] ?? "" }) };
   }
@@ -164,8 +165,7 @@ export async function createMultiImageTo3D(
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      return { ok: false, reason: `Meshy multi-image error ${res.status}: ${text.slice(0, 200)}` };
+      return { ok: false, reason: `Meshy multi-image belum dapat memproses request (${res.status}).` };
     }
     const data = (await res.json()) as { result?: string };
     return {
@@ -186,7 +186,7 @@ export async function createMultiImageTo3D(
 export async function pollImageTo3D(
   taskId: string,
 ): Promise<{ ok: true; task: MeshyTask } | { ok: false; reason: string }> {
-  const apiKey = process.env.MESHY_API_KEY;
+  const apiKey = getOptionalServerEnv("MESHY_API_KEY");
   if (!apiKey) {
     return { ok: true, task: mockPoll(taskId) };
   }

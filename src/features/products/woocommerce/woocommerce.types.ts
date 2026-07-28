@@ -1,0 +1,91 @@
+export interface WooCommerceMetaData {
+  id?: number;
+  key: string;
+  value: unknown;
+}
+
+export interface WooCommerceImage {
+  id: number;
+  src: string;
+  name?: string;
+  alt?: string;
+}
+
+export interface WooCommerceCategory {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface WooCommerceAttribute {
+  id?: number;
+  name: string;
+  slug?: string;
+  options?: string[];
+  visible?: boolean;
+  variation?: boolean;
+}
+
+export interface WooCommerceProduct {
+  id: number;
+  name: string;
+  slug: string;
+  sku: string;
+  status: "draft" | "pending" | "private" | "publish" | string;
+  description: string;
+  short_description: string;
+  price: string;
+  regular_price: string;
+  sale_price: string;
+  stock_status?: "instock" | "outofstock" | "onbackorder" | string;
+  images?: WooCommerceImage[];
+  categories?: WooCommerceCategory[];
+  attributes?: WooCommerceAttribute[];
+  meta_data?: WooCommerceMetaData[];
+}
+
+export interface WooCommerceListParams {
+  page?: number;
+  per_page?: number;
+  status?: "publish" | "draft" | "any";
+  slug?: string;
+  search?: string;
+  category?: string;
+}
+
+export interface WooCommerceOrderMeta {
+  key: string;
+  value: string;
+}
+
+export interface WooCommerceOrderLineItem {
+  product_id?: number;
+  name?: string;
+  sku?: string;
+  quantity: number;
+  subtotal?: string;
+  total?: string;
+  meta_data?: WooCommerceOrderMeta[];
+}
+
+export interface WooCommerceShippingLine {
+  method_title: string;
+  method_id: string;
+  total: string;
+}
+
+export interface WooCommerceCreateOrderInput {
+  status?: string;
+  currency?: "IDR";
+  set_paid?: boolean;
+  line_items: WooCommerceOrderLineItem[];
+  shipping_lines?: WooCommerceShippingLine[];
+  meta_data?: WooCommerceOrderMeta[];
+}
+
+export interface WooCommerceOrder {
+  id: number;
+  status: string;
+  number?: string;
+  meta_data?: WooCommerceMetaData[];
+}

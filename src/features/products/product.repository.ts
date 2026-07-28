@@ -1,9 +1,52 @@
-import { PRODUCT_MOCK_DATA } from "./product.mock-data";
-import { validateUniqueMockProducts } from "./product.validation";
+import type { OfissioProduct } from "./product.types";
+import { mockProductRepository } from "./repositories/mock-product.repository";
 
-const mockValidation = validateUniqueMockProducts(PRODUCT_MOCK_DATA);
-if (!mockValidation.ok) {
-  throw new Error(`Mock product tidak valid: ${mockValidation.reason}`);
+export interface ProductRepository {
+  getAllProducts(): OfissioProduct[];
+  getPublishedProducts(): OfissioProduct[];
+  getProductById(id: string): OfissioProduct | undefined;
+  getProductBySlug(slug: string): OfissioProduct | undefined;
+  getProductsByIndustry(industry: string): OfissioProduct[];
+  getProductsByCategory(category: string): OfissioProduct[];
+  searchProducts(query: string): OfissioProduct[];
 }
 
-export const productRepository = { all: () => PRODUCT_MOCK_DATA, byId: (id: string) => PRODUCT_MOCK_DATA.find((p) => p.id === id), bySlug: (slug: string) => PRODUCT_MOCK_DATA.find((p) => p.slug === slug) };
+export function createInMemoryProductRepository(
+  products: OfissioProduct[],
+): ProductRepository {
+  return {
+    getAllProducts: () => products,
+    getPublishedProducts: () =>
+      products.filter((product) => product.status === "published"),
+    getProductById: (id: string) =>
+      products.find((product) => product.id === id),
+    getProductBySlug: (slug: string) =>
+      products.find((product) => product.slug === slug),
+    getProductsByIndustry: (industry: string) =>
+      products.filter((product) => product.industries.includes(industry as never)),
+    getProductsByCategory: (category: string) =>
+      products.filter((product) => product.category === category),
+    searchProducts: (query: string) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return products;
+      return products.filter((product) =>
+        [
+          product.name,
+          product.sku,
+          product.category,
+          product.material,
+          product.short_description,
+          ...product.industries,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      );
+    },
+  };
+}
+
+// Backward-compatible default repository. PRODUCT_SOURCE switching is handled
+// by product.server-service for server-side WooCommerce access; client-side
+// code keeps this safe mock repository.
+export const productRepository = mockProductRepository;

@@ -50,10 +50,11 @@ export function CustomerDashboard() {
   useEffect(() => {
     if (!session) return;
     const controller = new AbortController();
-    const params = new URLSearchParams({
-      companyId: session.company.id,
-      companyName: session.company.companyName,
-    });
+      const params = new URLSearchParams({
+        companyId: session.company.id,
+        userId: session.user.id,
+        companyName: session.company.companyName,
+      });
 
     async function loadTrackingOrders() {
       try {

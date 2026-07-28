@@ -17,6 +17,9 @@ export interface SyncCheckoutCartInput {
 
 export interface ValidatedCheckoutCartItem {
   productId: string;
+  source: "mock" | "woocommerce";
+  sourceId: string;
+  productSlug: string;
   productName: string;
   sku: string;
   selectedColor: string;

@@ -10,10 +10,12 @@
 import { readFileSync } from "node:fs";
 import { resolve, basename } from "node:path";
 
+import { getOptionalServerEnv } from "@/lib/security/server-only-secret";
+
 const TRIPO_BASE = "https://openapi.tripo3d.ai/v3";
 
 export function isTripoConfigured(): boolean {
-  return !!process.env.TRIPO_API_KEY;
+  return !!getOptionalServerEnv("TRIPO_API_KEY");
 }
 
 export interface TripoTask {
@@ -26,7 +28,7 @@ export interface TripoTask {
 
 /** Step 1: Upload a local /public image file to Tripo, get image_token + ext. */
 async function uploadFile(publicPath: string): Promise<{ ok: true; token: string; ext: string } | { ok: false; reason: string }> {
-  const apiKey = process.env.TRIPO_API_KEY!;
+  const apiKey = getOptionalServerEnv("TRIPO_API_KEY");
   const fsPath = resolve(process.cwd(), "public", publicPath.replace(/^\//, ""));
   const fileBuffer = readFileSync(fsPath);
   const fileName = basename(fsPath);
@@ -43,8 +45,7 @@ async function uploadFile(publicPath: string): Promise<{ ok: true; token: string
       body: formData,
     });
     if (!res.ok) {
-      const text = await res.text();
-      return { ok: false, reason: `Tripo upload error ${res.status}: ${text.slice(0, 200)}` };
+      return { ok: false, reason: `Tripo upload belum dapat diproses (${res.status}).` };
     }
     const data = (await res.json()) as { code: number; data?: { image_token?: string; file_token?: string } };
     const token = data.data?.image_token ?? data.data?.file_token;
@@ -61,7 +62,7 @@ async function uploadFile(publicPath: string): Promise<{ ok: true; token: string
 export async function createTripoTask(
   publicImagePath: string,
 ): Promise<{ ok: true; task: TripoTask } | { ok: false; reason: string }> {
-  const apiKey = process.env.TRIPO_API_KEY;
+  const apiKey = getOptionalServerEnv("TRIPO_API_KEY");
   if (!apiKey) {
     return { ok: false, reason: "TRIPO_API_KEY belum dikonfigurasi." };
   }
@@ -87,8 +88,7 @@ export async function createTripoTask(
       }),
     });
     if (!res.ok) {
-      const text = await res.text();
-      return { ok: false, reason: `Tripo generation error ${res.status}: ${text.slice(0, 200)}` };
+      return { ok: false, reason: `Tripo generation belum dapat diproses (${res.status}).` };
     }
     const data = (await res.json()) as { code: number; data?: { task_id?: string } };
     const taskId = data.data?.task_id;
@@ -105,7 +105,7 @@ export async function createTripoTask(
 export async function pollTripoTask(
   taskId: string,
 ): Promise<{ ok: true; task: TripoTask } | { ok: false; reason: string }> {
-  const apiKey = process.env.TRIPO_API_KEY;
+  const apiKey = getOptionalServerEnv("TRIPO_API_KEY");
   if (!apiKey) {
     return { ok: false, reason: "TRIPO_API_KEY belum dikonfigurasi." };
   }

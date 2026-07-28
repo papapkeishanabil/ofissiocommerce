@@ -10,6 +10,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { useUIStore } from "@/stores/ui-store";
 import { createQuotation } from "@/lib/commerce/order-service";
 import { formatIDR } from "@/types/product";
+import type { Quotation } from "@/types/order";
 import { FileText, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -26,6 +27,7 @@ export function RequestQuotationPage() {
 
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
   const subtotal = useMemo(
     () => items.reduce((a, it) => a + it.estimatedPrice, 0),
@@ -75,18 +77,69 @@ export function RequestQuotationPage() {
     );
   }
 
-  function handleSubmit() {
-    if (!session) return;
+  async function handleSubmit() {
+    if (!session || submitting) return;
     setSubmitting(true);
-    const q = createQuotation({
-      companyId: session.company.id,
-      userId: session.user.id,
-      items,
-      notes: notes.trim() || null,
-    });
-    clearCart();
-    setSubmitting(false);
-    router.push(`/quotes/${q.id}?new=1`);
+    setSubmitMessage(null);
+    try {
+      const q = createQuotation({
+        companyId: session.company.id,
+        userId: session.user.id,
+        items,
+        notes: notes.trim() || null,
+      });
+      const notification = await notifyQuotationByEmail(q);
+      window.sessionStorage.setItem(
+        quoteNotificationKey(q.id),
+        JSON.stringify(notification),
+      );
+      clearCart();
+      router.push(`/quotes/${q.id}?new=1`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function notifyQuotationByEmail(quotation: Quotation) {
+    try {
+      const response = await fetch("/api/quotation/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: session!.company.id,
+          userId: session!.user.id,
+          companyName: session!.company.companyName,
+          picName: session!.company.picName || session!.user.fullName,
+          picEmail: session!.company.picEmail || session!.user.email,
+          quotation: {
+            id: quotation.id,
+            code: quotation.code,
+            notes: quotation.notes,
+            items: quotation.items,
+          },
+        }),
+      });
+      const result = (await response.json()) as {
+        ok: boolean;
+        notification?: QuoteEmailNotification;
+        message?: string;
+      };
+      if (!response.ok || !result.notification) {
+        throw new Error(result.message);
+      }
+      return result.notification;
+    } catch {
+      setSubmitMessage(
+        "Quotation tercatat, tetapi notifikasi email belum dapat diproses.",
+      );
+      return {
+        status: "failed" as const,
+        recipientEmail: session!.company.picEmail || session!.user.email,
+        provider: "mock",
+        message:
+          "Request quotation tercatat, tetapi notifikasi email belum dapat diproses.",
+      };
+    }
   }
 
   return (
@@ -160,15 +213,22 @@ export function RequestQuotationPage() {
             <h2 className="text-sm font-bold text-ink">Konfirmasi</h2>
             <p className="mt-2 text-xs text-ink-muted">
               Setelah dikirim, quotation berstatus <strong>submitted</strong>.
-              Anda akan menerima notifikasi via email/WhatsApp PIC.
+              Notifikasi email dikirim jika provider email server sudah
+              dikonfigurasi.
             </p>
             <Button
               className="mt-4 w-full"
-              onClick={handleSubmit}
+              onClick={() => void handleSubmit()}
               disabled={submitting}
+              aria-busy={submitting}
             >
-              {submitting ? "Mengirim..." : "Kirim Request Quotation"}
+              {submitting ? "Memproses..." : "Kirim Request Quotation"}
             </Button>
+            {submitMessage && (
+              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800">
+                {submitMessage}
+              </p>
+            )}
             <ButtonLink href="/cart" variant="ghost" className="mt-2 w-full">
               Kembali ke keranjang
             </ButtonLink>
@@ -177,4 +237,15 @@ export function RequestQuotationPage() {
       </div>
     </div>
   );
+}
+
+interface QuoteEmailNotification {
+  status: "sent" | "mock" | "failed";
+  recipientEmail: string;
+  provider: string;
+  message: string;
+}
+
+function quoteNotificationKey(quotationId: string) {
+  return `ofissio-quote-notification:${quotationId}`;
 }

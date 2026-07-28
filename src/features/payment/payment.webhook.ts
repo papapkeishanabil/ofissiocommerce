@@ -1,6 +1,7 @@
 import "server-only";
 
 import { ipaymuProvider } from "./providers/ipaymu.provider";
+import { syncPaymentStatusToWooCommerce } from "@/features/commerce/commerce.service";
 import { upsertTrackingFromPaymentOrder } from "@/features/tracking/tracking-payment.integration";
 import {
   findPaymentByReference,
@@ -40,7 +41,11 @@ export async function processIpaymuCallback(
   const status = ipaymuProvider.mapProviderStatusToInternalStatus(
     callback.providerStatus,
   );
-  const updatedPayment = updatePaymentStatus(payment.id, status, parsed);
+  const updatedPayment = updatePaymentStatus(
+    payment.id,
+    status,
+    safeCallbackSnapshot(parsed),
+  );
   if (status === "paid") {
     const updatedOrder = updateOrderAfterPayment(
       payment.orderId,
@@ -49,10 +54,27 @@ export async function processIpaymuCallback(
     const order = updatedOrder ?? findPaymentOrder(payment.orderId);
     if (updatedPayment && order) {
       upsertTrackingFromPaymentOrder({ payment: updatedPayment, order });
+      void syncPaymentStatusToWooCommerce({
+        payment: updatedPayment,
+        order,
+      });
     }
   } else if (status === "failed" || status === "expired") {
-    updateOrderAfterPayment(payment.orderId, "payment_failed");
+    const order = updateOrderAfterPayment(payment.orderId, "payment_failed");
+    void syncPaymentStatusToWooCommerce({
+      payment: updatedPayment,
+      order,
+    });
   }
   markPaymentEventProcessed(eventId);
   return { paymentId: payment.id, idempotent: false };
+}
+
+function safeCallbackSnapshot(payload: Record<string, unknown>) {
+  return {
+    reference_id: payload.reference_id,
+    amount: payload.amount,
+    status: payload.status,
+    transaction_id: payload.transaction_id,
+  };
 }

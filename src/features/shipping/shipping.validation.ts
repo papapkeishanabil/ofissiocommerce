@@ -6,6 +6,8 @@ const locationSchema = z.object({
 });
 
 export const shippingRateRequestSchema = z.object({
+  companyId: z.string().trim().min(1).max(100).optional(),
+  userId: z.string().trim().min(1).max(100).optional(),
   origin: locationSchema,
   destination: locationSchema,
   items: z
@@ -21,6 +23,8 @@ export const shippingRateRequestSchema = z.object({
 });
 
 export const createShipmentSchema = z.object({
+  companyId: z.string().trim().min(1).max(100).optional(),
+  userId: z.string().trim().min(1).max(100).optional(),
   orderId: z.string().trim().min(1).max(120),
   shippingRateId: z.string().trim().min(1).max(120),
   recipient: z.object({
@@ -34,4 +38,6 @@ export const createShipmentSchema = z.object({
 
 export const trackingQuerySchema = z.object({
   shipmentId: z.string().trim().min(1).max(120),
+  companyId: z.string().trim().min(1).max(100).optional(),
+  userId: z.string().trim().min(1).max(100).optional(),
 });

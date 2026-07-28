@@ -1,5 +1,10 @@
 import "server-only";
 
+import {
+  assertNoPublicSecretEnv,
+  getOptionalServerEnv,
+} from "@/lib/security/server-only-secret";
+
 import type { PaymentProvider } from "./payment.types";
 
 export interface PaymentRuntimeConfig {
@@ -17,15 +22,20 @@ export interface PaymentRuntimeConfig {
 }
 
 export function getPaymentRuntimeConfig(): PaymentRuntimeConfig {
+  assertNoPublicSecretEnv([
+    "NEXT_PUBLIC_IPAYMU_API_KEY",
+    "NEXT_PUBLIC_IPAYMU_SECRET",
+    "NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET",
+  ]);
   const requestedProvider: PaymentProvider =
-    process.env.PAYMENT_PROVIDER === "ipaymu" ? "ipaymu" : "mock";
+    getOptionalServerEnv("PAYMENT_PROVIDER") === "ipaymu" ? "ipaymu" : "mock";
   const ipaymu = {
-    va: process.env.IPAYMU_VA?.trim() ?? "",
-    apiKey: process.env.IPAYMU_API_KEY?.trim() ?? "",
-    baseUrl: process.env.IPAYMU_BASE_URL?.trim() ?? "",
-    callbackUrl: process.env.IPAYMU_CALLBACK_URL?.trim() ?? "",
-    returnUrl: process.env.IPAYMU_RETURN_URL?.trim() ?? "",
-    cancelUrl: process.env.IPAYMU_CANCEL_URL?.trim() ?? "",
+    va: getOptionalServerEnv("IPAYMU_VA"),
+    apiKey: getOptionalServerEnv("IPAYMU_API_KEY"),
+    baseUrl: getOptionalServerEnv("IPAYMU_BASE_URL"),
+    callbackUrl: getOptionalServerEnv("IPAYMU_CALLBACK_URL"),
+    returnUrl: getOptionalServerEnv("IPAYMU_RETURN_URL"),
+    cancelUrl: getOptionalServerEnv("IPAYMU_CANCEL_URL"),
   };
   const isComplete = Object.values(ipaymu).every(Boolean);
 

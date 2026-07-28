@@ -78,6 +78,17 @@ export function updateOrderAfterPayment(
   return updated;
 }
 
+export function updatePaymentOrderSync(
+  orderId: string,
+  patch: Pick<PaymentOrderRecord, "woocommerceOrderId" | "orderSyncStatus">,
+) {
+  const order = state.orders.get(orderId);
+  if (!order) return undefined;
+  const updated = { ...order, ...patch, updatedAt: new Date().toISOString() };
+  state.orders.set(orderId, updated);
+  return updated;
+}
+
 export function hasProcessedPaymentEvent(eventId: string) {
   return state.processedEvents.has(eventId);
 }

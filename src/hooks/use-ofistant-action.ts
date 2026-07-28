@@ -13,7 +13,10 @@ import {
   type OfistantAction,
 } from "@/lib/ofistant/ofistant.actions";
 import { productService } from "@/features/products/product.service";
-import { getPrimaryActiveOrder } from "@/features/tracking/tracking.service";
+import {
+  getPrimaryActiveOrder,
+  getTrackingOrder,
+} from "@/features/tracking/tracking.service";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -140,11 +143,32 @@ export function useOfistantAction() {
         case "OPEN_ORDER_TRACKING": {
           const requestedId =
             action.payload?.orderId ?? action.payload?.order_id ?? null;
+          const scope = {
+            companyId: session?.company.id,
+            companyName: session?.company.companyName,
+          };
+          const requestedOrder = requestedId
+            ? getTrackingOrder(requestedId, scope)
+            : null;
           const fallbackOrder = getPrimaryActiveOrder({
             companyId: session?.company.id,
             companyName: session?.company.companyName,
           });
-          const targetOrderId = requestedId ?? fallbackOrder?.id ?? null;
+          const targetOrderId = requestedOrder?.id ?? fallbackOrder?.id ?? null;
+          if (session) {
+            void fetch("/api/security/audit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                companyId: session.company.id,
+                userId: session.user.id,
+                action: "ofistant_tracking_request",
+                entityType: "tracking_order",
+                entityId: targetOrderId,
+                metadata: { requestedId },
+              }),
+            }).catch(() => undefined);
+          }
           router.push(targetOrderId ? `/orders/${targetOrderId}` : "/dashboard");
           return { ok: true };
         }
@@ -171,8 +195,7 @@ export function useOfistantAction() {
     [
       router,
       isAuthed,
-      session?.company.companyName,
-      session?.company.id,
+      session,
       openAuth,
       showPostAddLegacy,
       executeAddToCart,

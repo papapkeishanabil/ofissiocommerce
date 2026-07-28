@@ -3,7 +3,12 @@ import type { EmbroideryZone, CameraPreset } from "@/types/uniform-3d";
 
 export type ProductStatus = "draft" | "published" | "archived";
 export type TransactionMode = "DIRECT_CHECKOUT" | "REQUEST_QUOTATION" | "HYBRID";
-export type ProductModelSource = "tripo3d" | "blender" | "manual" | "other";
+export type ProductModelSource =
+  | "tripo3d"
+  | "blender"
+  | "manual"
+  | "woocommerce"
+  | "other";
 
 export interface Product3DModel {
   id: string; url: string; filename: string; version: string;

@@ -54,6 +54,7 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
     const controller = new AbortController();
     const params = new URLSearchParams();
     if (session?.company.id) params.set("companyId", session.company.id);
+    if (session?.user.id) params.set("userId", session.user.id);
     if (session?.company.companyName) {
       params.set("companyName", session.company.companyName);
     }
@@ -81,7 +82,7 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
 
     void loadOrder();
     return () => controller.abort();
-  }, [hydrated, id, session?.company.companyName, session?.company.id]);
+  }, [hydrated, id, session?.company.companyName, session?.company.id, session?.user.id]);
 
   if (!hydrated || (!order && fetchingOrder)) {
     return (

@@ -12,6 +12,7 @@ import {
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { cacheClientTrackingOrders } from "@/features/tracking/tracking.service";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
+import { useAuth } from "@/hooks/use-auth";
 import { formatIDR } from "@/types/product";
 
 interface PaymentStatusView {
@@ -42,16 +43,59 @@ export function MockPaymentPage({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
+  const { session, hydrated } = useAuth();
+
+  const scopedQuery = useCallback(() => {
+    const params = new URLSearchParams({ paymentId });
+    if (session?.company.id) params.set("companyId", session.company.id);
+    if (session?.user.id) params.set("userId", session.user.id);
+    return params.toString();
+  }, [paymentId, session?.company.id, session?.user.id]);
+
+  const trackingScopeQuery = useCallback(() => {
+    const params = new URLSearchParams();
+    if (session?.company.id) params.set("companyId", session.company.id);
+    if (session?.user.id) params.set("userId", session.user.id);
+    if (session?.company.companyName) {
+      params.set("companyName", session.company.companyName);
+    }
+    return params.toString();
+  }, [
+    session?.company.companyName,
+    session?.company.id,
+    session?.user.id,
+  ]);
+
+  const cacheTrackingOrder = useCallback(
+    async (orderId: string) => {
+      try {
+        const response = await fetch(
+          `/api/tracking/orders/${encodeURIComponent(orderId)}?${trackingScopeQuery()}`,
+          { cache: "no-store" },
+        );
+        const result = (await response.json()) as {
+          ok: boolean;
+          order?: CustomerTrackingOrder;
+        };
+        if (!response.ok || !result.order) return;
+        cacheClientTrackingOrders([result.order]);
+        setTrackingOrderId(result.order.id);
+      } catch {
+        // Tracking remains available through dashboard API; cache is best effort.
+      }
+    },
+    [trackingScopeQuery],
+  );
 
   const loadStatus = useCallback(async () => {
-    if (!paymentId) {
+    if (!paymentId || !hydrated) {
       setMessage("Status pembayaran belum dapat diverifikasi.");
       setLoading(false);
       return;
     }
     try {
       const response = await fetch(
-        `/api/payment/status?paymentId=${encodeURIComponent(paymentId)}`,
+        `/api/payment/status?${scopedQuery()}`,
         { cache: "no-store" },
       );
       const result = (await response.json()) as {
@@ -72,11 +116,12 @@ export function MockPaymentPage({
     } finally {
       setLoading(false);
     }
-  }, [paymentId]);
+  }, [cacheTrackingOrder, hydrated, paymentId, scopedQuery]);
 
   useEffect(() => {
+    if (!hydrated) return;
     void loadStatus();
-  }, [loadStatus]);
+  }, [hydrated, loadStatus]);
 
   async function simulate(status: "paid" | "failed") {
     setSubmitting(true);
@@ -85,7 +130,12 @@ export function MockPaymentPage({
       const response = await fetch("/api/payment/mock/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId, status }),
+        body: JSON.stringify({
+          paymentId,
+          status,
+          companyId: session?.company.id,
+          userId: session?.user.id,
+        }),
       });
       const result = (await response.json()) as {
         ok: boolean;
@@ -112,24 +162,6 @@ export function MockPaymentPage({
       setMessage("Status pembayaran belum dapat diverifikasi.");
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function cacheTrackingOrder(orderId: string) {
-    try {
-      const response = await fetch(
-        `/api/tracking/orders/${encodeURIComponent(orderId)}`,
-        { cache: "no-store" },
-      );
-      const result = (await response.json()) as {
-        ok: boolean;
-        order?: CustomerTrackingOrder;
-      };
-      if (!response.ok || !result.order) return;
-      cacheClientTrackingOrders([result.order]);
-      setTrackingOrderId(result.order.id);
-    } catch {
-      // Tracking remains available through dashboard API; cache is best effort.
     }
   }
 

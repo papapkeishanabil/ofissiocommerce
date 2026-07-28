@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { productService } from "@/features/products/product.service";
+import { productServerService } from "@/features/products/product.server-service";
 
 import { manualShippingProvider } from "./providers/manual-shipping.provider";
 import { mockShippingProvider } from "./providers/mock-shipping.provider";
@@ -60,15 +60,17 @@ function enforceRateLimit(clientKey: string) {
   current.count += 1;
 }
 
-function getCanonicalWeight(request: ShippingRateRequest) {
+async function getCanonicalWeight(request: ShippingRateRequest) {
   const { placeholderWeightGram } = getShippingRuntimeConfig();
-  return request.items.reduce((total, item) => {
-    const product = productService.getProductById(item.productId);
+  let total = 0;
+  for (const item of request.items) {
+    const product = await productServerService.getProductById(item.productId);
     if (!product) throw new Error("Produk pengiriman tidak ditemukan.");
-    const validation = productService.validateProductForCart(product);
+    const validation = productServerService.validateProductForCart(product);
     if (!validation.ok) throw new Error(validation.reason);
-    return total + placeholderWeightGram * item.quantity;
-  }, 0);
+    total += placeholderWeightGram * item.quantity;
+  }
+  return total;
 }
 
 function provider(): ShippingProviderAdapter {
@@ -88,7 +90,7 @@ async function getRates(
     ...parsed,
     origin: config.defaultOrigin,
   };
-  const canonicalWeightGram = getCanonicalWeight(request);
+  const canonicalWeightGram = await getCanonicalWeight(request);
   const activeProvider = provider();
   const cacheKey = [
     activeProvider.name,
@@ -136,6 +138,7 @@ function createShipment(input: CreateShipmentInput): ShipmentRecord {
   const shipment: ShipmentRecord = {
     id: `shp_${randomUUID()}`,
     orderId: parsed.orderId,
+    companyId: parsed.companyId ?? null,
     shippingRateId: rate.id,
     provider: rate.provider,
     trackingNumber:

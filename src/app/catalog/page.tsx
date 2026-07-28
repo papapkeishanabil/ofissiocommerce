@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 
 import { ProductCatalog } from "@/components/catalog/ProductCatalog";
+import { productServerService } from "@/features/products/product.server-service";
 import { INDUSTRIES } from "@/types/industry";
 
 export const metadata: Metadata = {
@@ -24,6 +25,13 @@ export default async function Page({ searchParams }: PageProps) {
     industry && INDUSTRIES.includes(industry as (typeof INDUSTRIES)[number])
       ? industry
       : undefined;
+  const products = await productServerService.getPublishedProducts();
 
-  return <ProductCatalog industry={safeIndustry} category={category} />;
+  return (
+    <ProductCatalog
+      products={products}
+      industry={safeIndustry}
+      category={category}
+    />
+  );
 }

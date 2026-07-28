@@ -1,6 +1,7 @@
 // src/components/quote/QuotationConfirmation.tsx
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import type { Quotation } from "@/types/order";
@@ -18,8 +19,25 @@ interface QuotationConfirmationProps {
 export function QuotationConfirmation({ quotation }: QuotationConfirmationProps) {
   const sp = useSearchParams();
   const isNew = sp.get("new") === "1";
+  const [notification, setNotification] =
+    useState<QuoteEmailNotification | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(
+        quoteNotificationKey(quotation.id),
+      );
+      if (!raw) return;
+      setNotification(JSON.parse(raw) as QuoteEmailNotification);
+    } catch {
+      setNotification(null);
+    }
+  }, [quotation.id]);
 
   const subtotal = quotation.items.reduce((a, it) => a + it.estimatedPrice, 0);
+  const emailCopy = notification
+    ? notification.message
+    : "Tim Ofissio akan meninjau kebutuhan Anda dan menyiapkan penawaran harga resmi.";
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-10 lg:px-8">
@@ -29,17 +47,23 @@ export function QuotationConfirmation({ quotation }: QuotationConfirmationProps)
         </span>
 
         {isNew && (
-          <Badge tone="success" className="mt-4">
-            Berhasil dikirim
+          <Badge
+            tone={notification?.status === "failed" ? "amber" : "success"}
+            className="mt-4"
+          >
+            {notification?.status === "sent"
+              ? "Email terkirim"
+              : notification?.status === "failed"
+                ? "Email perlu dicek"
+                : "Request tercatat"}
           </Badge>
         )}
 
         <h1 className="mt-3 text-2xl font-bold text-ink">
-          Request quotation berhasil dikirim.
+          Request quotation berhasil dicatat.
         </h1>
         <p className="mt-2 text-sm text-ink-muted">
-          Tim Ofissio akan meninjau kebutuhan Anda dan mengirim penawaran harga
-          resmi melalui email PIC.
+          {emailCopy}
         </p>
 
         <div className="mt-6 rounded-xl border border-line bg-surface-muted p-4 text-left">
@@ -77,4 +101,15 @@ export function QuotationConfirmation({ quotation }: QuotationConfirmationProps)
       </div>
     </div>
   );
+}
+
+interface QuoteEmailNotification {
+  status: "sent" | "mock" | "failed";
+  recipientEmail: string;
+  provider: string;
+  message: string;
+}
+
+function quoteNotificationKey(quotationId: string) {
+  return `ofissio-quote-notification:${quotationId}`;
 }

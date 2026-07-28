@@ -6,6 +6,8 @@ export interface CartLineItem {
   /** stable id derived from productId + color (one line per product+color) */
   id: string;
   productId: string;
+  source?: "mock" | "woocommerce";
+  sourceId?: string;
   productSlug: string;
   productName: string;
   sku: string;

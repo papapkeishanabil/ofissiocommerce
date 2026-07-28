@@ -1,11 +1,11 @@
 import { productRepository } from "./product.repository";
 import { validateProduct3DModel, validateProductForCart, validateProductForCatalog } from "./product.validation";
 export { validateProduct3DModel, validateProductForCart, validateProductForCatalog };
-const visible = () => productRepository.all().filter((p) => validateProductForCatalog(p).ok);
+const visible = () => productRepository.getPublishedProducts().filter((p) => validateProductForCatalog(p).ok);
 export const productService = {
   getPublishedProducts: visible, getProductsWith3DModel: visible,
-  getProductById: (id: string) => productRepository.byId(id),
-  getProductBySlug: (slug: string) => { const p = productRepository.bySlug(slug); return p && validateProductForCatalog(p).ok ? p : undefined; },
+  getProductById: (id: string) => productRepository.getProductById(id),
+  getProductBySlug: (slug: string) => { const p = productRepository.getProductBySlug(slug); return p && validateProductForCatalog(p).ok ? p : undefined; },
   getProductsByIndustry: (industry: string) => visible().filter((p) => p.industries.includes(industry as never)),
   getProductsByCategory: (category: string) => visible().filter((p) => p.category === category),
   getRecommendedProducts: (industry?: string) => industry ? visible().filter((p) => p.industries.includes(industry as never)) : visible(),

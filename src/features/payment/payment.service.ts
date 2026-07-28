@@ -3,6 +3,10 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { getValidatedCheckoutCart } from "@/features/checkout/checkout-cart.service";
+import {
+  syncOrderToWooCommerce,
+  syncPaymentStatusToWooCommerce,
+} from "@/features/commerce/commerce.service";
 import { shippingService } from "@/features/shipping/shipping.service";
 import { upsertTrackingFromPaymentOrder } from "@/features/tracking/tracking-payment.integration";
 
@@ -12,6 +16,7 @@ import {
   findPaymentOrder,
   savePayment,
   updateOrderAfterPayment,
+  updatePaymentOrderSync,
   updatePaymentStatus,
 } from "./payment.store";
 import type {
@@ -38,7 +43,7 @@ export async function createPayment(
   input: CreatePaymentInput,
 ): Promise<CreatePaymentResult> {
   const parsed = createPaymentSchema.parse(input);
-  const cart = getValidatedCheckoutCart(
+  const cart = await getValidatedCheckoutCart(
     parsed.cartId,
     parsed.companyId,
     parsed.userId,
@@ -90,6 +95,8 @@ export async function createPayment(
     shippingRateId: parsed.shippingRateId,
     calculation,
     status: "waiting_payment",
+    woocommerceOrderId: null,
+    orderSyncStatus: "not_synced",
     createdAt: now,
     updatedAt: now,
   };
@@ -108,6 +115,13 @@ export async function createPayment(
     updatedAt: now,
   };
   savePayment(payment, order);
+  const sync = await syncOrderToWooCommerce({ order, payment });
+  if (sync.provider === "woocommerce" && !sync.skipped) {
+    updatePaymentOrderSync(order.id, {
+      woocommerceOrderId: sync.externalOrderId ?? null,
+      orderSyncStatus: sync.ok ? "synced" : "failed",
+    });
+  }
 
   return {
     paymentId,
@@ -125,6 +139,8 @@ export function getPaymentStatus(paymentId: string) {
   return {
     paymentId: payment.id,
     orderId: payment.orderId,
+    companyId: payment.companyId,
+    userId: order?.userId ?? null,
     provider: payment.provider,
     amount: payment.amount,
     currency: payment.currency,
@@ -164,5 +180,9 @@ export function completeMockPayment(
     status === "paid" && updated && order
       ? upsertTrackingFromPaymentOrder({ payment: updated, order }).tracking
       : null;
+  void syncPaymentStatusToWooCommerce({
+    payment: updated,
+    order,
+  });
   return { payment: updated!, idempotent: false, tracking };
 }

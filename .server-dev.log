@@ -8,13 +8,126 @@
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2s
- ○ Compiling /dashboard ...
- ✓ Compiled /dashboard in 5.8s (875 modules)
- GET /dashboard 200 in 6898ms
+ ✓ Ready in 2.7s
+ ○ Compiling /catalog ...
+
+
+Retrying 1/3...
+
+
+Retrying 1/3...
+
+
+Retrying 2/3...
+
+
+Retrying 2/3...
+
+
+Retrying 3/3...
+
+
+Retrying 3/3...
+[AggregateError: ] { code: 'EACCES' }
+ ⨯ Failed to download `Inter` from Google Fonts. Using fallback font instead.
+
+Failed to fetch `Inter` from Google Fonts.}
+[AggregateError: ] { code: 'EACCES' }
+ ⨯ Failed to download `Manrope` from Google Fonts. Using fallback font instead.
+
+Failed to fetch `Manrope` from Google Fonts.}
+ ✓ Compiled /catalog in 10.6s (887 modules)
+ GET /catalog 200 in 11474ms
+ GET /catalog 200 in 202ms
+ ○ Compiling /product/[slug] ...
+ ✓ Compiled /product/[slug] in 10.5s (2104 modules)
+ GET /product/kemeja-kantor-kk-006 200 in 13978ms
+ GET /product/kemeja-kantor-kk-006 200 in 473ms
+ ○ Compiling /api/checkout/cart ...
+ ✓ Compiled /api/checkout/cart in 1500ms (2116 modules)
+[audit] {
+  action: 'checkout_cart_synced',
+  entityType: 'checkout_cart',
+  entityId: 'cart_5dd104cc-06e9-4cf0-b8d7-624f197d22aa',
+  companyId: 'co_phase8_checkpoint'
+}
+ POST /api/checkout/cart 200 in 1777ms
+ ○ Compiling /api/payment/ipaymu/create ...
+ ✓ Compiled /api/payment/ipaymu/create in 1210ms (2128 modules)
+[audit] {
+  action: 'payment_create',
+  entityType: 'payment',
+  entityId: 'pay_a8a5d772-fde2-4de8-bb26-bd3a0d2d1999',
+  companyId: 'co_phase8_checkpoint'
+}
+ POST /api/payment/ipaymu/create 201 in 1337ms
+ ✓ Compiled /api/payment/mock/complete in 465ms (2130 modules)
+[audit] {
+  action: 'payment_mock_complete',
+  entityType: 'payment',
+  entityId: 'pay_a8a5d772-fde2-4de8-bb26-bd3a0d2d1999',
+  companyId: 'co_phase8_checkpoint'
+}
+ POST /api/payment/mock/complete 200 in 556ms
  ○ Compiling /api/tracking/orders ...
- ✓ Compiled /api/tracking/orders in 620ms (888 modules)
- GET /api/tracking/orders 200 in 782ms
- ○ Compiling /cart ...
- ✓ Compiled /cart in 1082ms (857 modules)
- GET /cart 200 in 1956ms
+ ✓ Compiled /api/tracking/orders in 506ms (2132 modules)
+[audit] {
+  action: 'tracking_orders_listed',
+  entityType: 'tracking_order',
+  entityId: null,
+  companyId: 'co_phase8_checkpoint'
+}
+ GET /api/tracking/orders?companyId=co_phase8_checkpoint&userId=usr_phase8_checkpoint&companyName=PT%20Phase%208%20Checkpoint 200 in 729ms
+ ✓ Compiled /api/tracking/orders/[id] in 466ms (2134 modules)
+[audit] {
+  action: 'tracking_order_opened',
+  entityType: 'tracking_order',
+  entityId: 'ord_4407bf85-2d5b-42bd-88a5-cf842db30ea9',
+  companyId: 'co_phase8_checkpoint'
+}
+ GET /api/tracking/orders/ord_4407bf85-2d5b-42bd-88a5-cf842db30ea9?companyId=co_phase8_checkpoint&userId=usr_phase8_checkpoint&companyName=PT%20Phase%208%20Checkpoint 200 in 1602ms
+ ○ Compiling / ...
+ ✓ Compiled / in 969ms (2156 modules)
+ GET / 200 in 1785ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 1294ms (2204 modules)
+ GET /dashboard 200 in 1811ms
+[audit] {
+  action: 'tracking_orders_listed',
+  entityType: 'tracking_order',
+  entityId: null,
+  companyId: 'co_phase8_checkpoint'
+}
+ GET /api/tracking/orders?companyId=co_phase8_checkpoint&userId=usr_phase8_checkpoint&companyName=PT+Phase+8+Checkpoint 200 in 55ms
+ ○ Compiling /orders/[id] ...
+ ✓ Compiled /orders/[id] in 3.9s (2293 modules)
+ ✓ Compiled in 1750ms (1021 modules)
+ GET /orders/ord_4407bf85-2d5b-42bd-88a5-cf842db30ea9 200 in 7110ms
+ GET / 200 in 373ms
+ GET /orders/ord_4407bf85-2d5b-42bd-88a5-cf842db30ea9 200 in 186ms
+[audit] {
+  action: 'tracking_order_opened',
+  entityType: 'tracking_order',
+  entityId: 'ord_4407bf85-2d5b-42bd-88a5-cf842db30ea9',
+  companyId: 'co_phase8_checkpoint'
+}
+ GET /api/tracking/orders/ord_4407bf85-2d5b-42bd-88a5-cf842db30ea9?companyId=co_phase8_checkpoint&userId=usr_phase8_checkpoint&companyName=PT+Phase+8+Checkpoint 200 in 87ms
+ GET / 200 in 414ms
+ GET /dashboard 200 in 172ms
+[audit] {
+  action: 'tracking_orders_listed',
+  entityType: 'tracking_order',
+  entityId: null,
+  companyId: 'co_phase8_checkpoint'
+}
+ GET /api/tracking/orders?companyId=co_phase8_checkpoint&userId=usr_phase8_checkpoint&companyName=PT+Phase+8+Checkpoint 200 in 39ms
+ GET /orders/ord_4407bf85-2d5b-42bd-88a5-cf842db30ea9 200 in 183ms
+[audit] {
+  action: 'tracking_order_opened',
+  entityType: 'tracking_order',
+  entityId: 'ord_4407bf85-2d5b-42bd-88a5-cf842db30ea9',
+  companyId: 'co_phase8_checkpoint'
+}
+ GET /api/tracking/orders/ord_4407bf85-2d5b-42bd-88a5-cf842db30ea9?companyId=co_phase8_checkpoint&userId=usr_phase8_checkpoint&companyName=PT+Phase+8+Checkpoint 200 in 45ms
+ GET /product/kemeja-kantor-kk-006 200 in 842ms
+ GET /product/kemeja-kantor-kk-006 200 in 758ms
