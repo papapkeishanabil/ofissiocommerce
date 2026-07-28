@@ -163,10 +163,17 @@ export function Uniform3DConfigurator({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(288px,360px)] xl:gap-6">
       {/* LEFT: 3D viewer + camera controls */}
-      <div className="space-y-3">
-        <div className="relative h-[520px] overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-soft-sm sm:h-[560px] lg:h-[620px]">
+      <div className="space-y-3 rounded-3xl border border-white/80 bg-white/90 p-3 shadow-soft-sm backdrop-blur sm:p-4">
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <p className="type-eyebrow text-brand-700">Kanvas desain</p>
+            <p className="mt-0.5 text-[11px] text-ink-muted">Putar model atau pilih sudut pandang untuk mengatur bordir.</p>
+          </div>
+          <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-bold text-brand-700">Live 3D</span>
+        </div>
+        <div className="relative h-[490px] overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-inner sm:h-[550px] lg:h-[600px]">
           {effectiveModel.depth3DQuad ? (
             <Depth3DViewer
               colorImageSrc={effectiveModel.depth3DQuad.front.colorImage}
@@ -320,7 +327,11 @@ export function Uniform3DConfigurator({
       </div>
 
       {/* RIGHT: configuration controls */}
-      <div className="space-y-4">
+      <div className="space-y-4 rounded-3xl border border-white/80 bg-white/95 p-4 shadow-soft-sm backdrop-blur lg:sticky lg:top-0">
+        <div className="border-b border-line pb-3">
+          <p className="type-eyebrow text-brand-700">Pengaturan bordir</p>
+          <p className="mt-1 text-xs text-ink-muted">Pilih area, unggah logo, lalu atur ukuran dan posisi.</p>
+        </div>
         {/* Color picker (synced with product detail) */}
         <div>
           <p className="type-eyebrow mb-2 text-ink-subtle">Warna seragam</p>

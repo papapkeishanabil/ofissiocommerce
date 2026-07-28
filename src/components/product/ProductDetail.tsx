@@ -578,29 +578,34 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
       {show3D && (
         <div
-          className="fixed inset-0 z-[70] flex flex-col bg-ink/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[70] flex flex-col bg-slate-100 lg:left-[400px]"
           role="dialog"
           aria-modal="true"
           aria-label="Konfigurator 3D bordir"
         >
-          <div className="flex items-center justify-between border-b border-line bg-surface px-4 py-3 lg:px-6">
-            <div>
-              <p className="type-display text-sm font-bold text-ink">
-                Preview 3D &amp; Bordir Logo
-              </p>
-              <p className="text-[11px] text-ink-muted">{product.name}</p>
+          <div className="flex items-center justify-between border-b border-brand-900/10 bg-surface px-4 py-3 shadow-soft-xs lg:px-7">
+            <div className="flex items-center gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand-700 text-xs font-black text-white shadow-sm shadow-brand-700/20">
+                3D
+              </div>
+              <div>
+                <p className="type-display text-[15px] font-bold text-ink">
+                  Studio Bordir
+                </p>
+                <p className="text-[11px] text-ink-muted">{product.name}</p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => setShow3D(false)}
               aria-label="Tutup konfigurator"
-              className="grid h-9 w-9 place-items-center rounded-lg text-ink-muted hover:bg-slate-100"
+              className="grid h-9 w-9 place-items-center rounded-xl border border-line text-ink-muted transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto bg-surface-muted p-4 lg:p-6">
-            <div className="mx-auto w-full max-w-6xl">
+          <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,_#eef4ff,_#f8fafc_42%,_#eef2f8)] p-3 sm:p-5 lg:p-7">
+            <div className="mx-auto w-full max-w-7xl">
               <Uniform3DConfigurator
                 product={product}
                 initialColor={color}

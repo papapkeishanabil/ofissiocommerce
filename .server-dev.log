@@ -46,3 +46,10 @@
  ✓ Compiled in 1293ms (2031 modules)
  GET /product/kemeja-kantor-kk-006 200 in 169ms
  GET /product/kemeja-kantor-kk-006 200 in 1644ms
+ ✓ Compiled in 2s (2031 modules)
+ GET /product/kemeja-kantor-kk-006 200 in 201ms
+ ✓ Compiled in 5.4s (2031 modules)
+ GET /product/kemeja-kantor-kk-006 200 in 325ms
+ GET /product/kemeja-kantor-kk-006 200 in 1016ms
+ GET /product/kemeja-kantor-kk-006 200 in 1072ms
+ GET /product/kemeja-kantor-kk-006 200 in 400ms
