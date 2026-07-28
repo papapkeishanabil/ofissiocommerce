@@ -1,0 +1,44 @@
+import type { SizeMatrix } from "@/types/industry";
+import type { LogoPlacement } from "@/types/uniform-3d";
+
+export interface CheckoutCartItemInput {
+  productId: string;
+  selectedColor: string;
+  sizeMatrix: SizeMatrix;
+  customization: string | null;
+  embroideryPlacements: LogoPlacement[];
+}
+
+export interface SyncCheckoutCartInput {
+  companyId: string;
+  userId: string;
+  items: CheckoutCartItemInput[];
+}
+
+export interface ValidatedCheckoutCartItem {
+  productId: string;
+  productName: string;
+  sku: string;
+  selectedColor: string;
+  sizeMatrix: SizeMatrix;
+  totalQty: number;
+  priceFrom: number;
+  moq: number;
+  fulfillmentType: string;
+  transactionMode: string;
+  model3dId: string;
+  model3dUrl: string;
+  customization: string | null;
+  embroideryPlacements: LogoPlacement[];
+}
+
+export interface CheckoutCartRecord {
+  id: string;
+  companyId: string;
+  userId: string;
+  items: ValidatedCheckoutCartItem[];
+  subtotal: number;
+  totalQty: number;
+  createdAt: string;
+  expiresAt: string;
+}

@@ -8,7 +8,7 @@
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 6.4s
+ ✓ Ready in 3.1s
  ○ Compiling /catalog ...
- ✓ Compiled /catalog in 13.1s (815 modules)
- GET /catalog 200 in 17005ms
+ ✓ Compiled /catalog in 8.9s (829 modules)
+ GET /catalog 200 in 11350ms

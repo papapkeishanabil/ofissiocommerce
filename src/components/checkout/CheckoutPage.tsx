@@ -1,14 +1,10 @@
 // src/components/checkout/CheckoutPage.tsx
-// Multi-step gated checkout (Phase 2):
+// Multi-step gated checkout with Phase 5 payment/shipping foundation:
 //   1. auth (handled by AuthModal via ui-store)
 //   2. company profile completion
 //   3. shipping address selection
 //   4. order review
-//   5. two terminal actions:
-//      - "Lanjut pembayaran dummy" → Order (status waiting_payment_dummy)
-//      - "Request quotation"        → Quotation (status submitted)
-//
-// iPaymu real + shipping API real are deferred to Phase 4 / 4B.
+//   5. backend-priced shipping + mock/iPaymu payment boundary
 
 "use client";
 
@@ -19,10 +15,16 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCartHydrated, useCartItems } from "@/hooks/use-cart";
 import { useCartStore } from "@/stores/cart-store";
 import { useUIStore } from "@/stores/ui-store";
-import { createOrder } from "@/lib/commerce/order-service";
 import { formatIDR } from "@/types/product";
 import type { Address } from "@/types/account";
-import { CheckCircle2, ShieldCheck } from "lucide-react";
+import type { ShippingRate } from "@/features/shipping/shipping.types";
+import {
+  CheckCircle2,
+  CircleAlert,
+  LoaderCircle,
+  ShieldCheck,
+  Truck,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -39,14 +41,28 @@ export function CheckoutPage() {
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
+  const [selectedShippingRateId, setSelectedShippingRateId] = useState<
+    string | null
+  >(null);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [backendSubtotal, setBackendSubtotal] = useState<number | null>(null);
 
-  const subtotal = useMemo(
+  const clientSubtotal = useMemo(
     () => items.reduce((a, it) => a + it.estimatedPrice, 0),
     [items],
   );
+  const subtotal = backendSubtotal ?? clientSubtotal;
   const tax = Math.round(subtotal * 0.11);
-  const shippingCost = 0;
+  const selectedShippingRate = shippingRates.find(
+    (rate) => rate.id === selectedShippingRateId,
+  );
+  const shippingCost = selectedShippingRate?.price ?? 0;
   const total = subtotal + tax + shippingCost;
+  const hasMadeToOrder = items.some(
+    (item) => item.fulfillmentType === "MADE_TO_ORDER",
+  );
 
   // Step 1: require auth. If not authed, open modal once on mount.
   useEffect(() => {
@@ -148,22 +164,125 @@ export function CheckoutPage() {
     );
   }
 
-  function handleDummyPayment() {
+  function handlePayment() {
     if (!session || !selectedAddress) return;
     setSubmitting(true);
-    const order = createOrder({
-      companyId: session.company.id,
-      userId: session.user.id,
-      items,
-      shippingAddressLabel: `${selectedAddress.label} — ${selectedAddress.recipientName}`,
-      notes: null,
-      subtotal,
-      tax,
-      shippingCost,
+    void createPayment();
+  }
+
+  async function syncCartForBackend() {
+    if (!session) throw new Error("Sesi checkout tidak tersedia.");
+    const response = await fetch("/api/checkout/cart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        companyId: session.company.id,
+        userId: session.user.id,
+        items: items.map((item) => ({
+          productId: item.productId,
+          selectedColor: item.color,
+          sizeMatrix: item.sizes,
+          customization: item.customization,
+          embroideryPlacements: item.embroideryPlacements ?? [],
+        })),
+      }),
     });
-    clearCart();
-    setSubmitting(false);
-    router.push(`/orders/${order.id}?new=1`);
+    const result = (await response.json()) as {
+      ok: boolean;
+      cartId?: string;
+      subtotal?: number;
+      message?: string;
+    };
+    if (!response.ok || !result.cartId) throw new Error(result.message);
+    if (typeof result.subtotal === "number") {
+      setBackendSubtotal(result.subtotal);
+    }
+    return result.cartId;
+  }
+
+  async function handleCheckShipping() {
+    if (!selectedAddress) return;
+    setShippingLoading(true);
+    setCheckoutMessage(null);
+    try {
+      await syncCartForBackend();
+      const response = await fetch("/api/shipping/rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // The server replaces this placeholder with its configured origin.
+          origin: { city: "Bandung", postalCode: "40115" },
+          destination: {
+            city: selectedAddress.city,
+            postalCode: selectedAddress.postalCode,
+          },
+          items: items.map((item) => ({
+            productId: item.productId,
+            quantity: item.totalQty,
+            // Ignored while Phase 4C has no canonical product weight.
+            weightGram: 500,
+          })),
+        }),
+      });
+      const result = (await response.json()) as {
+        ok: boolean;
+        rates?: ShippingRate[];
+        message?: string;
+      };
+      if (!response.ok || !result.rates?.length) {
+        throw new Error(result.message);
+      }
+      setShippingRates(result.rates);
+      setSelectedShippingRateId((current) =>
+        result.rates!.some((rate) => rate.id === current)
+          ? current
+          : result.rates![0]!.id,
+      );
+    } catch {
+      setShippingRates([]);
+      setSelectedShippingRateId(null);
+      setCheckoutMessage(
+        "Ongkir belum bisa dihitung otomatis. Tim Ofissio akan mengonfirmasi ongkir melalui quotation.",
+      );
+    } finally {
+      setShippingLoading(false);
+    }
+  }
+
+  async function createPayment() {
+    if (!session || !selectedAddress) return;
+    setCheckoutMessage(null);
+    try {
+      const cartId = await syncCartForBackend();
+      const response = await fetch("/api/payment/ipaymu/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cartId,
+          companyId: session.company.id,
+          userId: session.user.id,
+          shippingRateId: selectedShippingRateId,
+        }),
+      });
+      const result = (await response.json()) as {
+        ok: boolean;
+        paymentUrl?: string | null;
+        message?: string;
+      };
+      if (!response.ok || !result.ok) throw new Error(result.message);
+      clearCart();
+      if (result.paymentUrl) {
+        router.push(result.paymentUrl);
+      } else {
+        setCheckoutMessage("Payment dibuat dan sedang menunggu pembayaran.");
+      }
+    } catch {
+      setCheckoutMessage(
+        "Pembayaran belum bisa dibuat. Silakan coba lagi atau hubungi tim Ofissio.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleRequestQuote() {
@@ -181,7 +300,7 @@ export function CheckoutPage() {
         <Badge tone="brand">Langkah 3 dari 3</Badge>
         <h1 className="mt-2 text-2xl font-bold text-ink">Review pesanan</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Periksa detail lalu pilih lanjut bayar (dummy) atau ajukan quotation.
+          Periksa detail, pilih ongkir, lalu lanjutkan pembayaran atau quotation.
         </p>
       </header>
 
@@ -223,7 +342,11 @@ export function CheckoutPage() {
                     <button
                       key={a.id}
                       type="button"
-                      onClick={() => setSelectedAddressId(a.id)}
+                      onClick={() => {
+                        setSelectedAddressId(a.id);
+                        setShippingRates([]);
+                        setSelectedShippingRateId(null);
+                      }}
                       aria-pressed={active}
                       className={
                         "rounded-xl border p-3 text-left text-xs transition " +
@@ -266,6 +389,85 @@ export function CheckoutPage() {
               </div>
             )}
           </section>
+
+          <section
+            className="rounded-2xl border border-line bg-surface p-5"
+            aria-labelledby="shipping-heading"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 id="shipping-heading" className="text-sm font-bold text-ink">
+                  Pilihan pengiriman
+                </h2>
+                <p className="mt-1 text-xs text-ink-muted">
+                  Ongkir dihitung melalui backend Ofissio.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleCheckShipping()}
+                disabled={shippingLoading}
+                aria-busy={shippingLoading}
+              >
+                {shippingLoading ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Truck className="h-4 w-4" />
+                )}
+                {shippingLoading ? "Menghitung…" : "Cek Ongkir"}
+              </Button>
+            </div>
+
+            {hasMadeToOrder && (
+              <div className="mt-3 flex gap-2 rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                Ongkir produk made-to-order dapat dikonfirmasi kembali melalui
+                quotation setelah jadwal produksi dan volume akhir tersedia.
+              </div>
+            )}
+
+            {shippingRates.length > 0 && (
+              <fieldset className="mt-4 grid gap-2">
+                <legend className="sr-only">Pilih layanan pengiriman</legend>
+                {shippingRates.map((rate) => {
+                  const selected = rate.id === selectedShippingRateId;
+                  return (
+                    <label
+                      key={rate.id}
+                      className={
+                        "flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors " +
+                        (selected
+                          ? "border-brand-600 bg-brand-50/60 ring-1 ring-brand-100"
+                          : "border-line hover:border-brand-300")
+                      }
+                    >
+                      <input
+                        type="radio"
+                        name="shipping-rate"
+                        value={rate.id}
+                        checked={selected}
+                        onChange={() => setSelectedShippingRateId(rate.id)}
+                        className="h-4 w-4 accent-brand-700"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-ink">
+                          {rate.courierName} · {rate.serviceName}
+                        </span>
+                        <span className="block text-xs text-ink-muted">
+                          {rate.estimatedDays}
+                        </span>
+                      </span>
+                      <span className="text-sm font-bold text-ink">
+                        {rate.price === 0 ? "Gratis" : formatIDR(rate.price)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+            )}
+          </section>
         </div>
 
         {/* Right: summary + actions */}
@@ -275,7 +477,18 @@ export function CheckoutPage() {
             <dl className="mt-3 space-y-2 text-sm">
               <Row label="Subtotal" value={formatIDR(subtotal)} />
               <Row label="PPN 11%" value={formatIDR(tax)} muted />
-              <Row label="Ongkos kirim" value="Dihitung Phase 4B" muted italic />
+              <Row
+                label="Ongkos kirim"
+                value={
+                  selectedShippingRate
+                    ? selectedShippingRate.price === 0
+                      ? "Gratis"
+                      : formatIDR(selectedShippingRate.price)
+                    : "Belum dipilih"
+                }
+                muted={!selectedShippingRate}
+                italic={!selectedShippingRate}
+              />
             </dl>
             <div className="mt-4 flex items-center justify-between border-t border-line pt-3">
               <span className="text-sm font-semibold text-ink">Total</span>
@@ -285,10 +498,11 @@ export function CheckoutPage() {
             <div className="mt-4 space-y-2">
               <Button
                 className="w-full"
-                onClick={handleDummyPayment}
+                onClick={handlePayment}
                 disabled={submitting}
+                aria-busy={submitting}
               >
-                {submitting ? "Memproses..." : "Lanjut Pembayaran (dummy)"}
+                {submitting ? "Memproses..." : "Lanjut Pembayaran"}
               </Button>
               <Button
                 className="w-full"
@@ -300,9 +514,18 @@ export function CheckoutPage() {
               </Button>
             </div>
 
-            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800">
-              Pembayaran via iPaymu aktif di Phase 4. Tombol di atas membuat
-              order dengan status <code>waiting_payment_dummy</code>.
+            {checkoutMessage && (
+              <p
+                role="alert"
+                className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800"
+              >
+                {checkoutMessage}
+              </p>
+            )}
+
+            <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-[11px] leading-snug text-brand-800">
+              Total final dihitung ulang oleh backend. Development memakai
+              payment mock sampai konfigurasi iPaymu resmi diaktifkan.
             </p>
           </div>
         </aside>
