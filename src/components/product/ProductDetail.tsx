@@ -3,7 +3,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Product } from "@/types/product";
 import { formatIDR } from "@/types/product";
@@ -13,6 +13,7 @@ import { getModel3DForProduct } from "@/data/uniform-3d";
 import type { SizeMatrix } from "@/types/industry";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
+import { useUIStore } from "@/stores/ui-store";
 import { afterConfirmItemAdded } from "@/lib/ofistant/ofistant.rules";
 import {
   ArrowLeft,
@@ -31,6 +32,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { ProductImagePlaceholder } from "@/components/catalog/ProductImagePlaceholder";
+import { SmartFloatingPreview } from "@/features/product-preview/components/SmartFloatingPreview";
+import { ProductPreviewModal } from "@/features/product-preview/components/ProductPreviewModal";
+import { useFloatingPreviewState } from "@/features/product-preview/hooks/useFloatingPreviewState";
+import { useProductHeroVisibility } from "@/features/product-preview/hooks/useProductHeroVisibility";
 import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
 
 // Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
@@ -86,12 +91,49 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const [uniform3DConfig, setUniform3DConfig] =
     useState<import("@/types/uniform-3d").Uniform3DConfig | null>(null);
   const [show3D, setShow3D] = useState(false);
+  const [showFloatingPreviewModal, setShowFloatingPreviewModal] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const desktopPreviewButtonRef = useRef<HTMLButtonElement>(null);
+  const mobilePreviewButtonRef = useRef<HTMLButtonElement>(null);
+  const heroVisible = useProductHeroVisibility(heroRef);
+  const { isDismissed: floatingPreviewDismissed, dismiss: dismissFloatingPreview } =
+    useFloatingPreviewState(product.id);
 
   const addToCart = useCartStore((s) => s.add);
-  const has3DSupport = useMemo(
-    () => !!getModel3DForProduct(product.id),
+  const authModalOpen = useUIStore((s) => s.authModalOpen);
+  const cartDrawerOpen = useUIStore((s) => s.cartDrawerOpen);
+  const product3DModel = useMemo(
+    () => getModel3DForProduct(product.id),
     [product.id],
   );
+  const has3DSupport = !!product3DModel;
+
+  // Start loading the heavy configurator and GLB while the customer reads the
+  // product detail. The modal then opens from the browser + GLTF cache rather
+  // than beginning a 3D download only after the click.
+  useEffect(() => {
+    if (!product3DModel?.glbUrl) return;
+    let cancelled = false;
+
+    const preload = async () => {
+      const [, viewerModule] = await Promise.all([
+        import("@/components/configurator/Uniform3DConfigurator"),
+        import("@/components/configurator/Uniform3DViewer"),
+      ]);
+      if (cancelled) return;
+      const { useGLTF } = await import("@react-three/drei");
+      useGLTF.preload(product3DModel.glbUrl!);
+      // Keep the module reference alive through this task so bundlers do not
+      // treat the viewer import as an unused speculative request.
+      void viewerModule;
+    };
+
+    const timer = window.setTimeout(() => void preload(), 80);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [product3DModel?.glbUrl]);
 
   // Sync Ofistant context: this product is now the "selected" one, and the
   // user's color/size choices are reflected so Ofistant can pre-fill an
@@ -134,6 +176,29 @@ export function ProductDetail({ product }: ProductDetailProps) {
   );
   const estimatedPrice = totalQty * product.priceFrom;
   const meetsMoq = totalQty >= product.moq;
+  const snapshotUrl = uniform3DConfig?.snapshots.front ?? Object.values(uniform3DConfig?.snapshots ?? {})[0];
+  const floatingPreviewOpen =
+    !heroVisible &&
+    !floatingPreviewDismissed &&
+    !show3D &&
+    !showFloatingPreviewModal &&
+    !authModalOpen &&
+    !cartDrawerOpen;
+  const floatingPreviewData = {
+    product,
+    color,
+    totalQty,
+    embroideryCount: uniform3DConfig?.placements.length ?? 0,
+    snapshotUrl,
+  };
+
+  function closeFloatingPreviewModal() {
+    setShowFloatingPreviewModal(false);
+    requestAnimationFrame(() => {
+      const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+      (isDesktop ? desktopPreviewButtonRef.current : mobilePreviewButtonRef.current)?.focus();
+    });
+  }
 
   function handleAdd() {
     const result = addToCart({
@@ -185,25 +250,27 @@ export function ProductDetail({ product }: ProductDetailProps) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-8">
         {/* Left: gallery + info */}
         <div className="space-y-4">
-          <ProductImagePlaceholder
-            name={product.name}
-            accentColor={product.accentColor}
-            category={product.category}
-            variant="detail"
-            className="aspect-[4/3] w-full rounded-2xl border border-line"
-          />
+          <div ref={heroRef} className="space-y-4">
+            <ProductImagePlaceholder
+              name={product.name}
+              accentColor={product.accentColor}
+              category={product.category}
+              variant="detail"
+              className="aspect-[4/3] w-full rounded-2xl border border-line"
+            />
 
-          {/* Thumbnails (dummy) */}
-          <div className="grid grid-cols-4 gap-2">
-            {[0, 1, 2, 3].map((i) => (
-              <ProductImagePlaceholder
-                key={i}
-                name={product.name}
-                accentColor={product.accentColor}
-                category={product.category}
-                className="aspect-square w-full rounded-lg border border-line opacity-70"
-              />
-            ))}
+            {/* Thumbnails (dummy) */}
+            <div className="grid grid-cols-4 gap-2">
+              {[0, 1, 2, 3].map((i) => (
+                <ProductImagePlaceholder
+                  key={i}
+                  name={product.name}
+                  accentColor={product.accentColor}
+                  category={product.category}
+                  className="aspect-square w-full rounded-lg border border-line opacity-70"
+                />
+              ))}
+            </div>
           </div>
 
           <section className="rounded-2xl border border-line bg-surface p-5">
@@ -489,6 +556,26 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
       {/* 3D configurator modal — full-screen so the canvas gets real width
           on every viewport. Lazy-loaded; only mounts when customer opens it. */}
+      <SmartFloatingPreview
+        data={floatingPreviewData}
+        open={floatingPreviewOpen}
+        onDismiss={dismissFloatingPreview}
+        onPreview={() => setShowFloatingPreviewModal(true)}
+        desktopPreviewButtonRef={desktopPreviewButtonRef}
+        mobilePreviewButtonRef={mobilePreviewButtonRef}
+      />
+
+      <ProductPreviewModal
+        data={floatingPreviewData}
+        open={showFloatingPreviewModal}
+        has3DSupport={has3DSupport}
+        onClose={closeFloatingPreviewModal}
+        onOpen3D={() => {
+          setShowFloatingPreviewModal(false);
+          setShow3D(true);
+        }}
+      />
+
       {show3D && (
         <div
           className="fixed inset-0 z-[70] flex flex-col bg-ink/60 backdrop-blur-sm"

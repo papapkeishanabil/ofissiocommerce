@@ -12,6 +12,7 @@ import { formatIDR } from "@/types/product";
 import { X } from "lucide-react";
 
 import { ButtonLink } from "@/components/ui/Button";
+import { useUIStore } from "@/stores/ui-store";
 
 interface CartDrawerProps {
   open: boolean;
@@ -20,6 +21,12 @@ interface CartDrawerProps {
 
 export function CartDrawer({ open, onClose }: CartDrawerProps) {
   const items = useCartItems();
+  const setCartDrawerOpen = useUIStore((s) => s.setCartDrawerOpen);
+
+  useEffect(() => {
+    setCartDrawerOpen(open);
+    return () => setCartDrawerOpen(false);
+  }, [open, setCartDrawerOpen]);
 
   useEffect(() => {
     if (!open) return;

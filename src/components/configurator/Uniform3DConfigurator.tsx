@@ -6,7 +6,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Save, Sparkles } from "lucide-react";
 
 import type { Product } from "@/types/product";
@@ -67,6 +67,7 @@ export function Uniform3DConfigurator({
 
   const [selectedZone, setSelectedZone] = useState<EmbroideryZone | null>("left_chest");
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
+  const [viewerReady, setViewerReady] = useState(false);
 
   // Per-zone upload state (logo + size + rotation), kept locally so each zone
   // has its own working file before being committed as a placement.
@@ -86,6 +87,10 @@ export function Uniform3DConfigurator({
         : model,
     [generatedGlbUrl, model],
   );
+
+  useEffect(() => {
+    setViewerReady(!effectiveModel?.glbUrl);
+  }, [effectiveModel?.glbUrl]);
 
   if (!effectiveModel || !config) {
     return (
@@ -220,6 +225,7 @@ export function Uniform3DConfigurator({
               placements={config.placements}
               activeCamera={config.activeCamera}
               highlightZone={selectedZone}
+              onModelReady={() => setViewerReady(true)}
               onCanvasReady={({ domElement }) => {
                 canvasElRef.current = domElement;
               }}
@@ -284,6 +290,14 @@ export function Uniform3DConfigurator({
           {!effectiveModel.photo360 && (
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[10px] font-medium text-ink-muted shadow-soft-xs backdrop-blur">
               Drag untuk rotate · scroll untuk zoom
+            </div>
+          )}
+          {effectiveModel.glbUrl && !viewerReady && (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden bg-surface/35" aria-label="Memuat preview 3D" role="status">
+              <div className="shimmer absolute inset-0 opacity-70" />
+              <div className="absolute left-1/2 top-1/2 h-[58%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-[38%_38%_18%_18%] bg-brand-100/70 shadow-soft-md animate-pulse" />
+              <div className="absolute left-1/2 top-[25%] h-16 w-20 -translate-x-1/2 rounded-[45%_45%_25%_25%] bg-brand-200/70 animate-pulse" />
+              <span className="sr-only">Memuat preview 3D</span>
             </div>
           )}
           {effectiveModel.glbUrl && selectedZone && pendingLogo && (

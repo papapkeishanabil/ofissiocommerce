@@ -146,14 +146,17 @@ export function getModel3DForProduct(productId: string): Model3DEntry | undefine
  */
 export const ZONE_ANCHORS: Record<EmbroideryZone, { x: number; y: number; z: number }> = {
   // Dada — depan kemeja (z+)
-  left_chest:   { x:  0.18, y:  0.28, z:  0.16 },
-  right_chest:  { x: -0.18, y:  0.28, z:  0.16 },
+  // The fitted KK-006 GLB extends to approximately z=±0.352. Keep the
+  // chest/back anchors just beyond that surface so markers and decals remain
+  // visible rather than being embedded inside the mesh.
+  left_chest:   { x:  0.18, y:  0.28, z:  0.356 },
+  right_chest:  { x: -0.18, y:  0.28, z:  0.356 },
   // Lengan — posisi final hasil fine-tune (X=-0.69, Y=0.35, Z=-0.03)
   left_sleeve:  { x:  0.69, y:  0.35, z: -0.03 },
   right_sleeve: { x: -0.69, y:  0.35, z: -0.03 },
   // Punggung — belakang kemeja (z-)
-  upper_back:   { x:  0.00, y:  0.35, z: -0.16 },
-  middle_back:  { x:  0.00, y:  0.05, z: -0.16 },
+  upper_back:   { x:  0.00, y:  0.6, z: -0.356 },
+  middle_back:  { x:  0.00, y:  0.4, z: -0.356 },
 };
 
 /**
@@ -168,8 +171,11 @@ export const CAMERA_PRESET_VIEWS: Record<
   back: { position: [0, 0, -3.2], target: [0, 0, 0] },
   left: { position: [3.2, 0, 0], target: [0, 0, 0] },
   right: { position: [-3.2, 0, 0], target: [0, 0, 0] },
-  right_chest: { position: [-1.4, 0.1, 2.0], target: [-0.18, 0.28, 0] },
-  left_chest: { position: [1.4, 0.1, 2.0], target: [0.18, 0.28, 0] },
+  // Chest views are pure rotations around the model centre. Keeping their
+  // target at the origin and their radius at 3.2 prevents perspective framing
+  // from changing relative to the four primary views.
+  right_chest: { position: [-0.8, 0.05, 1.8], target: [0, 0, 0] },
+  left_chest: { position: [0.8, 0.05, 1.8], target: [0, 0, 0] },
   right_sleeve: { position: [-3.2, 0, 0], target: [0, 0, 0] },
   left_sleeve: { position: [3.2, 0, 0], target: [0, 0, 0] },
 };
@@ -181,8 +187,8 @@ export const CAMERA_PRESET_VIEWS: Record<
 export const ZONE_CAMERA_MAP: Record<EmbroideryZone, string> = {
   left_chest: "front",
   right_chest: "front",
-  left_sleeve: "left_sleeve",
-  right_sleeve: "right_sleeve",
+  left_sleeve: "left",
+  right_sleeve: "right",
   upper_back: "back",
   middle_back: "back",
 };
@@ -210,4 +216,3 @@ export function isZoneVisibleAtAngle(zone: EmbroideryZone, angle: number): boole
       return a >= 90 && a <= 270;
   }
 }
-

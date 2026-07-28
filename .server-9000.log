@@ -1,0 +1,10 @@
+   ▲ Next.js 15.5.4 (Turbopack)
+   - Local:        http://localhost:9000
+   - Network:      http://192.168.2.4:9000
+   - Environments: .env.local
+
+ ✓ Starting...
+Creating turbopack project { dir: 'E:\\PROJECT AI\\ofissio-harmas', testMode: true }
+ ✓ Ready in 6.4s
+ ○ Compiling / ...
+[?25h

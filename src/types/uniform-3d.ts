@@ -79,8 +79,6 @@ export const CAMERA_PRESETS = [
   "right",
   "right_chest",
   "left_chest",
-  "right_sleeve",
-  "left_sleeve",
 ] as const;
 
 export type CameraPreset = (typeof CAMERA_PRESETS)[number];
@@ -99,10 +97,6 @@ export function cameraLabel(c: CameraPreset): string {
       return "Dada Kanan";
     case "left_chest":
       return "Dada Kiri";
-    case "right_sleeve":
-      return "Lengan Kanan";
-    case "left_sleeve":
-      return "Lengan Kiri";
   }
 }
 

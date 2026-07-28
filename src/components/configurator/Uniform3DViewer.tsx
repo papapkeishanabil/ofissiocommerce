@@ -5,10 +5,11 @@
 
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, ContactShadows, Environment, useGLTF } from "@react-three/drei";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls, useGLTF } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { DecalGeometry } from "three/examples/jsm/geometries/DecalGeometry.js";
 
 import type {
   CameraPreset,
@@ -25,6 +26,7 @@ interface Uniform3DViewerProps {
   activeCamera: CameraPreset;
   highlightZone?: string | null;
   onCanvasReady?: (gl: { domElement: HTMLCanvasElement }) => void;
+  onModelReady?: () => void;
   /** Raycast: customer klik surface → dapat posisi + normal untuk logo */
   onSurfaceClick?: (hit: { point: [number, number, number]; normal: [number, number, number] }) => void;
 }
@@ -36,31 +38,46 @@ export function Uniform3DViewer({
   activeCamera,
   highlightZone,
   onCanvasReady,
+  onModelReady,
   onSurfaceClick,
 }: Uniform3DViewerProps) {
   const view = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
   const isGLB = !!model.glbUrl;
+  const controlsRef = useRef<any>(null);
+  const zoomUntil = useRef(0);
 
   return (
     <Canvas
-      shadows
+      // Keep the configurator below the browser's WebGL memory threshold.
+      // The GLB and environment are already detailed; runtime shadows at DPR 2
+      // caused context loss after the preview was opened repeatedly.
+      shadows={false}
       camera={{ position: view.position, fov: 38 }}
-      dpr={[1, 2]}
-      gl={{ preserveDrawingBuffer: true, antialias: true }}
-      onCreated={({ gl }) => onCanvasReady?.({ domElement: gl.domElement })}
+      dpr={[1, 1]}
+      performance={{ min: 0.5 }}
+      gl={{ preserveDrawingBuffer: false, antialias: false, powerPreference: "high-performance" }}
+      onCreated={({ gl }) => {
+        gl.outputColorSpace = THREE.SRGBColorSpace;
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 1.15;
+        onCanvasReady?.({ domElement: gl.domElement });
+      }}
       style={{ width: "100%", height: "100%", background: "transparent" }}
     >
-      <CameraRig activeCamera={activeCamera} />
+      <CameraRig
+        activeCamera={activeCamera}
+        controlsRef={controlsRef}
+        zoomUntil={zoomUntil}
+      />
+      <TemporaryZoomReset zoomUntil={zoomUntil} />
       {/* Lighting */}
-      <ambientLight intensity={0.55} />
+      <ambientLight intensity={0.9} />
+      <hemisphereLight args={["#ffffff", "#cbd5e1", 0.7]} />
       <directionalLight
         position={[3, 5, 4]}
-        intensity={1.1}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        intensity={1.45}
       />
-      <directionalLight position={[-4, 2, -3]} intensity={0.35} color="#a8baff" />
+      <directionalLight position={[-4, 2, -3]} intensity={0.55} color="#dbeafe" />
 
       <Suspense fallback={null}>
         {/* Real GLB path (Phase 8+) — guarded by glbUrl */}
@@ -69,6 +86,7 @@ export function Uniform3DViewer({
             url={model.glbUrl}
             placements={placements}
             highlightZone={highlightZone}
+            onModelReady={onModelReady}
             onSurfaceClick={onSurfaceClick}
           />
         ) : (
@@ -79,22 +97,15 @@ export function Uniform3DViewer({
           />
         )}
 
-        <Environment preset="studio" />
       </Suspense>
 
-      <ContactShadows
-        position={[0, -1.05, 0]}
-        opacity={0.35}
-        scale={6}
-        blur={2.4}
-        far={3}
-        color="#0b1a4d"
-      />
 
       <OrbitControls
+        ref={controlsRef}
         target={[0, 0, 0]}
-        minDistance={1.0}
+        minDistance={0.82}
         maxDistance={6}
+        zoomSpeed={1.7}
         enablePan={false}
         makeDefault
       />
@@ -107,7 +118,31 @@ export function Uniform3DViewer({
  * Keeps constant distance from center so camera ROTATES around the model,
  * never flies through it.
  */
-function CameraRig({ activeCamera }: { activeCamera: CameraPreset }) {
+function TemporaryZoomReset({ zoomUntil }: { zoomUntil: React.MutableRefObject<number> }) {
+  const gl = useThree((state) => state.gl);
+
+  useEffect(() => {
+    const markZooming = () => {
+      // A short pause after the final wheel tick lets customers inspect a
+      // detail, then the rig smoothly returns to the selected view distance.
+      zoomUntil.current = performance.now() + 700;
+    };
+    gl.domElement.addEventListener("wheel", markZooming, { passive: true });
+    return () => gl.domElement.removeEventListener("wheel", markZooming);
+  }, [gl, zoomUntil]);
+
+  return null;
+}
+
+function CameraRig({
+  activeCamera,
+  controlsRef,
+  zoomUntil,
+}: {
+  activeCamera: CameraPreset;
+  controlsRef: React.MutableRefObject<any>;
+  zoomUntil: React.MutableRefObject<number>;
+}) {
   const targetView = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
   const desiredPos = useRef(new THREE.Vector3(...targetView.position));
   const desiredTarget = useRef(new THREE.Vector3(...targetView.target));
@@ -120,7 +155,7 @@ function CameraRig({ activeCamera }: { activeCamera: CameraPreset }) {
 
   useFrame(({ camera }) => {
     // Lerp target FIRST (snap to center quickly)
-    const controls = (camera as any).userData?.controls;
+    const controls = controlsRef.current;
     const ctrlsTarget = controls?.target ?? new THREE.Vector3();
 
     // Get current direction from target to camera (normalized)
@@ -133,13 +168,22 @@ function CameraRig({ activeCamera }: { activeCamera: CameraPreset }) {
     const desiredDist = desiredDir.length();
     desiredDir.normalize();
 
-    // Lerp direction (smooth rotation) on normalized vectors — camera orbits
-    const lerpDir = currentDir.clone().lerp(desiredDir, 0.06);
-    // Keep distance stable (use desired distance)
-    const dist = THREE.MathUtils.lerp(currentDist, desiredDist, 0.06);
+    // Rotate the direction on a sphere instead of linearly blending vectors.
+    // A linear blend collapses to a near-zero vector when moving from front
+    // (+Z) to back (-Z), briefly placing the camera inside the model.
+    const rotation = new THREE.Quaternion().setFromUnitVectors(currentDir, desiredDir);
+    const orbitStep = new THREE.Quaternion().identity().slerp(rotation, 0.06);
+    const orbitDir = currentDir.clone().applyQuaternion(orbitStep).normalize();
+    // OrbitControls may zoom freely while the wheel is moving. Once wheel
+    // input stops, softly return only the distance to the preset; orientation
+    // remains exactly where the customer left it.
+    const shouldReturnToDefaultDistance = performance.now() > zoomUntil.current;
+    const dist = shouldReturnToDefaultDistance
+      ? THREE.MathUtils.lerp(currentDist, desiredDist, 0.07)
+      : currentDist;
 
     // New camera position = target + slerpedDir * dist
-    const newPos = desiredTarget.current.clone().add(lerpDir.multiplyScalar(dist));
+    const newPos = desiredTarget.current.clone().add(orbitDir.multiplyScalar(dist));
     camera.position.copy(newPos);
 
     // Update controls target (lerp gently)
@@ -160,10 +204,11 @@ interface GLBModelProps {
   url: string;
   placements?: LogoPlacement[];
   highlightZone?: string | null;
+  onModelReady?: () => void;
   onSurfaceClick?: (hit: { point: [number, number, number]; normal: [number, number, number] }) => void;
 }
 
-function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBModelProps) {
+function GLBModel({ url, placements = [], highlightZone, onModelReady, onSurfaceClick }: GLBModelProps) {
   const { scene } = useGLTF(url);
   const [, forceTick] = useState(0);
 
@@ -183,15 +228,27 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
         mesh.scale.multiplyScalar(scale);
         mesh.position.sub(center.multiplyScalar(scale));
         const mat = mesh.material as THREE.MeshStandardMaterial;
-        if (mat && mat.isMeshStandardMaterial) {
-          mat.metalness = 0.0;
-          mat.roughness = 0.92;
-          mat.envMapIntensity = 0.4;
+          if (mat && mat.isMeshStandardMaterial) {
+            mat.metalness = 0.0;
+            mat.roughness = 0.78;
+            mat.envMapIntensity = 0.25;
+            // Tripo exports this garment with a highly metallic material.
+            // In our lightweight (non-HDR) viewer, add a small texture-based
+            // emissive contribution so dark navy remains navy, not black.
+            if (mat.map) {
+              mat.emissiveMap = mat.map;
+              mat.emissive.set("#ffffff");
+              mat.emissiveIntensity = 0.6;
+            }
         }
       }
     });
     return cloned;
   }, [scene]);
+
+  useEffect(() => {
+    onModelReady?.();
+  }, [fitted, onModelReady]);
 
   // Raycast click → get surface point + normal
   const handleClick = (e: any) => {
@@ -213,36 +270,33 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
           can see where each zone is without uploading logo first. */}
       {(Object.keys(ZONE_ANCHORS) as EmbroideryZone[]).map((zone) => {
         const anchor = ZONE_ANCHORS[zone];
-        const isBackZone = zone === "upper_back" || zone === "middle_back";
-        const isLeftSleeve = zone === "left_sleeve";
-        const isRightSleeve = zone === "right_sleeve";
         const hasPlacement = placements.some((p) => p.zone === zone);
         const isHi = highlightZone === zone;
-        if (hasPlacement) return null;
-        let markerRotY: number;
-        if (isBackZone) markerRotY = Math.PI;
-        else if (isLeftSleeve) markerRotY = -Math.PI / 2;
-        else if (isRightSleeve) markerRotY = Math.PI / 2;
-        else markerRotY = 0;
+        // Keep the selected zone marker visible even after upload, so the
+        // customer can verify the embroidery reference point.
+        if (hasPlacement && !isHi) return null;
         return (
-          <mesh
+          <ZoneMarker
             key={`marker-${zone}`}
-            position={[anchor.x, anchor.y, anchor.z]}
-            rotation={[0, markerRotY, 0]}
-          >
-            <circleGeometry args={[0.04, 16]} />
-            <meshBasicMaterial
-              color={isHi ? "#dc9814" : "#4a6bd8"}
-              side={THREE.DoubleSide}
-              transparent
-              opacity={0.8}
-            />
-          </mesh>
+            modelRoot={fitted}
+            zone={zone}
+            highlighted={isHi}
+          />
         );
       })}
 
       {/* Logo placements — auto-placed at ZONE_ANCHORS, raycast for fine-tune */}
-      {placements.map((p) => {
+      {placements.map((placement) => (
+        <EmbroideryDecal
+          key={placement.zone}
+          modelRoot={fitted}
+          placement={placement}
+          highlighted={highlightZone === placement.zone}
+          onTextureLoaded={() => forceTick((n: number) => n + 1)}
+        />
+      ))}
+
+      {false && placements.map((p) => {
         const isHi = highlightZone === p.zone;
         const anchor = ZONE_ANCHORS[p.zone];
 
@@ -307,6 +361,219 @@ function GLBModel({ url, placements = [], highlightZone, onSurfaceClick }: GLBMo
   );
 }
 
+function projectZoneAnchor(modelRoot: THREE.Object3D, zone: EmbroideryZone) {
+  const anchor = ZONE_ANCHORS[zone];
+  let origin: THREE.Vector3;
+  let direction: THREE.Vector3;
+
+  if (zone === "upper_back" || zone === "middle_back") {
+    origin = new THREE.Vector3(anchor.x, anchor.y, -2);
+    direction = new THREE.Vector3(0, 0, 1);
+  } else if (zone === "left_sleeve") {
+    origin = new THREE.Vector3(2, anchor.y, anchor.z);
+    direction = new THREE.Vector3(-1, 0, 0);
+  } else if (zone === "right_sleeve") {
+    origin = new THREE.Vector3(-2, anchor.y, anchor.z);
+    direction = new THREE.Vector3(1, 0, 0);
+  } else {
+    origin = new THREE.Vector3(anchor.x, anchor.y, 2);
+    direction = new THREE.Vector3(0, 0, -1);
+  }
+
+  modelRoot.updateMatrixWorld(true);
+  const hit = new THREE.Raycaster(origin, direction).intersectObject(modelRoot, true)[0];
+  if (!hit) {
+    return {
+      position: new THREE.Vector3(anchor.x, anchor.y, anchor.z),
+      normal: direction.negate(),
+      mesh: null,
+    };
+  }
+
+  const normal = hit.face?.normal
+    ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize()
+    : direction.clone().negate();
+  return {
+    position: hit.point,
+    normal,
+    mesh: hit.object instanceof THREE.Mesh ? hit.object : null,
+  };
+}
+
+function ZoneMarker({
+  modelRoot,
+  zone,
+  highlighted,
+}: {
+  modelRoot: THREE.Object3D;
+  zone: EmbroideryZone;
+  highlighted: boolean;
+}) {
+  const projected = useMemo(() => projectZoneAnchor(modelRoot, zone), [modelRoot, zone]);
+  const position = projected.position.clone().addScaledVector(projected.normal, 0.004);
+  const orientation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), projected.normal);
+
+  return (
+    <mesh position={position} quaternion={orientation} renderOrder={3}>
+      <circleGeometry args={[0.04, 16]} />
+      <meshBasicMaterial
+        color={highlighted ? "#dc9814" : "#4a6bd8"}
+        side={THREE.DoubleSide}
+        transparent
+        opacity={0}
+        polygonOffset
+        polygonOffsetFactor={-2}
+        polygonOffsetUnits={-2}
+      />
+    </mesh>
+  );
+}
+
+interface EmbroideryDecalProps {
+  modelRoot: THREE.Object3D;
+  placement: LogoPlacement;
+  highlighted: boolean;
+  onTextureLoaded: () => void;
+}
+
+/** Projects the logo onto the cloth mesh, preserving the fabric contour. */
+function EmbroideryDecal({
+  modelRoot,
+  placement,
+  highlighted,
+  onTextureLoaded,
+}: EmbroideryDecalProps) {
+  const anchor = ZONE_ANCHORS[placement.zone];
+  // Configurations saved before the anchor correction used z=±0.16, which is
+  // inside this GLB. Treat that exact former default as an anchor, so existing
+  // uploads move to the visible cloth surface without requiring re-upload.
+  const isLegacyChestAnchor =
+    (placement.zone === "left_chest" || placement.zone === "right_chest") &&
+    placement.surfacePoint != null &&
+    Math.abs(placement.surfacePoint[0] - anchor.x) < 0.001 &&
+    Math.abs(placement.surfacePoint[1] - anchor.y) < 0.001 &&
+    Math.abs(placement.surfacePoint[2] - 0.16) < 0.001;
+  const isLegacyBackAnchor =
+    (placement.zone === "upper_back" || placement.zone === "middle_back") &&
+    placement.surfacePoint != null &&
+    Math.abs(placement.surfacePoint[0] - anchor.x) < 0.001 &&
+    Math.abs(placement.surfacePoint[1] - anchor.y) < 0.001 &&
+    Math.abs(placement.surfacePoint[2] + 0.16) < 0.001;
+  const isCurrentAnchor =
+    placement.surfacePoint != null &&
+    Math.abs(placement.surfacePoint[0] - anchor.x) < 0.001 &&
+    Math.abs(placement.surfacePoint[1] - anchor.y) < 0.001 &&
+    Math.abs(placement.surfacePoint[2] - anchor.z) < 0.001;
+  const useAnchor = !placement.surfacePoint || isLegacyChestAnchor || isLegacyBackAnchor || isCurrentAnchor;
+  const projectedAnchor = useMemo(
+    () => projectZoneAnchor(modelRoot, placement.zone),
+    [modelRoot, placement.zone],
+  );
+  const position = useMemo(
+    () => useAnchor
+      ? projectedAnchor.position
+      : new THREE.Vector3(...placement.surfacePoint!),
+    [placement.surfacePoint, projectedAnchor.position, useAnchor],
+  );
+  const orientation = useMemo(() => {
+    const rotation = (placement.rotation * Math.PI) / 180;
+    if (placement.zone === "upper_back" || placement.zone === "middle_back") {
+      return new THREE.Euler(0, Math.PI, -rotation);
+    }
+    if (placement.zone === "left_sleeve") return new THREE.Euler(0, Math.PI / 2, rotation);
+    if (placement.zone === "right_sleeve") return new THREE.Euler(0, -Math.PI / 2, rotation);
+    return new THREE.Euler(0, 0, rotation);
+  }, [placement.rotation, placement.zone]);
+
+  const texture = placement.logoPreviewUrl
+    ? logoTexture(placement.logoPreviewUrl, onTextureLoaded)
+    : null;
+  const image = texture?.image as HTMLImageElement | undefined;
+  const aspect = image?.naturalWidth && image.naturalHeight
+    ? image.naturalWidth / image.naturalHeight
+    : placement.widthCm / placement.heightCm;
+  const width = (placement.widthCm / 30) * 0.9;
+  const height = width / aspect;
+
+  const geometries = useMemo(() => {
+    modelRoot.updateMatrixWorld(true);
+    const decals: THREE.BufferGeometry[] = [];
+    // The shirt curves away from the centre of a chest/back logo. A shallow
+    // projector clips those outer pixels, so give the decal enough depth to
+    // cover the complete artwork while it follows the cloth contour.
+    const size = new THREE.Vector3(width, height, 0.16);
+    const createDecal = (mesh: THREE.Mesh) => {
+      const decal = new DecalGeometry(mesh, position, orientation, size);
+      if (decal.getAttribute("position")?.count > 0) decals.push(decal);
+      else decal.dispose();
+    };
+
+    // A single raycast identifies the garment surface. Projecting onto every
+    // GLB mesh was expensive and delayed the first visible logo after upload.
+    if (projectedAnchor.mesh) {
+      createDecal(projectedAnchor.mesh);
+    } else {
+      modelRoot.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.geometry) createDecal(child);
+      });
+    }
+    return decals;
+  }, [height, modelRoot, orientation, position, projectedAnchor.mesh, width]);
+
+  useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries]);
+
+  // Some imported GLB meshes do not expose triangles in the decal projector's
+  // volume. Keep the logo usable in that case with a near-zero surface offset.
+  const fallbackNormal = useMemo(() => {
+    if (placement.zone === "upper_back" || placement.zone === "middle_back") {
+      return new THREE.Vector3(0, 0, -1);
+    }
+    if (placement.zone === "left_sleeve") return new THREE.Vector3(1, 0, 0);
+    if (placement.zone === "right_sleeve") return new THREE.Vector3(-1, 0, 0);
+    return new THREE.Vector3(0, 0, 1);
+  }, [placement.zone]);
+  const fallbackPosition = position.clone().addScaledVector(fallbackNormal, 0.004);
+
+  const material = texture ? (
+    <meshBasicMaterial
+      map={texture}
+      transparent
+      alphaTest={0.5}
+      depthWrite={false}
+      side={THREE.DoubleSide}
+      toneMapped={false}
+      polygonOffset
+      polygonOffsetFactor={-2}
+      polygonOffsetUnits={-2}
+    />
+  ) : (
+    <meshStandardMaterial
+      color={highlighted ? "#dc9814" : "#f59e0b"}
+      emissive={highlighted ? "#dc9814" : "#f59e0b"}
+      emissiveIntensity={0.22}
+      roughness={0.72}
+      polygonOffset
+      polygonOffsetFactor={-2}
+      polygonOffsetUnits={-2}
+    />
+  );
+
+  if (geometries.length === 0) {
+    return (
+      <mesh position={fallbackPosition} rotation={orientation} renderOrder={2}>
+        <planeGeometry args={[width, height]} />
+        {material}
+      </mesh>
+    );
+  }
+
+  return geometries.map((geometry, index) => (
+    <mesh key={index} geometry={geometry} renderOrder={2}>
+      {material}
+    </mesh>
+  ));
+}
+
 // Cache textures + force re-render when loaded.
 const _texCache = new Map<string, THREE.Texture>();
 const _loadedUrls = new Set<string>();
@@ -314,8 +581,11 @@ function logoTexture(url: string, onLoaded?: () => void): THREE.Texture {
   let tex = _texCache.get(url);
   if (!tex) {
     tex = new THREE.TextureLoader().load(url, () => {
-      tex!.colorSpace = THREE.SRGBColorSpace;
-      tex!.needsUpdate = true;
+      const image = tex!.image as HTMLImageElement;
+      // Retain the exact artwork and stroke width, but strengthen its alpha.
+      // Uploaded PNG text is often semi-transparent and otherwise fades into
+      // the light fabric when composited in WebGL.
+      _texCache.set(url, createSolidEmbroideryTexture(image));
       _loadedUrls.add(url);
       onLoaded?.();
     });
@@ -324,4 +594,29 @@ function logoTexture(url: string, onLoaded?: () => void): THREE.Texture {
     tex.needsUpdate = true;
   }
   return tex;
+}
+
+/** Makes translucent ink more solid without widening or recolouring artwork. */
+function createSolidEmbroideryTexture(image: HTMLImageElement): THREE.Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (!context) return new THREE.Texture(image);
+
+  context.drawImage(image, 0, 0);
+  const source = context.getImageData(0, 0, canvas.width, canvas.height);
+  const output = new Uint8ClampedArray(source.data);
+  for (let offset = 0; offset < output.length; offset += 4) {
+    const alpha = output[offset + 3]!;
+    if (alpha === 0) continue;
+    // Gamma lift: 50% alpha becomes 71%, retaining antialiasing at the edge.
+    output[offset + 3] = Math.round(255 * Math.sqrt(alpha / 255));
+  }
+
+  context.putImageData(new ImageData(output, canvas.width, canvas.height), 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
 }
