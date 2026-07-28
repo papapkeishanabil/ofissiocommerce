@@ -18,7 +18,7 @@ export function CommerceWorkspace({ children }: CommerceWorkspaceProps) {
       {/* Independent scroll container so the workspace scrolls separately
           from the Ofistant panel. Footer lives inside the scroll area so it
           naturally sits below long content. */}
-      <div className="flex flex-1 flex-col overflow-y-auto">
+      <div data-workspace-scroll className="flex flex-1 flex-col overflow-y-auto">
         <div className="flex-1">{children}</div>
         <WorkspaceFooter />
       </div>

@@ -16,8 +16,8 @@ export function useProductHeroVisibility(ref: RefObject<Element | null>) {
     const element = ref.current;
     if (!element || typeof IntersectionObserver === "undefined") return;
 
-    // Find the workspace scroll container.
-    const root = document.querySelector("main.flex-h-dvh > div.overflow-y-auto") ?? null;
+    // Find the workspace scroll container via data attribute.
+    const root = document.querySelector("[data-workspace-scroll]") ?? null;
 
     const observer = new IntersectionObserver(
       ([entry]) => setIsVisible(entry?.isIntersecting ?? true),

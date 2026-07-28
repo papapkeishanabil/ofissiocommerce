@@ -53,3 +53,18 @@
  GET /product/kemeja-kantor-kk-006 200 in 1016ms
  GET /product/kemeja-kantor-kk-006 200 in 1072ms
  GET /product/kemeja-kantor-kk-006 200 in 400ms
+ ✓ Compiled in 9.9s (2031 modules)
+ GET /product/kemeja-kantor-kk-006 200 in 1699ms
+ GET /product/kemeja-kantor-kk-006 200 in 1695ms
+ GET /product/kemeja-kantor-kk-006 200 in 1267ms
+ GET /product/kemeja-kantor-kk-006 200 in 2433ms
+ ○ Compiling /catalog ...
+ ✓ Compiled /catalog in 2.8s (2036 modules)
+ GET /catalog?industri=Corporate 200 in 3321ms
+ GET /product/kemeja-kantor-kk-006 200 in 167ms
+ ✓ Compiled in 10.8s (2050 modules)
+ GET /product/kemeja-kantor-kk-006 200 in 1313ms
+ GET /product/kemeja-kantor-kk-006 200 in 215ms
+ ✓ Compiled in 760ms (2050 modules)
+ GET /product/kemeja-kantor-kk-006 200 in 317ms
+ GET /product/kemeja-kantor-kk-006 200 in 317ms
