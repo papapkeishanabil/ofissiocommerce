@@ -1,45 +1,27 @@
 import "server-only";
 
 import {
-  CUSTOMER_ROLES,
   INTERNAL_ROLES,
-  type CustomerRole,
   type InternalRole,
   type MockSession,
 } from "./security.types";
+import {
+  getCurrentSession,
+  requireCompanyUser,
+} from "@/features/auth/auth.service";
+import type { AuthSessionHint } from "@/features/auth/auth.types";
 import { createApiError } from "./safe-error-response";
-
-interface MockSessionHint {
-  companyId?: string | null;
-  userId?: string | null;
-  role?: string | null;
-}
 
 export function getCurrentUserMock(
   request?: Request,
-  hint: MockSessionHint = {},
+  hint: AuthSessionHint = {},
 ): MockSession | null {
-  const companyId =
-    hint.companyId?.trim() ||
-    request?.headers.get("x-ofissio-company-id")?.trim() ||
-    null;
-  const userId =
-    hint.userId?.trim() ||
-    request?.headers.get("x-ofissio-user-id")?.trim() ||
-    null;
-  const roleCandidate =
-    hint.role?.trim() || request?.headers.get("x-ofissio-role")?.trim() || "company_admin";
-  const role = CUSTOMER_ROLES.includes(roleCandidate as CustomerRole)
-    ? (roleCandidate as CustomerRole)
-    : "viewer";
-
-  if (!companyId || !userId) return null;
-  return { companyId, userId, role };
+  return getCurrentSession(request, hint);
 }
 
 export function requireMockSession(
   request?: Request,
-  hint: MockSessionHint = {},
+  hint: AuthSessionHint = {},
 ) {
   const session = getCurrentUserMock(request, hint);
   if (!session) {
@@ -52,11 +34,8 @@ export function requireMockSession(
   return session;
 }
 
-export function requireAuth(request?: Request, hint: MockSessionHint = {}) {
-  // TODO Phase production: replace this placeholder with server session/JWT
-  // verification from the real auth provider. Do not trust client-supplied
-  // companyId/userId outside local mock mode.
-  return requireMockSession(request, hint);
+export function requireAuth(request?: Request, hint: AuthSessionHint = {}) {
+  return requireCompanyUser(request, hint);
 }
 
 export function requireAdminPlaceholder(request?: Request) {

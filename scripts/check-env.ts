@@ -14,6 +14,13 @@ const rules: EnvRule[] = [
   { name: "APP_URL", requiredIn: ["staging", "production"] },
   { name: "NODE_ENV" },
   { name: "PRODUCT_SOURCE" },
+  { name: "DATABASE_PROVIDER" },
+  { name: "DATABASE_URL", requiredIn: ["production"], secret: true },
+  { name: "NEXT_PUBLIC_SUPABASE_URL" },
+  { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY" },
+  { name: "SUPABASE_SERVICE_ROLE_KEY", requiredIn: ["production"], secret: true },
+  { name: "AUTH_PROVIDER" },
+  { name: "AUTH_SESSION_COOKIE_NAME" },
   { name: "WOOCOMMERCE_ENABLED" },
   { name: "WOOCOMMERCE_BASE_URL", requiredIn: ["staging", "production"] },
   { name: "WOOCOMMERCE_CONSUMER_KEY", requiredIn: ["staging", "production"], secret: true },
@@ -44,6 +51,7 @@ const forbiddenPublicSecrets = [
   "NEXT_PUBLIC_IPAYMU_API_KEY",
   "NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET",
   "NEXT_PUBLIC_WOO_CONSUMER_SECRET",
+  "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
 ];
 
 const problems: { level: CheckLevel; message: string }[] = [];
@@ -94,6 +102,28 @@ if (process.env.PAYMENT_PROVIDER === "ipaymu") {
     level: "warning",
     message:
       "PAYMENT_PROVIDER=ipaymu masih foundation; live signature/callback perlu verifikasi staging sebelum production.",
+  });
+}
+
+if (process.env.DATABASE_PROVIDER === "supabase") {
+  for (const name of [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ]) {
+    if (!process.env[name]?.trim()) {
+      problems.push({
+        level: appEnv === "development" ? "warning" : "error",
+        message: `${name} wajib untuk DATABASE_PROVIDER=supabase.`,
+      });
+    }
+  }
+}
+
+if (process.env.DATABASE_PROVIDER === "postgres" && !process.env.DATABASE_URL?.trim()) {
+  problems.push({
+    level: appEnv === "development" ? "warning" : "error",
+    message: "DATABASE_URL wajib untuk DATABASE_PROVIDER=postgres.",
   });
 }
 
