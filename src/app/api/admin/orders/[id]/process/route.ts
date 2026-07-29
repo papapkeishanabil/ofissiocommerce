@@ -25,7 +25,15 @@ export async function POST(request: Request, context: RouteContext) {
     const actor = requireInternalAdmin(request, "admin:order:update");
     const { id } = validateInput(adminIdParamSchema, await context.params);
     const result = await startAdminOrderProcess({ id, actor, request });
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({
+      ok: true,
+      success: true,
+      processOrderId: result.processOrderId,
+      processOrderNumber: result.processOrderNumber,
+      processRoute: result.processRoute,
+      idempotent: result.idempotent,
+      order: result.order,
+    });
   } catch (error) {
     return safeErrorResponse(error, "Order belum dapat diproses.", 403);
   }

@@ -75,6 +75,24 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Retry sync admin tidak membuat order Woo duplikat jika `woo_order_id` sudah ada.
 - [ ] Secret WooCommerce tidak muncul di client bundle.
 
+## Phase 19 process order flow
+
+- [ ] Jalankan manual migration `database/migrations/005_process_orders.sql` jika ingin menguji Supabase persistence process order.
+- [ ] Buka `/admin/orders/[id]`.
+- [ ] Klik tombol proses order sesuai route.
+- [ ] Response mengembalikan `processOrderId`, `processOrderNumber`, `processRoute`, dan `idempotent`.
+- [ ] Klik tombol yang sama kedua kali tidak membuat process order duplikat.
+- [ ] Buka `/admin/process-orders`.
+- [ ] Buka `/admin/process-orders/[id]`.
+- [ ] Task checklist tampil.
+- [ ] Complete satu task foundation.
+- [ ] Customer tracking berubah memakai label customer-friendly.
+- [ ] Standard no custom → Fulfillment Order.
+- [ ] Standard + logo/bordir → Customization Order.
+- [ ] Custom design/model/bahan khusus → Production Order.
+- [ ] Replenishment warning hanya tampil di admin.
+- [ ] Customer UI tidak menampilkan “out of stock” atau “replenishment needed”.
+
 ## Security smoke
 
 - [ ] Secret tidak muncul di client bundle.

@@ -22,7 +22,7 @@ Field foundation:
 | Field | Value |
 | --- | --- |
 | `process_route` | `fulfillment`, `customization`, `production` |
-| `process_status` | `not_started`, `ready_to_process`, `in_progress`, `waiting_replenishment`, `completed` |
+| `process_status` | `not_started`, `ready_to_process`, `in_progress`, `waiting_replenishment`, `waiting_customer_approval`, `on_hold`, `completed`, `cancelled` |
 | `replenishment_status` | `not_required`, `needed`, `in_progress`, `completed` |
 | `has_customization` | boolean |
 | `customization_type` | `embroidery`, `screen_printing`, `dtf`, `name_tag`, `custom_design`, `none` |
@@ -41,7 +41,7 @@ Admin order detail memakai tombol sesuai route:
 - `customization`: “Buat Customization Order”
 - `production`: “Buat Production Order”
 
-Button Phase 18 hanya mengubah `process_status` ke `in_progress`. Detail Fulfillment/Customization/Production Order penuh disiapkan untuk Phase 19.
+Button Phase 18 awalnya hanya mengubah `process_status` ke `in_progress`. Mulai Phase 19, button tersebut membuat Process Order idempotent sesuai route.
 
 ## Flow foundation
 
@@ -68,3 +68,13 @@ Production:
 6. Finishing
 7. QC
 8. Packing
+
+## Phase 19 continuation
+
+Phase 19 menambahkan Process Order sebagai dokumen kerja internal:
+
+- `fulfillment` membuat Fulfillment Order.
+- `customization` membuat Customization Order.
+- `production` membuat Production Order / SPK foundation.
+
+Endpoint `POST /api/admin/orders/[id]/process` sekarang idempotent. Jika process order sudah ada, endpoint mengembalikan record existing dan tidak membuat duplikat.
