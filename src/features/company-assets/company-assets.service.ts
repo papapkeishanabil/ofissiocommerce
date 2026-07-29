@@ -14,10 +14,12 @@ async function toLogoAsset(input: {
   file: UploadedFile;
   label?: string;
 }): Promise<CompanyLogoAsset> {
-  const signed = await storageService.getSignedFileUrl({
-    companyId: input.file.companyId,
-    fileId: input.file.id,
-  });
+  const signed = await storageService
+    .getSignedFileUrl({
+      companyId: input.file.companyId,
+      fileId: input.file.id,
+    })
+    .catch(() => null);
   return {
     id: input.file.id,
     companyId: input.file.companyId,
@@ -36,11 +38,11 @@ async function toLogoAsset(input: {
 }
 
 export async function listCompanyLogos(companyId: string) {
-  const registrations = companyLogoRepository.listByCompany(companyId);
+  const registrations = await companyLogoRepository.listByCompany(companyId);
   const registeredFileIds = new Set(registrations.map((logo) => logo.fileId));
   const registeredAssets = await Promise.all(
     registrations.map(async (logo) => {
-      const file = storageService.getFileById({ companyId, fileId: logo.fileId });
+      const file = await storageService.getFileById({ companyId, fileId: logo.fileId });
       if (!file || file.status === "deleted" || file.status === "rejected") {
         return null;
       }
@@ -48,8 +50,8 @@ export async function listCompanyLogos(companyId: string) {
     }),
   );
 
-  const looseLogoFiles = storageService
-    .getFilesByCompany(companyId)
+  const looseLogoFiles = (await storageService
+    .getFilesByCompany(companyId))
     .filter(
       (file) =>
         (file.fileType === "company_logo" || file.fileType === "embroidery_logo") &&
@@ -66,7 +68,7 @@ export async function createCompanyLogo(input: {
   fileId: string;
   label?: string;
 }) {
-  const file = storageService.getFileById({
+  const file = await storageService.getFileById({
     companyId: input.companyId,
     fileId: input.fileId,
   });
@@ -78,12 +80,12 @@ export async function createCompanyLogo(input: {
   ) {
     return null;
   }
-  const logo = companyLogoRepository.create({
+  const logo = await companyLogoRepository.create({
     companyId: input.companyId,
     fileId: input.fileId,
     label: input.label || defaultLabel(file),
   });
-  storageService.markFileAsUsed({ companyId: input.companyId, fileId: file.id });
+  await storageService.markFileAsUsed({ companyId: input.companyId, fileId: file.id });
   return logo;
 }
 
@@ -93,12 +95,12 @@ export async function deleteCompanyLogo(input: {
   logoId: string;
   request?: Request;
 }) {
-  const registration = companyLogoRepository.getById({
+  const registration = await companyLogoRepository.getById({
     companyId: input.companyId,
     logoId: input.logoId,
   });
   if (registration) {
-    companyLogoRepository.softDelete({
+    await companyLogoRepository.softDelete({
       companyId: input.companyId,
       logoId: input.logoId,
     });
