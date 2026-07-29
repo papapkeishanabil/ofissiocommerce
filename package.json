@@ -10,6 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "check:env": "node --experimental-strip-types scripts/check-env.ts",
+    "check:supabase": "tsx scripts/check-supabase-schema.ts",
     "check:all": "npm run check:env && npm run typecheck && npm run lint && npm run build"
   },
   "dependencies": {
@@ -35,6 +36,7 @@
     "eslint-config-next": "15.5.4",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.0.0",
+    "tsx": "^4.23.1",
     "typescript": "^5.7.3"
   }
 }
