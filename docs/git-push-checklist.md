@@ -7,11 +7,13 @@ Jangan push otomatis dari Codex. Jalankan checklist ini sebelum push.
 - [ ] `git status` dicek.
 - [ ] Tidak ada `.env`.
 - [ ] Tidak ada `.env.local`.
+- [ ] Tidak ada `.env.staging`.
 - [ ] Tidak ada `.env.production`.
 - [ ] Tidak ada API key.
 - [ ] Tidak ada secret.
 - [ ] Tidak ada `.server-dev.log`.
 - [ ] Tidak ada `debug.log`.
+- [ ] Tidak ada `.claude/`.
 - [ ] Tidak ada `.next`.
 - [ ] Tidak ada `node_modules`.
 - [ ] File besar sudah dipertimbangkan.
