@@ -2,7 +2,7 @@
 
 import type { Metadata, Viewport } from "next";
 
-import { AppShell } from "@/components/shell/AppShell";
+import { RouteAwareShell } from "@/components/shell/RouteAwareShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -36,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body>
-        <AppShell>{children}</AppShell>
+        <RouteAwareShell>{children}</RouteAwareShell>
       </body>
     </html>
   );
