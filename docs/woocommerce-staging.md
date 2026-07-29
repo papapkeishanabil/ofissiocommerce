@@ -42,10 +42,13 @@ Jangan commit consumer key/secret dan jangan buat `NEXT_PUBLIC_WOOCOMMERCE_CONSU
 - `model_3d_filename` wajib.
 - `model_3d_source` wajib.
 
+Status stok WooCommerce tidak boleh menjadi blocker customer-facing untuk produk standar. Jika stok fisik kurang, perlakukan sebagai replenishment internal di Ofissio Admin.
+
 ## Test staging
 
 - Produk tanpa GLB tidak tampil.
 - Produk dengan GLB tampil.
+- Produk standar tetap tampil walaupun stok WooCommerce tidak dipakai sebagai blocker UI.
 - Detail produk terbuka.
 - 3D configurator membaca `model_3d_url`.
 - Cart menerima produk valid.
@@ -60,3 +63,24 @@ WOOCOMMERCE_SYNC_ORDERS=false
 ```
 
 Aktifkan `WOOCOMMERCE_SYNC_ORDERS=true` hanya di staging setelah product source pass dan permission write memang disiapkan.
+
+Order sync membuat Sales/Commerce Order. Process route internal ditentukan di Ofissio Admin:
+
+- fulfillment
+- customization
+- production
+
+## Phase 18 readiness commands
+
+```bash
+npm run check:woocommerce
+```
+
+Hasil yang valid:
+
+- `SKIP` jika WooCommerce env belum diisi.
+- `OK` jika `/products` reachable.
+- Jika `PRODUCT_SOURCE=woocommerce`, minimal ada satu produk published dengan metadata GLB valid.
+- Jika `WOOCOMMERCE_SYNC_ORDERS=true`, `/orders` harus reachable dengan credential staging.
+
+Write test otomatis sengaja tidak dilakukan agar tidak membuat order staging tanpa persetujuan eksplisit.

@@ -124,3 +124,17 @@ Corporate, Perhotelan, Security
 ## Upload GLB
 
 Untuk Phase 8, GLB cukup berupa URL custom field. Ke depan, upload GLB final sebaiknya dilakukan melalui bridge plugin agar admin tidak perlu edit metadata manual.
+
+## Validasi Phase 18
+
+Ofissio hanya menampilkan produk WooCommerce jika semua ini valid:
+
+- product status `publish`;
+- SKU tidak kosong;
+- `has_3d_model=true`;
+- `model_3d_url` berakhiran `.glb`;
+- `model_3d_filename` berakhiran `.glb`;
+- `model_3d_id`, `model_3d_version`, dan `model_3d_source` terisi;
+- jika `supports_embroidery=true`, maka `embroidery_zones` tidak kosong.
+
+Jalankan `npm run check:woocommerce` untuk memeriksa koneksi dan jumlah produk WooCommerce yang valid GLB.

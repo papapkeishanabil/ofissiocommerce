@@ -25,3 +25,13 @@ Yang belum dibuat:
 - endpoint REST produksi
 
 Skeleton ini tidak terhubung ke build Next.js, sehingga tidak memengaruhi aplikasi Ofissio.
+
+## Phase 18 direction
+
+Bridge plugin nantinya perlu membantu:
+
+- validasi metadata GLB sebelum publish;
+- field upload/URL GLB yang aman;
+- field zones bordir dan camera presets;
+- preview status "Ofissio-ready";
+- optional helper untuk menampilkan `ofissio_order_id` pada WooCommerce order admin.

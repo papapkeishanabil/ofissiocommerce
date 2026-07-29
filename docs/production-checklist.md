@@ -36,6 +36,14 @@
 - [ ] WooCommerce production configured.
 - [ ] WooCommerce products punya GLB valid.
 - [ ] Produk tanpa GLB tidak tampil.
+- [ ] Migration 004 WooCommerce sync sudah dijalankan dan diverifikasi di staging.
+- [ ] `woo_sync_logs` terisi saat order sync staging diuji.
+- [ ] WooCommerce order sync idempotent dan retry admin diverifikasi.
+- [ ] Order routing diverifikasi: fulfillment/customization/production.
+- [ ] Admin order tidak otomatis membuat Production Order untuk semua Sales Order.
+- [ ] Produk standar tidak menampilkan `out of stock` / `stok habis` ke customer.
+- [ ] Replenishment internal tidak menjadi blocker customer order.
+- [ ] `WOOCOMMERCE_CONSUMER_SECRET` tidak muncul di client bundle.
 - [ ] iPaymu callback URL registered.
 - [ ] iPaymu signature live verified.
 - [ ] Shipping provider credentials siap.
@@ -63,6 +71,7 @@
 - [ ] Monitor email delivery.
 - [ ] Monitor 3D model load.
 - [ ] Monitor WooCommerce sync.
+- [ ] Monitor WooCommerce sync failed/retry.
 - [ ] Monitor failed login.
 - [ ] Monitor upload failure.
 - [ ] Cek backup pertama.

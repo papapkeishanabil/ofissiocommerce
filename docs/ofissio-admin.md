@@ -23,6 +23,8 @@ Ofissio Admin dipakai untuk:
 - File upload customer.
 - Company/customer operational data.
 - Operational order detail.
+- WooCommerce staging sync visibility/retry.
+- Process routing: fulfillment/customization/production.
 - Tracking produksi.
 - Audit/activity view foundation.
 
@@ -55,7 +57,7 @@ Phase 16 masih memakai mock internal admin guard untuk development. Di productio
 - Phase 17 sudah menambahkan pricing manual, customer accept/reject, dan convert-to-order foundation.
 - PDF quotation final belum dibuat.
 - Convert quotation ke WooCommerce live belum aktif.
-- WooCommerce live order sync belum aktif.
+- WooCommerce live order sync belum aktif; Phase 18 baru staging foundation.
 - Payment tetap mock.
 - Shipping tetap mock/manual.
 - Supabase Storage live belum aktif.
@@ -73,3 +75,22 @@ Ofissio Admin kini memiliki action foundation untuk:
 - convert quotation menjadi order Ofissio foundation.
 
 Customer dapat melihat penawaran final di `/quotes/[id]` jika status `quoted`, lalu accept/reject/request revision. Internal notes dan sales notes tidak dikirim ke customer route.
+
+## Phase 18 WooCommerce sync
+
+Ofissio Admin kini menampilkan panel WooCommerce sync di:
+
+- `/admin/orders/[id]`
+- `/admin/quotations/[id]`
+
+Panel menampilkan `woo_order_id`, nomor Woo, status sync, error aman, link WP admin jika tersedia, dan tombol retry. Retry hanya membuat order Woo jika order Ofissio belum punya `woo_order_id`.
+
+## Phase 18 order routing
+
+Ofissio Admin juga menampilkan routing proses order:
+
+- `fulfillment`: produk standar tanpa custom, flow picking → packing → shipping.
+- `customization`: produk standar dengan logo/bordir/sablon/nama, flow ambil produk standar → custom → QC custom → packing.
+- `production`: custom design/model/bahan/desain khusus, flow approval desain → bahan → cutting → sewing → bordir/sablon → finishing → QC → packing.
+
+Produk standar tidak memakai status `out of stock` customer-facing. Jika stok internal kurang, admin memakai warning `Replenishment needed`.

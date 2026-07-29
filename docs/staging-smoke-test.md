@@ -55,6 +55,26 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Internal notes tidak tampil di response customer.
 - [ ] Customer company lain tidak bisa baca quotation.
 
+## Phase 18 WooCommerce staging sync flow
+
+- [ ] Jalankan `npm run check:woocommerce`.
+- [ ] Jika env WooCommerce kosong, hasil `SKIP` dan mode mock tetap berjalan.
+- [ ] Jika `PRODUCT_SOURCE=woocommerce`, hanya produk published dengan GLB valid yang tampil.
+- [ ] Produk WooCommerce tanpa GLB valid tidak tampil di `/catalog`.
+- [ ] Produk WooCommerce tanpa GLB valid tidak bisa masuk cart.
+- [ ] Produk standar tidak menampilkan `out of stock` / `stok habis` ke customer.
+- [ ] Jika `WOOCOMMERCE_SYNC_ORDERS=true`, direct checkout mock membuat/menandai sync Woo.
+- [ ] Convert quotation to order tetap membuat order Ofissio meskipun Woo sync gagal.
+- [ ] `/admin/orders/[id]` menampilkan panel WooCommerce sync.
+- [ ] `/admin/quotations/[id]` menampilkan panel WooCommerce sync.
+- [ ] `/admin/orders` menampilkan `process_route`, `process_status`, dan replenishment internal.
+- [ ] Admin order detail menampilkan tombol sesuai route, bukan selalu Production Order.
+- [ ] Order standar tanpa custom route `fulfillment`.
+- [ ] Order dengan bordir/logo route `customization`.
+- [ ] Order dengan custom design/model/bahan khusus route `production`.
+- [ ] Retry sync admin tidak membuat order Woo duplikat jika `woo_order_id` sudah ada.
+- [ ] Secret WooCommerce tidak muncul di client bundle.
+
 ## Security smoke
 
 - [ ] Secret tidak muncul di client bundle.

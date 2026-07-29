@@ -426,6 +426,68 @@ create index if not exists idx_quotation_events_event_type
   on quotation_events(event_type);
 create index if not exists idx_quotation_events_created_at
   on quotation_events(created_at desc);
+
+-- Phase 18 WooCommerce staging product/order sync foundation.
+alter table orders
+  add column if not exists woo_order_number text,
+  add column if not exists woo_sync_status text not null default 'disabled'
+    check (woo_sync_status in ('disabled', 'pending', 'synced', 'failed')),
+  add column if not exists woo_sync_error text,
+  add column if not exists woo_synced_at timestamptz,
+  add column if not exists process_route text not null default 'fulfillment'
+    check (process_route in ('fulfillment', 'customization', 'production')),
+  add column if not exists process_status text not null default 'not_started'
+    check (process_status in ('not_started', 'ready_to_process', 'in_progress', 'waiting_replenishment', 'completed')),
+  add column if not exists replenishment_status text not null default 'not_required'
+    check (replenishment_status in ('not_required', 'needed', 'in_progress', 'completed')),
+  add column if not exists has_customization boolean not null default false,
+  add column if not exists customization_type text not null default 'none'
+    check (customization_type in ('embroidery', 'screen_printing', 'dtf', 'name_tag', 'custom_design', 'none'));
+
+alter table quotations
+  add column if not exists woo_order_number text,
+  add column if not exists woo_sync_status text not null default 'disabled'
+    check (woo_sync_status in ('disabled', 'pending', 'synced', 'failed')),
+  add column if not exists woo_sync_error text,
+  add column if not exists woo_synced_at timestamptz;
+
+create table if not exists woo_sync_logs (
+  id text primary key,
+  company_id text not null,
+  ofissio_order_id text,
+  quotation_id text,
+  woo_order_id text,
+  direction text not null check (
+    direction in ('ofissio_to_woocommerce', 'woocommerce_to_ofissio')
+  ),
+  action text not null check (
+    action in ('create_order', 'update_payment_status', 'product_pull', 'manual_retry')
+  ),
+  status text not null check (status in ('pending', 'synced', 'failed', 'skipped')),
+  safe_payload_json jsonb not null default '{}'::jsonb,
+  error_code text,
+  error_message text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_orders_woo_order_id
+  on orders(woo_order_id);
+create index if not exists idx_orders_woo_sync_status
+  on orders(woo_sync_status);
+create index if not exists idx_orders_process_route_status
+  on orders(process_route, process_status);
+create index if not exists idx_orders_replenishment_status
+  on orders(replenishment_status);
+create index if not exists idx_quotations_woo_order_id
+  on quotations(woo_order_id);
+create index if not exists idx_quotations_woo_sync_status
+  on quotations(woo_sync_status);
+create index if not exists idx_woo_sync_logs_company_created_at
+  on woo_sync_logs(company_id, created_at desc);
+create index if not exists idx_woo_sync_logs_order_id
+  on woo_sync_logs(ofissio_order_id);
+create index if not exists idx_woo_sync_logs_woo_order_id
+  on woo_sync_logs(woo_order_id);
 create index if not exists idx_email_logs_company_created_at
   on email_logs(company_id, created_at desc);
 create index if not exists idx_email_logs_type_status_created_at
