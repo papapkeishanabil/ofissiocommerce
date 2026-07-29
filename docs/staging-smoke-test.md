@@ -38,6 +38,23 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Mobile admin tidak horizontal overflow.
 - [ ] Browser console admin 0 error.
 
+## Phase 17 quotation management flow
+
+- [ ] Jalankan manual migration `database/migrations/003_quotation_management.sql` di staging jika ingin mengaktifkan tabel `quotation_events`.
+- [ ] Buat quotation dari customer flow.
+- [ ] Admin buka `/admin/quotations/[id]`.
+- [ ] Admin mark `under_review`.
+- [ ] Admin update pricing.
+- [ ] Admin mark `quoted`.
+- [ ] Customer buka `/quotes/[id]` dan melihat harga final.
+- [ ] Customer accept quotation.
+- [ ] Admin convert quotation to order.
+- [ ] Convert kedua kali idempotent.
+- [ ] Order muncul di `/admin/orders`.
+- [ ] Order muncul di customer dashboard dan `/orders/[id]`.
+- [ ] Internal notes tidak tampil di response customer.
+- [ ] Customer company lain tidak bisa baca quotation.
+
 ## Security smoke
 
 - [ ] Secret tidak muncul di client bundle.

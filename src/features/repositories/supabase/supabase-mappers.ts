@@ -2,7 +2,8 @@ import "server-only";
 
 import type { CompanyLogoRegistration } from "@/features/company-assets/company-assets.types";
 import type { EmailLog } from "@/features/email/email.types";
-import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import type { QuotationEventRecord, QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import { normalizeQuotationRecord } from "@/features/quotation/quotation.utils";
 import type { UploadedFile } from "@/features/storage/storage.types";
 
 type Row = Record<string, unknown>;
@@ -78,37 +79,38 @@ export function rowToCompanyLogo(row: Row): CompanyLogoRegistration {
 }
 
 export function quotationToRow(quotation: QuotationRequestRecord): Row {
+  const normalized = normalizeQuotationRecord(quotation);
   return {
-    id: quotation.id,
-    quotation_number: quotation.quotationNumber,
-    company_id: quotation.companyId,
-    company_name: quotation.companyName,
-    user_id: quotation.userId,
-    user_email: quotation.userEmail,
-    pic_name: quotation.picName,
-    pic_email: quotation.picEmail,
-    pic_whatsapp: quotation.picWhatsapp,
-    status: quotation.status,
-    source: quotation.source,
-    subtotal_estimate: quotation.subtotalEstimate,
-    total_qty: quotation.totalQty,
-    embroidery_point_count: quotation.embroideryPointCount,
-    customer_notes: quotation.customerNotes,
-    shipping_destination: quotation.shippingDestination,
-    email_status: quotation.emailStatus,
-    email_log_ids_json: quotation.emailLogIds,
-    email_results_json: quotation.emailResults,
-    quotation_json: quotation,
-    created_at: quotation.createdAt,
-    updated_at: quotation.updatedAt,
+    id: normalized.id,
+    quotation_number: normalized.quotationNumber,
+    company_id: normalized.companyId,
+    company_name: normalized.companyName,
+    user_id: normalized.userId,
+    user_email: normalized.userEmail,
+    pic_name: normalized.picName,
+    pic_email: normalized.picEmail,
+    pic_whatsapp: normalized.picWhatsapp,
+    status: normalized.status,
+    source: normalized.source,
+    subtotal_estimate: normalized.subtotalEstimate,
+    total_qty: normalized.totalQty,
+    embroidery_point_count: normalized.embroideryPointCount,
+    customer_notes: normalized.customerNotes,
+    shipping_destination: normalized.shippingDestination,
+    email_status: normalized.emailStatus,
+    email_log_ids_json: normalized.emailLogIds,
+    email_results_json: normalized.emailResults,
+    quotation_json: normalized,
+    created_at: normalized.createdAt,
+    updated_at: normalized.updatedAt,
   };
 }
 
 export function rowToQuotation(row: Row): QuotationRequestRecord {
   if (row.quotation_json && typeof row.quotation_json === "object") {
-    return row.quotation_json as QuotationRequestRecord;
+    return normalizeQuotationRecord(row.quotation_json as QuotationRequestRecord);
   }
-  return {
+  return normalizeQuotationRecord({
     id: String(row.id),
     quotationNumber: String(row.quotation_number),
     companyId: String(row.company_id),
@@ -131,7 +133,7 @@ export function rowToQuotation(row: Row): QuotationRequestRecord {
     emailResults: [],
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
-  };
+  } as unknown as QuotationRequestRecord);
 }
 
 export function quotationItemToRow(input: {
@@ -159,6 +161,41 @@ export function quotationItemToRow(input: {
     customization: input.item.customization,
     embroidery_placements_json: input.item.embroideryPlacements,
     item_snapshot_json: input.item,
+  };
+}
+
+export function quotationEventToRow(event: QuotationEventRecord): Row {
+  return {
+    id: event.id,
+    quotation_id: event.quotationId,
+    company_id: event.companyId,
+    actor_id: event.actorId,
+    actor_type: event.actorType,
+    event_type: event.eventType,
+    old_status: event.oldStatus,
+    new_status: event.newStatus,
+    note: event.note,
+    metadata_json: event.metadata,
+    created_at: event.createdAt,
+  };
+}
+
+export function rowToQuotationEvent(row: Row): QuotationEventRecord {
+  return {
+    id: String(row.id),
+    quotationId: String(row.quotation_id),
+    companyId: String(row.company_id),
+    actorId: row.actor_id ? String(row.actor_id) : null,
+    actorType:
+      row.actor_type === "customer" || row.actor_type === "internal"
+        ? row.actor_type
+        : "system",
+    eventType: row.event_type as QuotationEventRecord["eventType"],
+    oldStatus: row.old_status ? (String(row.old_status) as QuotationEventRecord["oldStatus"]) : null,
+    newStatus: row.new_status ? (String(row.new_status) as QuotationEventRecord["newStatus"]) : null,
+    note: row.note ? String(row.note) : null,
+    metadata: objectOrEmpty(row.metadata_json),
+    createdAt: String(row.created_at),
   };
 }
 

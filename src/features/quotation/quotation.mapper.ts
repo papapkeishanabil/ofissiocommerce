@@ -27,6 +27,8 @@ export function quotationStatusLabel(status: QuotationStatus) {
       return "Kedaluwarsa";
     case "converted_to_order":
       return "Menjadi order";
+    case "cancelled":
+      return "Dibatalkan";
   }
 }
 
@@ -54,7 +56,10 @@ export function mapQuotationToTracking(
       sizeMatrix: item.sizeMatrix,
       totalQty: item.totalQty,
       unitPrice: item.priceFrom,
-      estimatedPrice: item.priceFrom * item.totalQty,
+      estimatedPrice:
+        item.finalLineTotal ??
+        item.lineSubtotal ??
+        item.priceFrom * item.totalQty,
       fulfillmentType: "QUOTATION_ONLY",
       currentStageId,
       stages: timeline,
@@ -87,6 +92,8 @@ export function mapQuotationToTracking(
       },
     ],
     notes: quotation.customerNotes,
+    grandTotal: quotation.grandTotal,
+    convertedOrderId: quotation.convertedOrderId,
   };
 }
 
@@ -97,7 +104,7 @@ function statusToTrackingStatus(
     case "accepted":
       return "accepted";
     case "converted_to_order":
-      return "paid";
+      return "waiting_payment";
     case "quoted":
       return "sent";
     case "under_review":
@@ -108,6 +115,7 @@ function statusToTrackingStatus(
     case "emailed":
     case "rejected":
     case "expired":
+    case "cancelled":
       return "submitted";
   }
 }

@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
+import { calculateOrderProgress } from "@/features/tracking/tracking-utils";
 import { getSupabaseAdminClient } from "@/features/database/supabase-admin.client";
 import type { TrackingRepository } from "../repository.types";
 
@@ -66,7 +67,7 @@ function trackingToRow(order: CustomerTrackingOrder) {
     status: order.orderStatus ?? order.currentStageId,
     current_status: order.currentStageId,
     next_step: order.nextStep,
-    progress: 0,
+    progress: calculateOrderProgress(order.productionTimeline),
     timeline_json: order.productionTimeline,
     tracking_json: order,
     created_at: order.createdAt,

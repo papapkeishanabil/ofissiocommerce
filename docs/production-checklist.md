@@ -44,6 +44,12 @@
 - [ ] CSP tidak memblokir GLB.
 - [ ] Test transaction berhasil.
 - [ ] Test quotation berhasil.
+- [ ] Migration 003 quotation management sudah dijalankan dan diverifikasi.
+- [ ] Quotation pricing server-side diverifikasi.
+- [ ] Customer accept/reject quotation company-scoped.
+- [ ] Convert quotation to order idempotent.
+- [ ] Order hasil convert muncul di admin/customer tracking.
+- [ ] Internal notes quotation tidak tampil ke customer.
 - [ ] Test email berhasil.
 - [ ] Test tracking berhasil.
 - [ ] Test mobile berhasil.

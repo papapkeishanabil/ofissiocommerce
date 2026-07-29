@@ -236,6 +236,14 @@ const checkout: Rule = ({ text, ctx }) => {
 const quotation: Rule = ({ text, ctx }) => {
   const d = detectIntent(text);
   if (d.intent !== "ASK_QUOTATION") return null;
+  if (/\b(status|bagaimana|sudah jadi|lihat|setuju|accept|lanjutkan|lanjut.*pesanan)\b/i.test(text)) {
+    return {
+      message:
+        "Untuk quotation yang sudah dibuat, silakan buka Dashboard lalu pilih kartu quotation terkait. Jika statusnya quoted, halaman quotation akan menampilkan harga final dan tombol Accept/Reject. Saya tidak akan menyetujui atau convert order otomatis tanpa aksi di halaman quotation/admin.",
+      quickReplies: ["Buka dashboard", "Hubungi sales", "Lihat katalog"],
+      contextPatch: { journeyStage: "QUOTATION_SUBMITTED" },
+    };
+  }
   if (!ctx.cartSummary || ctx.cartSummary.itemCount === 0) {
     return {
       message:
@@ -246,7 +254,7 @@ const quotation: Rule = ({ text, ctx }) => {
   }
   return {
     message:
-      "Baik, saya buka halaman request quotation. Tim Ofissio akan meninjau kebutuhan Anda.",
+      "Baik, saya buka halaman request quotation. Harga final tidak dihitung otomatis; tim Ofissio akan meninjau kebutuhan, logo, dan qty lalu mengonfirmasi penawaran resmi.",
     action: { type: "REQUEST_QUOTATION", payload: {} },
     quickReplies: ["Lihat keranjang", "Lanjut checkout"],
     contextPatch: { journeyStage: "QUOTATION_SUBMITTED" },

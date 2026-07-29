@@ -4,7 +4,12 @@ import type { UploadedFile } from "@/features/storage/storage.types";
 import type { UploadedFileListFilter, StorageFileStatus } from "@/features/storage/storage.types";
 import type { CompanyLogoRegistration } from "@/features/company-assets/company-assets.types";
 import type { EmailLog, EmailStatus } from "@/features/email/email.types";
-import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import type {
+  QuotationEventRecord,
+  QuotationPricingInput,
+  QuotationRequestRecord,
+  QuotationStatus,
+} from "@/features/quotation/quotation.types";
 import type { PaymentOrderRecord, PaymentRecord, PaymentStatus } from "@/features/payment/payment.types";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 
@@ -79,8 +84,27 @@ export interface QuotationRepository {
   save(record: QuotationRequestRecord): Promise<QuotationRequestRecord>;
   update(id: string, patch: Partial<QuotationRequestRecord>): Promise<QuotationRequestRecord | null>;
   getById(id: string): Promise<QuotationRequestRecord | null>;
+  getByNumber?(quotationNumber: string): Promise<QuotationRequestRecord | null>;
   listByCompany(companyId: string): Promise<QuotationRequestRecord[]>;
   listAll(): Promise<QuotationRequestRecord[]>;
+  updateStatus?(
+    id: string,
+    status: QuotationStatus,
+    patch?: Partial<QuotationRequestRecord>,
+  ): Promise<QuotationRequestRecord | null>;
+  updatePricing?(
+    id: string,
+    pricing: QuotationPricingInput,
+  ): Promise<QuotationRequestRecord | null>;
+  addInternalNote?(
+    id: string,
+    note: QuotationRequestRecord["internalNotes"][number],
+  ): Promise<QuotationRequestRecord | null>;
+  addEvent?(event: QuotationEventRecord): Promise<QuotationEventRecord>;
+  getEvents?(quotationId: string): Promise<QuotationEventRecord[]>;
+  accept?(id: string, actorId: string | null): Promise<QuotationRequestRecord | null>;
+  reject?(id: string, actorId: string | null, note?: string | null): Promise<QuotationRequestRecord | null>;
+  markConverted?(id: string, orderId: string): Promise<QuotationRequestRecord | null>;
 }
 
 export interface EmailLogRepository {

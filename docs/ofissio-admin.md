@@ -52,12 +52,24 @@ Phase 16 masih memakai mock internal admin guard untuk development. Di productio
 ## Known limitation
 
 - Admin auth masih mock/internal placeholder.
-- Admin status update quotation masih foundation.
-- Convert quotation ke order belum penuh.
-- Harga final quotation belum dikelola penuh.
+- Phase 17 sudah menambahkan pricing manual, customer accept/reject, dan convert-to-order foundation.
+- PDF quotation final belum dibuat.
+- Convert quotation ke WooCommerce live belum aktif.
 - WooCommerce live order sync belum aktif.
 - Payment tetap mock.
 - Shipping tetap mock/manual.
 - Supabase Storage live belum aktif.
 - Email real belum aktif.
 - Monitoring provider belum aktif.
+
+## Phase 17 quotation management
+
+Ofissio Admin kini memiliki action foundation untuk:
+
+- update status quotation;
+- update pricing server-side;
+- add internal note;
+- send quote to customer lewat email foundation;
+- convert quotation menjadi order Ofissio foundation.
+
+Customer dapat melihat penawaran final di `/quotes/[id]` jika status `quoted`, lalu accept/reject/request revision. Internal notes dan sales notes tidak dikirim ke customer route.

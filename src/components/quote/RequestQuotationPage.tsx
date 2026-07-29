@@ -8,9 +8,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCartHydrated, useCartItems } from "@/hooks/use-cart";
 import { useCartStore } from "@/stores/cart-store";
 import { useUIStore } from "@/stores/ui-store";
-import { createQuotation } from "@/lib/commerce/order-service";
+import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import type { AuthSession } from "@/types/account";
 import { formatIDR } from "@/types/product";
-import type { Quotation } from "@/types/order";
 import { FileText, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -82,63 +82,49 @@ export function RequestQuotationPage() {
     setSubmitting(true);
     setSubmitMessage(null);
     try {
-      const q = createQuotation({
-        companyId: session.company.id,
-        userId: session.user.id,
-        items,
-        notes: notes.trim() || null,
-      });
-      const notification = await notifyQuotationByEmail(q);
-      window.sessionStorage.setItem(
-        quoteNotificationKey(q.id),
-        JSON.stringify(notification),
-      );
-      clearCart();
-      router.push(`/quotes/${q.id}?new=1`);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function notifyQuotationByEmail(quotation: Quotation) {
-    try {
-      const response = await fetch("/api/quotation/email", {
+      const response = await fetch("/api/quotation/request", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(session),
+        },
         body: JSON.stringify({
-          companyId: session!.company.id,
-          userId: session!.user.id,
-          companyName: session!.company.companyName,
-          picName: session!.company.picName || session!.user.fullName,
-          picEmail: session!.company.picEmail || session!.user.email,
-          quotation: {
-            id: quotation.id,
-            code: quotation.code,
-            notes: quotation.notes,
-            items: quotation.items,
-          },
+          items: items.map((item) => ({
+            productId: item.productId,
+            selectedColor: item.color,
+            sizeMatrix: item.sizes,
+            customization: item.customization,
+            embroideryPlacements: item.embroideryPlacements ?? [],
+          })),
+          customerNotes: notes.trim() || null,
+          picName: session.company.picName || session.user.fullName,
+          picEmail: session.company.picEmail || session.user.email,
+          picWhatsapp: session.company.picWhatsapp || session.user.whatsapp,
         }),
       });
       const result = (await response.json()) as {
         ok: boolean;
-        notification?: QuoteEmailNotification;
+        quotation?: QuotationRequestRecord;
         message?: string;
       };
-      if (!response.ok || !result.notification) {
-        throw new Error(result.message);
+      if (!response.ok || !result.ok || !result.quotation) {
+        throw new Error(result.message ?? "Request quotation gagal diproses.");
       }
-      return result.notification;
-    } catch {
-      setSubmitMessage(
-        "Quotation tercatat, tetapi notifikasi email belum dapat diproses.",
+      const notification = buildQuoteNotification(result.quotation);
+      window.sessionStorage.setItem(
+        quoteNotificationKey(result.quotation.id),
+        JSON.stringify(notification),
       );
-      return {
-        status: "failed" as const,
-        recipientEmail: session!.company.picEmail || session!.user.email,
-        provider: "mock",
-        message:
-          "Request quotation tercatat, tetapi notifikasi email belum dapat diproses.",
-      };
+      clearCart();
+      router.push(`/quotes/${result.quotation.id}?new=1`);
+    } catch (error) {
+      setSubmitMessage(
+        error instanceof Error
+          ? error.message
+          : "Request quotation belum dapat diproses.",
+      );
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -240,12 +226,63 @@ export function RequestQuotationPage() {
 }
 
 interface QuoteEmailNotification {
-  status: "sent" | "mock" | "failed";
-  recipientEmail: string;
+  status: "sent" | "mock" | "failed" | "skipped";
+  recipientEmail: string | null;
   provider: string;
   message: string;
 }
 
 function quoteNotificationKey(quotationId: string) {
   return `ofissio-quote-notification:${quotationId}`;
+}
+
+function buildQuoteNotification(
+  quotation: QuotationRequestRecord,
+): QuoteEmailNotification {
+  const firstEmail = quotation.emailResults[0];
+  if (quotation.emailStatus === "sent") {
+    return {
+      status: "sent",
+      recipientEmail: quotation.picEmail,
+      provider: firstEmail?.provider ?? "resend",
+      message:
+        "Request quotation tercatat dan email notifikasi berhasil dikirim.",
+    };
+  }
+  if (quotation.emailStatus === "mocked") {
+    return {
+      status: "mock",
+      recipientEmail: quotation.picEmail,
+      provider: "mock",
+      message:
+        "Request quotation tercatat. Email masih mode mock, jadi belum terkirim real.",
+    };
+  }
+  if (quotation.emailStatus === "skipped") {
+    return {
+      status: "skipped",
+      recipientEmail: quotation.picEmail,
+      provider: firstEmail?.provider ?? "mock",
+      message:
+        "Request quotation tercatat. Email dilewati karena konfigurasi belum lengkap.",
+    };
+  }
+  return {
+    status: "failed",
+    recipientEmail: quotation.picEmail,
+    provider: firstEmail?.provider ?? "mock",
+    message:
+      "Request quotation tercatat, tetapi notifikasi email perlu dicek oleh tim.",
+  };
+}
+
+function authHeaders(session: AuthSession): HeadersInit {
+  return {
+    "x-ofissio-company-id": session.company.id,
+    "x-ofissio-company-name": session.company.companyName,
+    "x-ofissio-user-id": session.user.id,
+    "x-ofissio-user-email": session.user.email,
+    "x-ofissio-user-name": session.user.fullName,
+    "x-ofissio-role": session.user.role,
+  };
 }

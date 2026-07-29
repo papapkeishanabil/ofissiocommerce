@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
 import {
+  executeAdminQuotationAction,
   getAdminQuotationDetail,
   requireInternalAdmin,
-  updateAdminQuotationStatus,
 } from "@/features/admin/admin.service";
 import {
   adminIdParamSchema,
-  adminQuotationStatusPatchSchema,
+  adminQuotationPatchSchema,
 } from "@/features/admin/admin.validation";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
 import { createApiError, safeErrorResponse } from "@/lib/security/safe-error-response";
@@ -46,17 +46,16 @@ export async function PATCH(request: Request, context: RouteContext) {
     const actor = requireInternalAdmin(request, "admin:quotation:update");
     const { id } = validateInput(adminIdParamSchema, await context.params);
     const payload = validateInput(
-      adminQuotationStatusPatchSchema,
+      adminQuotationPatchSchema,
       await request.json(),
     );
-    const quotation = await updateAdminQuotationStatus({
+    const result = await executeAdminQuotationAction({
       id,
-      status: payload.status,
-      internalNote: payload.internalNote,
+      payload,
       actor,
       request,
     });
-    return NextResponse.json({ ok: true, quotation });
+    return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     return safeErrorResponse(error, "Status quotation belum dapat diperbarui.", 403);
   }

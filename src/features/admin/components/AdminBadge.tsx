@@ -36,7 +36,7 @@ export function AdminBadge({
 }
 
 export function adminStatusTone(status: string): Tone {
-  if (["accepted", "paid", "sent", "mocked", "connected", "ready"].includes(status)) {
+  if (["accepted", "converted_to_order", "paid", "sent", "mocked", "connected", "ready"].includes(status)) {
     return "success";
   }
   if (["under_review", "quoted", "waiting_payment", "current"].includes(status)) {
@@ -45,7 +45,7 @@ export function adminStatusTone(status: string): Tone {
   if (["revision_requested", "submitted", "emailed"].includes(status)) {
     return "warning";
   }
-  if (["rejected", "expired", "failed", "deleted", "blocked"].includes(status)) {
+  if (["rejected", "expired", "cancelled", "failed", "deleted", "blocked"].includes(status)) {
     return "danger";
   }
   return "neutral";

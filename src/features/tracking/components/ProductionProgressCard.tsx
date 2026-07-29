@@ -5,8 +5,8 @@ import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import {
   calculateOrderProgress,
   fulfillmentLabel,
-  mapInternalStatusToCustomerStatus,
   paymentStatusLabel,
+  trackingOrderStatusLabel,
 } from "@/features/tracking/tracking-utils";
 import { formatTrackingDate } from "@/features/tracking/tracking.service";
 
@@ -16,11 +16,7 @@ interface ProductionProgressCardProps {
 
 export function ProductionProgressCard({ order }: ProductionProgressCardProps) {
   const progress = calculateOrderProgress(order.productionTimeline);
-  const status = mapInternalStatusToCustomerStatus(
-    order.fulfillmentType,
-    order.currentStageId,
-    order.paymentStatus,
-  );
+  const status = trackingOrderStatusLabel(order);
 
   return (
     <section className="rounded-2xl border border-line bg-surface p-5">

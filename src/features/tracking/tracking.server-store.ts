@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { CustomerTrackingOrder } from "./tracking.types";
+import { repositoryRegistry } from "@/features/repositories/repository.factory";
 
 interface TrackingStoreState {
   orders: Map<string, CustomerTrackingOrder>;
@@ -28,6 +29,9 @@ export function upsertTrackingOrder(order: CustomerTrackingOrder) {
       }
     : order;
   state.orders.set(order.id, next);
+  void repositoryRegistry.tracking.upsertTrackingOrder?.(next).catch(() => {
+    // Persistence foundation must not break tracking updates.
+  });
   return { order: next, created: !existing };
 }
 

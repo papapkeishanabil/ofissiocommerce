@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { getQuotationRequestById } from "@/features/quotation/quotation.service";
+import {
+  getQuotationEventsById,
+  getQuotationRequestById,
+} from "@/features/quotation/quotation.service";
 import { quotationListQuerySchema } from "@/features/quotation/quotation.validation";
 import { requireAuth } from "@/lib/security/auth-guard";
 import { requireCompanyAccess } from "@/lib/security/company-access";
@@ -29,7 +32,7 @@ export async function GET(request: Request, context: RouteContext) {
       userId: query.userId,
     });
     requireRole(session, "order:view");
-    const quotation = getQuotationRequestById(id, session.companyId);
+    const quotation = await getQuotationRequestById(id, session.companyId);
     if (!quotation) {
       throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
     }
@@ -40,8 +43,34 @@ export async function GET(request: Request, context: RouteContext) {
       "quotation",
       quotation.id,
     );
-    return NextResponse.json({ ok: true, quotation });
+    const events = (await getQuotationEventsById(id, session.companyId)).map((event) => ({
+      id: event.id,
+      eventType: event.eventType,
+      oldStatus: event.oldStatus,
+      newStatus: event.newStatus,
+      createdAt: event.createdAt,
+      note:
+        event.actorType === "customer" ||
+        ["customer_accepted", "customer_rejected", "emailed_to_customer", "converted_to_order"].includes(event.eventType)
+          ? event.note
+          : null,
+    }));
+    return NextResponse.json({
+      ok: true,
+      quotation: toCustomerQuotation(quotation),
+      events,
+    });
   } catch (error) {
     return safeErrorResponse(error, "Quotation tidak ditemukan.", 404);
   }
+}
+
+function toCustomerQuotation<T extends { internalNotes?: unknown; salesNotes?: unknown }>(
+  quotation: T,
+) {
+  return {
+    ...quotation,
+    internalNotes: [],
+    salesNotes: null,
+  };
 }

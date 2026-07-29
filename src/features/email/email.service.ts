@@ -40,7 +40,7 @@ function sanitizeMetadata(metadata: Record<string, unknown>) {
   );
 }
 
-function skippedEmail(input: {
+async function skippedEmail(input: {
   type: EmailSendInput["type"];
   companyId: string | null;
   userId: string | null;
@@ -49,12 +49,12 @@ function skippedEmail(input: {
   reason: string;
   safeMetadata?: Record<string, unknown>;
   request?: Request;
-}): EmailSendResult {
+}): Promise<EmailSendResult> {
   const config = getEmailRuntimeConfig();
   const provider = activeProvider();
   const now = new Date().toISOString();
   const id = `email_${randomUUID()}`;
-  emailRepository.save({
+  await emailRepository.save({
     id,
     companyId: input.companyId,
     userId: input.userId,
@@ -124,26 +124,54 @@ export async function sendEmail(input: EmailSendInput): Promise<EmailSendResult>
   const provider = activeProvider();
   const now = new Date().toISOString();
   const id = `email_${randomUUID()}`;
-  const log = emailRepository.save({
-    id,
-    companyId: input.companyId,
-    userId: input.userId,
-    to: parsed.to,
-    from: input.from ?? config.from,
-    replyTo: input.replyTo ?? config.replyTo,
-    subject: parsed.subject,
-    type: parsed.type,
-    provider: provider.name,
-    status: "queued",
-    providerMessageId: null,
-    safeMetadata: sanitizeMetadata(input.safeMetadata ?? {}),
-    errorMessage: null,
-    createdAt: now,
-    sentAt: null,
-  });
+  const log = await emailRepository
+    .save({
+      id,
+      companyId: input.companyId,
+      userId: input.userId,
+      to: parsed.to,
+      from: input.from ?? config.from,
+      replyTo: input.replyTo ?? config.replyTo,
+      subject: parsed.subject,
+      type: parsed.type,
+      provider: provider.name,
+      status: "queued",
+      providerMessageId: null,
+      safeMetadata: sanitizeMetadata(input.safeMetadata ?? {}),
+      errorMessage: null,
+      createdAt: now,
+      sentAt: null,
+    })
+    .catch(() => null);
+
+  if (!log) {
+    const fallbackStatus = provider.name === "mock" ? "mocked" : "failed";
+    logAuditEvent({
+      request: input.request,
+      actorId: input.userId,
+      actorType: "system",
+      companyId: input.companyId,
+      action: fallbackStatus === "mocked" ? "email_mocked" : "email_failed",
+      entityType: "email",
+      entityId: id,
+      metadata: {
+        type: parsed.type,
+        provider: provider.name,
+        reason: "email_log_unavailable",
+      },
+    });
+    return {
+      id,
+      provider: provider.name,
+      status: fallbackStatus,
+      providerMessageId: null,
+      errorMessage:
+        fallbackStatus === "mocked" ? null : "Email log belum dapat disimpan.",
+    };
+  }
 
   if (!config.enabled && provider.name !== "mock") {
-    emailRepository.setStatus({
+    await emailRepository.setStatus({
       id,
       status: "skipped",
       errorMessage: "EMAIL_ENABLED=false",
@@ -178,7 +206,7 @@ export async function sendEmail(input: EmailSendInput): Promise<EmailSendResult>
     });
     const status = provider.name === "mock" ? "mocked" : "sent";
     const sentAt = new Date().toISOString();
-    emailRepository.setStatus({
+    await emailRepository.setStatus({
       id,
       status,
       providerMessageId: result.providerMessageId,
@@ -206,7 +234,7 @@ export async function sendEmail(input: EmailSendInput): Promise<EmailSendResult>
       errorMessage: null,
     };
   } catch {
-    emailRepository.setStatus({
+    await emailRepository.setStatus({
       id,
       status: "failed",
       errorMessage: "Provider email gagal memproses request.",

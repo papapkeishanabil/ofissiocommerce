@@ -3,7 +3,15 @@ import "server-only";
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { storageService } from "@/features/storage/storage.service";
 import type { UploadedFileListFilter } from "@/features/storage/storage.types";
-import type { QuotationRequestRecord, QuotationStatus } from "@/features/quotation/quotation.types";
+import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import {
+  addQuotationInternalNote,
+  convertQuotationToOrder,
+  getQuotationEventsById,
+  sendQuotationReadyToCustomer,
+  updateQuotationPricing,
+  updateQuotationStatus,
+} from "@/features/quotation/quotation.service";
 import type { PaymentOrderRecord } from "@/features/payment/payment.types";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
@@ -30,7 +38,7 @@ import type {
   AdminUploadRow,
   InternalAdminUser,
 } from "./admin.types";
-import type { AdminQuotationUpdateStatus } from "./admin.validation";
+import type { AdminQuotationPatchPayload, AdminQuotationUpdateStatus } from "./admin.validation";
 import { safeMetadataSummary } from "./admin.utils";
 
 type MaybeRequest = Request | undefined;
@@ -42,7 +50,7 @@ export function getCurrentInternalUserMock(request?: MaybeRequest): InternalAdmi
     ? INTERNAL_ROLES.includes(requestedRole as InternalRole)
       ? (requestedRole as InternalRole)
       : null
-    : process.env.NODE_ENV === "production"
+    : headers || process.env.NODE_ENV === "production"
       ? null
       : "super_admin";
   if (!role) return null;
@@ -111,6 +119,8 @@ export async function getAdminSummary(): Promise<AdminSummary> {
   return {
     totalQuotations: quotations.length,
     quotationsUnderReview: quotations.filter((item) => item.status === "under_review").length,
+    quotationsQuoted: quotations.filter((item) => item.status === "quoted").length,
+    quotationsAccepted: quotations.filter((item) => item.status === "accepted").length,
     quotationsEmailedOrMocked: quotations.filter((item) =>
       ["emailed", "mocked", "sent"].includes(String(item.emailStatus)),
     ).length,
@@ -152,6 +162,7 @@ export async function getAdminQuotationDetail(id: string): Promise<AdminQuotatio
   return {
     quotation,
     logoPreviews: await getLogoPreviews(quotation),
+    events: await getQuotationEventsById(quotation.id, quotation.companyId),
   };
 }
 
@@ -189,6 +200,73 @@ export async function updateAdminQuotationStatus(input: {
     },
   });
   return updated;
+}
+
+export async function executeAdminQuotationAction(input: {
+  id: string;
+  payload: AdminQuotationPatchPayload;
+  actor: InternalAdminUser;
+  request?: Request;
+}) {
+  if (!canUpdateAdminQuotation(input.actor)) {
+    throw createApiError("FORBIDDEN", "Role internal belum boleh mengubah quotation.", 403);
+  }
+  const payload = input.payload;
+  if ("action" in payload) {
+    switch (payload.action) {
+      case "update_status":
+        return {
+          quotation: await updateQuotationStatus({
+            id: input.id,
+            status: payload.status,
+            note: payload.internalNote,
+            actorId: input.actor.id,
+            actorType: "internal",
+            request: input.request,
+          }),
+        };
+      case "update_pricing":
+        return {
+          quotation: await updateQuotationPricing({
+            id: input.id,
+            pricing: payload,
+            actorId: input.actor.id,
+            request: input.request,
+          }),
+        };
+      case "add_internal_note":
+        return {
+          quotation: await addQuotationInternalNote({
+            id: input.id,
+            note: payload.note,
+            actorId: input.actor.id,
+            request: input.request,
+          }),
+        };
+      case "send_quote_to_customer":
+        return sendQuotationReadyToCustomer({
+          id: input.id,
+          actorId: input.actor.id,
+          request: input.request,
+        });
+      case "convert_to_order":
+        return convertQuotationToOrder({
+          id: input.id,
+          actorId: input.actor.id,
+          request: input.request,
+        });
+    }
+  }
+  return {
+    quotation: await updateQuotationStatus({
+      id: input.id,
+      status: payload.status,
+      note: payload.internalNote,
+      actorId: input.actor.id,
+      actorType: "internal",
+      request: input.request,
+    }),
+  };
 }
 
 export async function listAdminOrders(): Promise<AdminOrderRow[]> {

@@ -154,6 +154,8 @@ export interface CustomerQuotationTracking {
   documents: TrackingDocument[];
   actionRequired: CustomerAction[];
   notes?: string | null;
+  grandTotal?: number | null;
+  convertedOrderId?: string | null;
 }
 
 export interface DashboardTrackingSnapshot {

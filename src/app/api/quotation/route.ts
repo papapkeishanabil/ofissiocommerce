@@ -25,9 +25,21 @@ export async function GET(request: Request) {
     });
     requireRole(session, "order:view");
     requireCompanyAccess(session, session.companyId, request, "quotation", "list");
-    const quotations = listQuotationRequests(session.companyId);
+    const quotations = (await listQuotationRequests(session.companyId)).map(
+      toCustomerQuotation,
+    );
     return NextResponse.json({ ok: true, quotations });
   } catch (error) {
     return safeErrorResponse(error, "Quotation belum dapat dimuat.", 400);
   }
+}
+
+function toCustomerQuotation<T extends { internalNotes?: unknown; salesNotes?: unknown }>(
+  quotation: T,
+) {
+  return {
+    ...quotation,
+    internalNotes: [],
+    salesNotes: null,
+  };
 }

@@ -16,5 +16,53 @@ export const adminQuotationStatusPatchSchema = z.object({
   internalNote: z.string().trim().max(500).optional(),
 });
 
+const moneySchema = z.coerce.number().min(0).max(10_000_000_000);
+
+export const adminQuotationPatchSchema = z.union([
+  z.object({
+    action: z.literal("update_status"),
+    status: z.enum(ADMIN_QUOTATION_UPDATE_STATUSES),
+    internalNote: z.string().trim().max(500).optional(),
+  }),
+  z.object({
+    action: z.literal("update_pricing"),
+    items: z
+      .array(
+        z.object({
+          itemId: z.string().trim().min(1).max(180),
+          unitPrice: moneySchema,
+          discountAmount: moneySchema.optional(),
+          finalUnitPrice: moneySchema.nullable().optional(),
+        }),
+      )
+      .min(1)
+      .max(50),
+    discountTotal: moneySchema.optional(),
+    taxTotal: moneySchema.optional(),
+    shippingEstimate: moneySchema.optional(),
+    customerMessage: z.string().trim().max(1000).nullable().optional(),
+    salesNotes: z.string().trim().max(1000).nullable().optional(),
+    validUntil: z.string().trim().max(80).nullable().optional(),
+    salesEmail: z.string().trim().email().max(160).nullable().optional(),
+  }),
+  z.object({
+    action: z.literal("add_internal_note"),
+    note: z.string().trim().min(1).max(1000),
+  }),
+  z.object({
+    action: z.literal("send_quote_to_customer"),
+  }),
+  z.object({
+    action: z.literal("convert_to_order"),
+  }),
+  // Backward-compatible Phase 16 payload shape.
+  z.object({
+    status: z.enum(ADMIN_QUOTATION_UPDATE_STATUSES),
+    internalNote: z.string().trim().max(500).optional(),
+  }),
+]);
+
 export type AdminQuotationUpdateStatus =
   (typeof ADMIN_QUOTATION_UPDATE_STATUSES)[number];
+
+export type AdminQuotationPatchPayload = z.infer<typeof adminQuotationPatchSchema>;

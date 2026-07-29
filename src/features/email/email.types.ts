@@ -1,6 +1,7 @@
 export const EMAIL_TYPES = [
   "quotation_request_sales",
   "quotation_confirmation_customer",
+  "quotation_ready_customer",
   "payment_received_customer",
   "order_tracking_update_customer",
   "upload_notification_internal",

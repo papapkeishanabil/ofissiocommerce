@@ -2,17 +2,34 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { syncCheckoutCart } from "@/features/checkout/checkout-cart.service";
 import type { EmailSendResult, EmailStatus } from "@/features/email/email.types";
 import { emailService } from "@/features/email/email.service";
+import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payment.types";
+import { mapPaymentOrderToTracking } from "@/features/tracking/tracking.service";
 import { logAuditEvent } from "@/lib/security/audit-log";
+import { createApiError } from "@/lib/security/safe-error-response";
+import type { AuditActorType } from "@/lib/security/security.types";
 
 import { quotationRepository } from "./quotation.repository";
 import type {
   CreateQuotationRequestInput,
   CreateQuotationRequestResult,
+  QuotationEventRecord,
+  QuotationEventType,
+  QuotationPricingInput,
   QuotationRequestRecord,
+  QuotationStatus,
 } from "./quotation.types";
+import {
+  buildQuotationItems,
+  calculateQuotationPricing,
+  canCustomerAcceptQuotation,
+  isConvertableQuotationStatus,
+  normalizeQuotationRecord,
+  safeMoney,
+} from "./quotation.utils";
 
 export async function createQuotationRequest(
   input: CreateQuotationRequestInput,
@@ -75,13 +92,22 @@ export async function createQuotationRequest(
     picName,
     picEmail,
     picWhatsapp: input.picWhatsapp,
-    status:
-      emailStatus === "sent" || emailStatus === "mocked"
-        ? "emailed"
-        : "submitted",
+    status: "submitted",
     source: "web_cart",
-    items: cart.items,
+    items: buildQuotationItems(cart.items, id, now),
     subtotalEstimate: cart.subtotal,
+    internalNotes: [],
+    salesNotes: null,
+    customerMessage: null,
+    subtotal: null,
+    discountTotal: 0,
+    taxTotal: 0,
+    shippingEstimate: 0,
+    grandTotal: null,
+    currency: "IDR",
+    validUntil: null,
+    salesEmail: null,
+    customerEmail: picEmail,
     totalQty: cart.totalQty,
     embroideryPointCount: cart.items.reduce(
       (total, item) => total + item.embroideryPlacements.length,
@@ -92,10 +118,29 @@ export async function createQuotationRequest(
     emailStatus,
     emailLogIds: emails.map((email) => email.id),
     emailResults: emails,
+    acceptedAt: null,
+    rejectedAt: null,
+    convertedOrderId: null,
+    wooOrderId: null,
     createdAt: now,
     updatedAt: now,
   };
-  quotationRepository.save(record);
+  await quotationRepository.save(record);
+  await addQuotationEvent({
+    quotation: record,
+    actorId: input.userId,
+    actorType: "customer",
+    eventType: "submitted",
+    oldStatus: null,
+    newStatus: "submitted",
+    note: input.customerNotes,
+    metadata: {
+      quotationNumber,
+      totalQty: cart.totalQty,
+      itemCount: cart.items.length,
+      emailStatus,
+    },
+  });
   logAuditEvent({
     request,
     actorId: input.userId,
@@ -115,14 +160,498 @@ export async function createQuotationRequest(
   return { quotation: record, emails };
 }
 
-export function listQuotationRequests(companyId: string) {
-  return quotationRepository.listByCompany(companyId);
+export async function listQuotationRequests(companyId: string) {
+  return (await quotationRepository.listByCompany(companyId)).map(normalizeQuotationRecord);
 }
 
-export function getQuotationRequestById(id: string, companyId: string) {
-  const quotation = quotationRepository.getById(id);
+export async function getQuotationRequestById(id: string, companyId: string) {
+  const quotation = await quotationRepository.getById(id);
   if (!quotation || quotation.companyId !== companyId) return null;
-  return quotation;
+  return normalizeQuotationRecord(quotation);
+}
+
+export async function getQuotationEventsById(id: string, companyId: string) {
+  const quotation = await quotationRepository.getById(id);
+  if (!quotation || quotation.companyId !== companyId) return [];
+  return quotationRepository.getEvents?.(id) ?? [];
+}
+
+export async function updateQuotationStatus(input: {
+  id: string;
+  status: QuotationStatus;
+  actorId: string | null;
+  actorType: AuditActorType;
+  note?: string | null;
+  request?: Request;
+}) {
+  const current = await requireQuotation(input.id);
+  const updated = await quotationRepository.updateStatus?.(input.id, input.status, {
+    acceptedAt: input.status === "accepted" ? new Date().toISOString() : current.acceptedAt,
+    rejectedAt: input.status === "rejected" ? new Date().toISOString() : current.rejectedAt,
+  }) ?? await quotationRepository.update(input.id, {
+    status: input.status,
+    acceptedAt: input.status === "accepted" ? new Date().toISOString() : current.acceptedAt,
+    rejectedAt: input.status === "rejected" ? new Date().toISOString() : current.rejectedAt,
+  });
+  if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  await addQuotationEvent({
+    quotation: updated,
+    actorId: input.actorId,
+    actorType: input.actorType,
+    eventType: "status_changed",
+    oldStatus: current.status,
+    newStatus: input.status,
+    note: input.note ?? null,
+    metadata: { phase: "17_quotation_management" },
+  });
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: input.actorType,
+    companyId: current.companyId,
+    action: "quotation_status_updated",
+    entityType: "quotation",
+    entityId: current.id,
+    metadata: {
+      previousStatus: current.status,
+      nextStatus: input.status,
+    },
+  });
+  return normalizeQuotationRecord(updated);
+}
+
+export async function updateQuotationPricing(input: {
+  id: string;
+  pricing: QuotationPricingInput;
+  actorId: string | null;
+  request?: Request;
+}) {
+  const current = await requireQuotation(input.id);
+  const calculated = calculateQuotationPricing(current, input.pricing);
+  const updated = await quotationRepository.updatePricing?.(input.id, input.pricing) ??
+    await quotationRepository.update(input.id, {
+      items: calculated.items,
+      subtotal: calculated.subtotal,
+      discountTotal: calculated.discountTotal,
+      taxTotal: calculated.taxTotal,
+      shippingEstimate: calculated.shippingEstimate,
+      grandTotal: calculated.grandTotal,
+      customerMessage: calculated.customerMessage,
+      salesNotes: calculated.salesNotes,
+      validUntil: calculated.validUntil,
+      salesEmail: calculated.salesEmail,
+    });
+  if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  await addQuotationEvent({
+    quotation: updated,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "pricing_updated",
+    oldStatus: current.status,
+    newStatus: updated.status,
+    note: input.pricing.salesNotes ?? null,
+    metadata: {
+      subtotal: updated.subtotal,
+      grandTotal: updated.grandTotal,
+      itemCount: updated.items.length,
+    },
+  });
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    companyId: current.companyId,
+    action: "quotation_pricing_updated",
+    entityType: "quotation",
+    entityId: current.id,
+    metadata: {
+      grandTotal: updated.grandTotal,
+      subtotal: updated.subtotal,
+      phase: "17_quotation_management",
+    },
+  });
+  return normalizeQuotationRecord(updated);
+}
+
+export async function addQuotationInternalNote(input: {
+  id: string;
+  note: string;
+  actorId: string | null;
+  request?: Request;
+}) {
+  const current = await requireQuotation(input.id);
+  const note = {
+    id: `qnote_${randomUUID()}`,
+    authorId: input.actorId,
+    authorType: "internal" as const,
+    note: input.note,
+    createdAt: new Date().toISOString(),
+  };
+  const updated =
+    await quotationRepository.addInternalNote?.(input.id, note) ??
+    await quotationRepository.update(input.id, {
+      internalNotes: [...current.internalNotes, note],
+    });
+  if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  await addQuotationEvent({
+    quotation: updated,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "internal_note_added",
+    oldStatus: current.status,
+    newStatus: updated.status,
+    note: input.note,
+    metadata: { noteId: note.id },
+  });
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    companyId: current.companyId,
+    action: "quotation_internal_note_added",
+    entityType: "quotation",
+    entityId: current.id,
+    metadata: { noteId: note.id },
+  });
+  return normalizeQuotationRecord(updated);
+}
+
+export async function sendQuotationReadyToCustomer(input: {
+  id: string;
+  actorId: string | null;
+  request?: Request;
+}) {
+  const quotation = await requireQuotation(input.id);
+  if (!quotation.grandTotal) {
+    throw createApiError("BAD_REQUEST", "Harga final belum tersedia.", 400);
+  }
+  const recipient = quotation.customerEmail ?? quotation.picEmail ?? quotation.userEmail;
+  const result = await emailService.sendEmail({
+    type: "quotation_ready_customer",
+    companyId: quotation.companyId,
+    userId: quotation.userId,
+    to: [recipient || "customer-placeholder@ofissio.local"],
+    subject: `Penawaran Ofissio ${quotation.quotationNumber} siap direview`,
+    html: renderQuotationReadyHtml(quotation),
+    text: renderQuotationReadyText(quotation),
+    safeMetadata: {
+      quotationNumber: quotation.quotationNumber,
+      grandTotal: quotation.grandTotal,
+      validUntil: quotation.validUntil,
+      missingRecipient: !recipient,
+    },
+    request: input.request,
+  });
+  const nextEmailLogIds = [...quotation.emailLogIds, result.id];
+  const updated = await quotationRepository.update(quotation.id, {
+    emailStatus: result.status,
+    emailLogIds: nextEmailLogIds,
+    emailResults: [...quotation.emailResults, result],
+  });
+  await addQuotationEvent({
+    quotation: updated ?? quotation,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "emailed_to_customer",
+    oldStatus: quotation.status,
+    newStatus: updated?.status ?? quotation.status,
+    note: result.status === "failed" ? "Email quote failed." : "Quotation sent to customer.",
+    metadata: {
+      emailStatus: result.status,
+      emailId: result.id,
+      provider: result.provider,
+    },
+  });
+  return {
+    quotation: normalizeQuotationRecord(updated ?? quotation),
+    email: result,
+  };
+}
+
+export async function acceptQuotationByCustomer(input: {
+  id: string;
+  companyId: string;
+  userId: string;
+  note?: string | null;
+  request?: Request;
+}) {
+  const current = await requireCompanyQuotation(input.id, input.companyId);
+  if (!canCustomerAcceptQuotation(current)) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Quotation belum bisa disetujui atau sudah kedaluwarsa.",
+      400,
+    );
+  }
+  const updated = await quotationRepository.accept?.(input.id, input.userId) ??
+    await quotationRepository.update(input.id, {
+      status: "accepted",
+      acceptedAt: new Date().toISOString(),
+      rejectedAt: null,
+    });
+  if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  await addQuotationEvent({
+    quotation: updated,
+    actorId: input.userId,
+    actorType: "customer",
+    eventType: "customer_accepted",
+    oldStatus: current.status,
+    newStatus: "accepted",
+    note: input.note ?? null,
+    metadata: { phase: "17_customer_accept" },
+  });
+  logAuditEvent({
+    request: input.request,
+    actorId: input.userId,
+    actorType: "customer",
+    companyId: current.companyId,
+    action: "quotation_customer_accepted",
+    entityType: "quotation",
+    entityId: current.id,
+  });
+  return normalizeQuotationRecord(updated);
+}
+
+export async function rejectQuotationByCustomer(input: {
+  id: string;
+  companyId: string;
+  userId: string;
+  note?: string | null;
+  request?: Request;
+}) {
+  const current = await requireCompanyQuotation(input.id, input.companyId);
+  if (!["quoted", "under_review", "submitted", "emailed"].includes(current.status)) {
+    throw createApiError("BAD_REQUEST", "Quotation tidak bisa ditolak pada status ini.", 400);
+  }
+  const updated = await quotationRepository.reject?.(input.id, input.userId, input.note) ??
+    await quotationRepository.update(input.id, {
+      status: "rejected",
+      rejectedAt: new Date().toISOString(),
+    });
+  if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  await addQuotationEvent({
+    quotation: updated,
+    actorId: input.userId,
+    actorType: "customer",
+    eventType: "customer_rejected",
+    oldStatus: current.status,
+    newStatus: "rejected",
+    note: input.note ?? null,
+    metadata: { phase: "17_customer_reject" },
+  });
+  logAuditEvent({
+    request: input.request,
+    actorId: input.userId,
+    actorType: "customer",
+    companyId: current.companyId,
+    action: "quotation_customer_rejected",
+    entityType: "quotation",
+    entityId: current.id,
+  });
+  return normalizeQuotationRecord(updated);
+}
+
+export async function requestQuotationRevisionByCustomer(input: {
+  id: string;
+  companyId: string;
+  userId: string;
+  note: string;
+  request?: Request;
+}) {
+  const current = await requireCompanyQuotation(input.id, input.companyId);
+  const updated = await quotationRepository.updateStatus?.(input.id, "revision_requested", {
+    customerMessage: input.note,
+  }) ?? await quotationRepository.update(input.id, {
+    status: "revision_requested",
+    customerMessage: input.note,
+  });
+  if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  await addQuotationEvent({
+    quotation: updated,
+    actorId: input.userId,
+    actorType: "customer",
+    eventType: "status_changed",
+    oldStatus: current.status,
+    newStatus: "revision_requested",
+    note: input.note,
+    metadata: { phase: "17_request_revision_skeleton" },
+  });
+  return normalizeQuotationRecord(updated);
+}
+
+export async function convertQuotationToOrder(input: {
+  id: string;
+  actorId: string | null;
+  request?: Request;
+}) {
+  const quotation = await requireQuotation(input.id);
+  if (quotation.convertedOrderId) {
+    const existingOrder = await repositoryRegistry.orders.getOrderById({
+      companyId: quotation.companyId,
+      orderId: quotation.convertedOrderId,
+    });
+    const existingTracking = existingOrder
+      ? await repositoryRegistry.tracking.getTrackingByOrderId({
+          companyId: quotation.companyId,
+          orderId: existingOrder.id,
+        })
+      : null;
+    return {
+      quotation,
+      order: existingOrder,
+      tracking: existingTracking,
+      idempotent: true,
+    };
+  }
+  if (!isConvertableQuotationStatus(quotation.status)) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Quotation hanya bisa dikonversi dari status quoted atau accepted.",
+      400,
+    );
+  }
+  if (!quotation.grandTotal || quotation.items.some((item) => item.finalUnitPrice == null)) {
+    throw createApiError("BAD_REQUEST", "Harga final quotation belum lengkap.", 400);
+  }
+
+  const now = new Date().toISOString();
+  const orderId = `ord_${randomUUID()}`;
+  const paymentId = `pay_${randomUUID()}`;
+  const referenceId = `OF-QUO-${quotation.quotationNumber.split("-").slice(-1)[0]}-${randomUUID().slice(0, 6).toUpperCase()}`;
+  const order: PaymentOrderRecord = {
+    id: orderId,
+    cartId: `quote_${quotation.id}`,
+    companyId: quotation.companyId,
+    userId: quotation.userId,
+    items: quotation.items.map((item) => ({
+      ...item.itemSnapshot,
+      priceFrom: item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom,
+      transactionMode: "quotation_converted",
+    })),
+    shippingRateId: null,
+    calculation: {
+      itemSubtotal: safeMoney(quotation.subtotal),
+      customizationFee: 0,
+      shippingFee: safeMoney(quotation.shippingEstimate),
+      tax: safeMoney(quotation.taxTotal),
+      grandTotal: safeMoney(quotation.grandTotal),
+    },
+    status: "waiting_payment",
+    woocommerceOrderId: null,
+    orderSyncStatus: "not_synced",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const payment: PaymentRecord = {
+    id: paymentId,
+    orderId,
+    companyId: quotation.companyId,
+    provider: "mock",
+    referenceId,
+    amount: order.calculation.grandTotal,
+    currency: "IDR",
+    status: "waiting_payment",
+    paymentUrl: null,
+    rawProviderResponse: {
+      source: "quotation_conversion",
+      quotationId: quotation.id,
+      phase: "17_convert_to_order_foundation",
+    },
+    createdAt: now,
+    updatedAt: now,
+  };
+  await repositoryRegistry.orders.saveOrder?.({ paymentOrder: order });
+  await repositoryRegistry.payments.savePayment?.({ payment, order });
+  const tracking = mapPaymentOrderToTracking({
+    order,
+    paymentStatus: "waiting_payment",
+    paymentReferenceId: referenceId,
+    companyName: quotation.companyName,
+  });
+  const preparedTracking = {
+    ...tracking,
+    productionTimeline: tracking.productionTimeline.map((stage, index) =>
+      index === 0
+        ? {
+            ...stage,
+            label: "Quotation disetujui",
+            weight: stage.weight > 0 ? stage.weight : 10,
+            state: "current" as const,
+            progressRatio: 0.5,
+          }
+        : stage,
+    ),
+    items: tracking.items.map((item) => ({
+      ...item,
+      stages: item.stages.map((stage, index) =>
+        index === 0
+          ? {
+              ...stage,
+              label: "Quotation disetujui",
+              weight: stage.weight > 0 ? stage.weight : 10,
+              state: "current" as const,
+              progressRatio: 0.5,
+            }
+          : stage,
+      ),
+    })),
+    nextStep:
+      order.items.some((item) => item.fulfillmentType === "MADE_TO_ORDER")
+        ? "Menunggu pembayaran / approval desain"
+        : "Menunggu pembayaran",
+    statusNote:
+      "Quotation sudah disetujui dan dikonversi menjadi order Ofissio. Payment masih mock/foundation.",
+    documents: [
+      {
+        id: `${order.id}-quotation`,
+        label: "Quotation",
+        type: "quotation" as const,
+        status: "available" as const,
+        fileName: `${quotation.quotationNumber}.pdf`,
+      },
+      ...tracking.documents,
+    ],
+  };
+  await repositoryRegistry.tracking.upsertTrackingOrder?.(preparedTracking);
+  const updated = await quotationRepository.markConverted?.(quotation.id, orderId) ??
+    await quotationRepository.update(quotation.id, {
+      status: "converted_to_order",
+      convertedOrderId: orderId,
+      wooOrderId: null,
+    });
+  if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  await addQuotationEvent({
+    quotation: updated,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "converted_to_order",
+    oldStatus: quotation.status,
+    newStatus: "converted_to_order",
+    note: "Converted to Ofissio order foundation.",
+    metadata: {
+      orderId,
+      paymentId,
+      referenceId,
+      wooOrderId: null,
+      phase: "17_convert_to_order_foundation",
+    },
+  });
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    companyId: quotation.companyId,
+    action: "quotation_converted_to_order",
+    entityType: "quotation",
+    entityId: quotation.id,
+    metadata: { orderId, paymentId, referenceId },
+  });
+  return {
+    quotation: normalizeQuotationRecord(updated),
+    order,
+    tracking: preparedTracking,
+    idempotent: false,
+  };
 }
 
 function buildQuotationNumber(nowIso: string) {
@@ -137,4 +666,132 @@ function aggregateEmailStatus(results: EmailSendResult[]): EmailStatus {
   if (results.some((result) => result.status === "mocked")) return "mocked";
   if (results.some((result) => result.status === "queued")) return "queued";
   return "skipped";
+}
+
+async function requireQuotation(id: string) {
+  const quotation = await quotationRepository.getById(id);
+  if (!quotation) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  return normalizeQuotationRecord(quotation);
+}
+
+async function requireCompanyQuotation(id: string, companyId: string) {
+  const quotation = await requireQuotation(id);
+  if (quotation.companyId !== companyId) {
+    throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  }
+  return quotation;
+}
+
+async function addQuotationEvent(input: {
+  quotation: QuotationRequestRecord;
+  actorId: string | null;
+  actorType: AuditActorType;
+  eventType: QuotationEventType;
+  oldStatus: QuotationStatus | null;
+  newStatus: QuotationStatus | null;
+  note?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  const event: QuotationEventRecord = {
+    id: `qevt_${randomUUID()}`,
+    quotationId: input.quotation.id,
+    companyId: input.quotation.companyId,
+    actorId: input.actorId,
+    actorType:
+      input.actorType === "internal" || input.actorType === "customer"
+        ? input.actorType
+        : "system",
+    eventType: input.eventType,
+    oldStatus: input.oldStatus,
+    newStatus: input.newStatus,
+    note: input.note ?? null,
+    metadata: input.metadata ?? {},
+    createdAt: new Date().toISOString(),
+  };
+  await quotationRepository.addEvent?.(event);
+  return event;
+}
+
+function renderQuotationReadyText(quotation: QuotationRequestRecord) {
+  const itemLines = quotation.items
+    .map(
+      (item) =>
+        `- ${item.productName} (${item.sku}), ${item.selectedColor}, ${item.totalQty} pcs, ${formatMoney(item.finalLineTotal ?? 0)}`,
+    )
+    .join("\n");
+  return [
+    `Halo ${quotation.picName},`,
+    "",
+    `Penawaran Ofissio ${quotation.quotationNumber} untuk ${quotation.companyName} sudah siap direview.`,
+    "",
+    itemLines,
+    "",
+    `Subtotal: ${formatMoney(quotation.subtotal ?? 0)}`,
+    `Diskon: ${formatMoney(quotation.discountTotal)}`,
+    `Pajak: ${formatMoney(quotation.taxTotal)}`,
+    `Ongkir estimasi: ${formatMoney(quotation.shippingEstimate)}`,
+    `Grand total: ${formatMoney(quotation.grandTotal ?? 0)}`,
+    quotation.validUntil ? `Berlaku sampai: ${quotation.validUntil}` : "",
+    "",
+    quotation.customerMessage ?? "Silakan buka halaman quotation untuk accept/reject penawaran.",
+    `/quotes/${quotation.id}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function renderQuotationReadyHtml(quotation: QuotationRequestRecord) {
+  const rows = quotation.items
+    .map(
+      (item) => `
+        <tr>
+          <td>${escapeHtml(item.productName)}</td>
+          <td>${escapeHtml(item.sku)}</td>
+          <td>${escapeHtml(item.selectedColor)}</td>
+          <td style="text-align:right">${item.totalQty} pcs</td>
+          <td style="text-align:right">${formatMoney(item.finalLineTotal ?? 0)}</td>
+        </tr>
+      `,
+    )
+    .join("");
+  return `
+    <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
+      <h2>Penawaran Ofissio siap direview</h2>
+      <p>Halo ${escapeHtml(quotation.picName)}, penawaran <strong>${escapeHtml(quotation.quotationNumber)}</strong> untuk ${escapeHtml(quotation.companyName)} sudah siap.</p>
+      <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;border-color:#e5e7eb;width:100%;font-size:13px">
+        <thead>
+          <tr>
+            <th align="left">Produk</th>
+            <th align="left">SKU</th>
+            <th align="left">Warna</th>
+            <th align="right">Qty</th>
+            <th align="right">Final</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p><strong>Grand total:</strong> ${formatMoney(quotation.grandTotal ?? 0)}</p>
+      ${quotation.validUntil ? `<p>Berlaku sampai: ${escapeHtml(quotation.validUntil)}</p>` : ""}
+      ${quotation.customerMessage ? `<p>${escapeHtml(quotation.customerMessage)}</p>` : ""}
+      <p><a href="/quotes/${escapeHtml(quotation.id)}">Buka quotation</a></p>
+      <p style="font-size:12px;color:#64748b">PDF quotation final belum aktif pada Phase 17.</p>
+    </div>
+  `;
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }

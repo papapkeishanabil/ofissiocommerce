@@ -16,3 +16,11 @@ export const quotationListQuerySchema = z.object({
   companyId: z.string().trim().min(1).max(100).optional(),
   userId: z.string().trim().min(1).max(100).optional(),
 });
+
+export const quotationCustomerActionBodySchema = z.object({
+  note: z.string().trim().max(1000).nullable().optional(),
+});
+
+export const quotationRevisionBodySchema = z.object({
+  note: z.string().trim().min(1).max(1000),
+});

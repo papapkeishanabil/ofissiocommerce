@@ -63,4 +63,5 @@ export const ADMIN_QUOTATION_UPDATE_STATUSES = [
   "accepted",
   "rejected",
   "expired",
+  "cancelled",
 ] as const;

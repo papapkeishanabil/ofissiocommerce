@@ -1,5 +1,9 @@
 import type { InternalRole } from "@/lib/security/security.types";
-import type { QuotationRequestRecord, QuotationStatus } from "@/features/quotation/quotation.types";
+import type {
+  QuotationEventRecord,
+  QuotationRequestRecord,
+  QuotationStatus,
+} from "@/features/quotation/quotation.types";
 import type { PaymentOrderRecord } from "@/features/payment/payment.types";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import type { UploadedFile } from "@/features/storage/storage.types";
@@ -26,6 +30,8 @@ export interface InternalAdminUser {
 export interface AdminSummary {
   totalQuotations: number;
   quotationsUnderReview: number;
+  quotationsQuoted: number;
+  quotationsAccepted: number;
   quotationsEmailedOrMocked: number;
   activeOrders: number;
   ordersInProduction: number;
@@ -57,6 +63,7 @@ export interface AdminLogoPreview {
 export interface AdminQuotationDetail {
   quotation: QuotationRequestRecord;
   logoPreviews: AdminLogoPreview[];
+  events: QuotationEventRecord[];
 }
 
 export interface AdminOrderRow {

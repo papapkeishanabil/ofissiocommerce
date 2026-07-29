@@ -1,6 +1,7 @@
 import type {
   OrderItemProgress,
   OrderTimelineStage,
+  CustomerTrackingOrder,
   TrackingRole,
   TrackingFulfillmentType,
   TrackingPaymentStatus,
@@ -118,6 +119,33 @@ export function mapInternalStatusToCustomerStatus(
     default:
       return "Status sedang diperbarui";
   }
+}
+
+export function trackingOrderStatusLabel(
+  order: Pick<
+    CustomerTrackingOrder,
+    | "currentStageId"
+    | "documents"
+    | "fulfillmentType"
+    | "orderStatus"
+    | "paymentStatus"
+    | "statusNote"
+  >,
+): string {
+  const isConvertedQuotation =
+    order.paymentStatus === "waiting_payment" &&
+    order.orderStatus === "waiting_payment" &&
+    ["order_received", "waiting_payment"].includes(order.currentStageId) &&
+    order.documents.some((document) => document.type === "quotation") &&
+    order.statusNote?.toLowerCase().includes("quotation");
+
+  if (isConvertedQuotation) return "Quotation disetujui";
+
+  return mapInternalStatusToCustomerStatus(
+    order.fulfillmentType,
+    order.currentStageId,
+    order.paymentStatus,
+  );
 }
 
 export function fulfillmentLabel(type: TrackingFulfillmentType): string {

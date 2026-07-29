@@ -25,8 +25,8 @@ import type { CustomerTrackingOrder } from "./tracking.types";
 import {
   calculateOrderProgress,
   fulfillmentLabel,
-  mapInternalStatusToCustomerStatus,
   paymentStatusLabel,
+  trackingOrderStatusLabel,
 } from "./tracking-utils";
 
 interface OrderTrackingPageProps {
@@ -108,11 +108,7 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
   }
 
   const progress = calculateOrderProgress(order.productionTimeline);
-  const status = mapInternalStatusToCustomerStatus(
-    order.fulfillmentType,
-    order.currentStageId,
-    order.paymentStatus,
-  );
+  const status = trackingOrderStatusLabel(order);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-8">

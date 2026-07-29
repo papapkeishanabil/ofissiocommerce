@@ -305,6 +305,7 @@ create table if not exists email_logs (
     type in (
       'quotation_request_sales',
       'quotation_confirmation_customer',
+      'quotation_ready_customer',
       'payment_received_customer',
       'order_tracking_update_customer',
       'upload_notification_internal',
@@ -371,6 +372,60 @@ create index if not exists idx_quotations_company_created_at
   on quotations(company_id, created_at desc);
 create index if not exists idx_quotations_status on quotations(status);
 create index if not exists idx_quotation_items_quotation_id on quotation_items(quotation_id);
+
+-- Phase 17 quotation management + convert-to-order foundation.
+alter table quotations
+  add column if not exists internal_notes_json jsonb not null default '[]'::jsonb,
+  add column if not exists sales_notes text,
+  add column if not exists customer_message text,
+  add column if not exists subtotal numeric(14,2),
+  add column if not exists discount_total numeric(14,2) not null default 0,
+  add column if not exists tax_total numeric(14,2) not null default 0,
+  add column if not exists shipping_estimate numeric(14,2) not null default 0,
+  add column if not exists grand_total numeric(14,2),
+  add column if not exists currency text not null default 'IDR',
+  add column if not exists valid_until timestamptz,
+  add column if not exists sales_email text,
+  add column if not exists customer_email text,
+  add column if not exists accepted_at timestamptz,
+  add column if not exists rejected_at timestamptz,
+  add column if not exists converted_order_id text,
+  add column if not exists woo_order_id text;
+
+alter table quotation_items
+  add column if not exists unit_price numeric(14,2),
+  add column if not exists line_subtotal numeric(14,2),
+  add column if not exists discount_amount numeric(14,2) not null default 0,
+  add column if not exists final_unit_price numeric(14,2),
+  add column if not exists final_line_total numeric(14,2),
+  add column if not exists logo_file_id text,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+create table if not exists quotation_events (
+  id text primary key,
+  quotation_id text not null references quotations(id) on delete cascade,
+  -- Text keeps this aligned with quotations.company_id until production auth
+  -- and company ID strategy are fully migrated to uuid everywhere.
+  company_id text not null,
+  actor_id text,
+  actor_type text not null check (actor_type in ('internal', 'customer', 'system')),
+  event_type text not null,
+  old_status text,
+  new_status text,
+  note text,
+  metadata_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_quotation_events_quotation_id
+  on quotation_events(quotation_id);
+create index if not exists idx_quotation_events_company_id
+  on quotation_events(company_id);
+create index if not exists idx_quotation_events_event_type
+  on quotation_events(event_type);
+create index if not exists idx_quotation_events_created_at
+  on quotation_events(created_at desc);
 create index if not exists idx_email_logs_company_created_at
   on email_logs(company_id, created_at desc);
 create index if not exists idx_email_logs_type_status_created_at
@@ -391,6 +446,7 @@ create index if not exists idx_audit_logs_entity on audit_logs(entity_type, enti
 -- alter table company_logos enable row level security;
 -- alter table quotations enable row level security;
 -- alter table quotation_items enable row level security;
+-- alter table quotation_events enable row level security;
 -- alter table email_logs enable row level security;
 -- Customer policies must filter rows by company_id derived from server/session,
 -- never from untrusted request body.
