@@ -12,6 +12,7 @@ export type RepositoryProvider = "mock" | "supabase" | "postgres";
 
 export interface CompanyRepository {
   getCompanyById(companyId: string): Promise<unknown | null>;
+  listAll?(): Promise<unknown[]>;
 }
 
 export interface UserCompanyRepository {
@@ -19,6 +20,7 @@ export interface UserCompanyRepository {
     companyId: string;
     userId: string;
   }): Promise<unknown | null>;
+  listAll?(): Promise<unknown[]>;
 }
 
 export interface CartRepository {
@@ -30,6 +32,7 @@ export interface OrderRepository {
   saveOrder?(input: { paymentOrder: PaymentOrderRecord }): Promise<void>;
   getOrderById(input: { companyId: string; orderId: string }): Promise<PaymentOrderRecord | null>;
   listOrdersByCompany(companyId: string): Promise<PaymentOrderRecord[]>;
+  listAll?(): Promise<PaymentOrderRecord[]>;
   updateOrderAfterPayment?(
     input: { companyId: string; orderId: string; status: PaymentOrderRecord["status"] },
   ): Promise<PaymentOrderRecord | null>;
@@ -48,16 +51,19 @@ export interface TrackingRepository {
   upsertTrackingOrder?(order: CustomerTrackingOrder): Promise<CustomerTrackingOrder>;
   getTrackingByOrderId(input: { companyId: string; orderId: string }): Promise<CustomerTrackingOrder | null>;
   listTrackingByCompany(companyId: string): Promise<CustomerTrackingOrder[]>;
+  listAll?(): Promise<CustomerTrackingOrder[]>;
 }
 
 export interface AuditLogRepository {
   writeAuditLog(event: AuditEvent): Promise<void>;
+  listAll?(): Promise<AuditEvent[]>;
 }
 
 export interface UploadedFileRepository {
   save(file: UploadedFile): Promise<UploadedFile>;
   getFileById(input: { companyId: string; fileId: string }): Promise<UploadedFile | null>;
   listFilesByCompany(companyId: string, filter?: UploadedFileListFilter): Promise<UploadedFile[]>;
+  listAll?(filter?: UploadedFileListFilter): Promise<UploadedFile[]>;
   update(fileId: string, patch: Partial<UploadedFile>): Promise<UploadedFile | null>;
   setStatus(fileId: string, status: StorageFileStatus): Promise<UploadedFile | null>;
 }

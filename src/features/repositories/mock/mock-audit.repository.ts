@@ -6,4 +6,7 @@ export const mockAuditRepository: AuditLogRepository = {
   async writeAuditLog() {
     // Existing audit-log module remains source of truth in mock mode.
   },
+  async listAll() {
+    return [];
+  },
 };

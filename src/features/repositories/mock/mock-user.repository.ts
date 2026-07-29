@@ -6,4 +6,7 @@ export const mockUserRepository: UserCompanyRepository = {
   async getCompanyUser() {
     return null;
   },
+  async listAll() {
+    return [];
+  },
 };

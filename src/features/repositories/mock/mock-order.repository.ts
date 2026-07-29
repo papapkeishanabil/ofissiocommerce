@@ -26,6 +26,11 @@ export const mockOrderRepository: OrderRepository = {
       .filter((order) => order.companyId === companyId)
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   },
+  async listAll() {
+    return [...orders.values()].sort(
+      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+    );
+  },
   async updateOrderAfterPayment(input) {
     const order = orders.get(input.orderId);
     if (!order || order.companyId !== input.companyId) return null;

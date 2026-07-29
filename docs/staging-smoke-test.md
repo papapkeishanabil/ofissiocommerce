@@ -23,10 +23,27 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Mobile responsive.
 - [ ] Console browser 0 error.
 
+## Ofissio Admin flow
+
+- [ ] Buka `/admin`.
+- [ ] Buka `/admin/quotations`.
+- [ ] Buka `/admin/quotations/[id]` untuk quotation Supabase.
+- [ ] Detail quotation menampilkan size matrix, logo file id, embroidery placements, `model3dId`, dan `model3dUrl`.
+- [ ] Update status quotation foundation via admin.
+- [ ] Buka `/admin/orders`.
+- [ ] Buka `/admin/uploads`.
+- [ ] Buka `/admin/tracking`.
+- [ ] Buka `/admin/customers`.
+- [ ] Buka `/admin/audit`.
+- [ ] Mobile admin tidak horizontal overflow.
+- [ ] Browser console admin 0 error.
+
 ## Security smoke
 
 - [ ] Secret tidak muncul di client bundle.
 - [ ] API invalid request memberi safe response.
+- [ ] Admin API butuh internal guard.
+- [ ] Admin endpoint tidak expose secret/raw provider error.
 - [ ] Produk tanpa GLB tidak tampil.
 - [ ] Produk tanpa GLB tidak bisa masuk cart.
 - [ ] Company mismatch tracking/payment ditolak.

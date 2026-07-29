@@ -32,6 +32,13 @@ export const mockUploadedFileRepository: UploadedFileRepository = {
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   },
 
+  async listAll(filter: UploadedFileListFilter = {}) {
+    return [...uploadedFiles.values()]
+      .filter((file) => (filter.fileType ? file.fileType === filter.fileType : true))
+      .filter((file) => (filter.status ? file.status === filter.status : true))
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  },
+
   async update(fileId, patch) {
     const current = uploadedFiles.get(fileId);
     if (!current) return null;

@@ -45,6 +45,17 @@ export const supabaseTrackingRepository: TrackingRepository = {
       .map((row) => row.tracking_json as CustomerTrackingOrder | undefined)
       .filter(Boolean) as CustomerTrackingOrder[];
   },
+
+  async listAll() {
+    const client = getSupabaseAdminClient();
+    if (!client) return [];
+    const rows = await client.select("tracking_records", {
+      order: "created_at.desc",
+    });
+    return rows
+      .map((row) => row.tracking_json as CustomerTrackingOrder | undefined)
+      .filter(Boolean) as CustomerTrackingOrder[];
+  },
 };
 
 function trackingToRow(order: CustomerTrackingOrder) {

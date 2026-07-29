@@ -13,4 +13,12 @@ export const supabaseUserRepository: UserCompanyRepository = {
     });
     return rows[0] ?? null;
   },
+
+  async listAll() {
+    const client = getSupabaseAdminClient();
+    if (!client) return [];
+    return client.select("company_users", {
+      order: "created_at.desc",
+    });
+  },
 };

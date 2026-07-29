@@ -33,6 +33,15 @@ export const supabaseOrderRepository: OrderRepository = {
       .filter(Boolean) as PaymentOrderRecord[];
   },
 
+  async listAll() {
+    const client = getSupabaseAdminClient();
+    if (!client) return [];
+    const rows = await client.select("orders", {
+      order: "created_at.desc",
+    });
+    return rows.map(rowToOrder).filter(Boolean) as PaymentOrderRecord[];
+  },
+
   async updateOrderAfterPayment(input) {
     const current = await this.getOrderById(input);
     if (!current) return null;
@@ -45,6 +54,34 @@ export const supabaseOrderRepository: OrderRepository = {
     return next;
   },
 };
+
+function rowToOrder(row: Record<string, unknown>) {
+  if (row.order_json && typeof row.order_json === "object") {
+    return row.order_json as PaymentOrderRecord;
+  }
+  if (!row.id || !row.company_id || !row.user_id) return null;
+  const createdAt = String(row.created_at ?? new Date().toISOString());
+  return {
+    id: String(row.id),
+    cartId: String(row.cart_id ?? ""),
+    companyId: String(row.company_id),
+    userId: String(row.user_id),
+    items: [],
+    shippingRateId: null,
+    calculation: {
+      itemSubtotal: Number(row.subtotal ?? 0),
+      customizationFee: 0,
+      shippingFee: Number(row.shipping_total ?? 0),
+      tax: Number(row.tax_total ?? 0),
+      grandTotal: Number(row.grand_total ?? 0),
+    },
+    status: String(row.status ?? "waiting_payment") as PaymentOrderRecord["status"],
+    woocommerceOrderId: row.woo_order_id ? String(row.woo_order_id) : null,
+    orderSyncStatus: "not_synced",
+    createdAt,
+    updatedAt: String(row.updated_at ?? createdAt),
+  } satisfies PaymentOrderRecord;
+}
 
 function orderToRow(order: PaymentOrderRecord) {
   return {

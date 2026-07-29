@@ -32,6 +32,17 @@ export const supabaseUploadedFileRepository: UploadedFileRepository = {
     return rows.map(rowToUploadedFile);
   },
 
+  async listAll(filter: UploadedFileListFilter = {}) {
+    const filters: Record<string, string> = {};
+    if (filter.fileType) filters.file_type = filter.fileType;
+    if (filter.status) filters.status = filter.status;
+    const rows = await getRequiredClient().select("uploaded_files", {
+      filters,
+      order: "created_at.desc",
+    });
+    return rows.map(rowToUploadedFile);
+  },
+
   async update(fileId, patch) {
     const rows = await getRequiredClient().update(
       "uploaded_files",

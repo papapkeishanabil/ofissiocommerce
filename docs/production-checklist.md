@@ -6,6 +6,9 @@
 - [ ] HTTPS aktif.
 - [ ] Env production lengkap.
 - [ ] Auth provider production siap.
+- [ ] Ofissio Admin memakai real internal auth, bukan mock guard.
+- [ ] Internal role mapping admin sudah direview.
+- [ ] Ofissio Admin dan WP Admin/WooCommerce ownership terdokumentasi untuk tim.
 - [ ] Database production siap.
 - [ ] Database migrations sudah dijalankan di staging dan diverifikasi.
 - [ ] Supabase service role hanya ada di server secret manager.
@@ -61,3 +64,4 @@
 - [ ] Cek quotation pertama manual.
 - [ ] Cek customer reply email.
 - [ ] Review audit log harian minggu pertama.
+- [ ] Review aktivitas Ofissio Admin harian minggu pertama.

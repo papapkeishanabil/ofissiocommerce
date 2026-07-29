@@ -21,4 +21,34 @@ export const supabaseAuditRepository: AuditLogRepository = {
       created_at: event.createdAt,
     });
   },
+
+  async listAll() {
+    const client = getSupabaseAdminClient();
+    if (!client) return [];
+    const rows = await client.select("audit_logs", {
+      order: "created_at.desc",
+      limit: 200,
+    });
+    return rows.map((row) => ({
+      id: String(row.id),
+      actorId: row.actor_id ? String(row.actor_id) : null,
+      actorType:
+        row.actor_type === "internal" || row.actor_type === "customer"
+          ? row.actor_type
+          : "system",
+      companyId: row.company_id ? String(row.company_id) : null,
+      action: String(row.action),
+      entityType: String(row.entity_type),
+      entityId: row.entity_id ? String(row.entity_id) : null,
+      metadata:
+        row.metadata_json &&
+        typeof row.metadata_json === "object" &&
+        !Array.isArray(row.metadata_json)
+          ? (row.metadata_json as Record<string, unknown>)
+          : {},
+      ipAddress: row.ip_address ? String(row.ip_address) : null,
+      userAgent: row.user_agent ? String(row.user_agent) : null,
+      createdAt: String(row.created_at),
+    }));
+  },
 };

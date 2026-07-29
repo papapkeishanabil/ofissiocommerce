@@ -1,0 +1,66 @@
+import type { InternalRole } from "@/lib/security/security.types";
+
+import type { AdminPermission } from "./admin.types";
+
+export const ADMIN_NAV_ITEMS = [
+  { href: "/admin", label: "Dashboard" },
+  { href: "/admin/quotations", label: "Quotations" },
+  { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/customers", label: "Customers" },
+  { href: "/admin/uploads", label: "Uploads / Logos" },
+  { href: "/admin/tracking", label: "Tracking" },
+  { href: "/admin/audit", label: "Audit" },
+] as const;
+
+export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
+  super_admin: [
+    "admin:view",
+    "admin:quotation:view",
+    "admin:quotation:update",
+    "admin:order:view",
+    "admin:tracking:view",
+    "admin:tracking:update",
+    "admin:upload:view",
+    "admin:customer:view",
+    "admin:audit:view",
+  ],
+  sales: [
+    "admin:view",
+    "admin:quotation:view",
+    "admin:quotation:update",
+    "admin:order:view",
+    "admin:upload:view",
+    "admin:customer:view",
+  ],
+  finance_internal: ["admin:view", "admin:quotation:view", "admin:order:view"],
+  product_admin: ["admin:view", "admin:upload:view", "admin:customer:view"],
+  production_admin: [
+    "admin:view",
+    "admin:order:view",
+    "admin:tracking:view",
+    "admin:tracking:update",
+    "admin:upload:view",
+  ],
+  ppic: ["admin:view", "admin:order:view", "admin:tracking:view", "admin:tracking:update"],
+  qc: ["admin:view", "admin:order:view", "admin:tracking:view", "admin:tracking:update"],
+  logistics: ["admin:view", "admin:order:view", "admin:tracking:view", "admin:tracking:update"],
+  support: [
+    "admin:view",
+    "admin:quotation:view",
+    "admin:order:view",
+    "admin:tracking:view",
+    "admin:upload:view",
+    "admin:customer:view",
+    "admin:audit:view",
+  ],
+};
+
+export const ADMIN_QUOTATION_UPDATE_STATUSES = [
+  "submitted",
+  "under_review",
+  "quoted",
+  "revision_requested",
+  "accepted",
+  "rejected",
+  "expired",
+] as const;
