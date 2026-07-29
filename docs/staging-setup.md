@@ -22,6 +22,8 @@ Default staging awal:
 
 ```bash
 PRODUCT_SOURCE=mock
+DATABASE_PROVIDER=mock
+AUTH_PROVIDER=mock
 PAYMENT_PROVIDER=mock
 SHIPPING_PROVIDER=mock
 WOOCOMMERCE_ENABLED=false
@@ -61,8 +63,9 @@ Setelah rollback, jalankan staging smoke test ulang.
 
 Boleh aktif bertahap:
 
-- Resend sandbox/domain verified untuk test quotation email.
+- Resend sandbox/domain verified untuk test quotation email. Default staging boleh tetap `EMAIL_PROVIDER=mock` sampai domain pengirim siap.
 - WooCommerce staging site.
+- Supabase staging project setelah schema review.
 - iPaymu sandbox setelah signature resmi diimplementasikan.
 - Shipping sandbox setelah provider dipilih.
 - Object storage staging bucket.

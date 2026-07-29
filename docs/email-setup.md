@@ -1,52 +1,55 @@
-# Email / Resend setup
+# Email setup
 
-Ofissio membutuhkan transactional email untuk notifikasi quotation, follow-up sales, dan nanti status order/payment.
+Phase 13 menambahkan fondasi email production dengan provider abstraction.
+Default aman adalah mock, sehingga development dan staging awal tidak mengirim email real.
 
 ## Env
 
-```bash
-EMAIL_PROVIDER=resend
-RESEND_API_KEY=
+```env
+EMAIL_PROVIDER=mock
+EMAIL_ENABLED=false
 EMAIL_FROM="Ofissio <quotation@ofissio.com>"
+EMAIL_REPLY_TO=
 SALES_QUOTATION_EMAIL=
+RESEND_API_KEY=
 ```
 
-Jangan pakai `NEXT_PUBLIC_RESEND_API_KEY` dan jangan commit `RESEND_API_KEY`.
+Untuk Resend real:
 
-## Resend API key
+```env
+EMAIL_PROVIDER=resend
+EMAIL_ENABLED=true
+RESEND_API_KEY=
+EMAIL_FROM="Ofissio <quotation@your-domain.com>"
+EMAIL_REPLY_TO=sales@your-domain.com
+SALES_QUOTATION_EMAIL=sales@your-domain.com
+```
 
-1. Login ke dashboard Resend.
-2. Buat API key untuk project Ofissio.
-3. Simpan key di secret manager hosting staging/production.
-4. Jangan copy key ke docs, Git, screenshot, atau chat.
+## Provider
 
-## Verifikasi domain
+- `mock`: tidak mengirim email, hanya membuat `email_logs` in-memory dan audit log.
+- `resend`: mengirim server-side via Resend API.
 
-Untuk production, `EMAIL_FROM` harus memakai domain yang sudah diverifikasi di Resend, misalnya `quotation@ofissio.com`.
+`RESEND_API_KEY` tidak boleh memakai prefix `NEXT_PUBLIC_`.
 
-DNS yang perlu disiapkan nanti:
+## Endpoint test
 
-- SPF.
-- DKIM.
-- DMARC.
+`POST /api/email/test`
 
-Record final mengikuti dashboard Resend karena nilainya domain-specific.
+- Aktif hanya untuk non-production.
+- Tetap butuh auth mock header dan role yang boleh request quotation.
+- Body opsional:
 
-## Mailbox / reply
+```json
+{ "to": "sales@example.com" }
+```
 
-`quotation@ofissio.com` bisa dipakai sebagai sender setelah domain verified. Agar customer reply terbaca, tetap siapkan mailbox atau forwarding ke sales.
+Jika `EMAIL_PROVIDER=mock`, response akan berstatus `mocked`.
 
-## Staging test email
+## Template awal
 
-- Isi `RESEND_API_KEY` staging di dashboard hosting.
-- Isi `SALES_QUOTATION_EMAIL` dengan email internal test.
-- Kirim request quotation.
-- Pastikan email diterima.
-- Pastikan tidak ada API key di response/browser bundle.
+- Sales notification: `quotation_request_sales`.
+- Customer confirmation: `quotation_confirmation_customer`.
+- Skeleton future: payment received, tracking update.
 
-## Production test email
-
-- Domain sender verified.
-- `EMAIL_FROM` memakai domain production.
-- Test quotation dari production dengan data dummy terkontrol.
-- Pastikan delivery, reply, dan spam placement dicek.
+Known limitation: log email saat ini masih in-memory; production persistence menunggu database provider live.

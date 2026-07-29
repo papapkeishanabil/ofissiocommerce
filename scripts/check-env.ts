@@ -47,9 +47,11 @@ const rules: EnvRule[] = [
   { name: "DEFAULT_ORIGIN_POSTAL_CODE", requiredIn: ["production"] },
   { name: "SHIPPING_PROVIDER_API_KEY", requiredIn: ["production"], secret: true },
   { name: "EMAIL_PROVIDER" },
-  { name: "RESEND_API_KEY", requiredIn: ["staging", "production"], secret: true },
-  { name: "EMAIL_FROM", requiredIn: ["staging", "production"] },
-  { name: "SALES_QUOTATION_EMAIL", requiredIn: ["staging", "production"] },
+  { name: "EMAIL_ENABLED" },
+  { name: "EMAIL_FROM" },
+  { name: "EMAIL_REPLY_TO" },
+  { name: "SALES_QUOTATION_EMAIL" },
+  { name: "RESEND_API_KEY", secret: true },
   { name: "AUTH_SECRET", requiredIn: ["production"], secret: true },
   { name: "NEXTAUTH_SECRET", requiredIn: ["production"], secret: true },
   { name: "LOG_LEVEL" },
@@ -114,6 +116,32 @@ if (process.env.PAYMENT_PROVIDER === "ipaymu") {
     level: "warning",
     message:
       "PAYMENT_PROVIDER=ipaymu masih foundation; live signature/callback perlu verifikasi staging sebelum production.",
+  });
+}
+
+if (process.env.EMAIL_PROVIDER === "resend") {
+  for (const name of ["RESEND_API_KEY", "EMAIL_FROM", "SALES_QUOTATION_EMAIL"]) {
+    if (!process.env[name]?.trim()) {
+      problems.push({
+        level: appEnv === "development" ? "warning" : "error",
+        message: `${name} wajib untuk EMAIL_PROVIDER=resend.`,
+      });
+    }
+  }
+  if (process.env.EMAIL_ENABLED !== "true") {
+    problems.push({
+      level: "warning",
+      message:
+        "EMAIL_PROVIDER=resend aktif, tetapi EMAIL_ENABLED belum true. Email production akan diskip.",
+    });
+  }
+}
+
+if (process.env.EMAIL_PROVIDER === "mock" && process.env.EMAIL_ENABLED === "true") {
+  problems.push({
+    level: "warning",
+    message:
+      "EMAIL_ENABLED=true dengan EMAIL_PROVIDER=mock hanya mencatat email ke mock log, bukan mengirim real.",
   });
 }
 
