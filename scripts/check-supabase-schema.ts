@@ -67,7 +67,6 @@ async function run() {
   for (const table of REQUIRED_SUPABASE_TABLES) {
     results.push(await checkTable(baseUrl, serviceRoleKey, table));
   }
-
   const missingTables = results
     .filter(
       (
@@ -103,6 +102,7 @@ async function run() {
   console.log(
     `OK: schema ready. ${REQUIRED_SUPABASE_TABLES.length} required tables reachable.`,
   );
+  console.log("OK: Phase 19 process-order tables are part of the required schema.");
   console.log("INFO: Tabel kosong tetap dianggap valid selama tabel bisa di-query.");
 }
 
