@@ -189,6 +189,7 @@ create table if not exists company_logos (
   company_id uuid not null references companies(id) on delete cascade,
   file_id uuid not null,
   label text not null,
+  status text not null default 'active' check (status in ('active', 'deleted')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -197,13 +198,33 @@ create table if not exists uploaded_files (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references companies(id) on delete cascade,
   user_id uuid not null references user_profiles(id) on delete restrict,
-  file_type text not null,
+  file_type text not null check (
+    file_type in (
+      'company_logo',
+      'embroidery_logo',
+      'artwork',
+      'quotation_attachment',
+      'invoice_document',
+      'purchase_order_document',
+      '3d_snapshot',
+      'product_glb_admin_future'
+    )
+  ),
   original_filename text not null,
+  safe_filename text not null,
+  storage_bucket text not null,
   storage_key text not null unique,
   mime_type text not null,
+  extension text not null,
   size_bytes bigint not null check (size_bytes >= 0),
-  status text not null default 'pending_scan' check (status in ('pending_scan', 'active', 'rejected', 'deleted')),
-  created_at timestamptz not null default now()
+  status text not null default 'uploaded' check (
+    status in ('pending', 'uploaded', 'validated', 'rejected', 'deleted', 'used')
+  ),
+  public_url text,
+  signed_url_expires_at timestamptz,
+  metadata_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 do $$
@@ -260,6 +281,13 @@ create index if not exists idx_shipments_order_id on shipments(order_id);
 create index if not exists idx_tracking_records_company_id on tracking_records(company_id);
 create index if not exists idx_tracking_records_order_id on tracking_records(order_id);
 create index if not exists idx_uploaded_files_company_id on uploaded_files(company_id);
+create index if not exists idx_uploaded_files_company_type_status_created_at
+  on uploaded_files(company_id, file_type, status, created_at desc);
+create index if not exists idx_uploaded_files_storage_bucket_key
+  on uploaded_files(storage_bucket, storage_key);
+create index if not exists idx_company_logos_company_created_at
+  on company_logos(company_id, created_at desc);
+create index if not exists idx_company_logos_file_id on company_logos(file_id);
 create index if not exists idx_audit_logs_company_created_at on audit_logs(company_id, created_at desc);
 create index if not exists idx_audit_logs_entity on audit_logs(entity_type, entity_id);
 
@@ -273,5 +301,28 @@ create index if not exists idx_audit_logs_entity on audit_logs(entity_type, enti
 -- alter table shipments enable row level security;
 -- alter table tracking_records enable row level security;
 -- alter table uploaded_files enable row level security;
+-- alter table company_logos enable row level security;
 -- Customer policies must filter rows by company_id derived from server/session,
 -- never from untrusted request body.
+--
+-- Draft policies after JWT company claim is final:
+-- create policy uploaded_files_company_select
+--   on uploaded_files for select
+--   using (company_id::text = auth.jwt() ->> 'company_id');
+-- create policy uploaded_files_company_insert
+--   on uploaded_files for insert
+--   with check (company_id::text = auth.jwt() ->> 'company_id');
+-- create policy uploaded_files_company_update
+--   on uploaded_files for update
+--   using (company_id::text = auth.jwt() ->> 'company_id')
+--   with check (company_id::text = auth.jwt() ->> 'company_id');
+-- create policy company_logos_company_select
+--   on company_logos for select
+--   using (company_id::text = auth.jwt() ->> 'company_id');
+-- create policy company_logos_company_insert
+--   on company_logos for insert
+--   with check (company_id::text = auth.jwt() ->> 'company_id');
+-- create policy company_logos_company_update
+--   on company_logos for update
+--   using (company_id::text = auth.jwt() ->> 'company_id')
+--   with check (company_id::text = auth.jwt() ->> 'company_id');

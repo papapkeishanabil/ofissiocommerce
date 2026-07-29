@@ -21,6 +21,15 @@ const rules: EnvRule[] = [
   { name: "SUPABASE_SERVICE_ROLE_KEY", requiredIn: ["production"], secret: true },
   { name: "AUTH_PROVIDER" },
   { name: "AUTH_SESSION_COOKIE_NAME" },
+  { name: "STORAGE_PROVIDER" },
+  { name: "STORAGE_BUCKET_LOGOS" },
+  { name: "STORAGE_BUCKET_ARTWORK" },
+  { name: "STORAGE_BUCKET_DOCUMENTS" },
+  { name: "STORAGE_BUCKET_3D" },
+  { name: "STORAGE_SIGNED_URL_EXPIRES_SECONDS" },
+  { name: "MAX_LOGO_UPLOAD_MB" },
+  { name: "MAX_DOCUMENT_UPLOAD_MB" },
+  { name: "MAX_GLB_UPLOAD_MB" },
   { name: "WOOCOMMERCE_ENABLED" },
   { name: "WOOCOMMERCE_BASE_URL", requiredIn: ["staging", "production"] },
   { name: "WOOCOMMERCE_CONSUMER_KEY", requiredIn: ["staging", "production"], secret: true },
@@ -52,6 +61,9 @@ const forbiddenPublicSecrets = [
   "NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET",
   "NEXT_PUBLIC_WOO_CONSUMER_SECRET",
   "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
+  "NEXT_PUBLIC_STORAGE_SECRET",
+  "NEXT_PUBLIC_S3_SECRET_ACCESS_KEY",
+  "NEXT_PUBLIC_R2_SECRET_ACCESS_KEY",
 ];
 
 const problems: { level: CheckLevel; message: string }[] = [];
@@ -124,6 +136,29 @@ if (process.env.DATABASE_PROVIDER === "postgres" && !process.env.DATABASE_URL?.t
   problems.push({
     level: appEnv === "development" ? "warning" : "error",
     message: "DATABASE_URL wajib untuk DATABASE_PROVIDER=postgres.",
+  });
+}
+
+if (process.env.STORAGE_PROVIDER === "supabase") {
+  for (const name of [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ]) {
+    if (!process.env[name]?.trim()) {
+      problems.push({
+        level: appEnv === "development" ? "warning" : "error",
+        message: `${name} wajib untuk STORAGE_PROVIDER=supabase. Development akan fallback ke mock.`,
+      });
+    }
+  }
+}
+
+if (process.env.STORAGE_PROVIDER === "s3") {
+  problems.push({
+    level: "warning",
+    message:
+      "STORAGE_PROVIDER=s3 masih boundary Phase 12; SDK/credential S3/R2 belum diaktifkan.",
   });
 }
 

@@ -5,6 +5,14 @@
 - [ ] Domain aktif.
 - [ ] HTTPS aktif.
 - [ ] Env production lengkap.
+- [ ] Auth provider production siap.
+- [ ] Database production siap.
+- [ ] Storage production siap.
+- [ ] Storage bucket customer private.
+- [ ] Signed URL private file berjalan.
+- [ ] SVG sanitization aktif.
+- [ ] Antivirus/file scanning aktif atau risk exception terdokumentasi.
+- [ ] RLS/company isolation production siap.
 - [ ] Secret tidak ada di Git.
 - [ ] `.env.local` tidak ter-commit.
 - [ ] `.env.production` tidak ter-commit.
@@ -27,6 +35,7 @@
 - [ ] iPaymu signature live verified.
 - [ ] Shipping provider credentials siap.
 - [ ] GLB model hosting aman.
+- [ ] File upload customer company-scoped.
 - [ ] CSP tidak memblokir GLB.
 - [ ] Test transaction berhasil.
 - [ ] Test quotation berhasil.

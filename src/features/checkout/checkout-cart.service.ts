@@ -3,7 +3,9 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { productServerService } from "@/features/products/product.server-service";
+import { storageService } from "@/features/storage/storage.service";
 import type { SizeMatrix } from "@/types/industry";
+import type { LogoPlacement } from "@/types/uniform-3d";
 
 import type {
   CheckoutCartRecord,
@@ -29,6 +31,7 @@ function sumSizes(sizes: SizeMatrix) {
 
 async function validateAndPriceItem(
   input: SyncCheckoutCartInput["items"][number],
+  companyId: string,
 ): Promise<ValidatedCheckoutCartItem> {
   const product = await productServerService.getProductById(input.productId);
   if (!product) throw new Error("Produk tidak ditemukan.");
@@ -44,6 +47,7 @@ async function validateAndPriceItem(
   if (totalQty < product.moq) {
     throw new Error(`MOQ ${product.moq} pcs belum terpenuhi.`);
   }
+  validateEmbroideryLogoFiles(companyId, input.embroideryPlacements);
 
   return {
     productId: product.id,
@@ -66,9 +70,31 @@ async function validateAndPriceItem(
   };
 }
 
+function validateEmbroideryLogoFiles(
+  companyId: string,
+  placements: LogoPlacement[],
+) {
+  for (const placement of placements) {
+    const file = storageService.getFileById({
+      companyId,
+      fileId: placement.logoFileId,
+    });
+    if (!file) throw new Error("Logo bordir tidak ditemukan untuk company ini.");
+    if (file.status === "deleted" || file.status === "rejected") {
+      throw new Error("Logo bordir tidak dapat digunakan.");
+    }
+    if (file.fileType !== "company_logo" && file.fileType !== "embroidery_logo") {
+      throw new Error("File yang dipilih bukan logo bordir.");
+    }
+    storageService.markFileAsUsed({ companyId, fileId: file.id });
+  }
+}
+
 export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<CheckoutCartRecord> {
   const parsed = syncCheckoutCartSchema.parse(input);
-  const items = await Promise.all(parsed.items.map(validateAndPriceItem));
+  const items = await Promise.all(
+    parsed.items.map((item) => validateAndPriceItem(item, parsed.companyId)),
+  );
   const now = new Date();
   const record: CheckoutCartRecord = {
     id: `cart_${randomUUID()}`,
@@ -112,7 +138,7 @@ export async function getValidatedCheckoutCart(
         sizeMatrix: item.sizeMatrix,
         customization: item.customization,
         embroideryPlacements: item.embroideryPlacements,
-      }),
+      }, stored.companyId),
     ),
   );
   return {

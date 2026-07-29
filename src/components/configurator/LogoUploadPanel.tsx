@@ -2,12 +2,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { UploadCloud, X } from "lucide-react";
+import { LoaderCircle, UploadCloud, X } from "lucide-react";
 
 import {
   LOGO_UPLOAD_CONSTRAINTS,
   validateLogoFile,
 } from "@/schemas/uniform-3d";
+import { useAuth } from "@/hooks/use-auth";
+import type { AuthSession } from "@/types/account";
 
 interface LogoUploadPanelProps {
   /** current uploaded preview URL (object URL) */
@@ -29,9 +31,59 @@ export function LogoUploadPanel({
   onUploaded,
   onClear,
 }: LogoUploadPanelProps) {
+  const { session } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  async function uploadToStorage(input: {
+    file: File;
+    localFileId: string;
+    previewUrl: string;
+    aspectRatio: number;
+  }) {
+    if (!session) {
+      setError(
+        "Preview lokal aktif. Masuk dulu agar logo tersimpan privat dan bisa dipakai di checkout.",
+      );
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.set("file", input.file);
+      formData.set("fileType", "embroidery_logo");
+      formData.set("metadata", JSON.stringify({ label: input.file.name }));
+      const response = await fetch("/api/files/upload", {
+        method: "POST",
+        headers: authHeaders(session),
+        body: formData,
+      });
+      const result = (await response.json()) as {
+        ok: boolean;
+        file?: { id: string; originalFilename: string };
+        message?: string;
+      };
+      if (!response.ok || !result.file?.id) {
+        throw new Error(result.message ?? "Logo belum berhasil disimpan.");
+      }
+      onUploaded({
+        file: input.file,
+        fileName: result.file.originalFilename,
+        previewUrl: input.previewUrl,
+        fileId: result.file.id,
+        aspectRatio: input.aspectRatio,
+      });
+    } catch (err) {
+      onClear();
+      URL.revokeObjectURL(input.previewUrl);
+      setError(err instanceof Error ? err.message : "Logo belum berhasil disimpan.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function handleFile(file: File) {
     setError(null);
@@ -41,15 +93,23 @@ export function LogoUploadPanel({
       return;
     }
     const url = URL.createObjectURL(file);
-    // Phase 8 will replace this with object-storage upload + AV scan.
-    const fileId = `LOGO-${Date.now().toString(36).toUpperCase()}`;
+    const localFileId = `pending-${Date.now().toString(36)}`;
     const image = new Image();
     image.onload = () => {
       const aspectRatio =
         image.naturalWidth > 0 && image.naturalHeight > 0
           ? image.naturalWidth / image.naturalHeight
           : 1;
-      onUploaded({ file, fileName: file.name, previewUrl: url, fileId, aspectRatio });
+      // Local object URL keeps the 3D preview feeling instant. The second
+      // onUploaded call swaps the temporary id with the company-scoped file id.
+      onUploaded({
+        file,
+        fileName: file.name,
+        previewUrl: url,
+        fileId: localFileId,
+        aspectRatio,
+      });
+      void uploadToStorage({ file, localFileId, previewUrl: url, aspectRatio });
     };
     image.onerror = () => {
       URL.revokeObjectURL(url);
@@ -73,9 +133,15 @@ export function LogoUploadPanel({
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-ink">{fileName}</p>
             <p className="text-[10px] text-ink-muted">
-              {LOGO_UPLOAD_CONSTRAINTS.recommended}
+              {uploading ? "Menyimpan file privat..." : LOGO_UPLOAD_CONSTRAINTS.recommended}
             </p>
           </div>
+          {uploading && (
+            <LoaderCircle
+              className="h-4 w-4 shrink-0 animate-spin text-brand-700"
+              aria-hidden="true"
+            />
+          )}
           <button
             type="button"
             onClick={onClear}
@@ -137,4 +203,15 @@ export function LogoUploadPanel({
       />
     </div>
   );
+}
+
+function authHeaders(session: AuthSession): HeadersInit {
+  return {
+    "x-ofissio-company-id": session.company.id,
+    "x-ofissio-company-name": session.company.companyName,
+    "x-ofissio-user-id": session.user.id,
+    "x-ofissio-user-email": session.user.email,
+    "x-ofissio-user-name": session.user.fullName,
+    "x-ofissio-role": session.user.role,
+  };
 }
