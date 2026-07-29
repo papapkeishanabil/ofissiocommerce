@@ -5,7 +5,8 @@ import { getDatabaseRuntimeConfig } from "@/features/database/database.config";
 import type { RepositoryProvider } from "./repository.types";
 
 export function getRepositoryProvider(): RepositoryProvider {
-  return getDatabaseRuntimeConfig().provider;
+  const provider = getDatabaseRuntimeConfig().provider;
+  return provider === "supabase" ? "supabase" : "mock";
 }
 
 export function isDatabaseRepositoryEnabled() {

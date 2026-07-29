@@ -1,0 +1,8 @@
+-- Ofissio migration 001: initial schema foundation.
+--
+-- Source of truth for Phase 14 is `database/schema.sql`.
+-- For Supabase staging activation, paste/run `database/schema.sql` in the
+-- Supabase SQL Editor first. This file intentionally references the source
+-- schema instead of duplicating it, so future draft edits stay in one place.
+--
+-- Do not run this against production until RLS/auth/session strategy is final.

@@ -11,3 +11,10 @@ export class DatabaseUnavailableError extends Error {
     this.name = "DatabaseUnavailableError";
   }
 }
+
+export class DatabaseQueryError extends Error {
+  constructor(message = "Query database belum dapat diproses.") {
+    super(message);
+    this.name = "DatabaseQueryError";
+  }
+}

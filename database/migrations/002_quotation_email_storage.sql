@@ -1,0 +1,16 @@
+-- Ofissio migration 002: quotation, email log, and storage persistence.
+--
+-- Phase 14 keeps the full draft in `database/schema.sql`. The relevant tables:
+-- - uploaded_files
+-- - company_logos
+-- - quotations
+-- - quotation_items
+-- - email_logs
+--
+-- Manual staging procedure:
+-- 1. Review `database/schema.sql`.
+-- 2. Run it in Supabase SQL Editor.
+-- 3. Run `database/seed-dev.sql` only in staging/dev.
+-- 4. Set DATABASE_PROVIDER=supabase only after schema exists.
+--
+-- No cloud migration is executed by Codex in Phase 14.

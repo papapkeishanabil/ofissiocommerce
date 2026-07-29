@@ -98,7 +98,7 @@ create table if not exists cart_item_customizations (
   cart_item_id uuid not null references cart_items(id) on delete cascade,
   customization_type text not null,
   placement text,
-  logo_file_id uuid,
+  logo_file_id text,
   width_cm numeric(8, 2),
   height_cm numeric(8, 2),
   notes text,
@@ -106,10 +106,11 @@ create table if not exists cart_item_customizations (
 );
 
 create table if not exists orders (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default gen_random_uuid()::text,
   order_number text not null unique,
-  company_id uuid not null references companies(id) on delete restrict,
-  user_id uuid not null references user_profiles(id) on delete restrict,
+  cart_id text,
+  company_id text not null,
+  user_id text not null,
   status text not null,
   payment_status text not null,
   fulfillment_type text not null,
@@ -119,14 +120,15 @@ create table if not exists orders (
   tax_total integer not null default 0 check (tax_total >= 0),
   grand_total integer not null check (grand_total >= 0),
   selected_shipping_rate_json jsonb,
+  order_json jsonb,
   woo_order_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create table if not exists order_items (
-  id uuid primary key default gen_random_uuid(),
-  order_id uuid not null references orders(id) on delete cascade,
+  id text primary key default gen_random_uuid()::text,
+  order_id text not null references orders(id) on delete cascade,
   product_id text not null,
   source text not null,
   source_id text,
@@ -143,9 +145,9 @@ create table if not exists order_items (
 );
 
 create table if not exists payments (
-  id uuid primary key default gen_random_uuid(),
-  order_id uuid not null references orders(id) on delete cascade,
-  company_id uuid not null references companies(id) on delete restrict,
+  id text primary key default gen_random_uuid()::text,
+  order_id text not null references orders(id) on delete cascade,
+  company_id text not null,
   provider text not null,
   status text not null,
   amount integer not null check (amount >= 0),
@@ -153,14 +155,15 @@ create table if not exists payments (
   provider_payment_id text,
   paid_at timestamptz,
   raw_safe_metadata_json jsonb,
+  payment_json jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create table if not exists shipments (
-  id uuid primary key default gen_random_uuid(),
-  order_id uuid not null references orders(id) on delete cascade,
-  company_id uuid not null references companies(id) on delete restrict,
+  id text primary key default gen_random_uuid()::text,
+  order_id text not null references orders(id) on delete cascade,
+  company_id text not null,
   provider text not null,
   service text not null,
   tracking_number text,
@@ -171,23 +174,24 @@ create table if not exists shipments (
 );
 
 create table if not exists tracking_records (
-  id uuid primary key default gen_random_uuid(),
-  order_id uuid not null references orders(id) on delete cascade,
-  company_id uuid not null references companies(id) on delete restrict,
+  id text primary key default gen_random_uuid()::text,
+  order_id text not null references orders(id) on delete cascade,
+  company_id text not null,
   status text not null,
   current_status text not null,
   next_step text,
   progress integer not null default 0 check (progress between 0 and 100),
   timeline_json jsonb not null default '[]'::jsonb,
+  tracking_json jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (order_id)
 );
 
 create table if not exists company_logos (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references companies(id) on delete cascade,
-  file_id uuid not null,
+  id text primary key default gen_random_uuid()::text,
+  company_id text not null,
+  file_id text not null,
   label text not null,
   status text not null default 'active' check (status in ('active', 'deleted')),
   created_at timestamptz not null default now(),
@@ -195,9 +199,9 @@ create table if not exists company_logos (
 );
 
 create table if not exists uploaded_files (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references companies(id) on delete cascade,
-  user_id uuid not null references user_profiles(id) on delete restrict,
+  id text primary key default gen_random_uuid()::text,
+  company_id text not null,
+  user_id text not null,
   file_type text not null check (
     file_type in (
       'company_logo',
@@ -227,33 +231,108 @@ create table if not exists uploaded_files (
   updated_at timestamptz not null default now()
 );
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint where conname = 'company_logos_file_fk'
-  ) then
-    alter table company_logos
-      add constraint company_logos_file_fk
-      foreign key (file_id) references uploaded_files(id) on delete restrict;
-  end if;
-end $$;
+create table if not exists quotations (
+  id text primary key,
+  quotation_number text not null unique,
+  company_id text not null,
+  company_name text,
+  user_id text not null,
+  user_email text,
+  pic_name text not null,
+  pic_email text,
+  pic_whatsapp text,
+  status text not null check (
+    status in (
+      'draft',
+      'submitted',
+      'emailed',
+      'under_review',
+      'quoted',
+      'revision_requested',
+      'accepted',
+      'rejected',
+      'expired',
+      'converted_to_order'
+    )
+  ),
+  source text not null default 'web_cart' check (source in ('web_cart')),
+  subtotal_estimate integer not null default 0 check (subtotal_estimate >= 0),
+  total_qty integer not null default 0 check (total_qty >= 0),
+  embroidery_point_count integer not null default 0 check (embroidery_point_count >= 0),
+  customer_notes text,
+  shipping_destination text,
+  email_status text not null default 'skipped' check (
+    email_status in ('queued', 'sent', 'failed', 'skipped', 'mocked')
+  ),
+  email_log_ids_json jsonb not null default '[]'::jsonb,
+  email_results_json jsonb not null default '[]'::jsonb,
+  quotation_json jsonb,
+  safe_metadata_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint where conname = 'cart_item_customizations_logo_file_fk'
-  ) then
-    alter table cart_item_customizations
-      add constraint cart_item_customizations_logo_file_fk
-      foreign key (logo_file_id) references uploaded_files(id) on delete set null;
-  end if;
-end $$;
+create table if not exists quotation_items (
+  id text primary key default gen_random_uuid()::text,
+  quotation_id text not null references quotations(id) on delete cascade,
+  product_id text not null,
+  source text not null,
+  source_id text,
+  sku text not null,
+  product_name text not null,
+  slug text not null,
+  selected_color text not null,
+  size_matrix_json jsonb not null default '{}'::jsonb,
+  total_qty integer not null check (total_qty > 0),
+  price_from integer not null check (price_from >= 0),
+  fulfillment_type text not null,
+  transaction_mode text not null,
+  model_3d_id text not null,
+  model_3d_url text not null,
+  customization text,
+  embroidery_placements_json jsonb not null default '[]'::jsonb,
+  item_snapshot_json jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists email_logs (
+  id text primary key,
+  company_id text,
+  user_id text,
+  provider text not null check (provider in ('mock', 'resend')),
+  status text not null check (status in ('queued', 'sent', 'failed', 'skipped', 'mocked')),
+  type text not null check (
+    type in (
+      'quotation_request_sales',
+      'quotation_confirmation_customer',
+      'payment_received_customer',
+      'order_tracking_update_customer',
+      'upload_notification_internal',
+      'test_email'
+    )
+  ),
+  recipient_emails_json jsonb not null default '[]'::jsonb,
+  from_email text not null,
+  reply_to_email text,
+  subject text not null,
+  provider_message_id text,
+  error_message text,
+  safe_metadata_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  sent_at timestamptz
+);
+
+-- company_logos.file_id intentionally stores app-generated uploaded_files.id.
+-- Add an FK only after final ID strategy is confirmed in staging.
+
+-- cart_item_customizations.logo_file_id intentionally stores app-generated
+-- uploaded_files.id. Add FK after cart persistence is fully migrated.
 
 create table if not exists audit_logs (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default gen_random_uuid()::text,
   actor_id text,
   actor_type text not null check (actor_type in ('customer', 'internal', 'system')),
-  company_id uuid,
+  company_id text,
   action text not null,
   entity_type text not null,
   entity_id text,
@@ -288,6 +367,14 @@ create index if not exists idx_uploaded_files_storage_bucket_key
 create index if not exists idx_company_logos_company_created_at
   on company_logos(company_id, created_at desc);
 create index if not exists idx_company_logos_file_id on company_logos(file_id);
+create index if not exists idx_quotations_company_created_at
+  on quotations(company_id, created_at desc);
+create index if not exists idx_quotations_status on quotations(status);
+create index if not exists idx_quotation_items_quotation_id on quotation_items(quotation_id);
+create index if not exists idx_email_logs_company_created_at
+  on email_logs(company_id, created_at desc);
+create index if not exists idx_email_logs_type_status_created_at
+  on email_logs(type, status, created_at desc);
 create index if not exists idx_audit_logs_company_created_at on audit_logs(company_id, created_at desc);
 create index if not exists idx_audit_logs_entity on audit_logs(entity_type, entity_id);
 
@@ -302,6 +389,9 @@ create index if not exists idx_audit_logs_entity on audit_logs(entity_type, enti
 -- alter table tracking_records enable row level security;
 -- alter table uploaded_files enable row level security;
 -- alter table company_logos enable row level security;
+-- alter table quotations enable row level security;
+-- alter table quotation_items enable row level security;
+-- alter table email_logs enable row level security;
 -- Customer policies must filter rows by company_id derived from server/session,
 -- never from untrusted request body.
 --
@@ -326,3 +416,21 @@ create index if not exists idx_audit_logs_entity on audit_logs(entity_type, enti
 --   on company_logos for update
 --   using (company_id::text = auth.jwt() ->> 'company_id')
 --   with check (company_id::text = auth.jwt() ->> 'company_id');
+-- create policy quotations_company_select
+--   on quotations for select
+--   using (company_id::text = auth.jwt() ->> 'company_id');
+-- create policy quotations_company_insert
+--   on quotations for insert
+--   with check (company_id::text = auth.jwt() ->> 'company_id');
+-- create policy quotation_items_company_select
+--   on quotation_items for select
+--   using (
+--     exists (
+--       select 1 from quotations q
+--       where q.id = quotation_items.quotation_id
+--         and q.company_id::text = auth.jwt() ->> 'company_id'
+--     )
+--   );
+-- create policy email_logs_company_select
+--   on email_logs for select
+--   using (company_id::text = auth.jwt() ->> 'company_id');

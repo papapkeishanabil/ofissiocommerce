@@ -2,6 +2,7 @@ import "server-only";
 
 import { DatabaseConfigurationError } from "./database.errors";
 import { getDatabaseRuntimeConfig } from "./database.config";
+import { getSupabaseAdminClient } from "./supabase-admin.client";
 
 export function getDatabaseClientInfo() {
   const config = getDatabaseRuntimeConfig();
@@ -25,12 +26,11 @@ export function assertDatabaseReady() {
 }
 
 /**
- * Placeholder boundary for future Supabase/Postgres clients.
- *
- * Phase 11 intentionally avoids adding a DB SDK or opening a network
- * connection. Repository adapters can call this boundary later after staging
- * credentials and migration workflow are ready.
+ * Server-only database client boundary. Supabase uses a minimal PostgREST
+ * wrapper to avoid adding client SDK code to browser bundles.
  */
 export function getDatabaseClient() {
+  const config = getDatabaseRuntimeConfig();
+  if (config.provider === "supabase") return getSupabaseAdminClient();
   return null;
 }

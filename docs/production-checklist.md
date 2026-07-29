@@ -7,6 +7,8 @@
 - [ ] Env production lengkap.
 - [ ] Auth provider production siap.
 - [ ] Database production siap.
+- [ ] Database migrations sudah dijalankan di staging dan diverifikasi.
+- [ ] Supabase service role hanya ada di server secret manager.
 - [ ] Storage production siap.
 - [ ] Storage bucket customer private.
 - [ ] Signed URL private file berjalan.

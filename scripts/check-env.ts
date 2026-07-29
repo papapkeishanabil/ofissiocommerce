@@ -15,10 +15,10 @@ const rules: EnvRule[] = [
   { name: "NODE_ENV" },
   { name: "PRODUCT_SOURCE" },
   { name: "DATABASE_PROVIDER" },
-  { name: "DATABASE_URL", requiredIn: ["production"], secret: true },
+  { name: "DATABASE_URL", secret: true },
   { name: "NEXT_PUBLIC_SUPABASE_URL" },
   { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY" },
-  { name: "SUPABASE_SERVICE_ROLE_KEY", requiredIn: ["production"], secret: true },
+  { name: "SUPABASE_SERVICE_ROLE_KEY", secret: true },
   { name: "AUTH_PROVIDER" },
   { name: "AUTH_SESSION_COOKIE_NAME" },
   { name: "STORAGE_PROVIDER" },
@@ -31,21 +31,21 @@ const rules: EnvRule[] = [
   { name: "MAX_DOCUMENT_UPLOAD_MB" },
   { name: "MAX_GLB_UPLOAD_MB" },
   { name: "WOOCOMMERCE_ENABLED" },
-  { name: "WOOCOMMERCE_BASE_URL", requiredIn: ["staging", "production"] },
-  { name: "WOOCOMMERCE_CONSUMER_KEY", requiredIn: ["staging", "production"], secret: true },
-  { name: "WOOCOMMERCE_CONSUMER_SECRET", requiredIn: ["staging", "production"], secret: true },
+  { name: "WOOCOMMERCE_BASE_URL" },
+  { name: "WOOCOMMERCE_CONSUMER_KEY", secret: true },
+  { name: "WOOCOMMERCE_CONSUMER_SECRET", secret: true },
   { name: "WOOCOMMERCE_SYNC_ORDERS" },
   { name: "PAYMENT_PROVIDER" },
-  { name: "IPAYMU_VA", requiredIn: ["production"], secret: true },
-  { name: "IPAYMU_API_KEY", requiredIn: ["production"], secret: true },
-  { name: "IPAYMU_BASE_URL", requiredIn: ["production"] },
-  { name: "IPAYMU_CALLBACK_URL", requiredIn: ["production"] },
-  { name: "IPAYMU_RETURN_URL", requiredIn: ["production"] },
-  { name: "IPAYMU_CANCEL_URL", requiredIn: ["production"] },
+  { name: "IPAYMU_VA", secret: true },
+  { name: "IPAYMU_API_KEY", secret: true },
+  { name: "IPAYMU_BASE_URL" },
+  { name: "IPAYMU_CALLBACK_URL" },
+  { name: "IPAYMU_RETURN_URL" },
+  { name: "IPAYMU_CANCEL_URL" },
   { name: "SHIPPING_PROVIDER" },
   { name: "DEFAULT_ORIGIN_CITY", requiredIn: ["staging", "production"] },
   { name: "DEFAULT_ORIGIN_POSTAL_CODE", requiredIn: ["production"] },
-  { name: "SHIPPING_PROVIDER_API_KEY", requiredIn: ["production"], secret: true },
+  { name: "SHIPPING_PROVIDER_API_KEY", secret: true },
   { name: "EMAIL_PROVIDER" },
   { name: "EMAIL_ENABLED" },
   { name: "EMAIL_FROM" },
@@ -112,6 +112,21 @@ if (process.env.PRODUCT_SOURCE === "woocommerce") {
 }
 
 if (process.env.PAYMENT_PROVIDER === "ipaymu") {
+  for (const name of [
+    "IPAYMU_VA",
+    "IPAYMU_API_KEY",
+    "IPAYMU_BASE_URL",
+    "IPAYMU_CALLBACK_URL",
+    "IPAYMU_RETURN_URL",
+    "IPAYMU_CANCEL_URL",
+  ]) {
+    if (!process.env[name]?.trim()) {
+      problems.push({
+        level: appEnv === "development" ? "warning" : "error",
+        message: `${name} wajib untuk PAYMENT_PROVIDER=ipaymu.`,
+      });
+    }
+  }
   problems.push({
     level: "warning",
     message:
@@ -170,13 +185,31 @@ if (process.env.DATABASE_PROVIDER === "postgres" && !process.env.DATABASE_URL?.t
 if (process.env.STORAGE_PROVIDER === "supabase") {
   for (const name of [
     "NEXT_PUBLIC_SUPABASE_URL",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
+    "STORAGE_BUCKET_LOGOS",
+    "STORAGE_BUCKET_ARTWORK",
+    "STORAGE_BUCKET_DOCUMENTS",
+    "STORAGE_BUCKET_3D",
   ]) {
     if (!process.env[name]?.trim()) {
       problems.push({
         level: appEnv === "development" ? "warning" : "error",
         message: `${name} wajib untuk STORAGE_PROVIDER=supabase. Development akan fallback ke mock.`,
+      });
+    }
+  }
+}
+
+if (process.env.SHIPPING_PROVIDER && process.env.SHIPPING_PROVIDER !== "mock") {
+  for (const name of [
+    "DEFAULT_ORIGIN_CITY",
+    "DEFAULT_ORIGIN_POSTAL_CODE",
+    "SHIPPING_PROVIDER_API_KEY",
+  ]) {
+    if (!process.env[name]?.trim()) {
+      problems.push({
+        level: appEnv === "development" ? "warning" : "error",
+        message: `${name} wajib untuk SHIPPING_PROVIDER=${process.env.SHIPPING_PROVIDER}.`,
       });
     }
   }

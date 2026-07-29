@@ -17,7 +17,15 @@ export interface DatabaseHealth {
   ok: boolean;
   provider: DatabaseProvider;
   requestedProvider: DatabaseProvider;
+  status: "mock" | "connected" | "unavailable";
   configured: boolean;
   message: string;
   checkedAt: string;
+}
+
+export interface SupabaseQueryOptions {
+  select?: string;
+  filters?: Record<string, string | number | boolean | null>;
+  order?: string;
+  limit?: number;
 }
