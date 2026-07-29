@@ -15,7 +15,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
   const { id } = await params;
   const detail = await getAdminQuotationDetail(id);
   if (!detail) notFound();
-  const { quotation, logoPreviews } = detail;
+  const { quotation, logoPreviews, events } = detail;
 
   return (
     <div className="space-y-5">
@@ -66,7 +66,61 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         ) : null}
       </section>
 
-      <AdminQuotationStatusActions quotationId={quotation.id} currentStatus={quotation.status} />
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+          <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ink">
+            Final pricing
+          </h3>
+          {quotation.grandTotal ? (
+            <dl className="mt-4 space-y-2 text-sm">
+              <PriceRow label="Subtotal final" value={quotation.subtotal} />
+              <PriceRow label="Discount" value={quotation.discountTotal} />
+              <PriceRow label="Tax" value={quotation.taxTotal} />
+              <PriceRow label="Shipping estimate" value={quotation.shippingEstimate} />
+              <PriceRow label="Grand total" value={quotation.grandTotal} strong />
+              <InfoRow label="Valid until" value={quotation.validUntil ? formatAdminDate(quotation.validUntil) : "-"} />
+            </dl>
+          ) : (
+            <p className="mt-3 rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+              Menunggu review sales. Harga final belum diisi.
+            </p>
+          )}
+          {quotation.customerMessage ? (
+            <div className="mt-4 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900">
+              <p className="font-black">Customer-facing message</p>
+              <p className="mt-1">{quotation.customerMessage}</p>
+            </div>
+          ) : null}
+          {quotation.salesNotes ? (
+            <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-ink-muted">
+              <p className="font-black text-ink">Sales notes</p>
+              <p className="mt-1">{quotation.salesNotes}</p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+          <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ink">
+            Internal notes
+          </h3>
+          {quotation.internalNotes.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-muted">Belum ada internal note.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {quotation.internalNotes.slice().reverse().map((note) => (
+                <li key={note.id} className="rounded-2xl bg-slate-50 p-3 text-sm">
+                  <p className="text-ink">{note.note}</p>
+                  <p className="mt-1 text-xs font-semibold text-ink-muted">
+                    {note.authorId ?? "system"} - {formatAdminDate(note.createdAt)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+
+      <AdminQuotationStatusActions quotation={quotation} />
 
       <section className="space-y-4">
         <h3 className="text-lg font-black text-ink">Items, size matrix, 3D, dan bordir</h3>
@@ -150,6 +204,60 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
           ))
         )}
       </section>
+
+      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+        <h3 className="text-lg font-black text-ink">Quotation events</h3>
+        {events.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-muted">
+            Event table belum tersedia atau belum ada event Phase 17.
+          </p>
+        ) : (
+          <ol className="mt-4 space-y-3">
+            {events.map((event) => (
+              <li key={event.id} className="rounded-2xl bg-slate-50 p-4 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-black text-ink">{event.eventType}</p>
+                  <span className="text-xs font-semibold text-ink-muted">
+                    {formatAdminDate(event.createdAt)}
+                  </span>
+                </div>
+                <p className="mt-1 text-ink-muted">
+                  {event.oldStatus ?? "-"} → {event.newStatus ?? "-"}
+                  {event.note ? ` · ${event.note}` : ""}
+                </p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function PriceRow({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: number | null;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-line pb-2 last:border-0 last:pb-0">
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className={strong ? "text-lg font-black text-ink" : "font-semibold text-ink"}>
+        {formatRupiah(value ?? 0)}
+      </dd>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-line pb-2 last:border-0 last:pb-0">
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="font-semibold text-ink">{value}</dd>
     </div>
   );
 }
