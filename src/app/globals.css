@@ -4,9 +4,9 @@
    Brand: Ofissio Workwear — navy primary, ochre accent.
    Mirrors the design tokens from the Ofissio Workwear homepage.
 
-   Fonts are loaded via next/font/google in app/layout.tsx (Inter + Manrope)
-   and exposed here as --font-sans / --font-display so Tailwind utilities
-   (font-sans, font-display) resolve to the self-hosted font files. */
+   Production readiness note:
+   use system font stacks so `npm run build` does not depend on external
+   Google Fonts downloads in restricted CI/staging networks. */
 @theme {
   /* Brand navy (logo color) */
   --color-brand-50: #eef1fb;
@@ -44,12 +44,13 @@
   --color-line: #e2e8f0;
   --color-line-strong: #c5c5d2;
 
-  /* Typography — wired to next/font variables set in layout.tsx */
+  /* Typography — network-independent system font stacks. */
   --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif;
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   --font-display:
-    var(--font-display-font), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ===== Base ===== */

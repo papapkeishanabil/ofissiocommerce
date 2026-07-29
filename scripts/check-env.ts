@@ -1,0 +1,128 @@
+type AppEnvironment = "development" | "staging" | "production";
+type CheckLevel = "error" | "warning";
+
+interface EnvRule {
+  name: string;
+  requiredIn?: AppEnvironment[];
+  secret?: boolean;
+  note?: string;
+}
+
+const appEnv = resolveAppEnvironment();
+
+const rules: EnvRule[] = [
+  { name: "APP_URL", requiredIn: ["staging", "production"] },
+  { name: "NODE_ENV" },
+  { name: "PRODUCT_SOURCE" },
+  { name: "WOOCOMMERCE_ENABLED" },
+  { name: "WOOCOMMERCE_BASE_URL", requiredIn: ["staging", "production"] },
+  { name: "WOOCOMMERCE_CONSUMER_KEY", requiredIn: ["staging", "production"], secret: true },
+  { name: "WOOCOMMERCE_CONSUMER_SECRET", requiredIn: ["staging", "production"], secret: true },
+  { name: "WOOCOMMERCE_SYNC_ORDERS" },
+  { name: "PAYMENT_PROVIDER" },
+  { name: "IPAYMU_VA", requiredIn: ["production"], secret: true },
+  { name: "IPAYMU_API_KEY", requiredIn: ["production"], secret: true },
+  { name: "IPAYMU_BASE_URL", requiredIn: ["production"] },
+  { name: "IPAYMU_CALLBACK_URL", requiredIn: ["production"] },
+  { name: "IPAYMU_RETURN_URL", requiredIn: ["production"] },
+  { name: "IPAYMU_CANCEL_URL", requiredIn: ["production"] },
+  { name: "SHIPPING_PROVIDER" },
+  { name: "DEFAULT_ORIGIN_CITY", requiredIn: ["staging", "production"] },
+  { name: "DEFAULT_ORIGIN_POSTAL_CODE", requiredIn: ["production"] },
+  { name: "SHIPPING_PROVIDER_API_KEY", requiredIn: ["production"], secret: true },
+  { name: "EMAIL_PROVIDER" },
+  { name: "RESEND_API_KEY", requiredIn: ["staging", "production"], secret: true },
+  { name: "EMAIL_FROM", requiredIn: ["staging", "production"] },
+  { name: "SALES_QUOTATION_EMAIL", requiredIn: ["staging", "production"] },
+  { name: "AUTH_SECRET", requiredIn: ["production"], secret: true },
+  { name: "NEXTAUTH_SECRET", requiredIn: ["production"], secret: true },
+  { name: "LOG_LEVEL" },
+];
+
+const forbiddenPublicSecrets = [
+  "NEXT_PUBLIC_RESEND_API_KEY",
+  "NEXT_PUBLIC_IPAYMU_API_KEY",
+  "NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET",
+  "NEXT_PUBLIC_WOO_CONSUMER_SECRET",
+];
+
+const problems: { level: CheckLevel; message: string }[] = [];
+
+for (const rule of rules) {
+  const value = process.env[rule.name]?.trim();
+  if (rule.requiredIn?.includes(appEnv) && !value) {
+    problems.push({
+      level: appEnv === "production" ? "error" : "warning",
+      message: `${rule.name} belum diisi untuk ${appEnv}.`,
+    });
+  }
+  if (rule.secret && rule.name.startsWith("NEXT_PUBLIC_")) {
+    problems.push({
+      level: "error",
+      message: `${rule.name} adalah secret dan tidak boleh memakai NEXT_PUBLIC_.`,
+    });
+  }
+}
+
+for (const name of forbiddenPublicSecrets) {
+  if (process.env[name]) {
+    problems.push({
+      level: "error",
+      message: `${name} tidak boleh diset karena akan bocor ke client bundle.`,
+    });
+  }
+}
+
+if (process.env.PRODUCT_SOURCE === "woocommerce") {
+  for (const name of [
+    "WOOCOMMERCE_ENABLED",
+    "WOOCOMMERCE_BASE_URL",
+    "WOOCOMMERCE_CONSUMER_KEY",
+    "WOOCOMMERCE_CONSUMER_SECRET",
+  ]) {
+    if (!process.env[name]?.trim()) {
+      problems.push({
+        level: appEnv === "development" ? "warning" : "error",
+        message: `${name} wajib untuk PRODUCT_SOURCE=woocommerce.`,
+      });
+    }
+  }
+}
+
+if (process.env.PAYMENT_PROVIDER === "ipaymu") {
+  problems.push({
+    level: "warning",
+    message:
+      "PAYMENT_PROVIDER=ipaymu masih foundation; live signature/callback perlu verifikasi staging sebelum production.",
+  });
+}
+
+printReport();
+
+if (problems.some((problem) => problem.level === "error")) {
+  process.exitCode = 1;
+}
+
+function resolveAppEnvironment(): AppEnvironment {
+  const explicit = process.env.APP_ENV?.toLowerCase();
+  if (explicit === "staging" || explicit === "production" || explicit === "development") {
+    return explicit;
+  }
+  return process.env.NODE_ENV === "production" ? "production" : "development";
+}
+
+function printReport() {
+  const title = `Ofissio env check (${appEnv})`;
+  console.log(title);
+  console.log("-".repeat(title.length));
+
+  if (problems.length === 0) {
+    console.log("OK: konfigurasi env dasar aman untuk mode ini.");
+    return;
+  }
+
+  for (const problem of problems) {
+    const label = problem.level === "error" ? "ERROR" : "WARN";
+    console.log(`${label}: ${problem.message}`);
+  }
+}

@@ -46,7 +46,7 @@ function isProfileFieldsComplete(c: Company): boolean {
 
 export function CheckoutPage() {
   const router = useRouter();
-  const { session, hydrated: authHydrated, isAuthenticated, isProfileComplete } = useAuth();
+  const { session, hydrated: authHydrated, isAuthenticated } = useAuth();
   const cartHydrated = useCartHydrated();
   const items = useCartItems();
   const clearCart = useCartStore((s) => s.clear);

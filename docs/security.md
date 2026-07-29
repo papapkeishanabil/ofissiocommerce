@@ -127,3 +127,20 @@ CSP masih dev-friendly agar tidak merusak Next dev server, Three.js canvas, font
 - Tambahkan persistent audit log immutable.
 - Review CSP final sesuai domain asset/payment/shipping.
 - Tambahkan monitoring security event dan alerting.
+
+## Phase 9 gap sebelum production
+
+Gap berikut boleh tetap ada di readiness stage, tetapi wajib selesai sebelum production live:
+
+- Real server auth/session.
+- Persistent database.
+- Row-level company isolation.
+- Persistent audit log.
+- Redis/Upstash rate limit.
+- Private object storage + signed URL.
+- Antivirus scan.
+- SVG sanitization.
+- iPaymu live signature.
+- WooCommerce production hardening.
+- Real email delivery verification.
+- Staging penetration/security smoke test.
