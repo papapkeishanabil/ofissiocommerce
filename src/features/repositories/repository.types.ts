@@ -31,6 +31,11 @@ import type {
   DocumentRecord,
   DocumentType,
 } from "@/features/documents/document.types";
+import type {
+  ShipmentEventRecord,
+  ShipmentListFilter,
+  ShipmentRecord,
+} from "@/features/shipments/shipment.types";
 
 export type RepositoryProvider = "mock" | "supabase" | "postgres";
 
@@ -247,6 +252,34 @@ export interface DocumentRepository {
   listAll?(): Promise<DocumentRecord[]>;
 }
 
+export interface ShipmentRepository {
+  createShipment(input: { shipment: ShipmentRecord }): Promise<ShipmentRecord>;
+  updateShipment(input: {
+    shipmentId: string;
+    companyId?: string;
+    patch: Partial<ShipmentRecord>;
+  }): Promise<ShipmentRecord | null>;
+  getShipmentById(input: {
+    shipmentId: string;
+    companyId?: string;
+  }): Promise<ShipmentRecord | null>;
+  getActiveShipmentByOrder(input: {
+    orderId: string;
+    companyId?: string;
+  }): Promise<ShipmentRecord | null>;
+  getShipmentByProcessOrder(input: {
+    processOrderId: string;
+    companyId?: string;
+  }): Promise<ShipmentRecord | null>;
+  listShipments(input?: ShipmentListFilter): Promise<ShipmentRecord[]>;
+  addShipmentEvent(input: { event: ShipmentEventRecord }): Promise<ShipmentEventRecord>;
+  listShipmentEvents(input: {
+    shipmentId?: string;
+    orderId?: string;
+    companyId?: string;
+  }): Promise<ShipmentEventRecord[]>;
+}
+
 export interface RepositoryRegistry {
   provider: RepositoryProvider;
   company: CompanyRepository;
@@ -262,6 +295,7 @@ export interface RepositoryRegistry {
   emailLogs: EmailLogRepository;
   processOrders: ProcessOrderRepository;
   documents: DocumentRepository;
+  shipments: ShipmentRepository;
 }
 
 export interface PersistedSizeMatrix {

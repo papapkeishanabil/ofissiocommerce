@@ -31,3 +31,7 @@
 ## WooCommerce foundation
 
 Jika `woo_order_id` ada dan Woo sync enabled, status payment paid dapat disinkronkan ke WooCommerce. Jika env WooCommerce belum ada, sync diskip aman dan tidak memblokir payment.
+
+## Relation to shipping
+
+Payment dan shipment tetap dipisah. Status paid tidak otomatis membuat resi atau memilih ekspedisi. Setelah order siap, admin membuat shipment manual di Ofissio Admin dan update shipment akan menyinkronkan tracking customer.

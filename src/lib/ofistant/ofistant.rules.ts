@@ -278,6 +278,7 @@ const tracking: Rule = ({ text, ctx }) => {
   const trackingStatus = getOfistantOrderStatusText({
     companyId: ctx.companyId,
     companyName: ctx.companyName,
+    currentOrderId: ctx.currentOrderId,
   });
   return {
     message: trackingStatus.text,

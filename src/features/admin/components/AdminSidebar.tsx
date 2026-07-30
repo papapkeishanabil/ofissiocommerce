@@ -10,6 +10,7 @@ import {
   Home,
   ListChecks,
   PackageCheck,
+  Truck,
   Workflow,
 } from "lucide-react";
 
@@ -21,6 +22,7 @@ const ICONS = {
   "/admin/quotations": ListChecks,
   "/admin/orders": PackageCheck,
   "/admin/process-orders": Workflow,
+  "/admin/shipments": Truck,
   "/admin/customers": Building2,
   "/admin/uploads": FileArchive,
   "/admin/tracking": Boxes,

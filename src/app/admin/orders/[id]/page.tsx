@@ -6,6 +6,7 @@ import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentA
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminOrderProcessPanel } from "@/features/admin/components/AdminOrderProcessPanel";
 import { AdminPaymentPanel } from "@/features/admin/components/AdminPaymentPanel";
+import { AdminShipmentPanel } from "@/features/admin/components/AdminShipmentPanel";
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
 import { getAdminOrderDetail } from "@/features/admin/admin.service";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
@@ -102,6 +103,13 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         requestedProvider={paymentConfig.requestedProvider}
         activeProvider={paymentConfig.provider}
         ipaymuConfigured={paymentConfig.ipaymu.isComplete}
+      />
+
+      <AdminShipmentPanel
+        orderId={order.id}
+        processOrderId={detail.processOrder?.id ?? null}
+        shipments={detail.shipments}
+        events={detail.shipmentEvents}
       />
 
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">

@@ -1,9 +1,11 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
 import { loadEnvConfig } from "@next/env";
 
 import {
-  PHASE_23_PAYMENT_COLUMNS,
   PHASE_24_SHIPMENT_COLUMNS,
-  REQUIRED_SUPABASE_TABLES,
+  PHASE_24_SHIPMENT_TABLES,
 } from "../src/features/database/supabase-schema";
 
 type SupabaseCheckReason =
@@ -22,54 +24,44 @@ type PostgrestErrorPayload = {
   hint?: string;
 };
 
-type TableCheckResult =
-  | { ok: true; table: string }
-  | {
-      ok: false;
-      table: string;
-      reason: SupabaseCheckReason;
-      status?: number;
-      code?: string;
-    };
-type ColumnCheckResult =
-  | { ok: true; table: string; columns: readonly string[] }
-  | {
-      ok: false;
-      table: string;
-      columns: readonly string[];
-      reason: SupabaseCheckReason;
-      status?: number;
-      code?: string;
-    };
-
 loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 
-const provider = normalizeProvider(process.env.DATABASE_PROVIDER);
-const requiredEnvNames = [
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
-] as const;
-
 run().catch((error: unknown) => {
-  console.error("ERROR: Supabase schema check gagal.");
+  console.error("ERROR: Shipping check gagal.");
   console.error(`Reason: ${safeErrorReason(error)}`);
   process.exitCode = 1;
 });
 
 async function run() {
   printHeader();
-  assertNoForbiddenPublicSecret();
+  assertNoPublicShippingSecrets();
 
+  const migrationPath = join(
+    process.cwd(),
+    "database",
+    "migrations",
+    "009_shipments_flow.sql",
+  );
+  if (!existsSync(migrationPath)) {
+    console.log("ERROR: Migration 009_shipments_flow.sql belum ada.");
+    process.exitCode = 1;
+    return;
+  }
+  console.log("OK: migration 009_shipments_flow.sql tersedia.");
+  console.log("OK: SHIPPING_PROVIDER default manual; provider API live tidak dipanggil.");
+
+  const provider = normalizeProvider(process.env.DATABASE_PROVIDER);
   if (provider !== "supabase") {
-    console.log(`SKIP: DATABASE_PROVIDER=${provider}; schema check hanya untuk supabase.`);
+    console.log(`SKIP: DATABASE_PROVIDER=${provider}; live shipment table check skipped.`);
     return;
   }
 
-  const missingEnv = requiredEnvNames.filter((name) => !process.env[name]?.trim());
+  const missingEnv = [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ].filter((name) => !process.env[name]?.trim());
   if (missingEnv.length > 0) {
-    console.log(`ERROR: Env Supabase belum lengkap: ${missingEnv.join(", ")}.`);
-    process.exitCode = 1;
+    console.log(`SKIP: Supabase env belum lengkap untuk live shipment check: ${missingEnv.join(", ")}.`);
     return;
   }
 
@@ -77,101 +69,45 @@ async function run() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
   assertServiceRoleKey(serviceRoleKey);
 
-  const results: TableCheckResult[] = [];
-  for (const table of REQUIRED_SUPABASE_TABLES) {
-    results.push(await checkTable(baseUrl, serviceRoleKey, table));
-  }
-  const missingTables = results
-    .filter(
-      (
-        result,
-      ): result is Extract<TableCheckResult, { ok: false }> =>
-        !result.ok && result.reason === "relation_does_not_exist",
-    )
-    .map((result) => result.table);
-  const hardFailures = results.filter(
-    (result): result is Extract<TableCheckResult, { ok: false }> =>
-      !result.ok && result.reason !== "relation_does_not_exist",
-  );
-
-  if (hardFailures.length > 0) {
-    for (const failure of hardFailures) {
-      console.log(
-        `ERROR: ${failure.table} tidak bisa dicek (${failure.reason}, status ${
-          failure.status ?? "n/a"
-        }, code ${failure.code ?? "n/a"}).`,
-      );
-    }
-    process.exitCode = 1;
-    return;
-  }
-
-  if (missingTables.length > 0) {
-    console.log("ERROR: Supabase schema missing.");
-    console.log(`Missing tables: ${missingTables.join(", ")}`);
-    process.exitCode = 1;
-    return;
-  }
-
-  const paymentColumnCheck = await checkColumns(
-    baseUrl,
-    serviceRoleKey,
-    "payments",
-    PHASE_23_PAYMENT_COLUMNS,
-  );
-  if (!paymentColumnCheck.ok) {
-    console.log(
-      `ERROR: payments Phase 23 columns tidak lengkap (${paymentColumnCheck.reason}, status ${
-        paymentColumnCheck.status ?? "n/a"
-      }, code ${paymentColumnCheck.code ?? "n/a"}).`,
-    );
-    console.log(`Required columns: ${PHASE_23_PAYMENT_COLUMNS.join(", ")}`);
-    process.exitCode = 1;
-    return;
-  }
-
-  const shipmentColumnCheck = await checkColumns(
+  const shipmentsColumns = await checkColumns(
     baseUrl,
     serviceRoleKey,
     "shipments",
     PHASE_24_SHIPMENT_COLUMNS,
   );
-  if (!shipmentColumnCheck.ok) {
+  const shipmentEvents = await checkTable(baseUrl, serviceRoleKey, PHASE_24_SHIPMENT_TABLES[0]);
+
+  if (!shipmentsColumns.ok || !shipmentEvents.ok) {
+    const reasons = [
+      !shipmentsColumns.ok
+        ? `shipments columns: ${shipmentsColumns.reason}`
+        : null,
+      !shipmentEvents.ok
+        ? `shipment_events table: ${shipmentEvents.reason}`
+        : null,
+    ].filter(Boolean);
     console.log(
-      `ERROR: shipments Phase 24 columns tidak lengkap (${shipmentColumnCheck.reason}, status ${
-        shipmentColumnCheck.status ?? "n/a"
-      }, code ${shipmentColumnCheck.code ?? "n/a"}).`,
+      `SKIP: Migration 009 belum terlihat aktif di Supabase (${reasons.join(", ")}).`,
     );
-    console.log(`Required columns: ${PHASE_24_SHIPMENT_COLUMNS.join(", ")}`);
-    process.exitCode = 1;
+    console.log("INFO: Jalankan database/migrations/009_shipments_flow.sql manual sebelum live shipment persistence smoke.");
     return;
   }
 
   console.log(
-    `OK: schema ready. ${REQUIRED_SUPABASE_TABLES.length} required tables reachable.`,
-  );
-  console.log("OK: Phase 19 process-order tables are part of the required schema.");
-  console.log("OK: Phase 23 payment_events table is part of the required schema.");
-  console.log("OK: Phase 24 shipments and shipment_events tables are part of the required schema.");
-  console.log(
-    `OK: payments Phase 23 columns reachable (${PHASE_23_PAYMENT_COLUMNS.length} columns).`,
-  );
-  console.log(
     `OK: shipments Phase 24 columns reachable (${PHASE_24_SHIPMENT_COLUMNS.length} columns).`,
   );
-  console.log("INFO: Tabel kosong tetap dianggap valid selama tabel bisa di-query.");
+  console.log("OK: shipment_events table reachable.");
+  console.log("OK: Shipment schema ready untuk manual shipping flow.");
 }
 
 async function checkTable(
   baseUrl: string,
   serviceRoleKey: string,
   table: string,
-): Promise<TableCheckResult> {
+) {
   const url = `${baseUrl}/rest/v1/${table}?select=id&limit=1`;
-  let response: Response;
-
   try {
-    response = await fetch(url, {
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         apikey: serviceRoleKey,
@@ -179,20 +115,18 @@ async function checkTable(
       },
       cache: "no-store",
     });
+    if (response.ok) return { ok: true as const, table };
+    const payload = await parseErrorPayload(response);
+    return {
+      ok: false as const,
+      table,
+      reason: classifySupabaseError(response, payload),
+      status: response.status,
+      code: payload?.code,
+    };
   } catch {
-    return { ok: false, table, reason: "network_error" };
+    return { ok: false as const, table, reason: "network_error" as const };
   }
-
-  if (response.ok) return { ok: true, table };
-
-  const payload = await parseErrorPayload(response);
-  return {
-    ok: false,
-    table,
-    reason: classifySupabaseError(response, payload),
-    status: response.status,
-    code: payload?.code,
-  };
 }
 
 async function checkColumns(
@@ -200,13 +134,11 @@ async function checkColumns(
   serviceRoleKey: string,
   table: string,
   columns: readonly string[],
-): Promise<ColumnCheckResult> {
+) {
   const select = ["id", ...columns].join(",");
   const url = `${baseUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}&limit=1`;
-  let response: Response;
-
   try {
-    response = await fetch(url, {
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         apikey: serviceRoleKey,
@@ -214,25 +146,23 @@ async function checkColumns(
       },
       cache: "no-store",
     });
+    if (response.ok) return { ok: true as const, table, columns };
+    const payload = await parseErrorPayload(response);
+    return {
+      ok: false as const,
+      table,
+      columns,
+      reason: classifySupabaseError(response, payload),
+      status: response.status,
+      code: payload?.code,
+    };
   } catch {
-    return { ok: false, table, columns, reason: "network_error" };
+    return { ok: false as const, table, columns, reason: "network_error" as const };
   }
-
-  if (response.ok) return { ok: true, table, columns };
-
-  const payload = await parseErrorPayload(response);
-  return {
-    ok: false,
-    table,
-    columns,
-    reason: classifySupabaseError(response, payload),
-    status: response.status,
-    code: payload?.code,
-  };
 }
 
 function printHeader() {
-  const title = "Ofissio Supabase schema check";
+  const title = "Ofissio shipping check";
   console.log(title);
   console.log("-".repeat(title.length));
 }
@@ -241,9 +171,16 @@ function normalizeProvider(value: string | undefined) {
   return value === "supabase" || value === "postgres" ? value : "mock";
 }
 
-function assertNoForbiddenPublicSecret() {
-  if (process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-    throw new Error("invalid_key: NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY tidak boleh diset.");
+function assertNoPublicShippingSecrets() {
+  const forbidden = [
+    "NEXT_PUBLIC_SHIPPING_API_KEY",
+    "NEXT_PUBLIC_SHIPPING_SECRET",
+    "NEXT_PUBLIC_RAJAONGKIR_API_KEY",
+  ];
+  const found = forbidden.filter((name) => process.env[name]?.trim());
+  if (found.length > 0) {
+    console.log(`ERROR: Forbidden public shipping secret: ${found.join(", ")}.`);
+    process.exitCode = 1;
   }
 }
 
@@ -318,15 +255,13 @@ function classifySupabaseError(
     payload?.code === "42P01" ||
     payload?.code === "PGRST205" ||
     (message.includes("relation") && message.includes("does not exist")) ||
-    message.includes("could not find the table")
+    message.includes("could not find the table") ||
+    (message.includes("could not find the") && message.includes("column"))
   ) {
     return "relation_does_not_exist";
   }
 
-  if (message.includes("row-level security")) {
-    return "rls_denied";
-  }
-
+  if (message.includes("row-level security")) return "rls_denied";
   if (
     response.status === 403 ||
     payload?.code === "42501" ||

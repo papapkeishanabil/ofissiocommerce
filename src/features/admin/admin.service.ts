@@ -30,6 +30,22 @@ import type {
   ProcessOrderEventPayload,
   ProcessOrderPatchPayload,
 } from "@/features/process-orders/process-order.validation";
+import {
+  addShipmentEvent,
+  createShipmentForOrder,
+  createShipmentForProcessOrder,
+  getShipmentDetail,
+  listShipments,
+  updateShipment,
+} from "@/features/shipments/shipment.service";
+import {
+  calculateShipmentProgress,
+} from "@/features/shipments/shipment.utils";
+import type {
+  CreateShipmentPayload,
+  ShipmentEventPayload,
+  UpdateShipmentPayload,
+} from "@/features/shipments/shipment.validation";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
@@ -52,6 +68,8 @@ import type {
   AdminProcessOrderRow,
   AdminQuotationDetail,
   AdminQuotationRow,
+  AdminShipmentDetail,
+  AdminShipmentRow,
   AdminSummary,
   AdminTrackingRow,
   AdminUploadRow,
@@ -107,6 +125,14 @@ export function canViewProcessOrder(user: InternalAdminUser | null) {
 
 export function canUpdateProcessOrder(user: InternalAdminUser | null) {
   return hasAdminPermission(user, "admin:process-order:update");
+}
+
+export function canViewShipment(user: InternalAdminUser | null) {
+  return hasAdminPermission(user, "admin:shipment:view");
+}
+
+export function canUpdateShipment(user: InternalAdminUser | null) {
+  return hasAdminPermission(user, "admin:shipment:update");
 }
 
 export function canViewAuditLog(user: InternalAdminUser | null) {
@@ -334,7 +360,30 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
         })
         .catch(() => [])) ?? []
     : [];
-  return { order: routed, tracking, processOrder, documents, payment, paymentEvents };
+  const shipments = await listShipments({
+    companyId: routed.companyId,
+    orderId: routed.id,
+  }).catch(() => []);
+  const shipmentEvents = (
+    await Promise.all(
+      shipments.map((shipment) =>
+        repositoryRegistry.shipments.listShipmentEvents({
+          companyId: routed.companyId,
+          shipmentId: shipment.id,
+        }),
+      ),
+    )
+  ).flat();
+  return {
+    order: routed,
+    tracking,
+    processOrder,
+    documents,
+    payment,
+    paymentEvents,
+    shipments,
+    shipmentEvents,
+  };
 }
 
 export async function startAdminOrderProcess(input: {
@@ -375,6 +424,20 @@ export async function getAdminProcessOrderDetail(id: string): Promise<AdminProce
   const tracking = detail.sourceOrder
     ? (await listTrackingRaw()).find((item) => item.id === detail.sourceOrder?.id)
     : null;
+  const shipment = await repositoryRegistry.shipments
+    .getShipmentByProcessOrder({
+      processOrderId: detail.processOrder.id,
+      companyId: detail.processOrder.companyId,
+    })
+    .catch(() => null);
+  const shipmentEvents = shipment
+    ? await repositoryRegistry.shipments
+        .listShipmentEvents({
+          shipmentId: shipment.id,
+          companyId: shipment.companyId,
+        })
+        .catch(() => [])
+    : [];
   return {
     ...detail,
     relatedOrderNumber:
@@ -382,6 +445,8 @@ export async function getAdminProcessOrderDetail(id: string): Promise<AdminProce
       detail.sourceOrder?.orderNumber ??
       detail.processOrder.ofissioOrderId,
     companyName: tracking?.companyName ?? detail.sourceOrder?.companyId ?? detail.processOrder.companyId,
+    shipment,
+    shipmentEvents,
   };
 }
 
@@ -439,6 +504,135 @@ export async function addAdminProcessOrderEvent(input: {
     metadata: input.payload.metadata,
     actorId: input.actor.id,
     actorType: "internal",
+    request: input.request,
+  });
+}
+
+export async function listAdminShipments(input: {
+  companyId?: string;
+  status?: string;
+  orderId?: string;
+} = {}): Promise<AdminShipmentRow[]> {
+  const [shipments, orders, tracking] = await Promise.all([
+    listShipments({
+      companyId: input.companyId,
+      orderId: input.orderId,
+      status: input.status as never,
+    }),
+    repositoryRegistry.orders.listAll?.() ?? Promise.resolve([]),
+    listTrackingRaw(),
+  ]);
+  return shipments.map((shipment) => {
+    const order = orders.find((candidate) => candidate.id === shipment.orderId);
+    const trackingOrder = tracking.find((candidate) => candidate.id === shipment.orderId);
+    return {
+      id: shipment.id,
+      shipmentNumber: shipment.shipmentNumber,
+      orderId: shipment.orderId,
+      orderNumber: trackingOrder?.orderNumber ?? order?.orderNumber ?? shipment.orderId,
+      processOrderId: shipment.processOrderId,
+      companyId: shipment.companyId,
+      companyName: trackingOrder?.companyName ?? order?.companyId ?? shipment.companyId,
+      provider: shipment.provider,
+      service: shipment.service,
+      trackingNumber: shipment.trackingNumber,
+      status: shipment.status,
+      progress: calculateShipmentProgress(shipment.status),
+      createdAt: shipment.createdAt,
+      updatedAt: shipment.updatedAt,
+    };
+  });
+}
+
+export async function getAdminShipmentDetail(id: string): Promise<AdminShipmentDetail | null> {
+  return getShipmentDetail({ shipmentId: id });
+}
+
+export async function createAdminOrderShipment(input: {
+  orderId: string;
+  payload: CreateShipmentPayload;
+  actor: InternalAdminUser;
+  request?: Request;
+}) {
+  if (!canUpdateShipment(input.actor)) {
+    throw createApiError("FORBIDDEN", "Role internal belum boleh membuat shipment.", 403);
+  }
+  const detail = await getAdminOrderDetail(input.orderId);
+  if (!detail) throw createApiError("NOT_FOUND", "Order tidak ditemukan.", 404);
+  return createShipmentForOrder({
+    orderId: detail.order.id,
+    processOrderId: detail.processOrder?.id ?? null,
+    companyId: detail.order.companyId,
+    actorId: input.actor.id,
+    actorType: "internal",
+    provider: input.payload.provider,
+    service: input.payload.service,
+    recipientName: input.payload.recipientName,
+    recipientPhone: input.payload.recipientPhone,
+    notes: input.payload.notes,
+    request: input.request,
+  });
+}
+
+export async function createAdminProcessShipment(input: {
+  processOrderId: string;
+  payload: CreateShipmentPayload;
+  actor: InternalAdminUser;
+  request?: Request;
+}) {
+  if (!canUpdateShipment(input.actor)) {
+    throw createApiError("FORBIDDEN", "Role internal belum boleh membuat shipment.", 403);
+  }
+  return createShipmentForProcessOrder({
+    processOrderId: input.processOrderId,
+    actorId: input.actor.id,
+    actorType: "internal",
+    provider: input.payload.provider,
+    service: input.payload.service,
+    notes: input.payload.notes,
+    request: input.request,
+  });
+}
+
+export async function patchAdminShipment(input: {
+  shipmentId: string;
+  payload: UpdateShipmentPayload;
+  actor: InternalAdminUser;
+  request?: Request;
+}) {
+  if (!canUpdateShipment(input.actor)) {
+    throw createApiError("FORBIDDEN", "Role internal belum boleh mengubah shipment.", 403);
+  }
+  return updateShipment({
+    shipmentId: input.shipmentId,
+    actorId: input.actor.id,
+    actorType: "internal",
+    provider: input.payload.provider,
+    service: input.payload.service,
+    trackingNumber: input.payload.trackingNumber,
+    trackingUrl: input.payload.trackingUrl,
+    status: input.payload.status,
+    note: input.payload.note,
+    request: input.request,
+  });
+}
+
+export async function addAdminShipmentEvent(input: {
+  shipmentId: string;
+  payload: ShipmentEventPayload;
+  actor: InternalAdminUser;
+  request?: Request;
+}) {
+  if (!canUpdateShipment(input.actor)) {
+    throw createApiError("FORBIDDEN", "Role internal belum boleh menambah event shipment.", 403);
+  }
+  return addShipmentEvent({
+    shipmentId: input.shipmentId,
+    actorId: input.actor.id,
+    actorType: "internal",
+    eventType: input.payload.eventType,
+    note: input.payload.note,
+    metadata: input.payload.metadata,
     request: input.request,
   });
 }

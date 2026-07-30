@@ -21,6 +21,13 @@ import type { EmailLog } from "@/features/email/email.types";
 import type { DocumentRecord } from "@/features/documents/document.types";
 import type { AuditEvent } from "@/lib/security/security.types";
 import type { ProcessOrder, ProcessOrderDetail } from "@/features/process-orders/process-order.types";
+import type {
+  ShipmentDetail,
+  ShipmentEventRecord,
+  ShipmentProvider,
+  ShipmentRecord,
+  ShipmentStatus,
+} from "@/features/shipments/shipment.types";
 
 export type AdminPermission =
   | "admin:view"
@@ -30,6 +37,8 @@ export type AdminPermission =
   | "admin:order:update"
   | "admin:process-order:view"
   | "admin:process-order:update"
+  | "admin:shipment:view"
+  | "admin:shipment:update"
   | "admin:tracking:view"
   | "admin:tracking:update"
   | "admin:upload:view"
@@ -115,6 +124,8 @@ export interface AdminOrderDetail {
   documents: DocumentRecord[];
   payment: PaymentRecord | null;
   paymentEvents: PaymentEventRecord[];
+  shipments: ShipmentRecord[];
+  shipmentEvents: ShipmentEventRecord[];
 }
 
 export interface AdminProcessOrderRow {
@@ -140,7 +151,28 @@ export interface AdminProcessOrderRow {
 export interface AdminProcessOrderDetail extends ProcessOrderDetail {
   relatedOrderNumber: string;
   companyName: string;
+  shipment: ShipmentRecord | null;
+  shipmentEvents: ShipmentEventRecord[];
 }
+
+export interface AdminShipmentRow {
+  id: string;
+  shipmentNumber: string;
+  orderId: string;
+  orderNumber: string;
+  processOrderId: string | null;
+  companyId: string;
+  companyName: string;
+  provider: ShipmentProvider;
+  service: string;
+  trackingNumber: string | null;
+  status: ShipmentStatus;
+  progress: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AdminShipmentDetail = ShipmentDetail;
 
 export interface AdminUploadRow {
   id: string;

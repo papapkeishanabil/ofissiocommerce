@@ -136,6 +136,11 @@ export interface CustomerTrackingOrder {
   actionRequired: CustomerAction[];
   statusNote?: string | null;
   shippingTrackingNumber?: string | null;
+  shippingTrackingUrl?: string | null;
+  shippingProviderLabel?: string | null;
+  shippingServiceName?: string | null;
+  shipmentStatus?: string | null;
+  shipmentUpdatedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

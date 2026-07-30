@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminProcessOrderActions } from "@/features/admin/components/AdminProcessOrderActions";
+import { AdminShipmentPanel } from "@/features/admin/components/AdminShipmentPanel";
 import { getAdminProcessOrderDetail } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
 import {
@@ -78,6 +79,16 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
         replenishmentStatus={processOrder.replenishmentStatus}
         tasks={tasks}
       />
+
+      {sourceOrder ? (
+        <AdminShipmentPanel
+          orderId={sourceOrder.id}
+          processOrderId={processOrder.id}
+          shipments={detail.shipment ? [detail.shipment] : []}
+          events={detail.shipmentEvents}
+          createFrom="process-order"
+        />
+      ) : null}
 
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Task checklist</h3>

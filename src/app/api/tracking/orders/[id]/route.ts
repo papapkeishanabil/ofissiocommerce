@@ -22,9 +22,9 @@ interface RouteContext {
 }
 
 const trackingOrderQuerySchema = z.object({
-  companyId: z.string().trim().min(1).max(100),
+  companyId: z.string().trim().min(1).max(100).optional(),
   companyName: z.string().trim().min(1).max(160).optional(),
-  userId: z.string().trim().min(1).max(100),
+  userId: z.string().trim().min(1).max(100).optional(),
 });
 
 export async function GET(request: Request, context: RouteContext) {
@@ -41,7 +41,7 @@ export async function GET(request: Request, context: RouteContext) {
       userId: query.userId,
     });
     requireRole(session, "order:view");
-    requireCompanyAccess(session, query.companyId, request, "tracking_order", id);
+    requireCompanyAccess(session, session.companyId, request, "tracking_order", id);
 
     const scope: TrackingScope = {
       companyId: session.companyId,

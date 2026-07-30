@@ -185,3 +185,13 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Supabase Storage test jika env tersedia.
 - [ ] iPaymu sandbox test hanya setelah env iPaymu lengkap dan migration 008 diterapkan.
 - [ ] Shipping provider sandbox test hanya setelah provider real dipilih.
+
+## Phase 24 manual shipment smoke
+
+- [ ] `npm run check:shipping` pass atau skipped jelas jika migration 009 belum diterapkan.
+- [ ] `/admin/shipments` terbuka tanpa customer shell.
+- [ ] `/admin/orders/[id]` menampilkan panel Shipment.
+- [ ] Admin bisa membuat shipment manual dari order setelah migration 009 diterapkan.
+- [ ] Admin bisa mengisi resi/status/tracking URL.
+- [ ] Customer `/orders/[id]` menampilkan status pengiriman customer-friendly.
+- [ ] Ofistant tidak mengarang resi jika data belum tersedia.

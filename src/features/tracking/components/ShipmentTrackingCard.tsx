@@ -1,4 +1,4 @@
-import { Check, Clock3, MapPin, Truck } from "lucide-react";
+import { Check, Clock3, ExternalLink, MapPin, Truck } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
@@ -22,15 +22,29 @@ export function ShipmentTrackingCard({ order }: ShipmentTrackingCardProps) {
           </p>
           <p className="mt-0.5 text-xs text-ink-muted">
             Layanan:{" "}
-            {order.selectedShippingRate
+            {order.shippingProviderLabel || order.shippingServiceName
+              ? `${order.shippingProviderLabel ?? "Manual"} ${order.shippingServiceName ?? ""}`.trim()
+              : order.selectedShippingRate
               ? `${order.selectedShippingRate.courierName} ${order.selectedShippingRate.serviceName} - ${order.selectedShippingRate.estimatedDays}`
               : "Belum aktif"}
           </p>
         </div>
         <Badge tone={order.shippingTrackingNumber ? "brand" : "neutral"}>
-          {order.shippingTrackingNumber ? "Terhubung" : "Menunggu"}
+          {order.shipmentStatus ?? (order.shippingTrackingNumber ? "Terhubung" : "Menunggu")}
         </Badge>
       </div>
+
+      {order.shippingTrackingUrl ? (
+        <a
+          href={order.shippingTrackingUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-line-strong bg-white px-3 py-2 text-xs font-bold text-brand-700"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Buka tracking kurir
+        </a>
+      ) : null}
 
       <ol className="mt-4 space-y-3">
         {order.shipmentTimeline.map((entry) => (

@@ -206,15 +206,69 @@ create table if not exists payment_events (
 
 create table if not exists shipments (
   id text primary key default gen_random_uuid()::text,
+  shipment_number text not null default concat('SHP-', upper(left(gen_random_uuid()::text, 8))),
   order_id text not null references orders(id) on delete cascade,
+  process_order_id text,
   company_id text not null,
-  provider text not null,
+  provider text not null check (provider in ('manual', 'jne', 'jnt', 'sicepat', 'anteraja', 'cargo', 'pickup')),
   service text not null,
   tracking_number text,
-  status text not null,
+  tracking_url text,
+  status text not null check (
+    status in (
+      'draft',
+      'ready_to_ship',
+      'booked',
+      'picked_up',
+      'in_transit',
+      'delivered',
+      'failed',
+      'returned',
+      'cancelled'
+    )
+  ),
+  shipping_cost integer not null default 0,
   shipping_rate_json jsonb,
+  recipient_name text,
+  recipient_phone text,
+  destination_address_json jsonb,
+  shipped_at timestamptz,
+  delivered_at timestamptz,
+  failed_at timestamptz,
+  created_by text,
+  notes text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+create table if not exists shipment_events (
+  id text primary key,
+  shipment_id text not null references shipments(id) on delete cascade,
+  order_id text not null references orders(id) on delete cascade,
+  company_id text not null,
+  actor_id text,
+  actor_type text not null check (actor_type in ('internal', 'customer', 'system')),
+  event_type text not null check (
+    event_type in (
+      'shipment_created',
+      'shipment_ready_to_ship',
+      'shipment_booked',
+      'tracking_number_added',
+      'shipment_picked_up',
+      'shipment_in_transit',
+      'shipment_delivered',
+      'shipment_failed',
+      'shipment_returned',
+      'shipment_cancelled',
+      'shipment_note_added'
+    )
+  ),
+  old_status text,
+  new_status text,
+  note text,
+  metadata_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists tracking_records (
@@ -410,6 +464,19 @@ create index if not exists idx_payments_order_id on payments(order_id);
 create index if not exists idx_payments_reference_id on payments(reference_id);
 create index if not exists idx_shipments_company_id on shipments(company_id);
 create index if not exists idx_shipments_order_id on shipments(order_id);
+create unique index if not exists idx_shipments_shipment_number_unique on shipments(shipment_number);
+create unique index if not exists idx_shipments_active_order_unique
+  on shipments(order_id)
+  where deleted_at is null and status <> 'cancelled';
+create index if not exists idx_shipments_process_order_id on shipments(process_order_id);
+create index if not exists idx_shipments_company_status on shipments(company_id, status);
+create index if not exists idx_shipments_tracking_number on shipments(tracking_number);
+create index if not exists idx_shipments_created_at on shipments(created_at desc);
+create index if not exists idx_shipment_events_shipment_id on shipment_events(shipment_id);
+create index if not exists idx_shipment_events_order_id on shipment_events(order_id);
+create index if not exists idx_shipment_events_company_id on shipment_events(company_id);
+create index if not exists idx_shipment_events_event_type on shipment_events(event_type);
+create index if not exists idx_shipment_events_created_at on shipment_events(created_at desc);
 create index if not exists idx_tracking_records_company_id on tracking_records(company_id);
 create index if not exists idx_tracking_records_order_id on tracking_records(order_id);
 create index if not exists idx_uploaded_files_company_id on uploaded_files(company_id);

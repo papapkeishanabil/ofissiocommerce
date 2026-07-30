@@ -110,3 +110,12 @@
 - [ ] Cek customer reply email.
 - [ ] Review audit log harian minggu pertama.
 - [ ] Review aktivitas Ofissio Admin harian minggu pertama.
+
+## Shipping readiness
+
+- [ ] Migration 009 diterapkan manual di Supabase production.
+- [ ] `npm run check:shipping` menunjukkan schema shipment ready.
+- [ ] Provider API secret disimpan server-side saja.
+- [ ] Customer UI tidak menampilkan `out of stock` untuk produk standar.
+- [ ] Customer UI tidak menampilkan replenishment internal.
+- [ ] Manual shipment fallback tersedia jika provider API belum aktif.

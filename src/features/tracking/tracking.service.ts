@@ -38,6 +38,7 @@ const SNAPSHOT_URL = "/products/kk-006/KK-006-front-nobg.webp";
 export interface TrackingScope {
   companyId?: string | null;
   companyName?: string | null;
+  currentOrderId?: string | null;
 }
 
 function scopeOrDefault(scope?: TrackingScope) {
@@ -143,8 +144,12 @@ export function getAllQuotationTracking(
 
 export function getOfistantOrderStatusText(
   scope?: TrackingScope,
+  externalOrders: CustomerTrackingOrder[] = [],
 ): { order: CustomerTrackingOrder | null; text: string } {
-  const order = getLatestActiveOrder(scope);
+  const order = scope?.currentOrderId
+    ? getTrackingOrder(scope.currentOrderId, scope, externalOrders) ??
+      getLatestActiveOrder(scope, externalOrders)
+    : getLatestActiveOrder(scope, externalOrders);
   if (!order) {
     return {
       order: null,
@@ -165,10 +170,18 @@ export function getOfistantOrderStatusText(
   const nextStep = order.nextStep
     ? ` Tahap berikutnya adalah ${order.nextStep}.`
     : "";
+  const shipment =
+    order.shippingTrackingNumber
+      ? ` Resi pengiriman yang tercatat: ${order.shippingTrackingNumber}${
+          order.shippingProviderLabel ? ` via ${order.shippingProviderLabel}` : ""
+        }.`
+      : order.shipmentStatus
+        ? " Pengiriman sudah masuk workbench logistik, tetapi nomor resi belum tersedia."
+        : " Nomor resi belum tersedia; saya tidak akan mengarang data kurir.";
 
   return {
     order,
-    text: `Pesanan ${order.orderNumber} saat ini berstatus ${status} dengan progress sekitar ${progress}%.${nextStep}${estimate} Saya buka detail tracking di sebelah kanan.`,
+    text: `Pesanan ${order.orderNumber} saat ini berstatus ${status} dengan progress sekitar ${progress}%.${nextStep}${estimate}${shipment} Saya buka detail tracking di sebelah kanan.`,
   };
 }
 
@@ -287,6 +300,11 @@ export function mapPaymentOrderToTracking(input: {
       input.selectedShippingRate ?? null,
     ),
     shippingTrackingNumber: null,
+    shippingTrackingUrl: null,
+    shippingProviderLabel: null,
+    shippingServiceName: null,
+    shipmentStatus: null,
+    shipmentUpdatedAt: null,
     createdAt: input.order.createdAt,
     updatedAt: now,
   };

@@ -24,6 +24,8 @@ Ofissio Admin dipakai untuk:
 - Read-only upload/logos visibility untuk internal admin.
 - Company/customer operational data.
 - Operational order detail.
+- Generate/download quotation PDF.
+- Generate/download invoice PDF.
 - WooCommerce staging sync visibility/retry.
 - Process routing: fulfillment/customization/production.
 - Tracking produksi.
@@ -70,7 +72,8 @@ Internal admin role `super_admin`, `sales`, dan `support` dapat melihat semua up
 - Payment tetap mock.
 - Shipping tetap mock/manual.
 - Supabase Storage live sudah aktif, tetapi admin upload atas nama customer belum tersedia.
-- Email real belum aktif.
+- Email real staging sudah siap via Resend Phase 21 jika env/domain verified; default tetap mock.
+- PDF document persistence membutuhkan migration 007 di Supabase sebelum live generate.
 - Monitoring provider belum aktif.
 
 ## Phase 17 quotation management
@@ -113,3 +116,20 @@ Ofissio Admin kini memiliki menu Process Orders untuk dokumen kerja internal:
 - Production Order / SPK untuk desain/model/bahan khusus.
 
 Admin membuat process order dari detail order. Sistem menentukan route dari order routing Phase 18, membuat task checklist default, menyimpan event timeline, dan memperbarui tracking customer dengan label sederhana.
+
+## Phase 22 PDF documents
+
+Ofissio Admin kini memiliki section Documents:
+
+- `/admin/quotations/[id]`: generate/regenerate/download PDF penawaran.
+- `/admin/orders/[id]`: generate/download invoice PDF dengan template `invoice_ofissio_custom`.
+
+Endpoint generate memakai internal admin guard. Customer hanya menerima signed URL melalui route company-scoped dan tidak melihat storage key/bucket/provider internals.
+
+## Phase 24 shipments
+
+Ofissio Admin kini memiliki menu Shipments dan panel Shipment di detail Order serta Process Order.
+
+Admin logistics/super admin dapat membuat shipment manual, mengisi provider, service, nomor resi, tracking URL, dan status pengiriman. Update shipment akan memperbarui customer tracking dengan label yang aman untuk customer.
+
+Provider API live belum aktif; Phase 24 tidak melakukan booking kurir otomatis dan tidak mengarang tracking URL.

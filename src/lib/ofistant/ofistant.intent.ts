@@ -136,7 +136,7 @@ export function detectIntent(text: string): DetectedIntent {
     return { intent: "ASK_HUMAN" };
   }
 
-  if (/\b(tracking|lacak|status (order|pengiriman|produksi)|where.*order|pesanan saya)\b/.test(t)) {
+  if (/\b(tracking|lacak|resi|nomor resi|status (order|pengiriman|produksi)|pengiriman saya|where.*order|pesanan saya)\b/.test(t)) {
     return { intent: "ASK_TRACKING" };
   }
 

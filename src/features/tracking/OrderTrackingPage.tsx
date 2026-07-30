@@ -7,6 +7,7 @@ import { ArrowLeft, CalendarDays, ReceiptText, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/use-auth";
+import { useOfistantStore } from "@/stores/ofistant-store";
 import { formatIDR } from "@/types/product";
 
 import { CustomerActionRequired } from "./components/CustomerActionRequired";
@@ -36,6 +37,7 @@ interface OrderTrackingPageProps {
 
 export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
   const { session, hydrated } = useAuth();
+  const setOfistantContext = useOfistantStore((s) => s.setContext);
   const [serverOrder, setServerOrder] = useState<CustomerTrackingOrder | null>(
     null,
   );
@@ -49,6 +51,22 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
     [id, session?.company.companyName, session?.company.id],
   );
   const order = serverOrder ?? localOrder;
+
+  useEffect(() => {
+    setOfistantContext({
+      companyId: session?.company.id ?? null,
+      companyName: session?.company.companyName ?? null,
+      currentOrderId: id,
+    });
+    return () => {
+      useOfistantStore.getState().setContext({ currentOrderId: null });
+    };
+  }, [
+    id,
+    session?.company.companyName,
+    session?.company.id,
+    setOfistantContext,
+  ]);
 
   useEffect(() => {
     if (!hydrated) return;
