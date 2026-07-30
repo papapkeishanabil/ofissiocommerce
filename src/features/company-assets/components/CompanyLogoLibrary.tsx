@@ -10,6 +10,10 @@ import type { CompanyLogoAsset } from "../company-assets.types";
 import { LogoAssetCard } from "./LogoAssetCard";
 import { LogoUploadButton } from "./LogoUploadButton";
 
+function canUploadCompanyLogo(session: AuthSession) {
+  return session.user.role === "company_admin" || session.user.role === "purchasing";
+}
+
 function authHeaders(session: AuthSession): HeadersInit {
   return {
     "x-ofissio-company-id": session.company.id,
@@ -105,6 +109,8 @@ export function CompanyLogoLibrary({
     );
   }
 
+  const uploadAllowed = canUploadCompanyLogo(session);
+
   return (
     <section
       className="rounded-2xl border border-line bg-surface p-5"
@@ -128,17 +134,24 @@ export function CompanyLogoLibrary({
       </div>
 
       <div className="mt-4">
-        <LogoUploadButton
-          session={session}
-          onUploaded={(logo) => {
-            setLogos((current) => [
-              logo,
-              ...current.filter((item) => item.id !== logo.id),
-            ]);
-            setSelectedLogoId(logo.id);
-            onSelectLogo?.(logo);
-          }}
-        />
+        {uploadAllowed ? (
+          <LogoUploadButton
+            session={session}
+            onUploaded={(logo) => {
+              setLogos((current) => [
+                logo,
+                ...current.filter((item) => item.id !== logo.id),
+              ]);
+              setSelectedLogoId(logo.id);
+              onSelectLogo?.(logo);
+            }}
+          />
+        ) : (
+          <div className="rounded-xl border border-line bg-surface-muted px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
+            Role Anda dapat melihat logo perusahaan, tetapi upload logo hanya
+            untuk Company Admin dan Purchasing.
+          </div>
+        )}
       </div>
 
       {error && (
@@ -167,7 +180,9 @@ export function CompanyLogoLibrary({
                 setSelectedLogoId(selected.id);
                 onSelectLogo?.(selected);
               }}
-              onDelete={(selected) => void deleteLogo(selected)}
+              onDelete={
+                uploadAllowed ? (selected) => void deleteLogo(selected) : undefined
+              }
             />
           ))}
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CheckCircle2, FileImage, Trash2 } from "lucide-react";
 
 import type { CompanyLogoAsset } from "../company-assets.types";
@@ -18,8 +19,14 @@ export function LogoAssetCard({
   logo: CompanyLogoAsset;
   selected: boolean;
   onSelect: (logo: CompanyLogoAsset) => void;
-  onDelete: (logo: CompanyLogoAsset) => void;
+  onDelete?: (logo: CompanyLogoAsset) => void;
 }) {
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const canPreviewImage =
+    Boolean(logo.previewUrl) &&
+    logo.mimeType.startsWith("image/") &&
+    !previewFailed;
+
   return (
     <article
       className={
@@ -29,13 +36,14 @@ export function LogoAssetCard({
     >
       <div className="flex items-start gap-3">
         <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-[conic-gradient(at_top_left,_#fff_25%,_#e2e8f0_25%_50%,_#fff_50%_75%,_#e2e8f0_75%)] bg-[length:12px_12px]">
-          {logo.previewUrl?.startsWith("data:image") ? (
+          {canPreviewImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={logo.previewUrl}
+              src={logo.previewUrl ?? ""}
               alt=""
               className="h-full w-full object-contain p-1"
               loading="lazy"
+              onError={() => setPreviewFailed(true)}
             />
           ) : (
             <FileImage className="h-6 w-6 text-brand-700" />
@@ -50,6 +58,11 @@ export function LogoAssetCard({
             {logo.extension.toUpperCase()} · {formatSize(logo.sizeBytes)} ·{" "}
             {logo.status}
           </p>
+          {previewFailed && (
+            <p className="mt-1 text-[10px] font-semibold text-amber-700">
+              Preview unavailable
+            </p>
+          )}
         </div>
       </div>
       <div className="mt-3 flex gap-2">
@@ -61,14 +74,16 @@ export function LogoAssetCard({
           {selected && <CheckCircle2 className="h-3.5 w-3.5" />}
           {selected ? "Dipilih" : "Pilih"}
         </button>
-        <button
-          type="button"
-          onClick={() => onDelete(logo)}
-          aria-label={`Hapus logo ${logo.label}`}
-          className="grid min-h-9 w-9 place-items-center rounded-lg border border-line text-ink-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={() => onDelete(logo)}
+            aria-label={`Hapus logo ${logo.label}`}
+            className="grid min-h-9 w-9 place-items-center rounded-lg border border-line text-ink-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
       </div>
     </article>
   );

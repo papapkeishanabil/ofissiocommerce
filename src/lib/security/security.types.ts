@@ -39,7 +39,10 @@ export type CustomerPermission =
   | "quotation:create"
   | "order:view"
   | "payment:view"
-  | "artwork:approve";
+  | "artwork:approve"
+  | "file:view"
+  | "file:write"
+  | "company_logo:write";
 
 export type InternalPermission =
   | "admin:all"

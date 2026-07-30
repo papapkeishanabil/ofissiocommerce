@@ -2,6 +2,10 @@ import "server-only";
 
 import { storageService } from "@/features/storage/storage.service";
 import type { UploadedFile } from "@/features/storage/storage.types";
+import {
+  requireCompanyLogoWriteRole,
+} from "@/lib/security/role-guard";
+import type { CustomerRole } from "@/lib/security/security.types";
 
 import { companyLogoRepository } from "./company-assets.repository";
 import type { CompanyLogoAsset } from "./company-assets.types";
@@ -67,7 +71,13 @@ export async function createCompanyLogo(input: {
   companyId: string;
   fileId: string;
   label?: string;
+  actorRole: CustomerRole;
 }) {
+  requireCompanyLogoWriteRole({
+    userId: "company-logo-service",
+    companyId: input.companyId,
+    role: input.actorRole,
+  });
   const file = await storageService.getFileById({
     companyId: input.companyId,
     fileId: input.fileId,
@@ -93,8 +103,14 @@ export async function deleteCompanyLogo(input: {
   companyId: string;
   userId: string;
   logoId: string;
+  actorRole: CustomerRole;
   request?: Request;
 }) {
+  requireCompanyLogoWriteRole({
+    userId: input.userId,
+    companyId: input.companyId,
+    role: input.actorRole,
+  });
   const registration = await companyLogoRepository.getById({
     companyId: input.companyId,
     logoId: input.logoId,

@@ -21,6 +21,7 @@ Ofissio Admin dipakai untuk:
 - Logo bordir dan placement.
 - Konfigurasi 3D yang dikirim customer.
 - File upload customer.
+- Read-only upload/logos visibility untuk internal admin.
 - Company/customer operational data.
 - Operational order detail.
 - WooCommerce staging sync visibility/retry.
@@ -35,6 +36,8 @@ Ofissio Admin dipakai untuk:
 - `/admin/quotations/[id]`
 - `/admin/orders`
 - `/admin/orders/[id]`
+- `/admin/process-orders`
+- `/admin/process-orders/[id]`
 - `/admin/customers`
 - `/admin/customers/[id]`
 - `/admin/uploads`
@@ -51,6 +54,12 @@ Jika `DATABASE_PROVIDER=supabase`, admin membaca data Supabase melalui repositor
 
 Phase 16 masih memakai mock internal admin guard untuk development. Di production, Ofissio Admin wajib memakai real internal auth dan role mapping yang sudah diverifikasi.
 
+## Upload/logo permission boundary
+
+Customer upload company logo hanya untuk role `company_admin` dan `purchasing`. Role `approver`, `viewer`, dan `finance` dapat melihat file/logo company-scoped sesuai kebutuhan, tetapi tidak dapat upload/register/delete logo.
+
+Internal admin role `super_admin`, `sales`, dan `support` dapat melihat semua upload di `/admin/uploads` melalui internal guard. Admin upload atas nama customer belum aktif; jangan memakai endpoint customer untuk upload admin. Jika fitur itu dibutuhkan, buat route eksplisit `/admin/customers/[id]/logos` dan gunakan `companyId` dari path sebagai selected company.
+
 ## Known limitation
 
 - Admin auth masih mock/internal placeholder.
@@ -60,7 +69,7 @@ Phase 16 masih memakai mock internal admin guard untuk development. Di productio
 - WooCommerce live order sync belum aktif; Phase 18 baru staging foundation.
 - Payment tetap mock.
 - Shipping tetap mock/manual.
-- Supabase Storage live belum aktif.
+- Supabase Storage live sudah aktif, tetapi admin upload atas nama customer belum tersedia.
 - Email real belum aktif.
 - Monitoring provider belum aktif.
 
@@ -94,3 +103,13 @@ Ofissio Admin juga menampilkan routing proses order:
 - `production`: custom design/model/bahan/desain khusus, flow approval desain → bahan → cutting → sewing → bordir/sablon → finishing → QC → packing.
 
 Produk standar tidak memakai status `out of stock` customer-facing. Jika stok internal kurang, admin memakai warning `Replenishment needed`.
+
+## Phase 19 process orders
+
+Ofissio Admin kini memiliki menu Process Orders untuk dokumen kerja internal:
+
+- Fulfillment Order untuk produk standar tanpa custom.
+- Customization Order untuk produk standar dengan logo/bordir/sablon/nama.
+- Production Order / SPK untuk desain/model/bahan khusus.
+
+Admin membuat process order dari detail order. Sistem menentukan route dari order routing Phase 18, membuat task checklist default, menyimpan event timeline, dan memperbarui tracking customer dengan label sederhana.

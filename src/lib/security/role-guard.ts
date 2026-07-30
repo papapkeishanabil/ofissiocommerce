@@ -8,20 +8,32 @@ import type {
   InternalRole,
   MockSession,
 } from "./security.types";
+import type { StorageFileType } from "@/features/storage/storage.types";
 
 export const CUSTOMER_PERMISSION_MAP: Record<CustomerRole, CustomerPermission[]> = {
   company_admin: [
     "artwork:approve",
     "cart:write",
     "checkout:create",
+    "company_logo:write",
+    "file:view",
+    "file:write",
     "order:view",
     "payment:view",
     "quotation:create",
   ],
-  purchasing: ["cart:write", "checkout:create", "order:view", "quotation:create"],
-  approver: ["artwork:approve", "order:view", "quotation:create"],
-  finance: ["order:view", "payment:view"],
-  viewer: ["order:view"],
+  purchasing: [
+    "cart:write",
+    "checkout:create",
+    "company_logo:write",
+    "file:view",
+    "file:write",
+    "order:view",
+    "quotation:create",
+  ],
+  approver: ["artwork:approve", "file:view", "order:view", "quotation:create"],
+  finance: ["file:view", "order:view", "payment:view"],
+  viewer: ["file:view", "order:view"],
 };
 
 export const INTERNAL_PERMISSION_MAP: Record<InternalRole, InternalPermission[]> = {
@@ -54,6 +66,34 @@ export function requireRole(
     throw createApiError("FORBIDDEN", "Role Anda belum memiliki izin untuk aksi ini.", 403);
   }
   return session;
+}
+
+export function canManageCompanyLogo(role: CustomerRole) {
+  return CUSTOMER_PERMISSION_MAP[role].includes("company_logo:write");
+}
+
+export function requireCompanyLogoWriteRole(session: MockSession) {
+  return requireRole(session, "company_logo:write");
+}
+
+export function requireFileUploadRole(
+  session: MockSession,
+  fileType: StorageFileType,
+) {
+  if (fileType === "company_logo" || fileType === "embroidery_logo") {
+    return requireCompanyLogoWriteRole(session);
+  }
+  return requireRole(session, "file:write");
+}
+
+export function rejectInternalAdminUploadWithoutRoute(request: Request) {
+  if (request.headers.get("x-ofissio-internal-role")) {
+    throw createApiError(
+      "FORBIDDEN",
+      "Upload logo atas nama customer harus melalui route admin khusus dengan companyId eksplisit.",
+      403,
+    );
+  }
 }
 
 export function canCheckout(role: CustomerRole) {

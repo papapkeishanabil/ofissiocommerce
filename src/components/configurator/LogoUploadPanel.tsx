@@ -36,6 +36,10 @@ export function LogoUploadPanel({
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const uploadAllowed =
+    !session ||
+    session.user.role === "company_admin" ||
+    session.user.role === "purchasing";
 
   async function uploadToStorage(input: {
     file: File;
@@ -87,6 +91,10 @@ export function LogoUploadPanel({
 
   function handleFile(file: File) {
     setError(null);
+    if (!uploadAllowed) {
+      setError("Upload logo hanya tersedia untuk Company Admin dan Purchasing.");
+      return;
+    }
     const v = validateLogoFile(file);
     if (!v.ok) {
       setError(v.reason ?? "File tidak valid.");
@@ -152,35 +160,42 @@ export function LogoUploadPanel({
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            const f = e.dataTransfer.files[0];
-            if (f) handleFile(f);
-          }}
-          className={
-            "flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed p-5 text-center transition-all " +
-            (dragOver
-              ? "border-brand-500 bg-brand-50/50"
-              : "border-line bg-surface hover:border-brand-300 hover:bg-brand-50/30")
-          }
-        >
-          <UploadCloud className="h-6 w-6 text-brand-500" />
-          <span className="text-xs font-semibold text-ink">
-            Klik atau drop logo di sini
-          </span>
-          <span className="text-[10px] text-ink-muted">
-            {LOGO_UPLOAD_CONSTRAINTS.recommended}
-          </span>
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => uploadAllowed && inputRef.current?.click()}
+            disabled={!uploadAllowed}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (uploadAllowed) setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const f = e.dataTransfer.files[0];
+              if (f) handleFile(f);
+            }}
+            className={
+              "flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed p-5 text-center transition-all " +
+              (!uploadAllowed
+                ? "cursor-not-allowed border-line bg-surface-muted opacity-75"
+                : dragOver
+                  ? "border-brand-500 bg-brand-50/50"
+                  : "border-line bg-surface hover:border-brand-300 hover:bg-brand-50/30")
+            }
+          >
+            <UploadCloud className="h-6 w-6 text-brand-500" />
+            <span className="text-xs font-semibold text-ink">
+              {uploadAllowed ? "Klik atau drop logo di sini" : "Upload logo tidak tersedia"}
+            </span>
+            <span className="text-[10px] text-ink-muted">
+              {uploadAllowed
+                ? LOGO_UPLOAD_CONSTRAINTS.recommended
+                : "Hanya Company Admin dan Purchasing yang bisa upload logo."}
+            </span>
+          </button>
+        </>
       )}
 
       {error && (
