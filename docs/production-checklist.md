@@ -119,3 +119,25 @@
 - [ ] Customer UI tidak menampilkan `out of stock` untuk produk standar.
 - [ ] Customer UI tidak menampilkan replenishment internal.
 - [ ] Manual shipment fallback tersedia jika provider API belum aktif.
+
+## Phase 25 final staging readiness
+
+- [x] Final staging E2E live smoke selesai di lokal/staging pada 30 Juli 2026.
+- [x] `/api/health` mengembalikan Supabase `connected` dan schema `ready`.
+- [x] `/3d/kk-006.glb` tetap 200 dan tidak diubah.
+- [x] 3D configurator KK-006 tetap membuka canvas.
+- [x] Logo upload customer tersimpan dan company-scoped.
+- [x] Quotation admin workflow tervalidasi sampai convert order.
+- [x] PDF quotation/invoice tervalidasi dengan signed URL customer.
+- [x] Payment mock tervalidasi sampai `paid` dan idempotent.
+- [x] Process order tervalidasi dengan task progress.
+- [x] Shipment manual tervalidasi sampai `delivered`.
+- [x] Ofistant tracking membaca data shipment, bukan mengarang resi.
+- [x] Admin layout isolated dari Ofistant/cart/customer header.
+- [x] Mobile customer/admin smoke tidak horizontal overflow.
+- [ ] Production auth menggantikan mock auth.
+- [ ] iPaymu sandbox/live diuji dengan credential asli.
+- [ ] Resend live sender domain verified dan email real diuji.
+- [ ] WooCommerce staging/live env diuji end-to-end.
+- [ ] Shipping provider real dipilih dan diuji.
+- [ ] Monitoring, backup restore drill, legal pages, dan rollback plan siap.

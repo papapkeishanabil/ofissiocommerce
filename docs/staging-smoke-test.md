@@ -195,3 +195,30 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Admin bisa mengisi resi/status/tracking URL.
 - [ ] Customer `/orders/[id]` menampilkan status pengiriman customer-friendly.
 - [ ] Ofistant tidak mengarang resi jika data belum tersedia.
+
+## Phase 25 final staging E2E
+
+- [ ] Jalankan semua command validation:
+  - `npm run check:env`
+  - `npm run check:supabase`
+  - `npm run check:storage`
+  - `npm run check:woocommerce`
+  - `npm run check:email`
+  - `npm run check:documents`
+  - `npm run check:payment`
+  - `npm run check:shipping`
+  - `npm run typecheck`
+  - `npm run lint`
+  - `npm run build`
+  - `npm run check:all`
+  - `npm run verify:supabase-persistence`
+  - `npm run test:company-isolation`
+- [ ] Jalankan customer E2E: upload logo, cart, quotation, accept, order, payment mock, tracking.
+- [ ] Jalankan admin E2E: pricing quotation, PDF quotation, convert order, create payment link, create process order, complete task, create shipment.
+- [ ] Pastikan customer tidak melihat internal notes, replenishment warning, storage key, raw provider response, atau service role data.
+- [ ] Pastikan company mismatch ditolak untuk file, quotation, payment, shipment, dan tracking.
+- [ ] Pastikan admin route tidak menampilkan Ofistant/cart/customer header.
+- [ ] Pastikan `/3d/kk-006.glb` 200 dan 3D configurator canvas muncul.
+- [ ] Pastikan browser console 0 error pada route customer/admin utama.
+- [ ] Pastikan mobile customer/admin tidak horizontal overflow.
+- [ ] Update `docs/final-staging-e2e-test.md` dengan ID smoke test terbaru.

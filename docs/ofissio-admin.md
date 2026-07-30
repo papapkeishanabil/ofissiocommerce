@@ -133,3 +133,31 @@ Ofissio Admin kini memiliki menu Shipments dan panel Shipment di detail Order se
 Admin logistics/super admin dapat membuat shipment manual, mengisi provider, service, nomor resi, tracking URL, dan status pengiriman. Update shipment akan memperbarui customer tracking dengan label yang aman untuk customer.
 
 Provider API live belum aktif; Phase 24 tidak melakukan booking kurir otomatis dan tidak mengarang tracking URL.
+
+## Phase 25 final staging status
+
+Ofissio Admin sudah lolos final staging smoke untuk route utama:
+
+- `/admin`
+- `/admin/quotations`
+- `/admin/quotations/[id]`
+- `/admin/orders`
+- `/admin/orders/[id]`
+- `/admin/process-orders`
+- `/admin/process-orders/[id]`
+- `/admin/shipments`
+- `/admin/shipments/[id]`
+- `/admin/uploads`
+- `/admin/customers`
+- `/admin/audit`
+
+Admin shell harus tetap isolated dari customer shell. Route admin tidak boleh menampilkan Ofistant, cart, `Masuk`, customer header, customer floating preview, atau bottom bar.
+
+Phase 25 smoke terbaru membuktikan:
+
+- quotation admin workflow berjalan sampai convert order;
+- payment panel mencatat payment mock dan event;
+- process order dibuat idempotent sesuai route;
+- task checklist memperbarui progress;
+- shipment manual tersimpan sampai delivered;
+- upload/logo customer terlihat di admin uploads tanpa membocorkan service-role key.

@@ -22,7 +22,7 @@ export const supabaseUploadedFileRepository: UploadedFileRepository = {
 
   async getFileById(input) {
     const client = getRequiredClient();
-    const rows = await client.select("uploaded_files", {
+    const rows = await safeSelectUploadedFiles({
       filters: { id: input.fileId, company_id: input.companyId },
       limit: 1,
     });
@@ -71,6 +71,19 @@ export const supabaseUploadedFileRepository: UploadedFileRepository = {
   },
 };
 
+async function safeSelectUploadedFiles(options: {
+  filters: Record<string, string>;
+  limit?: number;
+  order?: string;
+}) {
+  try {
+    return await getRequiredClient().select("uploaded_files", options);
+  } catch (error) {
+    if (isNotFoundSelectError(error)) return [];
+    throw error;
+  }
+}
+
 function uploadedFilePatchToRow(patch: Parameters<UploadedFileRepository["update"]>[1]) {
   const row: Record<string, unknown> = {};
   if (patch.companyId) row.company_id = patch.companyId;
@@ -113,6 +126,14 @@ function isOptionalStorageColumnError(error: unknown) {
     error instanceof SupabaseDatabaseError &&
     error.reason === "query_error" &&
     ["PGRST204", "42703"].includes(String(error.code))
+  );
+}
+
+function isNotFoundSelectError(error: unknown) {
+  return (
+    error instanceof SupabaseDatabaseError &&
+    error.reason === "query_error" &&
+    (error.status === 404 || String(error.code) === "PGRST116")
   );
 }
 
