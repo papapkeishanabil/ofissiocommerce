@@ -126,6 +126,8 @@ export interface QuotationRequestRecord {
   wooSyncStatus?: WooOrderSyncStatus;
   wooSyncError?: string | null;
   wooSyncedAt?: string | null;
+  quotationPdfDocumentId?: string | null;
+  quotationPdfGeneratedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

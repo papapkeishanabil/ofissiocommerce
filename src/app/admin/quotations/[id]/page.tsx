@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
+import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentActions";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminQuotationStatusActions } from "@/features/admin/components/AdminQuotationStatusActions";
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
@@ -18,9 +19,15 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
   const { id } = await params;
   const detail = await getAdminQuotationDetail(id);
   if (!detail) notFound();
-  const { quotation, logoPreviews, events, emailLogs } = detail;
+  const { quotation, logoPreviews, events, emailLogs, documents } = detail;
   const emailConfig = getEmailRuntimeConfig();
   const latestEmailLog = emailLogs[0] ?? null;
+  const quotationPdf = documents.find(
+    (document) => document.documentType === "quotation_pdf" && document.status === "generated",
+  );
+  const canGenerateQuotationPdf = ["quoted", "accepted", "converted_to_order"].includes(
+    quotation.status,
+  );
 
   return (
     <div className="space-y-5">
@@ -133,6 +140,48 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             Last safe error: {latestEmailLog.errorMessage}
           </p>
         ) : null}
+      </section>
+
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-700">
+              Documents
+            </p>
+            <h3 className="mt-1 text-lg font-black text-ink">
+              Quotation PDF / Penawaran resmi
+            </h3>
+            <p className="mt-1 text-sm text-ink-muted">
+              PDF final hanya untuk quotation status quoted, accepted, atau converted_to_order.
+            </p>
+          </div>
+          <AdminBadge tone={quotationPdf ? "success" : "warning"}>
+            {quotationPdf ? "generated" : "not generated"}
+          </AdminBadge>
+        </div>
+        {quotationPdf ? (
+          <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+            <InfoCard label="File" value={quotationPdf.filename} />
+            <InfoCard label="Template" value={quotationPdf.templateId} />
+            <InfoCard
+              label="Generated"
+              value={quotationPdf.generatedAt ? formatAdminDate(quotationPdf.generatedAt) : "-"}
+            />
+          </dl>
+        ) : null}
+        <div className="mt-4">
+          <AdminDocumentActions
+            entityId={quotation.id}
+            generatePath={`/api/admin/quotations/${quotation.id}/generate-pdf`}
+            downloadPath={`/api/admin/quotations/${quotation.id}/pdf`}
+            canGenerate={canGenerateQuotationPdf}
+            blockedMessage="Quotation belum final, PDF final belum bisa dibuat."
+            generateLabel="Generate PDF"
+            regenerateLabel="Regenerate PDF"
+            downloadLabel="Download PDF"
+            templateId="quotation_default"
+          />
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">

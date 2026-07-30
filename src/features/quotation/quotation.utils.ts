@@ -65,6 +65,8 @@ export function normalizeQuotationRecord(
     wooSyncStatus: quotation.wooSyncStatus ?? (quotation.wooOrderId ? "synced" : "disabled"),
     wooSyncError: quotation.wooSyncError ?? null,
     wooSyncedAt: quotation.wooSyncedAt ?? null,
+    quotationPdfDocumentId: quotation.quotationPdfDocumentId ?? null,
+    quotationPdfGeneratedAt: quotation.quotationPdfGeneratedAt ?? null,
     totalQty: quotation.totalQty || normalizedItems.reduce((total, item) => total + item.totalQty, 0),
     embroideryPointCount:
       quotation.embroideryPointCount ||

@@ -1,6 +1,6 @@
 # Quotation workflow
 
-Phase 13 memindahkan request quotation dari localStorage-only ke server foundation.
+Phase 13 memindahkan request quotation dari localStorage-only ke server foundation. Phase 21 menambahkan Resend staging activation dan email log persistent.
 
 ## Flow customer
 
@@ -75,10 +75,18 @@ Email status:
 - `skipped`
 - `queued`
 
+## Phase 21 email behavior
+
+- Jika `EMAIL_PROVIDER=mock`, email tidak dikirim real tetapi `email_logs` tetap dibuat.
+- Jika `EMAIL_PROVIDER=resend` dan `EMAIL_ENABLED=true`, aplikasi mencoba kirim via Resend.
+- Jika email gagal, quotation tetap dibuat dan response customer tetap aman.
+- Customer tidak bisa memanggil endpoint email arbitrary; `/api/quotation/email` legacy sudah dinonaktifkan.
+- `RESEND_API_KEY`, storage key, internal notes, dan raw provider error tidak dikirim ke customer.
+
 ## Yang bukan scope Phase 13
 
 - Harga final otomatis.
 - Quotation PDF final.
 - Admin sales dashboard production.
-- Database persistence live.
+- Database/email log persistence live via Supabase jika `DATABASE_PROVIDER=supabase`.
 - Payment/shipping live.

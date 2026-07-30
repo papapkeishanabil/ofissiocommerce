@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, FileText } from "lucide-react";
+import { CheckCircle2, Download, FileText } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -31,6 +31,7 @@ export function QuotationConfirmation({
   const [quotation, setQuotation] = useState(initialQuotation);
   const [isPending, startTransition] = useTransition();
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [documentMessage, setDocumentMessage] = useState<string | null>(null);
   const [notification, setNotification] =
     useState<QuoteEmailNotification | null>(null);
 
@@ -100,6 +101,28 @@ export function QuotationConfirmation({
     });
   }
 
+  function downloadQuotationPdf() {
+    if (!session) return;
+    setDocumentMessage(null);
+    startTransition(async () => {
+      const response = await fetch(`/api/quotations/${quotation.id}/pdf`, {
+        headers: authHeaders(session),
+        cache: "no-store",
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+        signedUrl?: string;
+      };
+      if (!response.ok || !result.ok || !result.signedUrl) {
+        setDocumentMessage(result.message ?? "PDF penawaran belum tersedia.");
+        return;
+      }
+      window.open(result.signedUrl, "_blank", "noopener,noreferrer");
+      setDocumentMessage("PDF penawaran dibuka lewat signed URL sementara.");
+    });
+  }
+
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-10 lg:px-8">
       <section className="rounded-3xl border border-line bg-surface p-6 shadow-soft-sm">
@@ -158,6 +181,33 @@ export function QuotationConfirmation({
             Menunggu review sales. Sistem tidak menampilkan harga final sebelum admin/sales mengisi quotation.
           </div>
         )}
+
+        <div className="mt-5 rounded-2xl border border-line bg-slate-50 p-4 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-black text-ink">PDF Penawaran</p>
+              <p className="mt-1 text-ink-muted">
+                {canShowFinalPrice
+                  ? "Download PDF penawaran jika dokumen final sudah dibuat tim Ofissio."
+                  : "PDF penawaran akan tersedia setelah penawaran final."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canShowFinalPrice || isPending}
+              onClick={downloadQuotationPdf}
+            >
+              <Download className="h-4 w-4" />
+              Download PDF Penawaran
+            </Button>
+          </div>
+          {documentMessage ? (
+            <p className="mt-2 font-semibold text-ink-muted" role="status">
+              {documentMessage}
+            </p>
+          ) : null}
+        </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
           <Button
