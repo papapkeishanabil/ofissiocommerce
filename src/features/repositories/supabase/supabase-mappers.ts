@@ -142,6 +142,8 @@ export function quotationToRow(quotation: QuotationRequestRecord): Row {
     email_status: normalized.emailStatus,
     email_log_ids_json: normalized.emailLogIds,
     email_results_json: normalized.emailResults,
+    quotation_pdf_document_id: normalized.quotationPdfDocumentId,
+    quotation_pdf_generated_at: normalized.quotationPdfGeneratedAt,
     quotation_json: normalized,
     created_at: normalized.createdAt,
     updated_at: normalized.updatedAt,
@@ -173,6 +175,8 @@ export function rowToQuotation(row: Row): QuotationRequestRecord {
     emailStatus: row.email_status as QuotationRequestRecord["emailStatus"],
     emailLogIds: arrayOfString(row.email_log_ids_json),
     emailResults: [],
+    quotationPdfDocumentId: row.quotation_pdf_document_id ? String(row.quotation_pdf_document_id) : null,
+    quotationPdfGeneratedAt: row.quotation_pdf_generated_at ? String(row.quotation_pdf_generated_at) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   } as unknown as QuotationRequestRecord);

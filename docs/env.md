@@ -49,12 +49,15 @@ WOOCOMMERCE_CONSUMER_SECRET=
 WOOCOMMERCE_SYNC_ORDERS=false
 
 PAYMENT_PROVIDER=mock
+IPAYMU_ENABLED=false
+IPAYMU_MODE=sandbox
 IPAYMU_VA=
 IPAYMU_API_KEY=
-IPAYMU_BASE_URL=
+IPAYMU_BASE_URL=https://sandbox.ipaymu.com
 IPAYMU_CALLBACK_URL=
 IPAYMU_RETURN_URL=
 IPAYMU_CANCEL_URL=
+IPAYMU_EXPIRE_MINUTES=1440
 
 SHIPPING_PROVIDER=mock
 DEFAULT_ORIGIN_CITY=Bandung
@@ -108,6 +111,7 @@ Staging dipakai untuk mengisi credential real secara bertahap:
 - Supabase staging project setelah schema review.
 - Resend API key dan domain sender yang sudah diverifikasi.
 - iPaymu sandbox setelah kontrak signature final.
+- iPaymu membutuhkan `IPAYMU_ENABLED=true`, callback URL, return URL, cancel URL, dan `npm run check:payment`.
 - Shipping provider sandbox setelah provider dipilih.
 
 WooCommerce live test masih pending sampai env tersedia.

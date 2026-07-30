@@ -36,7 +36,10 @@ export async function POST(request: Request) {
       userId: parsed.userId,
     });
     requireRole(session, "checkout:create");
-    const currentPayment = getPaymentStatus(parsed.paymentId);
+    const currentPayment = await getPaymentStatus({
+      paymentId: parsed.paymentId,
+      companyId: session.companyId,
+    });
     if (!currentPayment) {
       throw createApiError("NOT_FOUND", "Status pembayaran belum dapat diverifikasi.", 404);
     }
@@ -62,7 +65,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       idempotent: result.idempotent,
-      payment: getPaymentStatus(parsed.paymentId),
+      payment: await getPaymentStatus({
+        paymentId: parsed.paymentId,
+        companyId: session.companyId,
+      }),
       tracking: result.tracking,
     });
   } catch (error) {

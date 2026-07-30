@@ -1,6 +1,7 @@
 import "server-only";
 
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
+import { getDocumentsByEntity } from "@/features/documents/document.service";
 import { storageService } from "@/features/storage/storage.service";
 import type { UploadedFileListFilter } from "@/features/storage/storage.types";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
@@ -190,6 +191,11 @@ export async function getAdminQuotationDetail(id: string): Promise<AdminQuotatio
     logoPreviews: await getLogoPreviews(quotation),
     events: await getQuotationEventsById(quotation.id, quotation.companyId),
     emailLogs: await getQuotationEmailLogs(quotation),
+    documents: await getDocumentsByEntity({
+      companyId: quotation.companyId,
+      entityType: "quotation",
+      entityId: quotation.id,
+    }),
   };
 }
 
@@ -309,7 +315,26 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
   const tracking = (await listTrackingRaw()).find((item) => item.id === id) ?? null;
   const routed = ensureOrderProcessRouting(order);
   const processOrder = await getProcessOrderByOrderId(routed.id, routed.companyId);
-  return { order: routed, tracking, processOrder };
+  const documents = await getDocumentsByEntity({
+    companyId: routed.companyId,
+    entityType: "order",
+    entityId: routed.id,
+  });
+  const payment =
+    (await repositoryRegistry.payments.getPaymentByOrderId?.({
+      companyId: routed.companyId,
+      orderId: routed.id,
+    })) ?? null;
+  const paymentEvents = payment
+    ? (await repositoryRegistry.payments
+        .listPaymentEvents?.({
+          companyId: routed.companyId,
+          paymentId: payment.id,
+          orderId: routed.id,
+        })
+        .catch(() => [])) ?? []
+    : [];
+  return { order: routed, tracking, processOrder, documents, payment, paymentEvents };
 }
 
 export async function startAdminOrderProcess(input: {

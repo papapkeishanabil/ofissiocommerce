@@ -24,7 +24,11 @@ export async function GET(request: Request) {
       userId: parsed.userId,
     });
     requireRole(session, "payment:view");
-    const payment = getPaymentStatus(parsed.paymentId);
+    const payment = await getPaymentStatus({
+      paymentId: parsed.paymentId,
+      orderId: parsed.orderId,
+      companyId: session.companyId,
+    });
     if (!payment) {
       throw createApiError(
         "NOT_FOUND",

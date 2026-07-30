@@ -2,12 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
+import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentActions";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminOrderProcessPanel } from "@/features/admin/components/AdminOrderProcessPanel";
+import { AdminPaymentPanel } from "@/features/admin/components/AdminPaymentPanel";
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
 import { getAdminOrderDetail } from "@/features/admin/admin.service";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
 import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
+import { getPaymentRuntimeConfig } from "@/features/payment/payment.config";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,7 +20,11 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
   const { id } = await params;
   const detail = await getAdminOrderDetail(id);
   if (!detail) notFound();
-  const { order, tracking } = detail;
+  const { order, tracking, documents, payment, paymentEvents } = detail;
+  const paymentConfig = getPaymentRuntimeConfig();
+  const invoicePdf = documents.find(
+    (document) => document.documentType === "invoice_pdf" && document.status === "generated",
+  );
   const wooOrderId = order.wooOrderId ?? order.woocommerceOrderId ?? null;
   const wooSyncStatus =
     order.wooSyncStatus ??
@@ -88,6 +95,56 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         processOrderNumber={detail.processOrder?.processOrderNumber ?? null}
       />
 
+      <AdminPaymentPanel
+        orderId={order.id}
+        payment={payment}
+        events={paymentEvents}
+        requestedProvider={paymentConfig.requestedProvider}
+        activeProvider={paymentConfig.provider}
+        ipaymuConfigured={paymentConfig.ipaymu.isComplete}
+      />
+
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-700">
+              Documents
+            </p>
+            <h3 className="mt-1 text-lg font-black text-ink">
+              Invoice PDF - invoice_ofissio_custom
+            </h3>
+            <p className="mt-1 text-sm text-ink-muted">
+              Payment masih mock/foundation. Link/QR pembayaran tidak akan dikarang.
+            </p>
+          </div>
+          <AdminBadge tone={invoicePdf ? "success" : "warning"}>
+            {invoicePdf ? "generated" : "not generated"}
+          </AdminBadge>
+        </div>
+        {invoicePdf ? (
+          <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+            <InfoCard label="File" value={invoicePdf.filename} />
+            <InfoCard label="Template" value={invoicePdf.templateId} />
+            <InfoCard
+              label="Generated"
+              value={invoicePdf.generatedAt ? formatAdminDate(invoicePdf.generatedAt) : "-"}
+            />
+          </dl>
+        ) : null}
+        <div className="mt-4">
+          <AdminDocumentActions
+            entityId={order.id}
+            generatePath={`/api/admin/orders/${order.id}/generate-invoice`}
+            downloadPath={`/api/admin/orders/${order.id}/invoice`}
+            canGenerate
+            generateLabel="Generate invoice"
+            regenerateLabel="Regenerate invoice"
+            downloadLabel="Download invoice"
+            templateId="invoice_ofissio_custom"
+          />
+        </div>
+      </section>
+
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Item snapshots</h3>
         {order.items.length === 0 ? (
@@ -132,6 +189,17 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
           </ol>
         )}
       </section>
+    </div>
+  );
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <dt className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">
+        {label}
+      </dt>
+      <dd className="mt-1 break-words font-semibold text-ink">{value}</dd>
     </div>
   );
 }

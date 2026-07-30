@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       limit: 60,
       windowMs: 60_000,
     });
-    const payload: unknown = await request.json();
+    const payload = await parseCallbackPayload(request);
     const parsed = validateInput(paymentCallbackSchema, payload);
     const result = await processIpaymuCallback(parsed, request.headers);
     logPaymentEvent({
@@ -41,4 +41,22 @@ export async function POST(request: Request) {
       401,
     );
   }
+}
+
+async function parseCallbackPayload(request: Request) {
+  const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
+  if (contentType.includes("application/x-www-form-urlencoded")) {
+    const body = await request.text();
+    return Object.fromEntries(new URLSearchParams(body).entries());
+  }
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    return Object.fromEntries(
+      [...form.entries()].map(([key, value]) => [
+        key,
+        typeof value === "string" ? value : value.name,
+      ]),
+    );
+  }
+  return request.json();
 }

@@ -1,6 +1,9 @@
 import { loadEnvConfig } from "@next/env";
 
-import { REQUIRED_SUPABASE_TABLES } from "../src/features/database/supabase-schema";
+import {
+  PHASE_23_PAYMENT_COLUMNS,
+  REQUIRED_SUPABASE_TABLES,
+} from "../src/features/database/supabase-schema";
 
 type SupabaseCheckReason =
   | "invalid_key"
@@ -23,6 +26,16 @@ type TableCheckResult =
   | {
       ok: false;
       table: string;
+      reason: SupabaseCheckReason;
+      status?: number;
+      code?: string;
+    };
+type ColumnCheckResult =
+  | { ok: true; table: string; columns: readonly string[] }
+  | {
+      ok: false;
+      table: string;
+      columns: readonly string[];
       reason: SupabaseCheckReason;
       status?: number;
       code?: string;
@@ -99,10 +112,31 @@ async function run() {
     return;
   }
 
+  const paymentColumnCheck = await checkColumns(
+    baseUrl,
+    serviceRoleKey,
+    "payments",
+    PHASE_23_PAYMENT_COLUMNS,
+  );
+  if (!paymentColumnCheck.ok) {
+    console.log(
+      `ERROR: payments Phase 23 columns tidak lengkap (${paymentColumnCheck.reason}, status ${
+        paymentColumnCheck.status ?? "n/a"
+      }, code ${paymentColumnCheck.code ?? "n/a"}).`,
+    );
+    console.log(`Required columns: ${PHASE_23_PAYMENT_COLUMNS.join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+
   console.log(
     `OK: schema ready. ${REQUIRED_SUPABASE_TABLES.length} required tables reachable.`,
   );
   console.log("OK: Phase 19 process-order tables are part of the required schema.");
+  console.log("OK: Phase 23 payment_events table is part of the required schema.");
+  console.log(
+    `OK: payments Phase 23 columns reachable (${PHASE_23_PAYMENT_COLUMNS.length} columns).`,
+  );
   console.log("INFO: Tabel kosong tetap dianggap valid selama tabel bisa di-query.");
 }
 
@@ -133,6 +167,42 @@ async function checkTable(
   return {
     ok: false,
     table,
+    reason: classifySupabaseError(response, payload),
+    status: response.status,
+    code: payload?.code,
+  };
+}
+
+async function checkColumns(
+  baseUrl: string,
+  serviceRoleKey: string,
+  table: string,
+  columns: readonly string[],
+): Promise<ColumnCheckResult> {
+  const select = ["id", ...columns].join(",");
+  const url = `${baseUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}&limit=1`;
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      method: "GET",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+      cache: "no-store",
+    });
+  } catch {
+    return { ok: false, table, columns, reason: "network_error" };
+  }
+
+  if (response.ok) return { ok: true, table, columns };
+
+  const payload = await parseErrorPayload(response);
+  return {
+    ok: false,
+    table,
+    columns,
     reason: classifySupabaseError(response, payload),
     status: response.status,
     code: payload?.code,

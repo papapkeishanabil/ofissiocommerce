@@ -18,7 +18,7 @@ npm run dev
 
 | Area fitur | Status saat ini | Env yang perlu diisi |
 | --- | --- | --- |
-| Payment iPaymu | Wajib jika ingin pembayaran real | `PAYMENT_PROVIDER`, `IPAYMU_VA`, `IPAYMU_API_KEY`, `IPAYMU_BASE_URL`, `IPAYMU_CALLBACK_URL`, `IPAYMU_RETURN_URL`, `IPAYMU_CANCEL_URL` |
+| Payment iPaymu | Wajib jika ingin pembayaran real | `PAYMENT_PROVIDER`, `IPAYMU_ENABLED`, `IPAYMU_MODE`, `IPAYMU_VA`, `IPAYMU_API_KEY`, `IPAYMU_BASE_URL`, `IPAYMU_CALLBACK_URL`, `IPAYMU_RETURN_URL`, `IPAYMU_CANCEL_URL`, `IPAYMU_EXPIRE_MINUTES` |
 | Email quotation | Default mock; wajib diisi jika quotation harus terkirim email real | `EMAIL_PROVIDER`, `EMAIL_ENABLED`, `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `SALES_QUOTATION_EMAIL` |
 | Generate 3D Meshy | Opsional, untuk AI 3D via Meshy | `MESHY_API_KEY` |
 | Generate 3D Tripo | Opsional, untuk AI 3D via Tripo | `TRIPO_API_KEY` |
@@ -33,18 +33,23 @@ Isi ini jika ingin checkout membuat transaksi iPaymu real.
 
 ```env
 PAYMENT_PROVIDER=ipaymu
+IPAYMU_ENABLED=true
+IPAYMU_MODE=sandbox
 IPAYMU_VA=
 IPAYMU_API_KEY=
-IPAYMU_BASE_URL=
+IPAYMU_BASE_URL=https://sandbox.ipaymu.com
 IPAYMU_CALLBACK_URL=
 IPAYMU_RETURN_URL=
 IPAYMU_CANCEL_URL=
+IPAYMU_EXPIRE_MINUTES=1440
 ```
 
 Catatan:
 
 - Jika `PAYMENT_PROVIDER=mock`, transaksi tetap simulasi.
 - Jangan pernah membuat `NEXT_PUBLIC_IPAYMU_API_KEY`.
+- Return URL iPaymu bukan bukti paid. Status `paid` hanya dari callback valid/server verification.
+- Jalankan `npm run check:payment` setelah mengubah env payment.
 
 ## 2. Email quotation
 

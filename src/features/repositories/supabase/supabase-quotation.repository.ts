@@ -16,7 +16,14 @@ export const supabaseQuotationRepository: QuotationRepository = {
   async save(record) {
     const client = getRequiredClient();
     const normalized = normalizeQuotationRecord(record);
-    const rows = await client.insert("quotations", quotationToRow(normalized));
+    const row = quotationToRow(normalized);
+    let rows: Record<string, unknown>[];
+    try {
+      rows = await client.insert("quotations", row);
+    } catch (error) {
+      if (!isOptionalDocumentColumnError(error)) throw error;
+      rows = await client.insert("quotations", removeOptionalDocumentColumns(row));
+    }
     if (normalized.items.length > 0) {
       await client.insert(
         "quotation_items",
@@ -36,11 +43,18 @@ export const supabaseQuotationRepository: QuotationRepository = {
       ...patch,
       updatedAt: new Date().toISOString(),
     });
-    const rows = await getRequiredClient().update(
-      "quotations",
-      quotationToRow(next),
-      { id },
-    );
+    const row = quotationToRow(next);
+    let rows: Record<string, unknown>[];
+    try {
+      rows = await getRequiredClient().update("quotations", row, { id });
+    } catch (error) {
+      if (!isOptionalDocumentColumnError(error)) throw error;
+      rows = await getRequiredClient().update(
+        "quotations",
+        removeOptionalDocumentColumns(row),
+        { id },
+      );
+    }
     return rows[0] ? rowToQuotation(rows[0]) : next;
   },
 
@@ -162,4 +176,19 @@ function getRequiredClient() {
   const client = getSupabaseAdminClient();
   if (!client) throw new Error("Supabase database belum dikonfigurasi.");
   return client;
+}
+
+function isOptionalDocumentColumnError(error: unknown) {
+  return (
+    error instanceof SupabaseDatabaseError &&
+    error.reason === "query_error" &&
+    ["PGRST204", "42703"].includes(String(error.code))
+  );
+}
+
+function removeOptionalDocumentColumns(row: Record<string, unknown>) {
+  const next = { ...row };
+  delete next.quotation_pdf_document_id;
+  delete next.quotation_pdf_generated_at;
+  return next;
 }

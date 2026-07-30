@@ -15,6 +15,7 @@ Elemen layout utama:
 - Location label: `Kabupaten Bandung, Indonesia`.
 - Payment method: `Bayar via iPaymu` jika provider iPaymu; placeholder aman jika payment masih mock.
 - QR/payment link hanya ditampilkan jika data benar-benar tersedia.
+- Phase 23 menambahkan payment reference, expiry, unique code, dan QR metadata dari payment record.
 - Amount in words bahasa Indonesia.
 - Tabel item: No, Description, Harga Satuan, Qty, Total.
 - Summary: Sub-total, Kode Unik, DPP, PPN 11%, Total.
@@ -48,6 +49,7 @@ Invoice tidak boleh menampilkan status `LUNAS` jika payment record belum `paid`.
 ## Known limitation
 
 - Layout belum 100% pixel-perfect dari file referensi.
-- QR iPaymu belum live selama payment provider masih mock.
+- QR iPaymu belum dirender sebagai gambar scannable di PDF sampai renderer image/QR dependency diaktifkan.
+- Jika iPaymu baru mengembalikan payment URL, invoice menampilkan link dan QR placeholder aman, bukan QR palsu.
 - Faktur pajak resmi dan e-signature legal belum termasuk.
 - Multi-page table memakai renderer foundation sederhana.

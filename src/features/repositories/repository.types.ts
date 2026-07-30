@@ -10,7 +10,12 @@ import type {
   QuotationRequestRecord,
   QuotationStatus,
 } from "@/features/quotation/quotation.types";
-import type { PaymentOrderRecord, PaymentRecord, PaymentStatus } from "@/features/payment/payment.types";
+import type {
+  PaymentEventRecord,
+  PaymentOrderRecord,
+  PaymentRecord,
+  PaymentStatus,
+} from "@/features/payment/payment.types";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import type {
   ProcessOrder,
@@ -21,6 +26,11 @@ import type {
   ProcessOrderTask,
   ProcessTaskStatus,
 } from "@/features/process-orders/process-order.types";
+import type {
+  DocumentEntityType,
+  DocumentRecord,
+  DocumentType,
+} from "@/features/documents/document.types";
 
 export type RepositoryProvider = "mock" | "supabase" | "postgres";
 
@@ -78,6 +88,8 @@ export interface OrderRepository {
         | "hasCustomization"
         | "customizationType"
         | "processRouteReason"
+        | "invoicePdfDocumentId"
+        | "invoicePdfGeneratedAt"
       >;
     },
   ): Promise<PaymentOrderRecord | null>;
@@ -87,9 +99,20 @@ export interface PaymentRepository {
   savePayment?(input: { payment: PaymentRecord; order: PaymentOrderRecord }): Promise<void>;
   getPaymentById(input: { companyId: string; paymentId: string }): Promise<PaymentRecord | null>;
   getPaymentByReference(referenceId: string): Promise<PaymentRecord | null>;
+  getPaymentByOrderId?(input: { companyId: string; orderId: string }): Promise<PaymentRecord | null>;
+  listPaymentsByOrder?(input: { companyId: string; orderId: string }): Promise<PaymentRecord[]>;
+  updatePayment?(
+    input: { companyId: string; paymentId: string; patch: Partial<PaymentRecord> },
+  ): Promise<PaymentRecord | null>;
   updatePaymentStatus?(
     input: { companyId: string; paymentId: string; status: PaymentStatus; rawProviderResponse?: unknown },
   ): Promise<PaymentRecord | null>;
+  addPaymentEvent?(event: PaymentEventRecord): Promise<PaymentEventRecord>;
+  listPaymentEvents?(input: {
+    companyId: string;
+    paymentId?: string;
+    orderId?: string;
+  }): Promise<PaymentEventRecord[]>;
 }
 
 export interface TrackingRepository {
@@ -210,6 +233,20 @@ export interface ProcessOrderRepository {
   }): Promise<ProcessOrderItem[]>;
 }
 
+export interface DocumentRepository {
+  save(document: DocumentRecord): Promise<DocumentRecord>;
+  update(id: string, patch: Partial<DocumentRecord>): Promise<DocumentRecord | null>;
+  getById(input: { documentId: string; companyId?: string }): Promise<DocumentRecord | null>;
+  listByCompany(companyId: string): Promise<DocumentRecord[]>;
+  listByEntity(input: {
+    companyId?: string;
+    entityType: DocumentEntityType;
+    entityId: string;
+    documentType?: DocumentType;
+  }): Promise<DocumentRecord[]>;
+  listAll?(): Promise<DocumentRecord[]>;
+}
+
 export interface RepositoryRegistry {
   provider: RepositoryProvider;
   company: CompanyRepository;
@@ -224,6 +261,7 @@ export interface RepositoryRegistry {
   quotations: QuotationRepository;
   emailLogs: EmailLogRepository;
   processOrders: ProcessOrderRepository;
+  documents: DocumentRepository;
 }
 
 export interface PersistedSizeMatrix {

@@ -144,6 +144,20 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Storage key/bucket/provider internals tidak muncul di response customer.
 - [ ] Email quotation ready mengarah ke portal link PDF foundation.
 
+## Phase 23 iPaymu payment foundation
+
+- [ ] Jalankan `npm run check:payment`.
+- [ ] Mode mock harus pass/skipped jelas.
+- [ ] Jika `PAYMENT_PROVIDER=ipaymu`, env sandbox lengkap dan `IPAYMU_ENABLED=true`.
+- [ ] Admin buka `/admin/orders/[id]` dan buat payment link dari panel Payment.
+- [ ] Payment URL tersimpan di payment record jika provider mengembalikan.
+- [ ] Regenerate invoice setelah payment link dibuat.
+- [ ] Invoice menampilkan payment link/expiry atau placeholder aman jika link belum ada.
+- [ ] `/payment/return` tidak menandai paid.
+- [ ] Callback invalid ditolak dan tidak mengubah order paid.
+- [ ] Callback duplicate valid idempotent.
+- [ ] Tracking customer update setelah payment paid valid.
+
 ## Security smoke
 
 - [ ] Secret tidak muncul di client bundle.
@@ -169,5 +183,5 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Email test jika Resend tersedia dan domain verified.
 - [ ] Supabase database test jika env tersedia: health connected, quotation/email log/upload metadata/company logo tersimpan.
 - [ ] Supabase Storage test jika env tersedia.
-- [ ] iPaymu sandbox test hanya setelah signature resmi diimplementasikan.
+- [ ] iPaymu sandbox test hanya setelah env iPaymu lengkap dan migration 008 diterapkan.
 - [ ] Shipping provider sandbox test hanya setelah provider real dipilih.

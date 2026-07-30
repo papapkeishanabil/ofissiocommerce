@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { formatIDR } from "@/types/product";
 
 import { CustomerActionRequired } from "./components/CustomerActionRequired";
+import { CustomerPaymentPanel } from "./components/CustomerPaymentPanel";
 import { OrderDocuments } from "./components/OrderDocuments";
 import { OrderItemProgressList } from "./components/OrderItemProgressList";
 import { OrderStatusTimeline } from "./components/OrderStatusTimeline";
@@ -172,8 +173,13 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
+          <CustomerPaymentPanel
+            orderId={order.id}
+            companyId={session?.company.id}
+            userId={session?.user.id}
+          />
           <ShipmentTrackingCard order={order} />
-          <OrderDocuments documents={order.documents} />
+          <OrderDocuments orderId={order.id} documents={order.documents} />
           <CustomerActionRequired order={order} />
         </aside>
       </div>

@@ -14,6 +14,15 @@ export const mockPaymentProvider: PaymentProviderAdapter = {
     return {
       referenceId: input.referenceId,
       paymentUrl: `/payment/mock/success?paymentId=${encodeURIComponent(input.paymentId)}`,
+      providerPaymentId: `mock_${input.paymentId}`,
+      providerTransactionId: null,
+      paymentQrUrl: null,
+      paymentQrDataUrl: null,
+      paymentQrString: null,
+      paymentMethod: "mock",
+      paymentChannel: "mock",
+      uniqueCode: 0,
+      expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       rawResponse: {
         mode: "mock",
         referenceId: input.referenceId,
@@ -40,6 +49,12 @@ export const mockPaymentProvider: PaymentProviderAdapter = {
       eventId:
         data.transaction_id ??
         `${data.reference_id}:${data.status}:${data.amount}`,
+      rawSafeJson: {
+        reference_id: data.reference_id,
+        amount: data.amount,
+        status: data.status,
+        transaction_id: data.transaction_id ?? null,
+      },
     };
   },
 

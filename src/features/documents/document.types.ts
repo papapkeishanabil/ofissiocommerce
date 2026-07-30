@@ -134,9 +134,13 @@ export interface InvoicePdfData {
   dueDate: string | null;
   paymentStatus: PaymentStatus | "waiting_payment" | "payment_received";
   paymentProvider: string;
+  paymentReference: string | null;
   paymentLink: string | null;
   paymentQr: string | null;
+  paymentQrKind: string | null;
   paymentExpiry: string | null;
+  amountPaid: number;
+  balanceDue: number;
   companyName: string;
   companyAddress: string | null;
   picName: string | null;

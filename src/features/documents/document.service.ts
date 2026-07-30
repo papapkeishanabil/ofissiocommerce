@@ -3,6 +3,8 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
+import { getPaymentQrForInvoice } from "@/features/payment/payment-qr.service";
+import { recordPaymentEvent } from "@/features/payment/payment.service";
 import { SupabaseDatabaseError } from "@/features/database/database.errors";
 import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payment.types";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
@@ -252,6 +254,21 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
         paymentProvider: data.paymentProvider,
       },
     });
+    if (payment) {
+      await repositoryRegistry.payments.updatePayment?.({
+        companyId: payment.companyId,
+        paymentId: payment.id,
+        patch: {
+          invoiceDocumentId: document.id,
+        },
+      });
+      recordPaymentEvent(payment, "invoice_regenerated_with_payment", {
+        metadataJson: {
+          documentId: document.id,
+          invoiceNumber: document.documentNumber,
+        },
+      });
+    }
     await repositoryRegistry.orders.updateOrderProcess?.({
       companyId: order.companyId,
       orderId: order.id,
@@ -425,6 +442,8 @@ export function mapOrderToInvoicePdfData(input: {
   const dpp = Math.max(0, subtotal + shippingTotal);
   const grandTotal = input.order.calculation.grandTotal;
   const paymentProvider = input.payment?.provider ?? "mock";
+  const paymentQr = getPaymentQrForInvoice(input.payment);
+  const amountPaid = input.payment?.status === "paid" ? input.payment.amount : 0;
   return {
     invoiceNumber: input.invoiceNumber,
     orderNumber,
@@ -433,9 +452,11 @@ export function mapOrderToInvoicePdfData(input: {
     dueDate: null,
     paymentStatus: input.payment?.status ?? invoiceStatusFromOrder(input.order.status),
     paymentProvider,
+    paymentReference: input.payment?.referenceId ?? null,
     paymentLink: input.payment?.paymentUrl ?? null,
-    paymentQr: null,
-    paymentExpiry: null,
+    paymentQr: paymentQr.value,
+    paymentQrKind: paymentQr.kind,
+    paymentExpiry: input.payment?.expiredAt ?? null,
     companyName: input.order.companyId,
     companyAddress: null,
     picName: input.order.userId,
@@ -459,12 +480,14 @@ export function mapOrderToInvoicePdfData(input: {
       total: item.priceFrom * item.totalQty,
     })),
     subtotal,
-    uniqueCode: 0,
+    uniqueCode: input.payment?.uniqueCode ?? 0,
     dpp,
     taxRate: 11,
     taxTotal,
     shippingTotal,
     grandTotal,
+    amountPaid,
+    balanceDue: Math.max(0, grandTotal - amountPaid),
     amountInWords: amountToIndonesianWords(grandTotal),
     terms: [
       "Barang yang sudah dipesan tidak dapat dikembalikan.",

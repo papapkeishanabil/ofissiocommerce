@@ -1,5 +1,6 @@
 import "server-only";
 
+import { SupabaseDatabaseError } from "@/features/database/database.errors";
 import type { PaymentOrderRecord } from "@/features/payment/payment.types";
 import { getSupabaseAdminClient } from "@/features/database/supabase-admin.client";
 import type { OrderRepository } from "../repository.types";
@@ -48,7 +49,12 @@ export const supabaseOrderRepository: OrderRepository = {
     const next = { ...current, status: input.status, updatedAt: new Date().toISOString() };
     await getSupabaseAdminClient()?.update(
       "orders",
-      { status: input.status, order_json: next, updated_at: next.updatedAt },
+      {
+        status: input.status,
+        payment_status: mapOrderStatusToPaymentStatus(input.status),
+        order_json: next,
+        updated_at: next.updatedAt,
+      },
       { id: input.orderId, company_id: input.companyId },
     );
     return next;
@@ -74,17 +80,43 @@ export const supabaseOrderRepository: OrderRepository = {
     const current = await this.getOrderById(input);
     if (!current) return null;
     const next = { ...current, ...input.patch, updatedAt: new Date().toISOString() };
-    await getSupabaseAdminClient()?.update(
-      "orders",
-      {
-        order_json: next,
-        updated_at: next.updatedAt,
-      },
-      { id: input.orderId, company_id: input.companyId },
-    );
+    const row = {
+      order_json: next,
+      invoice_pdf_document_id: next.invoicePdfDocumentId ?? null,
+      invoice_pdf_generated_at: next.invoicePdfGeneratedAt ?? null,
+      updated_at: next.updatedAt,
+    };
+    try {
+      await getSupabaseAdminClient()?.update(
+        "orders",
+        row,
+        { id: input.orderId, company_id: input.companyId },
+      );
+    } catch (error) {
+      if (!isOptionalDocumentColumnError(error)) throw error;
+      await getSupabaseAdminClient()?.update(
+        "orders",
+        removeOptionalDocumentColumns(row),
+        { id: input.orderId, company_id: input.companyId },
+      );
+    }
     return next;
   },
 };
+
+function mapOrderStatusToPaymentStatus(status: PaymentOrderRecord["status"]) {
+  switch (status) {
+    case "payment_received":
+      return "paid";
+    case "payment_failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
+    case "waiting_payment":
+    default:
+      return "waiting_payment";
+  }
+}
 
 function rowToOrder(row: Record<string, unknown>) {
   if (row.order_json && typeof row.order_json === "object") {
@@ -127,6 +159,21 @@ function rowToOrder(row: Record<string, unknown>) {
     createdAt,
     updatedAt: String(row.updated_at ?? createdAt),
   } satisfies PaymentOrderRecord;
+}
+
+function isOptionalDocumentColumnError(error: unknown) {
+  return (
+    error instanceof SupabaseDatabaseError &&
+    error.reason === "query_error" &&
+    ["PGRST204", "42703"].includes(String(error.code))
+  );
+}
+
+function removeOptionalDocumentColumns(row: Record<string, unknown>) {
+  const next = { ...row };
+  delete next.invoice_pdf_document_id;
+  delete next.invoice_pdf_generated_at;
+  return next;
 }
 
 function orderToRow(order: PaymentOrderRecord) {

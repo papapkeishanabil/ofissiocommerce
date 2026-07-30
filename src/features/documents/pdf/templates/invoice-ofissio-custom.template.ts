@@ -190,10 +190,16 @@ function drawPaymentAndWords(doc: SimplePdfDocument, data: InvoicePdfData) {
   doc.strokeRect(LEFT + 16, y + 20, 44, 44, OUTLINE, 0.8);
   doc.line(LEFT + 24, y + 42, LEFT + 52, y + 42, OUTLINE);
   doc.line(LEFT + 38, y + 28, LEFT + 38, y + 56, OUTLINE);
-  doc.text(data.paymentQr ? "QR" : "QR", LEFT + 43, y + 47, {
+  doc.text(data.paymentQr ? "QR" : "QR", LEFT + 38, y + 39, {
     size: 8,
     font: "bold",
     color: MUTED,
+    align: "center",
+  });
+  doc.text(data.paymentQr ? "DATA" : "PENDING", LEFT + 38, y + 51, {
+    size: 5.2,
+    font: "mono",
+    color: data.paymentQr ? PRIMARY : MUTED,
     align: "center",
   });
 
@@ -209,11 +215,17 @@ function drawPaymentAndWords(doc: SimplePdfDocument, data: InvoicePdfData) {
     color: "#ffffff",
     align: "center",
   });
-  drawLimitedText(doc, data.paymentLink || "Payment link tersedia setelah payment aktif.", LEFT + 74, y + 66, 146, {
+  if (data.paymentReference) {
+    doc.text(`Ref: ${data.paymentReference}`, LEFT + 74, y + 63, {
+      size: 6.3,
+      color: MUTED,
+    });
+  }
+  drawLimitedText(doc, data.paymentLink || "Payment link tersedia setelah payment aktif.", LEFT + 74, y + 73, 146, {
     size: 6.7,
     lineHeight: 8.2,
     color: MUTED,
-  }, 2);
+  }, 1);
 
   doc.rect(rightX, y, rightWidth, 84, SURFACE);
   doc.rect(rightX, y, 6, 84, YELLOW);

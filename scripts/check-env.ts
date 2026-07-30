@@ -39,12 +39,15 @@ const rules: EnvRule[] = [
   { name: "WOOCOMMERCE_CONSUMER_SECRET", secret: true },
   { name: "WOOCOMMERCE_SYNC_ORDERS" },
   { name: "PAYMENT_PROVIDER" },
+  { name: "IPAYMU_ENABLED" },
+  { name: "IPAYMU_MODE" },
   { name: "IPAYMU_VA", secret: true },
   { name: "IPAYMU_API_KEY", secret: true },
   { name: "IPAYMU_BASE_URL" },
   { name: "IPAYMU_CALLBACK_URL" },
   { name: "IPAYMU_RETURN_URL" },
   { name: "IPAYMU_CANCEL_URL" },
+  { name: "IPAYMU_EXPIRE_MINUTES" },
   { name: "SHIPPING_PROVIDER" },
   { name: "DEFAULT_ORIGIN_CITY", requiredIn: ["staging", "production"] },
   { name: "DEFAULT_ORIGIN_POSTAL_CODE", requiredIn: ["production"] },
@@ -116,6 +119,7 @@ if (process.env.PRODUCT_SOURCE === "woocommerce") {
 
 if (process.env.PAYMENT_PROVIDER === "ipaymu") {
   for (const name of [
+    "IPAYMU_ENABLED",
     "IPAYMU_VA",
     "IPAYMU_API_KEY",
     "IPAYMU_BASE_URL",
@@ -130,10 +134,16 @@ if (process.env.PAYMENT_PROVIDER === "ipaymu") {
       });
     }
   }
+  if (process.env.IPAYMU_ENABLED !== "true") {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message: "PAYMENT_PROVIDER=ipaymu membutuhkan IPAYMU_ENABLED=true.",
+    });
+  }
   problems.push({
     level: "warning",
     message:
-      "PAYMENT_PROVIDER=ipaymu masih foundation; live signature/callback perlu verifikasi staging sebelum production.",
+      "PAYMENT_PROVIDER=ipaymu wajib dites di sandbox; return URL bukan bukti paid, hanya callback valid yang mengubah status.",
   });
 }
 

@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { logAuditEvent } from "@/lib/security/audit-log";
+import { getDocumentsByEntity } from "@/features/documents/document.service";
 
 import { getEmailRuntimeConfig, validateEmailConfig } from "./email.config";
 import { emailRepository } from "./email.repository";
@@ -378,6 +379,7 @@ export async function sendQuotationReadyToCustomer(input: {
   }
   const template = renderQuotationReadyToCustomer(quotation, {
     customerUrl: buildPublicUrl(`/quotes/${quotation.id}`),
+    pdfAvailable: await hasQuotationPdf(quotation),
   });
   return sendEmail({
     type: "quotation_ready_customer",
@@ -392,6 +394,7 @@ export async function sendQuotationReadyToCustomer(input: {
       grandTotal: quotation.grandTotal,
       validUntil: quotation.validUntil,
       missingRecipient: !input.customerEmail,
+      portalLinkIncludesPdfFoundation: true,
     },
     request: input.request,
   });
@@ -424,5 +427,19 @@ function buildPublicUrl(path: string) {
     return new URL(path, baseUrl).toString();
   } catch {
     return path;
+  }
+}
+
+async function hasQuotationPdf(quotation: QuotationRequestRecord) {
+  try {
+    const documents = await getDocumentsByEntity({
+      companyId: quotation.companyId,
+      entityType: "quotation",
+      entityId: quotation.id,
+      documentType: "quotation_pdf",
+    });
+    return documents.some((document) => document.status === "generated");
+  } catch {
+    return false;
   }
 }

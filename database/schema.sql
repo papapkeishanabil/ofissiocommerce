@@ -153,11 +153,55 @@ create table if not exists payments (
   amount integer not null check (amount >= 0),
   reference_id text not null unique,
   provider_payment_id text,
+  provider_transaction_id text,
+  payment_url text,
+  payment_qr_url text,
+  payment_qr_data_url text,
+  payment_qr_string text,
+  payment_method text,
+  payment_channel text,
+  unique_code integer not null default 0,
+  expired_at timestamptz,
   paid_at timestamptz,
+  failed_at timestamptz,
+  cancelled_at timestamptz,
+  callback_received_at timestamptz,
+  callback_status text,
+  callback_reference text,
+  callback_amount integer,
+  callback_raw_safe_json jsonb,
+  invoice_document_id text,
   raw_safe_metadata_json jsonb,
   payment_json jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+create table if not exists payment_events (
+  id text primary key,
+  payment_id text not null references payments(id) on delete cascade,
+  order_id text not null references orders(id) on delete cascade,
+  company_id text not null,
+  provider text not null check (provider in ('mock', 'ipaymu')),
+  event_type text not null check (
+    event_type in (
+      'payment_created',
+      'payment_link_created',
+      'payment_callback_received',
+      'payment_paid',
+      'payment_failed',
+      'payment_expired',
+      'payment_cancelled',
+      'payment_verification_failed',
+      'invoice_regenerated_with_payment'
+    )
+  ),
+  old_status text,
+  new_status text,
+  reference_id text not null,
+  amount integer not null check (amount >= 0),
+  metadata_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists shipments (

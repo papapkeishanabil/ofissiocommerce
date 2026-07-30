@@ -24,17 +24,36 @@ export interface PaymentRecord {
   companyId: string;
   provider: PaymentProvider;
   referenceId: string;
+  providerPaymentId: string | null;
+  providerTransactionId: string | null;
   amount: number;
   currency: "IDR";
   status: PaymentStatus;
   paymentUrl: string | null;
+  paymentQrUrl: string | null;
+  paymentQrDataUrl: string | null;
+  paymentQrString: string | null;
+  paymentMethod: string | null;
+  paymentChannel: string | null;
+  uniqueCode: number;
+  expiredAt: string | null;
+  paidAt: string | null;
+  failedAt: string | null;
+  cancelledAt: string | null;
+  callbackReceivedAt: string | null;
+  callbackStatus: string | null;
+  callbackReference: string | null;
+  callbackAmount: number | null;
+  callbackRawSafeJson: Record<string, unknown> | null;
+  invoiceDocumentId: string | null;
   rawProviderResponse: unknown;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreatePaymentInput {
-  cartId: string;
+  cartId?: string;
+  orderId?: string;
   companyId: string;
   userId: string;
   shippingRateId: string | null;
@@ -44,8 +63,12 @@ export interface CreatePaymentResult {
   paymentId: string;
   orderId: string;
   paymentUrl: string | null;
-  status: "waiting_payment";
+  expiredAt: string | null;
+  amount: number;
+  status: PaymentStatus;
   provider: PaymentProvider;
+  idempotent?: boolean;
+  qrAvailable?: boolean;
 }
 
 export interface PaymentCalculation {
@@ -84,6 +107,8 @@ export interface PaymentOrderRecord {
   wooSyncStatus?: WooOrderSyncStatus;
   wooSyncError?: string | null;
   wooSyncedAt?: string | null;
+  invoicePdfDocumentId?: string | null;
+  invoicePdfGeneratedAt?: string | null;
   /**
    * Legacy aliases kept for Phase 8/17 compatibility. New code should prefer
    * wooOrderId + wooSyncStatus, but older dashboard/admin code still reads
@@ -101,6 +126,7 @@ export interface ProviderCreatePaymentInput {
   referenceId: string;
   amount: number;
   currency: "IDR";
+  order?: PaymentOrderRecord;
   customer: {
     companyId: string;
     userId: string;
@@ -110,6 +136,15 @@ export interface ProviderCreatePaymentInput {
 export interface ProviderCreatePaymentOutput {
   referenceId: string;
   paymentUrl: string | null;
+  providerPaymentId?: string | null;
+  providerTransactionId?: string | null;
+  paymentQrUrl?: string | null;
+  paymentQrDataUrl?: string | null;
+  paymentQrString?: string | null;
+  paymentMethod?: string | null;
+  paymentChannel?: string | null;
+  uniqueCode?: number | null;
+  expiredAt?: string | null;
   rawResponse: unknown;
 }
 
@@ -118,6 +153,39 @@ export interface NormalizedPaymentCallback {
   amount: number;
   providerStatus: string;
   eventId: string;
+  providerPaymentId?: string | null;
+  providerTransactionId?: string | null;
+  paymentMethod?: string | null;
+  paymentChannel?: string | null;
+  paidAt?: string | null;
+  callbackStatus?: string | null;
+  rawSafeJson: Record<string, unknown>;
+}
+
+export type PaymentEventType =
+  | "payment_created"
+  | "payment_link_created"
+  | "payment_callback_received"
+  | "payment_paid"
+  | "payment_failed"
+  | "payment_expired"
+  | "payment_cancelled"
+  | "payment_verification_failed"
+  | "invoice_regenerated_with_payment";
+
+export interface PaymentEventRecord {
+  id: string;
+  paymentId: string;
+  orderId: string;
+  companyId: string;
+  provider: PaymentProvider;
+  eventType: PaymentEventType;
+  oldStatus: PaymentStatus | null;
+  newStatus: PaymentStatus | null;
+  referenceId: string;
+  amount: number;
+  metadataJson: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface PaymentProviderAdapter {

@@ -6,6 +6,7 @@ import { mockAuditRepository } from "./mock/mock-audit.repository";
 import { mockCompanyRepository } from "./mock/mock-company.repository";
 import { mockCompanyLogoRepository } from "./mock/mock-company-logo.repository";
 import { mockEmailLogRepository } from "./mock/mock-email-log.repository";
+import { mockDocumentRepository } from "./mock/mock-document.repository";
 import { mockOrderRepository } from "./mock/mock-order.repository";
 import { mockPaymentRepository } from "./mock/mock-payment.repository";
 import { mockProcessOrderRepository } from "./mock/mock-process-order.repository";
@@ -17,6 +18,7 @@ import { supabaseAuditRepository } from "./supabase/supabase-audit.repository";
 import { supabaseCompanyRepository } from "./supabase/supabase-company.repository";
 import { supabaseCompanyLogoRepository } from "./supabase/supabase-company-logo.repository";
 import { supabaseEmailLogRepository } from "./supabase/supabase-email-log.repository";
+import { supabaseDocumentRepository } from "./supabase/supabase-document.repository";
 import { supabaseOrderRepository } from "./supabase/supabase-order.repository";
 import { supabasePaymentRepository } from "./supabase/supabase-payment.repository";
 import { supabaseProcessOrderRepository } from "./supabase/supabase-process-order.repository";
@@ -49,6 +51,7 @@ export function createRepositoryRegistry(): RepositoryRegistry {
     quotations: isSupabase ? supabaseQuotationRepository : mockQuotationRepository,
     emailLogs: isSupabase ? supabaseEmailLogRepository : mockEmailLogRepository,
     processOrders: isSupabase ? supabaseProcessOrderRepository : mockProcessOrderRepository,
+    documents: isSupabase ? supabaseDocumentRepository : mockDocumentRepository,
   };
 }
 

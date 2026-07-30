@@ -17,6 +17,7 @@
 - [ ] Signed URL private file berjalan.
 - [ ] Migration 006 storage live sudah direview dan dijalankan jika kolom Phase 20 dibutuhkan.
 - [ ] Migration 007 PDF documents sudah direview dan dijalankan jika quotation/invoice PDF production diaktifkan.
+- [ ] Migration 008 iPaymu payment sudah direview dan dijalankan jika payment link/callback production diaktifkan.
 - [ ] `npm run check:storage` pass untuk provider production.
 - [ ] `npm run check:documents` pass untuk provider production.
 - [ ] Bucket `ofissio-logos`, `ofissio-artwork`, `ofissio-documents`, dan `ofissio-3d-models` private/reachable.
@@ -61,7 +62,13 @@
 - [ ] Customer tracking tidak mengekspos replenishment/detail task internal.
 - [ ] `WOOCOMMERCE_CONSUMER_SECRET` tidak muncul di client bundle.
 - [ ] iPaymu callback URL registered.
-- [ ] iPaymu signature live verified.
+- [ ] iPaymu `IPAYMU_API_KEY` dan `IPAYMU_VA` hanya server-side.
+- [ ] `NEXT_PUBLIC_IPAYMU_API_KEY` tidak diset.
+- [ ] iPaymu callback signature live verified.
+- [ ] Return URL iPaymu tidak pernah menandai paid.
+- [ ] Amount/reference callback iPaymu divalidasi.
+- [ ] Duplicate callback iPaymu idempotent.
+- [ ] QR invoice production scannable sudah diverifikasi sebelum ditampilkan sebagai QR aktif.
 - [ ] Shipping provider credentials siap.
 - [ ] GLB model hosting aman.
 - [ ] File upload customer company-scoped.

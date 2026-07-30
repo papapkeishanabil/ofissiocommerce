@@ -1,5 +1,7 @@
 import type { ValidatedCheckoutCartItem } from "@/features/checkout/checkout-cart.types";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import type { PaymentRecord } from "@/features/payment/payment.types";
+import type { PaymentOrderRecord } from "@/features/payment/payment.types";
 import type { RenderedEmailTemplate } from "./email.types";
 
 interface QuotationEmailContext {
@@ -181,7 +183,9 @@ export function renderQuotationConfirmationToCustomer(
 
 export function renderQuotationReadyToCustomer(
   quotation: QuotationRequestRecord,
-  options: { customerUrl: string } = { customerUrl: `/quotes/${quotation.id}` },
+  options: { customerUrl: string; pdfAvailable?: boolean } = {
+    customerUrl: `/quotes/${quotation.id}`,
+  },
 ): RenderedEmailTemplate {
   const subject = `Penawaran Ofissio ${quotation.quotationNumber} siap direview`;
   const itemLines = quotation.items
@@ -223,6 +227,9 @@ export function renderQuotationReadyToCustomer(
       "",
       quotation.customerMessage ?? "Silakan buka halaman quotation untuk accept/reject penawaran.",
       options.customerUrl,
+      options.pdfAvailable
+        ? "PDF penawaran tersedia di halaman quotation."
+        : "PDF penawaran akan tersedia di portal setelah tim Ofissio generate dokumen.",
       "",
       "Masa berlaku mengikuti tanggal valid until di atas. Jika ada revisi, gunakan tombol request revision pada halaman quotation.",
     ]
@@ -248,7 +255,11 @@ export function renderQuotationReadyToCustomer(
         ${quotation.validUntil ? `<p>Berlaku sampai: ${escapeHtml(quotation.validUntil)}</p>` : ""}
         ${quotation.customerMessage ? `<p>${escapeHtml(quotation.customerMessage)}</p>` : ""}
         <p><a href="${escapeHtml(options.customerUrl)}">Buka quotation dan pilih accept/reject</a></p>
-        <p style="font-size:12px;color:#64748b">PDF quotation final dan attachment email belum aktif pada Phase 21. Masa berlaku mengikuti tanggal valid until.</p>
+        <p style="font-size:12px;color:#64748b">${
+          options.pdfAvailable
+            ? "PDF penawaran tersedia di portal quotation. Email memakai portal link agar akses dokumen tetap company-scoped."
+            : "PDF penawaran belum dilampirkan. Jika sudah digenerate, customer dapat mengunduhnya dari portal quotation."
+        }</p>
       </div>
     `,
   };
@@ -259,6 +270,82 @@ export function renderTestEmail(): RenderedEmailTemplate {
     subject: "[Ofissio Staging] Test Email",
     text: "Ini adalah test email Ofissio. Jika EMAIL_PROVIDER=mock, email ini hanya tercatat di log.",
     html: "<p>Ini adalah test email Ofissio. Jika <strong>EMAIL_PROVIDER=mock</strong>, email ini hanya tercatat di log.</p>",
+  };
+}
+
+export function renderInvoiceReadyToCustomer(input: {
+  order: PaymentOrderRecord;
+  payment: PaymentRecord | null;
+  invoiceNumber: string;
+  portalUrl: string;
+}): RenderedEmailTemplate {
+  const subject = `Invoice Ofissio ${input.invoiceNumber} siap`;
+  const paymentLine = input.payment?.paymentUrl
+    ? `Payment link: ${input.payment.paymentUrl}`
+    : "Payment link belum tersedia; tim Ofissio akan mengonfirmasi instruksi pembayaran.";
+  const dueLine = input.payment?.expiredAt
+    ? `Berlaku sampai: ${input.payment.expiredAt}`
+    : "";
+  return {
+    subject,
+    text: [
+      `Invoice ${input.invoiceNumber} untuk order ${input.order.orderNumber ?? input.order.id} sudah siap.`,
+      `Grand total: ${formatMoney(input.order.calculation.grandTotal)}`,
+      `Payment status: ${input.payment?.status ?? input.order.status}`,
+      paymentLine,
+      dueLine,
+      `Portal: ${input.portalUrl}`,
+      "",
+      "PDF invoice dapat diunduh melalui portal agar akses dokumen tetap company-scoped.",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    html: `
+      <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
+        <h2>Invoice Ofissio siap</h2>
+        <p>Invoice <strong>${escapeHtml(input.invoiceNumber)}</strong> untuk order <strong>${escapeHtml(input.order.orderNumber ?? input.order.id)}</strong> sudah siap.</p>
+        <p><strong>Grand total:</strong> ${formatMoney(input.order.calculation.grandTotal)}</p>
+        <p><strong>Status pembayaran:</strong> ${escapeHtml(input.payment?.status ?? input.order.status)}</p>
+        ${
+          input.payment?.paymentUrl
+            ? `<p><a href="${escapeHtml(input.payment.paymentUrl)}">Bayar sekarang</a></p>`
+            : "<p>Payment link belum tersedia; tim Ofissio akan mengonfirmasi instruksi pembayaran.</p>"
+        }
+        ${input.payment?.expiredAt ? `<p>Berlaku sampai: ${escapeHtml(input.payment.expiredAt)}</p>` : ""}
+        <p><a href="${escapeHtml(input.portalUrl)}">Buka portal order</a></p>
+        <p style="font-size:12px;color:#64748b">PDF invoice tidak dilampirkan pada phase ini; portal link lebih aman untuk akses company-scoped.</p>
+      </div>
+    `,
+  };
+}
+
+export function renderPaymentReceivedToCustomer(input: {
+  order: PaymentOrderRecord;
+  payment: PaymentRecord;
+  trackingUrl: string;
+}): RenderedEmailTemplate {
+  const subject = `Pembayaran diterima - ${input.order.orderNumber ?? input.order.id}`;
+  return {
+    subject,
+    text: [
+      `Pembayaran untuk order ${input.order.orderNumber ?? input.order.id} sudah diterima.`,
+      `Nominal: ${formatMoney(input.payment.amount)}`,
+      input.payment.paidAt ? `Paid at: ${input.payment.paidAt}` : "",
+      "Tim Ofissio akan melanjutkan proses fulfillment/customization/production sesuai routing order.",
+      `Tracking: ${input.trackingUrl}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    html: `
+      <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
+        <h2>Pembayaran diterima</h2>
+        <p>Pembayaran untuk order <strong>${escapeHtml(input.order.orderNumber ?? input.order.id)}</strong> sudah diterima.</p>
+        <p><strong>Nominal:</strong> ${formatMoney(input.payment.amount)}</p>
+        ${input.payment.paidAt ? `<p>Paid at: ${escapeHtml(input.payment.paidAt)}</p>` : ""}
+        <p>Tim Ofissio akan melanjutkan proses sesuai routing order.</p>
+        <p><a href="${escapeHtml(input.trackingUrl)}">Lihat tracking order</a></p>
+      </div>
+    `,
   };
 }
 
