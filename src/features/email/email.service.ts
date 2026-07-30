@@ -9,9 +9,11 @@ import { emailRepository } from "./email.repository";
 import { sendEmailSchema, safeEmailSubject } from "./email.validation";
 import {
   renderQuotationConfirmationToCustomer,
+  renderQuotationReadyToCustomer,
   renderQuotationRequestToSales,
   renderTestEmail,
 } from "./email.templates";
+import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
 import type {
   EmailProviderAdapter,
   EmailSendInput,
@@ -98,7 +100,10 @@ export function getEmailProvider() {
 }
 
 export function renderEmailTemplate(
-  name: "quotation_request_sales" | "quotation_confirmation_customer" | "test_email",
+  name:
+    | "quotation_request_sales"
+    | "quotation_confirmation_customer"
+    | "test_email",
   context?: Parameters<typeof renderQuotationRequestToSales>[0],
 ) {
   if (name === "test_email") return renderTestEmail();
@@ -351,6 +356,47 @@ export async function sendQuotationConfirmationToCustomer(input: {
   });
 }
 
+export async function sendQuotationReadyToCustomer(input: {
+  quotation: QuotationRequestRecord;
+  customerEmail: string | null;
+  request?: Request;
+}) {
+  const quotation = input.quotation;
+  if (!input.customerEmail) {
+    if (getEmailRuntimeConfig().provider !== "mock") {
+      return skippedEmail({
+        type: "quotation_ready_customer",
+        companyId: quotation.companyId,
+        userId: quotation.userId,
+        to: [],
+        subject: "Quotation ready customer email skipped",
+        reason: "Email customer belum tersedia.",
+        safeMetadata: { quotationNumber: quotation.quotationNumber },
+        request: input.request,
+      });
+    }
+  }
+  const template = renderQuotationReadyToCustomer(quotation, {
+    customerUrl: buildPublicUrl(`/quotes/${quotation.id}`),
+  });
+  return sendEmail({
+    type: "quotation_ready_customer",
+    companyId: quotation.companyId,
+    userId: quotation.userId,
+    to: [input.customerEmail || "customer-placeholder@ofissio.local"],
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    safeMetadata: {
+      quotationNumber: quotation.quotationNumber,
+      grandTotal: quotation.grandTotal,
+      validUntil: quotation.validUntil,
+      missingRecipient: !input.customerEmail,
+    },
+    request: input.request,
+  });
+}
+
 export async function sendPaymentReceivedEmail() {
   return { status: "skipped" as const, reason: "Phase 13 skeleton." };
 }
@@ -363,6 +409,7 @@ export const emailService = {
   sendEmail,
   sendQuotationRequestToSales,
   sendQuotationConfirmationToCustomer,
+  sendQuotationReadyToCustomer,
   sendPaymentReceivedEmail,
   sendOrderTrackingUpdateEmail,
   getEmailProvider,
@@ -370,3 +417,12 @@ export const emailService = {
   renderEmailTemplate,
   logEmailEvent,
 };
+
+function buildPublicUrl(path: string) {
+  const baseUrl = process.env.APP_URL?.trim() || "http://localhost:8000";
+  try {
+    return new URL(path, baseUrl).toString();
+  } catch {
+    return path;
+  }
+}

@@ -8,6 +8,9 @@ interface EnvRule {
   note?: string;
 }
 
+const { loadEnvConfig } = require("@next/env");
+loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
+
 const appEnv = resolveAppEnvironment();
 
 const rules: EnvRule[] = [
@@ -152,6 +155,27 @@ if (process.env.EMAIL_PROVIDER === "resend") {
   }
 }
 
+if (process.env.EMAIL_FROM && !isValidMailbox(process.env.EMAIL_FROM)) {
+  problems.push({
+    level: appEnv === "production" ? "error" : "warning",
+    message: "EMAIL_FROM tidak valid.",
+  });
+}
+
+if (process.env.EMAIL_REPLY_TO && !isValidEmail(process.env.EMAIL_REPLY_TO)) {
+  problems.push({
+    level: appEnv === "production" ? "error" : "warning",
+    message: "EMAIL_REPLY_TO tidak valid.",
+  });
+}
+
+if (process.env.SALES_QUOTATION_EMAIL && !isValidEmail(process.env.SALES_QUOTATION_EMAIL)) {
+  problems.push({
+    level: appEnv === "production" ? "error" : "warning",
+    message: "SALES_QUOTATION_EMAIL tidak valid.",
+  });
+}
+
 if (process.env.EMAIL_PROVIDER === "mock" && process.env.EMAIL_ENABLED === "true") {
   problems.push({
     level: "warning",
@@ -251,4 +275,16 @@ function printReport() {
     const label = problem.level === "error" ? "ERROR" : "WARN";
     console.log(`${label}: ${problem.message}`);
   }
+}
+
+function isValidMailbox(value: string) {
+  const trimmed = value.trim();
+  if (/[\r\n]/.test(trimmed)) return false;
+  const match = trimmed.match(/<([^<>]+)>$/);
+  return isValidEmail((match?.[1] ?? trimmed).trim());
+}
+
+function isValidEmail(value: string) {
+  if (/[\r\n]/.test(value)) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) && value.trim().length <= 254;
 }

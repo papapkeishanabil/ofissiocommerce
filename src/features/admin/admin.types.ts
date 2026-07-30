@@ -13,6 +13,7 @@ import type {
 } from "@/features/orders/order.types";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import type { UploadedFile } from "@/features/storage/storage.types";
+import type { EmailLog } from "@/features/email/email.types";
 import type { AuditEvent } from "@/lib/security/security.types";
 import type { ProcessOrder, ProcessOrderDetail } from "@/features/process-orders/process-order.types";
 
@@ -74,6 +75,7 @@ export interface AdminQuotationDetail {
   quotation: QuotationRequestRecord;
   logoPreviews: AdminLogoPreview[];
   events: QuotationEventRecord[];
+  emailLogs: EmailLog[];
 }
 
 export interface AdminOrderRow {

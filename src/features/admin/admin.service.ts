@@ -189,6 +189,7 @@ export async function getAdminQuotationDetail(id: string): Promise<AdminQuotatio
     quotation,
     logoPreviews: await getLogoPreviews(quotation),
     events: await getQuotationEventsById(quotation.id, quotation.companyId),
+    emailLogs: await getQuotationEmailLogs(quotation),
   };
 }
 
@@ -570,6 +571,17 @@ async function getLogoPreviews(quotation: QuotationRequestRecord): Promise<Admin
       };
     }),
   );
+}
+
+async function getQuotationEmailLogs(quotation: QuotationRequestRecord) {
+  const ids = new Set(quotation.emailLogIds);
+  const logs = await repositoryRegistry.emailLogs
+    .listByCompany(quotation.companyId)
+    .catch(() => []);
+  return logs.filter((log) => {
+    if (ids.has(log.id)) return true;
+    return log.safeMetadata.quotationNumber === quotation.quotationNumber;
+  });
 }
 
 function mapQuotationRow(quotation: QuotationRequestRecord): AdminQuotationRow {

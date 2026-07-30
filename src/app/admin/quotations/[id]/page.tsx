@@ -7,6 +7,7 @@ import { AdminQuotationStatusActions } from "@/features/admin/components/AdminQu
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
 import { getAdminQuotationDetail } from "@/features/admin/admin.service";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
+import { getEmailRuntimeConfig } from "@/features/email/email.config";
 import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
 
 interface PageProps {
@@ -17,7 +18,9 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
   const { id } = await params;
   const detail = await getAdminQuotationDetail(id);
   if (!detail) notFound();
-  const { quotation, logoPreviews, events } = detail;
+  const { quotation, logoPreviews, events, emailLogs } = detail;
+  const emailConfig = getEmailRuntimeConfig();
+  const latestEmailLog = emailLogs[0] ?? null;
 
   return (
     <div className="space-y-5">
@@ -84,6 +87,53 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             : "Sync WooCommerce aktif setelah quotation dikonversi menjadi order Ofissio."
         }
       />
+
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-700">
+              Email delivery
+            </p>
+            <h3 className="mt-1 text-lg font-black text-ink">
+              {emailConfig.enabled
+                ? `Provider ${emailConfig.provider}`
+                : "Email real belum aktif — mock/skipped"}
+            </h3>
+            <p className="mt-1 text-sm text-ink-muted">
+              Status quotation saat ini: {quotation.emailStatus}. Email failure tidak
+              membatalkan quotation flow.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <AdminBadge tone={adminStatusTone(quotation.emailStatus)}>
+              {quotation.emailStatus}
+            </AdminBadge>
+            <AdminBadge tone={emailConfig.enabled ? "success" : "warning"}>
+              {emailConfig.enabled ? "email enabled" : "mock/skipped"}
+            </AdminBadge>
+          </div>
+        </div>
+        {latestEmailLog ? (
+          <dl className="mt-4 grid gap-3 text-sm md:grid-cols-4">
+            <InfoCard label="Last type" value={latestEmailLog.type} />
+            <InfoCard label="Last status" value={latestEmailLog.status} />
+            <InfoCard label="Provider" value={latestEmailLog.provider} />
+            <InfoCard
+              label="Created"
+              value={formatAdminDate(latestEmailLog.createdAt)}
+            />
+          </dl>
+        ) : (
+          <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-ink-muted">
+            Belum ada email log untuk quotation ini.
+          </p>
+        )}
+        {latestEmailLog?.errorMessage ? (
+          <p className="mt-3 rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+            Last safe error: {latestEmailLog.errorMessage}
+          </p>
+        ) : null}
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
@@ -277,6 +327,17 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-3 border-b border-line pb-2 last:border-0 last:pb-0">
       <dt className="text-ink-muted">{label}</dt>
       <dd className="font-semibold text-ink">{value}</dd>
+    </div>
+  );
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <dt className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">
+        {label}
+      </dt>
+      <dd className="mt-1 break-words font-semibold text-ink">{value}</dd>
     </div>
   );
 }

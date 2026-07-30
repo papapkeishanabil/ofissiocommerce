@@ -65,6 +65,10 @@ Catatan:
 - Jika `EMAIL_ENABLED=false`, provider real tidak akan mengirim email.
 - `EMAIL_FROM` harus memakai domain email yang sudah diverifikasi di provider email.
 - Saat ini provider yang disiapkan di kode adalah Resend.
+- Jalankan `npm run check:email` setelah mengubah env.
+- Real staging send hanya dilakukan jika menjalankan `EMAIL_TEST_SEND=true npm run check:email`.
+- Jangan membuat `NEXT_PUBLIC_RESEND_API_KEY`.
+- Untuk rollback aman, set `EMAIL_PROVIDER=mock` dan `EMAIL_ENABLED=false`.
 
 ## 3. Generate 3D Meshy
 

@@ -109,6 +109,22 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Company mismatch file detail/signed-url/delete ditolak 403/404.
 - [ ] `/3d/kk-006.glb` tetap 200 dan tidak dipindah ke Supabase Storage.
 
+## Phase 21 Resend email staging flow
+
+- [ ] Jalankan `npm run check:email`.
+- [ ] Jika `EMAIL_PROVIDER=mock`, hasil pass/skipped jelas.
+- [ ] Jika `EMAIL_PROVIDER=resend`, pastikan `EMAIL_FROM` domain verified.
+- [ ] Jika ingin real send, jalankan `EMAIL_TEST_SEND=true npm run check:email`.
+- [ ] Submit quotation dari customer.
+- [ ] Email log `quotation_request_sales` dibuat.
+- [ ] Email log `quotation_confirmation_customer` dibuat jika customer email tersedia.
+- [ ] Admin buka `/admin/quotations/[id]` dan melihat email delivery status.
+- [ ] Admin update pricing, mark quoted, lalu klik `Send quote to customer`.
+- [ ] Email log `quotation_ready_customer` dibuat.
+- [ ] Customer `/quotes/[id]` tidak menampilkan provider/raw error/internal notes.
+- [ ] Customer tidak bisa trigger `/api/quotation/email` legacy.
+- [ ] `RESEND_API_KEY` tidak muncul di client bundle.
+
 ## Security smoke
 
 - [ ] Secret tidak muncul di client bundle.
@@ -122,11 +138,13 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Company mismatch quotation list/detail ditolak.
 - [ ] Storage secret tidak muncul di client bundle.
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` tidak muncul di client bundle.
+- [ ] `RESEND_API_KEY` tidak muncul di client bundle.
+- [ ] `NEXT_PUBLIC_RESEND_API_KEY` tidak diset.
 
 ## Conditional staging integrations
 
 - [ ] WooCommerce staging test jika env tersedia.
-- [ ] Email test jika Resend tersedia.
+- [ ] Email test jika Resend tersedia dan domain verified.
 - [ ] Supabase database test jika env tersedia: health connected, quotation/email log/upload metadata/company logo tersimpan.
 - [ ] Supabase Storage test jika env tersedia.
 - [ ] iPaymu sandbox test hanya setelah signature resmi diimplementasikan.

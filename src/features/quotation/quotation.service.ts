@@ -66,7 +66,8 @@ export async function createQuotationRequest(
     customerNotes: input.customerNotes,
     items: cart.items,
     createdAt: now,
-    internalUrl: `/internal/quotations/${id}`,
+    internalUrl: buildPublicUrl(`/admin/quotations/${id}`),
+    customerUrl: buildPublicUrl(`/quotes/${id}`),
   };
   const emails = await Promise.all([
     emailService.sendQuotationRequestToSales({
@@ -332,20 +333,9 @@ export async function sendQuotationReadyToCustomer(input: {
     throw createApiError("BAD_REQUEST", "Harga final belum tersedia.", 400);
   }
   const recipient = quotation.customerEmail ?? quotation.picEmail ?? quotation.userEmail;
-  const result = await emailService.sendEmail({
-    type: "quotation_ready_customer",
-    companyId: quotation.companyId,
-    userId: quotation.userId,
-    to: [recipient || "customer-placeholder@ofissio.local"],
-    subject: `Penawaran Ofissio ${quotation.quotationNumber} siap direview`,
-    html: renderQuotationReadyHtml(quotation),
-    text: renderQuotationReadyText(quotation),
-    safeMetadata: {
-      quotationNumber: quotation.quotationNumber,
-      grandTotal: quotation.grandTotal,
-      validUntil: quotation.validUntil,
-      missingRecipient: !recipient,
-    },
+  const result = await emailService.sendQuotationReadyToCustomer({
+    quotation,
+    customerEmail: recipient,
     request: input.request,
   });
   const nextEmailLogIds = [...quotation.emailLogIds, result.id];
@@ -712,6 +702,15 @@ function aggregateEmailStatus(results: EmailSendResult[]): EmailStatus {
   return "skipped";
 }
 
+function buildPublicUrl(path: string) {
+  const baseUrl = process.env.APP_URL?.trim() || "http://localhost:8000";
+  try {
+    return new URL(path, baseUrl).toString();
+  } catch {
+    return path;
+  }
+}
+
 async function requireQuotation(id: string) {
   const quotation = await quotationRepository.getById(id);
   if (!quotation) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
@@ -754,88 +753,4 @@ async function addQuotationEvent(input: {
   };
   await quotationRepository.addEvent?.(event);
   return event;
-}
-
-function renderQuotationReadyText(quotation: QuotationRequestRecord) {
-  const itemLines = quotation.items
-    .map(
-      (item) =>
-        `- ${item.productName} (${item.sku}), ${item.selectedColor}, ${item.totalQty} pcs, ${formatMoney(item.finalLineTotal ?? 0)}`,
-    )
-    .join("\n");
-  return [
-    `Halo ${quotation.picName},`,
-    "",
-    `Penawaran Ofissio ${quotation.quotationNumber} untuk ${quotation.companyName} sudah siap direview.`,
-    "",
-    itemLines,
-    "",
-    `Subtotal: ${formatMoney(quotation.subtotal ?? 0)}`,
-    `Diskon: ${formatMoney(quotation.discountTotal)}`,
-    `Pajak: ${formatMoney(quotation.taxTotal)}`,
-    `Ongkir estimasi: ${formatMoney(quotation.shippingEstimate)}`,
-    `Grand total: ${formatMoney(quotation.grandTotal ?? 0)}`,
-    quotation.validUntil ? `Berlaku sampai: ${quotation.validUntil}` : "",
-    "",
-    quotation.customerMessage ?? "Silakan buka halaman quotation untuk accept/reject penawaran.",
-    `/quotes/${quotation.id}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function renderQuotationReadyHtml(quotation: QuotationRequestRecord) {
-  const rows = quotation.items
-    .map(
-      (item) => `
-        <tr>
-          <td>${escapeHtml(item.productName)}</td>
-          <td>${escapeHtml(item.sku)}</td>
-          <td>${escapeHtml(item.selectedColor)}</td>
-          <td style="text-align:right">${item.totalQty} pcs</td>
-          <td style="text-align:right">${formatMoney(item.finalLineTotal ?? 0)}</td>
-        </tr>
-      `,
-    )
-    .join("");
-  return `
-    <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
-      <h2>Penawaran Ofissio siap direview</h2>
-      <p>Halo ${escapeHtml(quotation.picName)}, penawaran <strong>${escapeHtml(quotation.quotationNumber)}</strong> untuk ${escapeHtml(quotation.companyName)} sudah siap.</p>
-      <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;border-color:#e5e7eb;width:100%;font-size:13px">
-        <thead>
-          <tr>
-            <th align="left">Produk</th>
-            <th align="left">SKU</th>
-            <th align="left">Warna</th>
-            <th align="right">Qty</th>
-            <th align="right">Final</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <p><strong>Grand total:</strong> ${formatMoney(quotation.grandTotal ?? 0)}</p>
-      ${quotation.validUntil ? `<p>Berlaku sampai: ${escapeHtml(quotation.validUntil)}</p>` : ""}
-      ${quotation.customerMessage ? `<p>${escapeHtml(quotation.customerMessage)}</p>` : ""}
-      <p><a href="/quotes/${escapeHtml(quotation.id)}">Buka quotation</a></p>
-      <p style="font-size:12px;color:#64748b">PDF quotation final belum aktif pada Phase 17.</p>
-    </div>
-  `;
-}
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }

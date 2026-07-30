@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { getEmailRuntimeConfig } from "@/features/email/email.config";
 import { emailService } from "@/features/email/email.service";
 import { renderTestEmail } from "@/features/email/email.templates";
 import { testEmailSchema } from "@/features/email/email.validation";
-import { requireAuth } from "@/lib/security/auth-guard";
+import { requireInternalAdmin } from "@/features/admin/admin.service";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
-import { requireRole } from "@/lib/security/role-guard";
 import { createApiError, safeErrorResponse } from "@/lib/security/safe-error-response";
 import { validateInput } from "@/lib/security/validate-input";
 
@@ -13,7 +13,10 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    if (process.env.APP_ENV === "production") {
+    if (
+      process.env.APP_ENV === "production" &&
+      process.env.EMAIL_TEST_ALLOW_PRODUCTION !== "true"
+    ) {
       throw createApiError("FORBIDDEN", "Test email dinonaktifkan di production.", 403);
     }
     rateLimitOrThrow({
@@ -21,20 +24,26 @@ export async function POST(request: Request) {
       limit: 10,
       windowMs: 60_000,
     });
+    const actor = requireInternalAdmin(request, "admin:view");
     const payload = validateInput(testEmailSchema, await request.json());
-    const session = requireAuth(request);
-    requireRole(session, "quotation:create");
+    const config = getEmailRuntimeConfig();
+    const to = payload.to ?? config.salesQuotationEmail ?? "sales-placeholder@ofissio.local";
     const template = renderTestEmail();
     const result = await emailService.sendEmail({
       type: "test_email",
-      companyId: session.companyId,
-      userId: session.userId,
-      to: [payload.to ?? session.email ?? "customer-placeholder@ofissio.local"],
+      companyId: null,
+      userId: actor.id,
+      to: [to],
       subject: template.subject,
       html: template.html,
       text: template.text,
       request,
-      safeMetadata: { route: "/api/email/test" },
+      safeMetadata: {
+        route: "/api/email/test",
+        actorRole: actor.role,
+        emailEnabled: config.enabled,
+        requestedProvider: config.requestedProvider,
+      },
     });
     return NextResponse.json({ ok: true, email: result });
   } catch (error) {

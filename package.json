@@ -13,9 +13,10 @@
     "check:supabase": "tsx scripts/check-supabase-schema.ts",
     "check:woocommerce": "tsx scripts/check-woocommerce.ts",
     "check:storage": "tsx scripts/check-storage.ts",
+    "check:email": "tsx scripts/check-email.ts",
     "test:company-isolation": "tsx scripts/test-company-isolation.ts",
     "verify:supabase-persistence": "tsx scripts/verify-supabase-persistence.ts",
-    "check:all": "npm run check:env && npm run typecheck && npm run lint && npm run build"
+    "check:all": "npm run check:env && npm run check:email && npm run typecheck && npm run lint && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

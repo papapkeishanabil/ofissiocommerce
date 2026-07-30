@@ -1,6 +1,10 @@
 import "server-only";
 
 import type { EmailProvider, EmailRuntimeConfig } from "./email.types";
+import {
+  isValidEmailAddress,
+  isValidMailboxAddress,
+} from "./email.validation";
 
 function normalizeProvider(value?: string): EmailProvider {
   return value === "resend" ? "resend" : "mock";
@@ -32,14 +36,44 @@ export function getEmailRuntimeConfig(): EmailRuntimeConfig {
 
 export function validateEmailConfig() {
   const config = getEmailRuntimeConfig();
+  const issues: string[] = [];
+  const warnings: string[] = [];
+
+  if (!isValidMailboxAddress(config.from)) {
+    issues.push("EMAIL_FROM tidak valid.");
+  }
+  if (config.replyTo && !isValidEmailAddress(config.replyTo)) {
+    issues.push("EMAIL_REPLY_TO tidak valid.");
+  }
+  if (config.requestedProvider === "resend") {
+    if (!config.resendConfigured) issues.push("RESEND_API_KEY belum dikonfigurasi.");
+    if (!config.salesQuotationEmail) {
+      issues.push("SALES_QUOTATION_EMAIL belum dikonfigurasi.");
+    } else if (!isValidEmailAddress(config.salesQuotationEmail)) {
+      issues.push("SALES_QUOTATION_EMAIL tidak valid.");
+    }
+    if (!config.enabled) {
+      warnings.push(
+        "EMAIL_PROVIDER=resend aktif, tetapi EMAIL_ENABLED=false sehingga email real diskip.",
+      );
+    }
+  }
+  if (config.requestedProvider === "mock" && config.enabled) {
+    warnings.push(
+      "EMAIL_ENABLED=true dengan EMAIL_PROVIDER=mock hanya membuat mocked log.",
+    );
+  }
+
   return {
-    ok:
-      config.provider === "mock" ||
-      (config.enabled && config.provider === "resend" && config.resendConfigured),
+    ok: issues.length === 0,
     config,
+    issues,
+    warnings,
     warning:
-      config.requestedProvider === "resend" && !config.resendConfigured
+      issues[0] ??
+      warnings[0] ??
+      (config.requestedProvider === "resend" && !config.resendConfigured
         ? "RESEND_API_KEY belum dikonfigurasi; email fallback ke mock."
-        : null,
+        : null),
   };
 }

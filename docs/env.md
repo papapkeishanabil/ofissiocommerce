@@ -62,11 +62,11 @@ DEFAULT_ORIGIN_POSTAL_CODE=
 SHIPPING_PROVIDER_API_KEY=
 
 EMAIL_PROVIDER=mock
+EMAIL_ENABLED=false
 RESEND_API_KEY=
 EMAIL_FROM="Ofissio <quotation@ofissio.com>"
-SALES_QUOTATION_EMAIL=
 EMAIL_REPLY_TO=
-EMAIL_ENABLED=false
+SALES_QUOTATION_EMAIL=
 
 AUTH_SECRET=
 NEXTAUTH_SECRET=
@@ -181,13 +181,27 @@ Gunakan:
 
 ```bash
 EMAIL_PROVIDER=mock
+EMAIL_ENABLED=false
 RESEND_API_KEY=
 EMAIL_FROM="Ofissio <quotation@ofissio.com>"
-SALES_QUOTATION_EMAIL=
 EMAIL_REPLY_TO=
-EMAIL_ENABLED=false
+SALES_QUOTATION_EMAIL=
 ```
 
 Default `mock` hanya mencatat email ke log foundation. Untuk email real, ubah `EMAIL_PROVIDER=resend`, set `EMAIL_ENABLED=true`, isi `RESEND_API_KEY`, dan pakai `EMAIL_FROM` dari domain yang sudah diverifikasi. `SALES_QUOTATION_EMAIL` adalah alamat internal sales penerima notifikasi quotation.
 
 Jika belum ada inbox `quotation@ofissio.com`, pengiriman outbound tetap bisa berjalan setelah domain verified, tetapi balasan customer membutuhkan mailbox atau forwarding.
+
+Jalankan:
+
+```bash
+npm run check:email
+```
+
+Real test send staging hanya dijalankan saat eksplisit:
+
+```bash
+EMAIL_TEST_SEND=true npm run check:email
+```
+
+Jangan set `NEXT_PUBLIC_RESEND_API_KEY`.

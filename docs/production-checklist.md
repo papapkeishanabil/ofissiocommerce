@@ -38,6 +38,11 @@
 - [ ] Contact page siap.
 - [ ] Email sender domain verified.
 - [ ] Resend API key production siap.
+- [ ] `npm run check:email` pass untuk provider production.
+- [ ] `EMAIL_TEST_SEND=true npm run check:email` sudah diuji di staging, bukan pertama kali di production.
+- [ ] `NEXT_PUBLIC_RESEND_API_KEY` tidak diset.
+- [ ] `RESEND_API_KEY` tidak muncul di client bundle.
+- [ ] `quotation@ofissio.com` punya mailbox/forwarding jika customer reply dibutuhkan.
 - [ ] WooCommerce production configured.
 - [ ] WooCommerce products punya GLB valid.
 - [ ] Produk tanpa GLB tidak tampil.
@@ -68,6 +73,10 @@
 - [ ] Order hasil convert muncul di admin/customer tracking.
 - [ ] Internal notes quotation tidak tampil ke customer.
 - [ ] Test email berhasil.
+- [ ] Quotation request sales email berhasil.
+- [ ] Quotation confirmation customer email berhasil.
+- [ ] Quotation ready customer email berhasil.
+- [ ] Email failure safe dan tidak membatalkan quotation/order flow.
 - [ ] Test tracking berhasil.
 - [ ] Test mobile berhasil.
 - [ ] Test order sync WooCommerce berhasil.
