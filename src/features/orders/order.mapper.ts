@@ -3,6 +3,7 @@ import type {
   PaymentRecord,
   PaymentStatus,
 } from "@/features/payment/payment.types";
+import { ensureOrderProcessRouting } from "./order-routing.service";
 import type {
   WooCommerceCreateOrderInput,
   WooCommerceOrderLineItem,
@@ -17,7 +18,8 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
   picWhatsapp?: string | null;
   quotationId?: string | null;
 }): WooCommerceCreateOrderInput {
-  const { order, payment } = input;
+  const { payment } = input;
+  const order = ensureOrderProcessRouting(input.order);
   return {
     status: "pending",
     currency: "IDR",
@@ -46,6 +48,10 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
             "logo_file_names",
             JSON.stringify(item.embroideryPlacements.map((p) => p.logoFileName)),
           ],
+          [
+            "logo_file_ids",
+            JSON.stringify(item.embroideryPlacements.map((p) => p.logoFileId)),
+          ],
           ["customization_notes", item.customization],
           ["model_3d_id", item.model3dId],
           ["model_3d_url", item.model3dUrl],
@@ -67,16 +73,23 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
           ]
         : [],
     meta_data: compactMeta([
+      ["ofissio_source", "ofissio"],
       ["ofissio_order_id", order.id],
+      ["ofissio_order_number", order.orderNumber ?? order.id],
       ["company_id", order.companyId],
       ["company_name", input.companyName],
       ["pic_name", input.picName],
       ["pic_whatsapp", input.picWhatsapp],
-      ["quotation_id", input.quotationId],
+      ["quotation_id", input.quotationId ?? order.quotationId],
       ["payment_provider", payment.provider],
       ["payment_reference", payment.referenceId],
       ["fulfillment_type", order.items[0]?.fulfillmentType],
       ["transaction_mode", order.items[0]?.transactionMode],
+      ["process_route", order.processRoute],
+      ["process_status", order.processStatus],
+      ["replenishment_status", order.replenishmentStatus],
+      ["has_customization", String(order.hasCustomization ?? false)],
+      ["customization_type", order.customizationType],
       ["tracking_id", order.id],
     ]),
   };

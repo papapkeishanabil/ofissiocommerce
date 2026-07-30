@@ -15,6 +15,11 @@
 - [ ] Storage production siap.
 - [ ] Storage bucket customer private.
 - [ ] Signed URL private file berjalan.
+- [ ] Migration 006 storage live sudah direview dan dijalankan jika kolom Phase 20 dibutuhkan.
+- [ ] `npm run check:storage` pass untuk provider production.
+- [ ] Bucket `ofissio-logos`, `ofissio-artwork`, `ofissio-documents`, dan `ofissio-3d-models` private/reachable.
+- [ ] Logo library tetap tampil setelah server restart dengan Supabase Storage.
+- [ ] Admin uploads tidak menampilkan storage key penuh atau service role.
 - [ ] SVG sanitization aktif.
 - [ ] Antivirus/file scanning aktif atau risk exception terdokumentasi.
 - [ ] RLS/company isolation production siap.

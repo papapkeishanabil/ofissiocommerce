@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminOrderProcessPanel } from "@/features/admin/components/AdminOrderProcessPanel";
+import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
 import { getAdminOrderDetail } from "@/features/admin/admin.service";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
+import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -15,12 +18,20 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
   const detail = await getAdminOrderDetail(id);
   if (!detail) notFound();
   const { order, tracking } = detail;
+  const wooOrderId = order.wooOrderId ?? order.woocommerceOrderId ?? null;
+  const wooSyncStatus =
+    order.wooSyncStatus ??
+    (order.orderSyncStatus === "synced"
+      ? "synced"
+      : order.orderSyncStatus === "failed"
+        ? "failed"
+        : "disabled");
   return (
     <div className="space-y-5">
       <Link href="/admin/orders" className="text-sm font-bold text-brand-700">
         ← Back to orders
       </Link>
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">
@@ -53,7 +64,31 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         </dl>
       </section>
 
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <AdminWooSyncPanel
+        entityType="order"
+        entityId={order.id}
+        wooOrderId={wooOrderId}
+        wooOrderNumber={order.wooOrderNumber ?? null}
+        wooSyncStatus={wooSyncStatus}
+        wooSyncError={order.wooSyncError ?? null}
+        wooSyncedAt={order.wooSyncedAt ?? null}
+        wooAdminUrl={getWooCommerceOrderAdminUrl(wooOrderId)}
+        note="Order Ofissio dapat disinkronkan ke WooCommerce staging jika env WooCommerce aktif."
+      />
+
+      <AdminOrderProcessPanel
+        orderId={order.id}
+        processRoute={order.processRoute ?? "fulfillment"}
+        processStatus={order.processStatus ?? "not_started"}
+        replenishmentStatus={order.replenishmentStatus ?? "not_required"}
+        hasCustomization={order.hasCustomization ?? false}
+        customizationType={order.customizationType ?? "none"}
+        processRouteReason={order.processRouteReason ?? null}
+        processOrderId={detail.processOrder?.id ?? null}
+        processOrderNumber={detail.processOrder?.processOrderNumber ?? null}
+      />
+
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Item snapshots</h3>
         {order.items.length === 0 ? (
           <AdminEmptyState title="Item snapshot belum tersedia" />
@@ -79,7 +114,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         )}
       </section>
 
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Tracking timeline</h3>
         {!tracking ? (
           <AdminEmptyState title="Tracking belum tersedia" />

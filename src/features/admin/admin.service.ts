@@ -13,6 +13,22 @@ import {
   updateQuotationStatus,
 } from "@/features/quotation/quotation.service";
 import type { PaymentOrderRecord } from "@/features/payment/payment.types";
+import {
+  ensureOrderProcessRouting,
+} from "@/features/orders/order-routing.service";
+import {
+  addProcessOrderEvent,
+  completeProcessTask,
+  createProcessOrderFromOrder,
+  getProcessOrderByOrderId,
+  getProcessOrderDetail,
+  getProcessOrders,
+  updateProcessOrder,
+} from "@/features/process-orders/process-order.service";
+import type {
+  ProcessOrderEventPayload,
+  ProcessOrderPatchPayload,
+} from "@/features/process-orders/process-order.validation";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
@@ -31,6 +47,8 @@ import type {
   AdminOrderDetail,
   AdminOrderRow,
   AdminPermission,
+  AdminProcessOrderDetail,
+  AdminProcessOrderRow,
   AdminQuotationDetail,
   AdminQuotationRow,
   AdminSummary,
@@ -80,6 +98,14 @@ export function canViewAdminOrder(user: InternalAdminUser | null) {
 
 export function canUpdateTracking(user: InternalAdminUser | null) {
   return hasAdminPermission(user, "admin:tracking:update");
+}
+
+export function canViewProcessOrder(user: InternalAdminUser | null) {
+  return hasAdminPermission(user, "admin:process-order:view");
+}
+
+export function canUpdateProcessOrder(user: InternalAdminUser | null) {
+  return hasAdminPermission(user, "admin:process-order:update");
 }
 
 export function canViewAuditLog(user: InternalAdminUser | null) {
@@ -280,24 +306,155 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
   const order = orders.find((item) => item.id === id);
   if (!order) return null;
   const tracking = (await listTrackingRaw()).find((item) => item.id === id) ?? null;
-  return { order, tracking };
+  const routed = ensureOrderProcessRouting(order);
+  const processOrder = await getProcessOrderByOrderId(routed.id, routed.companyId);
+  return { order: routed, tracking, processOrder };
 }
 
-export async function listAdminUploads(filter: UploadedFileListFilter = {}): Promise<AdminUploadRow[]> {
+export async function startAdminOrderProcess(input: {
+  id: string;
+  actor: InternalAdminUser;
+  request?: Request;
+}) {
+  if (!hasAdminPermission(input.actor, "admin:order:update")) {
+    throw createApiError("FORBIDDEN", "Role internal belum boleh memproses order.", 403);
+  }
+  const detail = await getAdminOrderDetail(input.id);
+  if (!detail) throw createApiError("NOT_FOUND", "Order tidak ditemukan.", 404);
+  const result = await createProcessOrderFromOrder({
+    order: detail.order,
+    actorId: input.actor.id,
+    actorType: "internal",
+    request: input.request,
+  });
+  return result;
+}
+
+export async function listAdminProcessOrders(): Promise<AdminProcessOrderRow[]> {
+  const [processOrders, orders, tracking] = await Promise.all([
+    getProcessOrders(),
+    repositoryRegistry.orders.listAll?.() ?? Promise.resolve([]),
+    listTrackingRaw(),
+  ]);
+  return processOrders.map((processOrder) => {
+    const order = orders.find((candidate) => candidate.id === processOrder.ofissioOrderId);
+    const trackingOrder = tracking.find((candidate) => candidate.id === processOrder.ofissioOrderId);
+    return mapProcessOrderRow(processOrder, order, trackingOrder);
+  });
+}
+
+export async function getAdminProcessOrderDetail(id: string): Promise<AdminProcessOrderDetail | null> {
+  const detail = await getProcessOrderDetail(id);
+  if (!detail) return null;
+  const tracking = detail.sourceOrder
+    ? (await listTrackingRaw()).find((item) => item.id === detail.sourceOrder?.id)
+    : null;
+  return {
+    ...detail,
+    relatedOrderNumber:
+      tracking?.orderNumber ??
+      detail.sourceOrder?.orderNumber ??
+      detail.processOrder.ofissioOrderId,
+    companyName: tracking?.companyName ?? detail.sourceOrder?.companyId ?? detail.processOrder.companyId,
+  };
+}
+
+export async function patchAdminProcessOrder(input: {
+  id: string;
+  payload: ProcessOrderPatchPayload;
+  actor: InternalAdminUser;
+  request?: Request;
+}) {
+  if (!canUpdateProcessOrder(input.actor)) {
+    throw createApiError("FORBIDDEN", "Role internal belum boleh mengubah process order.", 403);
+  }
+  return updateProcessOrder({
+    processOrderId: input.id,
+    patch: input.payload,
+    actorId: input.actor.id,
+    actorType: "internal",
+    request: input.request,
+  });
+}
+
+export async function completeAdminProcessOrderTask(input: {
+  id: string;
+  taskId: string;
+  notes?: string | null;
+  actor: InternalAdminUser;
+  request?: Request;
+}) {
+  if (!canUpdateProcessOrder(input.actor)) {
+    throw createApiError("FORBIDDEN", "Role internal belum boleh menyelesaikan task.", 403);
+  }
+  return completeProcessTask({
+    processOrderId: input.id,
+    taskId: input.taskId,
+    notes: input.notes,
+    actorId: input.actor.id,
+    actorType: "internal",
+    request: input.request,
+  });
+}
+
+export async function addAdminProcessOrderEvent(input: {
+  id: string;
+  payload: ProcessOrderEventPayload;
+  actor: InternalAdminUser;
+  request?: Request;
+}) {
+  if (!canUpdateProcessOrder(input.actor)) {
+    throw createApiError("FORBIDDEN", "Role internal belum boleh menambah event process order.", 403);
+  }
+  return addProcessOrderEvent({
+    processOrderId: input.id,
+    eventType: input.payload.eventType,
+    note: input.payload.note,
+    metadata: input.payload.metadata,
+    actorId: input.actor.id,
+    actorType: "internal",
+    request: input.request,
+  });
+}
+
+export async function listAdminUploads(
+  filter: UploadedFileListFilter = {},
+  options: { includeSignedUrls?: boolean } = {},
+): Promise<AdminUploadRow[]> {
   const files = (await repositoryRegistry.uploadedFiles.listAll?.(filter)) ?? [];
-  return files.map((file) => ({
-    id: file.id,
-    companyId: file.companyId,
-    fileType: file.fileType,
-    originalFilename: file.originalFilename,
-    safeFilename: file.safeFilename,
-    mimeType: file.mimeType,
-    extension: file.extension,
-    sizeBytes: file.sizeBytes,
-    status: file.status,
-    createdAt: file.createdAt,
-    signedUrlAvailable: file.status !== "deleted" && file.status !== "rejected",
-  }));
+  return Promise.all(
+    files.map(async (file) => {
+      const signed =
+        options.includeSignedUrls &&
+        file.status !== "deleted" &&
+        file.status !== "rejected"
+          ? await storageService
+              .getSignedFileUrl({
+                companyId: file.companyId,
+                fileId: file.id,
+              })
+              .catch(() => null)
+          : null;
+      return {
+        id: file.id,
+        companyId: file.companyId,
+        fileType: file.fileType,
+        originalFilename: file.originalFilename,
+        safeFilename: file.safeFilename,
+        storageProvider: file.storageProvider,
+        storageBucket: file.storageBucket,
+        mimeType: file.mimeType,
+        extension: file.extension,
+        sizeBytes: file.sizeBytes,
+        status: file.status,
+        scanStatus: file.scanStatus,
+        sanitizedStatus: file.sanitizedStatus,
+        createdAt: file.createdAt,
+        signedUrlAvailable: Boolean(signed),
+        signedUrl: signed?.signedUrl ?? null,
+      };
+    }),
+  );
 }
 
 export async function listAdminTracking(): Promise<AdminTrackingRow[]> {
@@ -432,18 +589,61 @@ function mapQuotationRow(quotation: QuotationRequestRecord): AdminQuotationRow {
 }
 
 function mapOrderRow(order: PaymentOrderRecord, tracking?: CustomerTrackingOrder | null): AdminOrderRow {
+  const routed = ensureOrderProcessRouting(order);
   return {
-    id: order.id,
-    orderNumber: tracking?.orderNumber ?? order.id,
-    companyId: order.companyId,
-    companyName: tracking?.companyName ?? order.companyId,
+    id: routed.id,
+    orderNumber: tracking?.orderNumber ?? routed.orderNumber ?? routed.id,
+    companyId: routed.companyId,
+    companyName: tracking?.companyName ?? routed.companyId,
     paymentStatus: tracking?.paymentStatus ?? "waiting_payment",
-    orderStatus: order.status,
-    fulfillmentType: order.items[0]?.fulfillmentType ?? "MADE_TO_ORDER",
+    orderStatus: routed.status,
+    fulfillmentType: routed.items[0]?.fulfillmentType ?? "STANDARD_PRODUCT",
+    processRoute: routed.processRoute ?? "fulfillment",
+    processStatus: routed.processStatus ?? "not_started",
+    replenishmentStatus: routed.replenishmentStatus ?? "not_required",
+    hasCustomization: routed.hasCustomization ?? false,
+    customizationType: routed.customizationType ?? "none",
+    processRouteReason: routed.processRouteReason ?? "",
     trackingStatus: tracking?.currentStageId ?? "-",
     progress: tracking ? calculateTrackingProgress(tracking) : 0,
-    createdAt: order.createdAt,
-    wooOrderId: order.woocommerceOrderId ?? null,
+    createdAt: routed.createdAt,
+    wooOrderId: routed.wooOrderId ?? routed.woocommerceOrderId ?? null,
+    wooOrderNumber: routed.wooOrderNumber ?? null,
+    wooSyncStatus:
+      routed.wooSyncStatus ??
+      (routed.orderSyncStatus === "synced"
+        ? "synced"
+        : routed.orderSyncStatus === "failed"
+          ? "failed"
+          : "disabled"),
+    wooSyncError: routed.wooSyncError ?? null,
+    wooSyncedAt: routed.wooSyncedAt ?? null,
+  };
+}
+
+function mapProcessOrderRow(
+  processOrder: Awaited<ReturnType<typeof getProcessOrders>>[number],
+  order?: PaymentOrderRecord | null,
+  tracking?: CustomerTrackingOrder | null,
+): AdminProcessOrderRow {
+  return {
+    id: processOrder.id,
+    processOrderNumber: processOrder.processOrderNumber,
+    orderNumber: tracking?.orderNumber ?? order?.orderNumber ?? processOrder.ofissioOrderId,
+    ofissioOrderId: processOrder.ofissioOrderId,
+    wooOrderId: processOrder.wooOrderId,
+    quotationId: processOrder.quotationId,
+    companyId: processOrder.companyId,
+    companyName: tracking?.companyName ?? order?.companyId ?? processOrder.companyId,
+    processRoute: processOrder.processRoute,
+    processStatus: processOrder.processStatus,
+    replenishmentStatus: processOrder.replenishmentStatus,
+    currentStage: processOrder.currentStage,
+    progress: processOrder.progress,
+    priority: processOrder.priority,
+    deadline: processOrder.deadline,
+    assignedTeam: processOrder.assignedTeam,
+    createdAt: processOrder.createdAt,
   };
 }
 

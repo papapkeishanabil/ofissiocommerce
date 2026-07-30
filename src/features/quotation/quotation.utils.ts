@@ -61,6 +61,10 @@ export function normalizeQuotationRecord(
     rejectedAt: quotation.rejectedAt ?? null,
     convertedOrderId: quotation.convertedOrderId ?? null,
     wooOrderId: quotation.wooOrderId ?? null,
+    wooOrderNumber: quotation.wooOrderNumber ?? null,
+    wooSyncStatus: quotation.wooSyncStatus ?? (quotation.wooOrderId ? "synced" : "disabled"),
+    wooSyncError: quotation.wooSyncError ?? null,
+    wooSyncedAt: quotation.wooSyncedAt ?? null,
     totalQty: quotation.totalQty || normalizedItems.reduce((total, item) => total + item.totalQty, 0),
     embroideryPointCount:
       quotation.embroideryPointCount ||

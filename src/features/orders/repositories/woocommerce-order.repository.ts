@@ -6,6 +6,7 @@ import type {
   PaymentRecord,
 } from "@/features/payment/payment.types";
 import { woocommerceClient } from "@/features/products/woocommerce/woocommerce.client";
+import type { WooCommerceCreateOrderInput } from "@/features/products/woocommerce/woocommerce.types";
 
 export const woocommerceOrderRepository = {
   async createOrder(input: {
@@ -15,8 +16,11 @@ export const woocommerceOrderRepository = {
     picName?: string | null;
     picWhatsapp?: string | null;
     quotationId?: string | null;
+    payload?: WooCommerceCreateOrderInput;
   }) {
-    return woocommerceClient.createOrder(mapPaymentOrderToWooCommerceOrder(input));
+    return woocommerceClient.createOrder(
+      input.payload ?? mapPaymentOrderToWooCommerceOrder(input),
+    );
   },
 
   async updateOrderStatus(orderId: string | number, status: string) {

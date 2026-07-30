@@ -58,6 +58,7 @@ export interface LogoPlacement {
   logoFileId: string;
   /** Display filename for UI */
   logoFileName: string;
+  logoLabel?: string;
   /** Object URL for in-memory preview (client only, not persisted) */
   logoPreviewUrl?: string;
   widthCm: number;
@@ -69,6 +70,7 @@ export interface LogoPlacement {
   surfacePoint?: [number, number, number];
   /** Surface normal [x,y,z] at click point — logo oriented to face this */
   surfaceNormal?: [number, number, number];
+  notes?: string;
 }
 
 /** Camera presets the customer can switch between. */

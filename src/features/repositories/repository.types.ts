@@ -12,6 +12,15 @@ import type {
 } from "@/features/quotation/quotation.types";
 import type { PaymentOrderRecord, PaymentRecord, PaymentStatus } from "@/features/payment/payment.types";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
+import type {
+  ProcessOrder,
+  ProcessOrderEvent,
+  ProcessOrderItem,
+  ProcessOrderListFilter,
+  ProcessOrderPatch,
+  ProcessOrderTask,
+  ProcessTaskStatus,
+} from "@/features/process-orders/process-order.types";
 
 export type RepositoryProvider = "mock" | "supabase" | "postgres";
 
@@ -40,6 +49,37 @@ export interface OrderRepository {
   listAll?(): Promise<PaymentOrderRecord[]>;
   updateOrderAfterPayment?(
     input: { companyId: string; orderId: string; status: PaymentOrderRecord["status"] },
+  ): Promise<PaymentOrderRecord | null>;
+  updateOrderWooSync?(
+    input: {
+      companyId: string;
+      orderId: string;
+      patch: Pick<
+        PaymentOrderRecord,
+        | "wooOrderId"
+        | "wooOrderNumber"
+        | "wooSyncStatus"
+        | "wooSyncError"
+        | "wooSyncedAt"
+        | "woocommerceOrderId"
+        | "orderSyncStatus"
+      >;
+    },
+  ): Promise<PaymentOrderRecord | null>;
+  updateOrderProcess?(
+    input: {
+      companyId: string;
+      orderId: string;
+      patch: Pick<
+        PaymentOrderRecord,
+        | "processRoute"
+        | "processStatus"
+        | "replenishmentStatus"
+        | "hasCustomization"
+        | "customizationType"
+        | "processRouteReason"
+      >;
+    },
   ): Promise<PaymentOrderRecord | null>;
 }
 
@@ -121,6 +161,55 @@ export interface EmailLogRepository {
   listAll(): Promise<EmailLog[]>;
 }
 
+export interface ProcessOrderRepository {
+  createProcessOrder(input: { processOrder: ProcessOrder }): Promise<ProcessOrder>;
+  createProcessOrderItems(input: {
+    processOrderId: string;
+    items: ProcessOrderItem[];
+  }): Promise<ProcessOrderItem[]>;
+  createProcessOrderTasks(input: {
+    processOrderId: string;
+    tasks: ProcessOrderTask[];
+  }): Promise<ProcessOrderTask[]>;
+  listProcessOrders(input?: ProcessOrderListFilter): Promise<ProcessOrder[]>;
+  getProcessOrderById(input: {
+    processOrderId: string;
+    companyId?: string;
+  }): Promise<ProcessOrder | null>;
+  getProcessOrderByOrderId(input: {
+    ofissioOrderId: string;
+    companyId?: string;
+  }): Promise<ProcessOrder | null>;
+  updateProcessOrder(input: {
+    processOrderId: string;
+    companyId?: string;
+    patch: ProcessOrderPatch & {
+      progress?: number;
+      completedAt?: string | null;
+    };
+  }): Promise<ProcessOrder | null>;
+  updateTaskStatus(input: {
+    processOrderId: string;
+    taskId: string;
+    companyId?: string;
+    status: ProcessTaskStatus;
+    notes?: string | null;
+  }): Promise<ProcessOrderTask | null>;
+  addProcessOrderEvent(input: { event: ProcessOrderEvent }): Promise<ProcessOrderEvent>;
+  listProcessOrderEvents(input: {
+    processOrderId: string;
+    companyId?: string;
+  }): Promise<ProcessOrderEvent[]>;
+  listProcessOrderTasks(input: {
+    processOrderId: string;
+    companyId?: string;
+  }): Promise<ProcessOrderTask[]>;
+  listProcessOrderItems(input: {
+    processOrderId: string;
+    companyId?: string;
+  }): Promise<ProcessOrderItem[]>;
+}
+
 export interface RepositoryRegistry {
   provider: RepositoryProvider;
   company: CompanyRepository;
@@ -134,6 +223,7 @@ export interface RepositoryRegistry {
   companyLogos: CompanyLogoRepository;
   quotations: QuotationRepository;
   emailLogs: EmailLogRepository;
+  processOrders: ProcessOrderRepository;
 }
 
 export interface PersistedSizeMatrix {

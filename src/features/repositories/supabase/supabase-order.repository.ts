@@ -53,6 +53,37 @@ export const supabaseOrderRepository: OrderRepository = {
     );
     return next;
   },
+
+  async updateOrderWooSync(input) {
+    const current = await this.getOrderById(input);
+    if (!current) return null;
+    const next = { ...current, ...input.patch, updatedAt: new Date().toISOString() };
+    await getSupabaseAdminClient()?.update(
+      "orders",
+      {
+        order_json: next,
+        woo_order_id: next.wooOrderId ?? next.woocommerceOrderId ?? null,
+        updated_at: next.updatedAt,
+      },
+      { id: input.orderId, company_id: input.companyId },
+    );
+    return next;
+  },
+
+  async updateOrderProcess(input) {
+    const current = await this.getOrderById(input);
+    if (!current) return null;
+    const next = { ...current, ...input.patch, updatedAt: new Date().toISOString() };
+    await getSupabaseAdminClient()?.update(
+      "orders",
+      {
+        order_json: next,
+        updated_at: next.updatedAt,
+      },
+      { id: input.orderId, company_id: input.companyId },
+    );
+    return next;
+  },
 };
 
 function rowToOrder(row: Record<string, unknown>) {
@@ -76,8 +107,23 @@ function rowToOrder(row: Record<string, unknown>) {
       grandTotal: Number(row.grand_total ?? 0),
     },
     status: String(row.status ?? "waiting_payment") as PaymentOrderRecord["status"],
+    processRoute: row.process_route
+      ? (String(row.process_route) as PaymentOrderRecord["processRoute"])
+      : "fulfillment",
+    processStatus: row.process_status
+      ? (String(row.process_status) as PaymentOrderRecord["processStatus"])
+      : "not_started",
+    replenishmentStatus: row.replenishment_status
+      ? (String(row.replenishment_status) as PaymentOrderRecord["replenishmentStatus"])
+      : "not_required",
+    hasCustomization: Boolean(row.has_customization),
+    customizationType: row.customization_type
+      ? (String(row.customization_type) as PaymentOrderRecord["customizationType"])
+      : "none",
+    wooOrderId: row.woo_order_id ? String(row.woo_order_id) : null,
+    wooSyncStatus: row.woo_order_id ? "synced" : "disabled",
     woocommerceOrderId: row.woo_order_id ? String(row.woo_order_id) : null,
-    orderSyncStatus: "not_synced",
+    orderSyncStatus: row.woo_order_id ? "synced" : "not_synced",
     createdAt,
     updatedAt: String(row.updated_at ?? createdAt),
   } satisfies PaymentOrderRecord;

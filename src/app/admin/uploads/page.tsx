@@ -1,43 +1,54 @@
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import {
+  ADMIN_TABLE_CLASS,
+  AdminPageHeader,
+  AdminTableShell,
+} from "@/features/admin/components/AdminSurface";
 import { listAdminUploads } from "@/features/admin/admin.service";
 import { formatAdminDate, formatFileSize } from "@/features/admin/admin.utils";
 
 export default async function AdminUploadsPage() {
-  const uploads = await listAdminUploads();
+  const uploads = await listAdminUploads({}, { includeSignedUrls: true });
   return (
-    <div className="space-y-5">
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">
-          Uploads / Logos
-        </p>
-        <h2 className="mt-1 text-2xl font-black text-ink">Customer uploaded file metadata</h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Storage key dan service role tidak ditampilkan. Preview lama bisa unavailable saat storage mock restart.
-        </p>
-      </section>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Uploads / Logos"
+        title="Customer uploaded file metadata"
+        description="Provider, bucket, file type, dan status terlihat untuk operasional. Storage key dan service role tidak ditampilkan."
+      />
       {uploads.length === 0 ? (
         <AdminEmptyState title="Belum ada upload" />
       ) : (
-        <div className="overflow-x-auto rounded-3xl border border-line bg-surface shadow-soft-sm">
-          <table className="min-w-[980px] w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-ink-muted">
+        <AdminTableShell>
+          <table className={`${ADMIN_TABLE_CLASS} min-w-[1180px]`}>
+            <thead className="bg-slate-50/80">
               <tr>
                 <th className="px-4 py-3">File ID</th>
                 <th className="px-4 py-3">Company</th>
+                <th className="px-4 py-3">Provider</th>
+                <th className="px-4 py-3">Bucket</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Filename</th>
                 <th className="px-4 py-3">MIME</th>
                 <th className="px-4 py-3">Size</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Security</th>
+                <th className="px-4 py-3">View</th>
                 <th className="px-4 py-3">Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody>
               {uploads.map((file) => (
                 <tr key={file.id} className="align-top">
                   <td className="px-4 py-3 break-all font-mono text-xs font-bold text-ink">{file.id}</td>
                   <td className="px-4 py-3 break-all text-ink-muted">{file.companyId}</td>
+                  <td className="px-4 py-3">
+                    <AdminBadge tone={file.storageProvider === "supabase" ? "success" : "neutral"}>
+                      {file.storageProvider}
+                    </AdminBadge>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-ink-muted">{file.storageBucket}</td>
                   <td className="px-4 py-3">{file.fileType}</td>
                   <td className="px-4 py-3">
                     <div className="font-semibold text-ink">{file.originalFilename}</div>
@@ -46,12 +57,32 @@ export default async function AdminUploadsPage() {
                   <td className="px-4 py-3">{file.mimeType}</td>
                   <td className="px-4 py-3">{formatFileSize(file.sizeBytes)}</td>
                   <td className="px-4 py-3"><AdminBadge tone={adminStatusTone(file.status)}>{file.status}</AdminBadge></td>
+                  <td className="px-4 py-3 text-xs text-ink-muted">
+                    <div>scan: {file.scanStatus}</div>
+                    <div>sanitize: {file.sanitizedStatus}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {file.signedUrl ? (
+                      <a
+                        href={file.signedUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex min-h-9 items-center rounded-full bg-brand-700 px-3 py-1.5 text-xs font-black text-white hover:bg-brand-800"
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <span className="text-xs font-semibold text-amber-700">
+                        signed URL unavailable
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{formatAdminDate(file.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </AdminTableShell>
       )}
     </div>
   );

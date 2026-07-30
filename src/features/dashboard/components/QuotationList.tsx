@@ -68,11 +68,19 @@ export function QuotationList({ quotations }: QuotationListProps) {
             </div>
 
             <Link
-              href="/quote"
+              href={`/quotes/${quotation.id}`}
               className="mt-3 inline-flex h-9 items-center rounded-full border border-line-strong px-3 text-xs font-semibold text-ink transition hover:border-brand-700 hover:text-brand-700"
             >
-              Lihat quotation
+              {quotation.status === "sent" ? "Lihat Penawaran" : "Lihat quotation"}
             </Link>
+            {quotation.convertedOrderId ? (
+              <Link
+                href={`/orders/${quotation.convertedOrderId}`}
+                className="ml-2 mt-3 inline-flex h-9 items-center rounded-full bg-brand-700 px-3 text-xs font-semibold text-white transition hover:bg-brand-800"
+              >
+                Lihat order
+              </Link>
+            ) : null}
           </li>
         );
       })}

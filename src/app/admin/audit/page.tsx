@@ -1,27 +1,28 @@
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import {
+  ADMIN_TABLE_CLASS,
+  AdminPageHeader,
+  AdminTableShell,
+} from "@/features/admin/components/AdminSurface";
 import { listAdminAuditEvents } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
 
 export default async function AdminAuditPage() {
   const events = await listAdminAuditEvents();
   return (
-    <div className="space-y-5">
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">
-          Audit
-        </p>
-        <h2 className="mt-1 text-2xl font-black text-ink">Activity view foundation</h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Metadata diringkas dan field sensitif disaring. Audit provider penuh masuk fase hardening berikutnya.
-        </p>
-      </section>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Audit"
+        title="Activity view foundation"
+        description="Metadata diringkas dan field sensitif disaring. Audit provider penuh masuk fase hardening berikutnya."
+      />
       {events.length === 0 ? (
         <AdminEmptyState title="Audit log belum ada" />
       ) : (
-        <div className="overflow-x-auto rounded-3xl border border-line bg-surface shadow-soft-sm">
-          <table className="min-w-[1040px] w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-ink-muted">
+        <AdminTableShell>
+          <table className={`${ADMIN_TABLE_CLASS} min-w-[1040px]`}>
+            <thead className="bg-slate-50/80">
               <tr>
                 <th className="px-4 py-3">Created</th>
                 <th className="px-4 py-3">Actor</th>
@@ -31,7 +32,7 @@ export default async function AdminAuditPage() {
                 <th className="px-4 py-3">Metadata</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody>
               {events.map((event) => (
                 <tr key={event.id} className="align-top">
                   <td className="px-4 py-3">{formatAdminDate(event.createdAt)}</td>
@@ -50,7 +51,7 @@ export default async function AdminAuditPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </AdminTableShell>
       )}
     </div>
   );

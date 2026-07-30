@@ -9,7 +9,8 @@ export type AllowedUploadKind =
   | "logo"
   | "document"
   | "spreadsheet"
-  | "model3d";
+  | "model3d"
+  | "custom";
 
 const UPLOAD_RULES: Record<
   AllowedUploadKind,
@@ -42,6 +43,11 @@ const UPLOAD_RULES: Record<
     mimeTypes: ["model/gltf-binary", "application/octet-stream"],
     maxBytes: 50 * 1024 * 1024,
   },
+  custom: {
+    extensions: [],
+    mimeTypes: [],
+    maxBytes: 0,
+  },
 };
 
 export function sanitizeFilename(filename: string) {
@@ -54,18 +60,54 @@ export function sanitizeFilename(filename: string) {
   return cleaned || "upload";
 }
 
+function safeStorageSegment(value: string) {
+  return sanitizeFilename(value).replace(/\./g, "-") || "unscoped";
+}
+
 export function generateSafeStorageKey(input: {
   companyId: string;
   kind: AllowedUploadKind;
   filename: string;
+  folder?: string;
 }) {
   const ext = extname(sanitizeFilename(input.filename)).toLowerCase();
+  const now = new Date();
+  const year = String(now.getUTCFullYear());
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
   return [
-    input.kind,
-    input.companyId,
-    new Date().toISOString().slice(0, 10),
+    safeStorageSegment(input.companyId),
+    safeStorageSegment(input.folder ?? input.kind),
+    year,
+    month,
     `${randomUUID()}${ext}`,
   ].join("/");
+}
+
+export function validateExtension(input: {
+  filename: string;
+  allowedExtensions: string[];
+}) {
+  const sanitized = sanitizeFilename(input.filename);
+  const ext = extname(sanitized).toLowerCase();
+  return {
+    ok: input.allowedExtensions.includes(ext),
+    extension: ext,
+    sanitizedFilename: sanitized,
+  };
+}
+
+export function validateMimeType(input: {
+  mimeType: string;
+  allowedMimeTypes: string[];
+}) {
+  return input.allowedMimeTypes.includes(input.mimeType);
+}
+
+export function validateFileSize(input: {
+  sizeBytes: number;
+  maxBytes: number;
+}) {
+  return input.sizeBytes > 0 && input.sizeBytes <= input.maxBytes;
 }
 
 export function validateUploadFile(input: {
@@ -75,13 +117,29 @@ export function validateUploadFile(input: {
   kind: AllowedUploadKind;
   companyId?: string | null;
   request?: Request;
+  allowedExtensions?: string[];
+  allowedMimeTypes?: string[];
+  maxBytes?: number;
+  folder?: string;
 }) {
   const rules = UPLOAD_RULES[input.kind];
+  const allowedExtensions = input.allowedExtensions ?? rules.extensions;
+  const allowedMimeTypes = input.allowedMimeTypes ?? rules.mimeTypes;
+  const maxBytes = input.maxBytes ?? rules.maxBytes;
   const sanitized = sanitizeFilename(input.fileName);
   const ext = extname(sanitized).toLowerCase();
-  const validExt = rules.extensions.includes(ext);
-  const validMime = rules.mimeTypes.includes(input.mimeType);
-  const validSize = input.sizeBytes > 0 && input.sizeBytes <= rules.maxBytes;
+  const validExt = validateExtension({
+    filename: sanitized,
+    allowedExtensions,
+  }).ok;
+  const validMime = validateMimeType({
+    mimeType: input.mimeType,
+    allowedMimeTypes,
+  });
+  const validSize = validateFileSize({
+    sizeBytes: input.sizeBytes,
+    maxBytes,
+  });
   const ok = validExt && validMime && validSize;
 
   if (!ok) {
@@ -114,6 +172,7 @@ export function validateUploadFile(input: {
           companyId: input.companyId ?? "unscoped",
           kind: input.kind,
           filename: sanitized,
+          folder: input.folder,
         })
       : null,
   };

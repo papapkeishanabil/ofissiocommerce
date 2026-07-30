@@ -118,7 +118,7 @@ export function AdminQuotationStatusActions({
 
   return (
     <section className="space-y-4">
-      <div className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <div className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <div>
           <h2 className="text-sm font-black uppercase tracking-[0.18em] text-ink">
             Quotation actions
@@ -175,7 +175,7 @@ export function AdminQuotationStatusActions({
 
       <form
         action={updatePricing}
-        className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm"
+        className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -274,7 +274,7 @@ export function AdminQuotationStatusActions({
 
       <form
         action={addInternalNote}
-        className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm"
+        className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]"
       >
         <h2 className="text-sm font-black uppercase tracking-[0.18em] text-ink">
           Add internal note

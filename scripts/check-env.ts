@@ -219,7 +219,7 @@ if (process.env.STORAGE_PROVIDER === "s3") {
   problems.push({
     level: "warning",
     message:
-      "STORAGE_PROVIDER=s3 masih boundary Phase 12; SDK/credential S3/R2 belum diaktifkan.",
+      "STORAGE_PROVIDER=s3 masih boundary future storage; SDK/credential S3/R2 belum diaktifkan.",
   });
 }
 

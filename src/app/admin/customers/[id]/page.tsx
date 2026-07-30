@@ -18,7 +18,7 @@ export default async function AdminCustomerDetailPage({ params }: PageProps) {
       <Link href="/admin/customers" className="text-sm font-bold text-brand-700">
         ← Back to customers
       </Link>
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">Customer company</p>
@@ -29,7 +29,7 @@ export default async function AdminCustomerDetailPage({ params }: PageProps) {
         </div>
       </section>
       <div className="grid gap-5 xl:grid-cols-3">
-        <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+        <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
           <h3 className="font-black text-ink">Quotations</h3>
           {detail.quotations.length === 0 ? <AdminEmptyState title="Belum ada quotation" /> : (
             <div className="mt-3 space-y-2">
@@ -41,7 +41,7 @@ export default async function AdminCustomerDetailPage({ params }: PageProps) {
             </div>
           )}
         </section>
-        <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+        <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
           <h3 className="font-black text-ink">Orders</h3>
           {detail.orders.length === 0 ? <AdminEmptyState title="Belum ada order" /> : (
             <div className="mt-3 space-y-2">
@@ -53,7 +53,7 @@ export default async function AdminCustomerDetailPage({ params }: PageProps) {
             </div>
           )}
         </section>
-        <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+        <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
           <h3 className="font-black text-ink">Uploads</h3>
           {detail.uploads.length === 0 ? <AdminEmptyState title="Belum ada upload" /> : (
             <div className="mt-3 space-y-2">

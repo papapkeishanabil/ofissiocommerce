@@ -8,6 +8,7 @@ import {
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminPanel, AdminPageHeader } from "@/features/admin/components/AdminSurface";
 import { AdminSummaryCards } from "@/features/admin/components/AdminSummaryCards";
 import { getAdminSummary, listAdminOrders, listAdminQuotations } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
@@ -20,27 +21,25 @@ export default async function AdminDashboardPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <section>
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">
-          Internal workspace
-        </p>
-        <h2 className="mt-2 text-2xl font-black tracking-tight text-ink md:text-4xl">
-          Ofissio Admin Foundation
-        </h2>
-        <p className="mt-2 max-w-3xl text-sm text-ink-muted md:text-base">
-          Ruang kerja internal untuk quotation B2B, upload logo, tracking produksi,
-          order operasional, customer company, dan audit activity. Product catalog
-          tetap dikelola di WP Admin/WooCommerce.
-        </p>
-      </section>
+    <div className="space-y-7">
+      <AdminPageHeader
+        eyebrow="Internal workspace"
+        title="Ofissio Admin Foundation"
+        description="Ruang kerja internal untuk quotation B2B, upload logo, tracking produksi, order operasional, customer company, dan audit activity. Product catalog tetap dikelola di WP Admin/WooCommerce."
+      >
+        <div className="flex flex-wrap gap-2">
+          <AdminBadge tone="success">Supabase connected</AdminBadge>
+          <AdminBadge tone="brand">Process order ready</AdminBadge>
+          <AdminBadge tone="warning">WooCommerce staging optional</AdminBadge>
+        </div>
+      </AdminPageHeader>
 
       <AdminSummaryCards
         cards={[
           {
             label: "Total quotation",
             value: summary.totalQuotations,
-            helper: `${summary.quotationsUnderReview} under review`,
+            helper: `${summary.quotationsUnderReview} under review · ${summary.quotationsQuoted} quoted · ${summary.quotationsAccepted} accepted`,
             icon: <ListChecks className="h-5 w-5" aria-hidden="true" />,
           },
           {
@@ -65,14 +64,15 @@ export default async function AdminDashboardPage() {
       />
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-black text-ink">Recent quotations</h3>
-            <Link href="/admin/quotations" className="text-sm font-bold text-brand-700">
+        <AdminPanel
+          title="Recent quotations"
+          actions={
+            <Link href="/admin/quotations" className="text-sm font-black text-brand-700">
               View all
             </Link>
-          </div>
-          <div className="mt-4 space-y-3">
+          }
+        >
+          <div className="space-y-3">
             {quotations.slice(0, 5).length === 0 ? (
               <AdminEmptyState title="Belum ada quotation" />
             ) : (
@@ -80,7 +80,7 @@ export default async function AdminDashboardPage() {
                 <Link
                   key={quotation.id}
                   href={`/admin/quotations/${quotation.id}`}
-                  className="block rounded-2xl border border-line bg-surface-muted p-4 transition hover:border-brand-200 hover:bg-brand-50"
+                  className="group block rounded-2xl border border-line/80 bg-surface-muted/70 p-4 transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 hover:shadow-soft-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-black text-ink">{quotation.quotationNumber}</span>
@@ -95,16 +95,17 @@ export default async function AdminDashboardPage() {
               ))
             )}
           </div>
-        </section>
+        </AdminPanel>
 
-        <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-black text-ink">Recent orders</h3>
-            <Link href="/admin/orders" className="text-sm font-bold text-brand-700">
+        <AdminPanel
+          title="Recent orders"
+          actions={
+            <Link href="/admin/orders" className="text-sm font-black text-brand-700">
               View all
             </Link>
-          </div>
-          <div className="mt-4 space-y-3">
+          }
+        >
+          <div className="space-y-3">
             {orders.slice(0, 5).length === 0 ? (
               <AdminEmptyState title="Belum ada order operasional" />
             ) : (
@@ -112,7 +113,7 @@ export default async function AdminDashboardPage() {
                 <Link
                   key={order.id}
                   href={`/admin/orders/${order.id}`}
-                  className="block rounded-2xl border border-line bg-surface-muted p-4 transition hover:border-brand-200 hover:bg-brand-50"
+                  className="group block rounded-2xl border border-line/80 bg-surface-muted/70 p-4 transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 hover:shadow-soft-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-black text-ink">{order.orderNumber}</span>
@@ -127,7 +128,7 @@ export default async function AdminDashboardPage() {
               ))
             )}
           </div>
-        </section>
+        </AdminPanel>
       </div>
     </div>
   );

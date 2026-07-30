@@ -21,6 +21,7 @@ export const logoPlacementSchema = z.object({
   zone: embroideryZoneSchema,
   logoFileId: z.string().min(1),
   logoFileName: z.string().min(1),
+  logoLabel: z.string().min(1).max(120).optional(),
   logoPreviewUrl: z.string().optional(),
   widthCm: z.coerce.number().min(3, "Lebar minimal 3 cm").max(12, "Lebar maksimal 12 cm"),
   heightCm: z.coerce.number().min(1, "Tinggi minimal 1 cm").max(12, "Tinggi maksimal 12 cm"),
@@ -28,6 +29,7 @@ export const logoPlacementSchema = z.object({
   technique: embroideryTechniqueSchema,
   surfacePoint: z.tuple([z.number(), z.number(), z.number()]).optional(),
   surfaceNormal: z.tuple([z.number(), z.number(), z.number()]).optional(),
+  notes: z.string().max(240).optional(),
 });
 export type LogoPlacementForm = z.infer<typeof logoPlacementSchema>;
 
@@ -49,8 +51,8 @@ export type Uniform3DConfigForm = z.infer<typeof uniform3DConfigSchema>;
 export const LOGO_UPLOAD_CONSTRAINTS = {
   // PNG (transparent bg ideal for embroidery) + JPG + SVG (sanitized server-side)
   allowedMime: ["image/png", "image/jpeg", "image/svg+xml"] as const,
-  maxBytes: 5 * 1024 * 1024, // 5 MB
-  recommended: "PNG transparan 300 DPI, max 5 MB",
+  maxBytes: 10 * 1024 * 1024, // server-side Phase 12 default
+  recommended: "PNG transparan 300 DPI, max 10 MB",
 } as const;
 
 export function validateLogoFile(file: File): { ok: boolean; reason?: string } {

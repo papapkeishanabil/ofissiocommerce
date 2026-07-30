@@ -20,5 +20,7 @@ export interface CommerceSyncResult {
   skipped: boolean;
   provider: "woocommerce" | "mock";
   externalOrderId?: string | null;
+  externalOrderNumber?: string | null;
+  syncStatus?: "disabled" | "pending" | "synced" | "failed";
   message: string;
 }

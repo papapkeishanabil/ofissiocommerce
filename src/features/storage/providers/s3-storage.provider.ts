@@ -13,4 +13,6 @@ export const s3StorageProvider: StorageObjectProvider = {
   uploadObject: unavailable,
   getSignedUrl: unavailable,
   deleteObject: unavailable,
+  fileExists: unavailable,
+  getFileMetadata: unavailable,
 };

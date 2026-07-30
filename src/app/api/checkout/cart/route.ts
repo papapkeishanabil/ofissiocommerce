@@ -28,7 +28,11 @@ export async function POST(request: Request) {
     requireRole(session, "cart:write");
     requireCompanyAccess(session, parsed.companyId, request, "checkout_cart");
 
-    const cart = await syncCheckoutCart(parsed);
+    const cart = await syncCheckoutCart({
+      ...parsed,
+      companyId: session.companyId,
+      userId: session.userId,
+    });
     logAuditEvent({
       request,
       actorId: session.userId,

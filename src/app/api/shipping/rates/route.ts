@@ -31,7 +31,14 @@ export async function POST(request: Request) {
     const clientKey =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       "local";
-    const rates = await shippingService.getRates(parsed, clientKey);
+    const rates = await shippingService.getRates(
+      {
+        ...parsed,
+        companyId: session.companyId,
+        userId: session.userId,
+      },
+      clientKey,
+    );
     logAuditEvent({
       request,
       actorId: session.userId,

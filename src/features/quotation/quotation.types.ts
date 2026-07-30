@@ -1,5 +1,6 @@
 import type { ValidatedCheckoutCartItem } from "@/features/checkout/checkout-cart.types";
 import type { EmailSendResult, EmailStatus } from "@/features/email/email.types";
+import type { WooOrderSyncStatus } from "@/features/orders/order.types";
 
 export const QUOTATION_STATUSES = [
   "draft",
@@ -121,6 +122,10 @@ export interface QuotationRequestRecord {
   rejectedAt: string | null;
   convertedOrderId: string | null;
   wooOrderId: string | null;
+  wooOrderNumber?: string | null;
+  wooSyncStatus?: WooOrderSyncStatus;
+  wooSyncError?: string | null;
+  wooSyncedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit",
     "check:env": "node --experimental-strip-types scripts/check-env.ts",
     "check:supabase": "tsx scripts/check-supabase-schema.ts",
+    "check:woocommerce": "tsx scripts/check-woocommerce.ts",
+    "check:storage": "tsx scripts/check-storage.ts",
     "test:company-isolation": "tsx scripts/test-company-isolation.ts",
     "verify:supabase-persistence": "tsx scripts/verify-supabase-persistence.ts",
     "check:all": "npm run check:env && npm run typecheck && npm run lint && npm run build"

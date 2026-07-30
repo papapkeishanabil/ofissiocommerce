@@ -7,6 +7,8 @@ import { syncCheckoutCart } from "@/features/checkout/checkout-cart.service";
 import type { EmailSendResult, EmailStatus } from "@/features/email/email.types";
 import { emailService } from "@/features/email/email.service";
 import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payment.types";
+import { createWooCommerceOrderFromQuotation } from "@/features/orders/woocommerce-order-sync.service";
+import { deriveOrderProcessRouting } from "@/features/orders/order-routing.service";
 import { mapPaymentOrderToTracking } from "@/features/tracking/tracking.service";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
@@ -122,6 +124,10 @@ export async function createQuotationRequest(
     rejectedAt: null,
     convertedOrderId: null,
     wooOrderId: null,
+    wooOrderNumber: null,
+    wooSyncStatus: "disabled",
+    wooSyncError: null,
+    wooSyncedAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -518,16 +524,19 @@ export async function convertQuotationToOrder(input: {
   const orderId = `ord_${randomUUID()}`;
   const paymentId = `pay_${randomUUID()}`;
   const referenceId = `OF-QUO-${quotation.quotationNumber.split("-").slice(-1)[0]}-${randomUUID().slice(0, 6).toUpperCase()}`;
+  const orderItems = quotation.items.map((item) => ({
+    ...item.itemSnapshot,
+    priceFrom: item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom,
+    transactionMode: "quotation_converted",
+  }));
+  const processRouting = deriveOrderProcessRouting({ items: orderItems });
   const order: PaymentOrderRecord = {
     id: orderId,
+    orderNumber: referenceId,
     cartId: `quote_${quotation.id}`,
     companyId: quotation.companyId,
     userId: quotation.userId,
-    items: quotation.items.map((item) => ({
-      ...item.itemSnapshot,
-      priceFrom: item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom,
-      transactionMode: "quotation_converted",
-    })),
+    items: orderItems,
     shippingRateId: null,
     calculation: {
       itemSubtotal: safeMoney(quotation.subtotal),
@@ -537,6 +546,13 @@ export async function convertQuotationToOrder(input: {
       grandTotal: safeMoney(quotation.grandTotal),
     },
     status: "waiting_payment",
+    quotationId: quotation.id,
+    ...processRouting,
+    wooOrderId: null,
+    wooOrderNumber: null,
+    wooSyncStatus: "disabled",
+    wooSyncError: null,
+    wooSyncedAt: null,
     woocommerceOrderId: null,
     orderSyncStatus: "not_synced",
     createdAt: now,
@@ -613,15 +629,42 @@ export async function convertQuotationToOrder(input: {
     ],
   };
   await repositoryRegistry.tracking.upsertTrackingOrder?.(preparedTracking);
+  const wooSync = await createWooCommerceOrderFromQuotation({
+    quotation,
+    order,
+    payment,
+    actorId: input.actorId,
+    actorType: "internal",
+    request: input.request,
+  });
   const updated = await quotationRepository.markConverted?.(quotation.id, orderId) ??
     await quotationRepository.update(quotation.id, {
       status: "converted_to_order",
       convertedOrderId: orderId,
-      wooOrderId: null,
+      wooOrderId: wooSync.externalOrderId ?? null,
+      wooOrderNumber: wooSync.externalOrderNumber ?? null,
+      wooSyncStatus: wooSync.syncStatus ?? (wooSync.skipped ? "disabled" : "failed"),
+      wooSyncError: wooSync.ok ? null : wooSync.message,
+      wooSyncedAt:
+        wooSync.ok && wooSync.externalOrderId ? new Date().toISOString() : null,
     });
+  const updatedWithWoo =
+    updated &&
+    (updated.wooOrderId !== (wooSync.externalOrderId ?? null) ||
+      updated.wooSyncStatus !==
+        (wooSync.syncStatus ?? (wooSync.skipped ? "disabled" : "failed")))
+      ? await quotationRepository.update(quotation.id, {
+          wooOrderId: wooSync.externalOrderId ?? null,
+          wooOrderNumber: wooSync.externalOrderNumber ?? null,
+          wooSyncStatus: wooSync.syncStatus ?? (wooSync.skipped ? "disabled" : "failed"),
+          wooSyncError: wooSync.ok ? null : wooSync.message,
+          wooSyncedAt:
+            wooSync.ok && wooSync.externalOrderId ? new Date().toISOString() : null,
+        })
+      : updated;
   if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
   await addQuotationEvent({
-    quotation: updated,
+    quotation: updatedWithWoo ?? updated,
     actorId: input.actorId,
     actorType: "internal",
     eventType: "converted_to_order",
@@ -632,8 +675,9 @@ export async function convertQuotationToOrder(input: {
       orderId,
       paymentId,
       referenceId,
-      wooOrderId: null,
-      phase: "17_convert_to_order_foundation",
+      wooOrderId: wooSync.externalOrderId ?? null,
+      wooSyncStatus: wooSync.syncStatus ?? (wooSync.skipped ? "disabled" : "failed"),
+      phase: "18_woocommerce_staging_order_sync",
     },
   });
   logAuditEvent({
@@ -647,7 +691,7 @@ export async function convertQuotationToOrder(input: {
     metadata: { orderId, paymentId, referenceId },
   });
   return {
-    quotation: normalizeQuotationRecord(updated),
+    quotation: normalizeQuotationRecord(updatedWithWoo ?? updated),
     order,
     tracking: preparedTracking,
     idempotent: false,

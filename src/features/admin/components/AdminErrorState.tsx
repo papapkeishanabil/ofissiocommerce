@@ -8,12 +8,14 @@ export function AdminErrorState({
   description?: string;
 }) {
   return (
-    <div className="rounded-3xl border border-red-100 bg-red-50 p-6 text-red-800">
+    <div className="rounded-[1.75rem] border border-red-100 bg-red-50/90 p-6 text-red-800 shadow-soft-sm">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-red-700 shadow-soft-xs">
+          <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+        </span>
         <div>
-          <h2 className="font-bold">{title}</h2>
-          <p className="mt-1 text-sm">{description}</p>
+          <h2 className="font-black">{title}</h2>
+          <p className="mt-1 text-sm leading-6">{description}</p>
         </div>
       </div>
     </div>

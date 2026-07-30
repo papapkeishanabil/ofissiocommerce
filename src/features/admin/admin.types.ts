@@ -5,15 +5,25 @@ import type {
   QuotationStatus,
 } from "@/features/quotation/quotation.types";
 import type { PaymentOrderRecord } from "@/features/payment/payment.types";
+import type {
+  OrderCustomizationType,
+  OrderProcessRoute,
+  OrderProcessStatus,
+  OrderReplenishmentStatus,
+} from "@/features/orders/order.types";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import type { UploadedFile } from "@/features/storage/storage.types";
 import type { AuditEvent } from "@/lib/security/security.types";
+import type { ProcessOrder, ProcessOrderDetail } from "@/features/process-orders/process-order.types";
 
 export type AdminPermission =
   | "admin:view"
   | "admin:quotation:view"
   | "admin:quotation:update"
   | "admin:order:view"
+  | "admin:order:update"
+  | "admin:process-order:view"
+  | "admin:process-order:update"
   | "admin:tracking:view"
   | "admin:tracking:update"
   | "admin:upload:view"
@@ -74,15 +84,51 @@ export interface AdminOrderRow {
   paymentStatus: string;
   orderStatus: PaymentOrderRecord["status"] | string;
   fulfillmentType: string;
+  processRoute: OrderProcessRoute;
+  processStatus: OrderProcessStatus;
+  replenishmentStatus: OrderReplenishmentStatus;
+  hasCustomization: boolean;
+  customizationType: OrderCustomizationType;
+  processRouteReason: string;
   trackingStatus: string;
   progress: number;
   createdAt: string;
   wooOrderId: string | null;
+  wooOrderNumber: string | null;
+  wooSyncStatus: string;
+  wooSyncError: string | null;
+  wooSyncedAt: string | null;
 }
 
 export interface AdminOrderDetail {
   order: PaymentOrderRecord;
   tracking: CustomerTrackingOrder | null;
+  processOrder: ProcessOrder | null;
+}
+
+export interface AdminProcessOrderRow {
+  id: string;
+  processOrderNumber: string;
+  orderNumber: string;
+  ofissioOrderId: string;
+  wooOrderId: string | null;
+  quotationId: string | null;
+  companyId: string;
+  companyName: string;
+  processRoute: OrderProcessRoute;
+  processStatus: OrderProcessStatus;
+  replenishmentStatus: OrderReplenishmentStatus;
+  currentStage: string;
+  progress: number;
+  priority: string;
+  deadline: string | null;
+  assignedTeam: string | null;
+  createdAt: string;
+}
+
+export interface AdminProcessOrderDetail extends ProcessOrderDetail {
+  relatedOrderNumber: string;
+  companyName: string;
 }
 
 export interface AdminUploadRow {
@@ -91,12 +137,17 @@ export interface AdminUploadRow {
   fileType: UploadedFile["fileType"];
   originalFilename: string;
   safeFilename: string;
+  storageProvider: UploadedFile["storageProvider"];
+  storageBucket: string;
   mimeType: string;
   extension: string;
   sizeBytes: number;
   status: UploadedFile["status"];
+  scanStatus: UploadedFile["scanStatus"];
+  sanitizedStatus: UploadedFile["sanitizedStatus"];
   createdAt: string;
   signedUrlAvailable: boolean;
+  signedUrl: string | null;
 }
 
 export interface AdminTrackingRow {

@@ -223,7 +223,6 @@ function buildSpecs(raw: WooCommerceProduct, material: string, leadTime: string)
   const specs = [
     { label: "Material", value: material },
     { label: "Lead time", value: leadTime },
-    { label: "Stok", value: raw.stock_status ?? "unknown" },
   ];
   return specs.filter((spec) => spec.value);
 }

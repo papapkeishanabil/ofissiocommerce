@@ -1,66 +1,68 @@
-# Supabase Storage setup
+# Supabase Storage setup — Phase 20
 
-Phase 12 belum mengaktifkan Supabase Storage live. Dokumen ini adalah checklist setup staging.
+Phase 20 mengaktifkan Supabase Storage sebagai private binary storage untuk logo, artwork, dokumen quotation, dan fondasi future GLB admin. Metadata tetap disimpan di `uploaded_files` dan `company_logos`.
 
-## Bucket yang dibutuhkan
+## Required buckets
 
 - `ofissio-logos`
 - `ofissio-artwork`
 - `ofissio-documents`
 - `ofissio-3d-models`
 
-Gunakan private bucket untuk file customer production.
+Rekomendasi:
 
-## Env
+- Buat semua bucket di atas sebagai private bucket.
+- Gunakan signed URL untuk preview/download.
+- Public bucket hanya untuk asset yang memang aman dibuka publik.
+- GLB produk customer/internal tetap private/admin-controlled.
+- `/3d/kk-006.glb` tetap local public asset untuk sekarang dan tidak dipindah pada Phase 20.
+
+## Manual setup checklist
+
+1. Buka Supabase Dashboard.
+2. Masuk ke Storage.
+3. Klik Create bucket.
+4. Buat bucket `ofissio-logos` sebagai private.
+5. Buat bucket `ofissio-artwork` sebagai private.
+6. Buat bucket `ofissio-documents` sebagai private.
+7. Buat bucket `ofissio-3d-models` sebagai private/future.
+8. Jangan upload secret ke bucket.
+9. Jangan membuat semua bucket public tanpa alasan operasional yang jelas.
+
+## Env staging/live
 
 ```bash
 STORAGE_PROVIDER=supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 STORAGE_BUCKET_LOGOS=ofissio-logos
 STORAGE_BUCKET_ARTWORK=ofissio-artwork
 STORAGE_BUCKET_DOCUMENTS=ofissio-documents
 STORAGE_BUCKET_3D=ofissio-3d-models
 STORAGE_SIGNED_URL_EXPIRES_SECONDS=3600
+MAX_LOGO_UPLOAD_MB=10
+MAX_DOCUMENT_UPLOAD_MB=20
+MAX_GLB_UPLOAD_MB=100
+```
+
+Supabase env yang dibutuhkan:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` hanya boleh server-side. Jangan pernah membuat `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`.
 
-## Signed URL plan
+## Validation
 
-- File customer private.
-- UI meminta signed URL lewat `/api/files/[id]/signed-url`.
-- API mengecek session/company scope sebelum signed URL dibuat.
-- Default expiry: 3600 detik.
+```bash
+npm run check:storage
+```
 
-## Storage/RLS policy draft
+Mode `mock` akan pass dengan pesan skipped. Mode `supabase` akan mengecek bucket required. Write test tidak dilakukan kecuali:
 
-- Metadata file ada di tabel `uploaded_files`.
-- `company_logos` merujuk ke `uploaded_files`.
-- RLS wajib filter `company_id`.
-- Storage object path wajib mengandung company id dan file type.
+```bash
+STORAGE_TEST_WRITE=true npm run check:storage
+```
 
-## Allowlist
-
-- Logo: png, jpg, jpeg, svg.
-- Dokumen: pdf, xlsx, png, jpg, jpeg.
-- Snapshot: png, jpg, jpeg.
-- Future GLB admin: glb.
-
-## TODO sebelum live
-
-- Implement SDK Supabase Storage server-side.
-- Sanitasi SVG.
-- Antivirus scan.
-- Retention policy file rejected/deleted.
-- Test restore backup metadata + object.
-
-## Cara test staging
-
-1. Set `STORAGE_PROVIDER=supabase`.
-2. Isi env Supabase.
-3. Jalankan `npm run check:env`.
-4. Upload logo kecil.
-5. Pastikan list logo muncul.
-6. Pastikan company mismatch tidak mendapat signed URL.
+Write test hanya upload file health-check kecil ke bucket logo lalu menghapusnya kembali. Jangan gunakan script ini untuk menghapus file customer.

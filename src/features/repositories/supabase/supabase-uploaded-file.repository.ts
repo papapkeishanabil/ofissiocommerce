@@ -1,15 +1,23 @@
 import "server-only";
 
+import { SupabaseDatabaseError } from "@/features/database/database.errors";
 import { getSupabaseAdminClient } from "@/features/database/supabase-admin.client";
 import type { StorageFileStatus, UploadedFileListFilter } from "@/features/storage/storage.types";
 import type { UploadedFileRepository } from "../repository.types";
-import { rowToUploadedFile, uploadedFileToRow } from "./supabase-mappers";
+import { rowToUploadedFile, uploadedFileToLegacyRow, uploadedFileToRow } from "./supabase-mappers";
 
 export const supabaseUploadedFileRepository: UploadedFileRepository = {
   async save(file) {
     const client = getRequiredClient();
-    const rows = await client.insert("uploaded_files", uploadedFileToRow(file));
-    return rowToUploadedFile(rows[0] ?? uploadedFileToRow(file));
+    try {
+      const rows = await client.insert("uploaded_files", uploadedFileToRow(file));
+      return rowToUploadedFile(rows[0] ?? uploadedFileToRow(file));
+    } catch (error) {
+      if (!isOptionalStorageColumnError(error)) throw error;
+      const legacyRow = uploadedFileToLegacyRow(file);
+      const rows = await client.insert("uploaded_files", legacyRow);
+      return rowToUploadedFile(rows[0] ?? legacyRow);
+    }
   },
 
   async getFileById(input) {
@@ -44,11 +52,17 @@ export const supabaseUploadedFileRepository: UploadedFileRepository = {
   },
 
   async update(fileId, patch) {
-    const rows = await getRequiredClient().update(
-      "uploaded_files",
-      uploadedFilePatchToRow(patch),
-      { id: fileId },
-    );
+    const client = getRequiredClient();
+    const row = uploadedFilePatchToRow(patch);
+    let rows: Record<string, unknown>[];
+    try {
+      rows = await client.update("uploaded_files", row, { id: fileId });
+    } catch (error) {
+      if (!isOptionalStorageColumnError(error)) throw error;
+      rows = await client.update("uploaded_files", removeOptionalStorageColumns(row), {
+        id: fileId,
+      });
+    }
     return rows[0] ? rowToUploadedFile(rows[0]) : null;
   },
 
@@ -64,6 +78,7 @@ function uploadedFilePatchToRow(patch: Parameters<UploadedFileRepository["update
   if (patch.fileType) row.file_type = patch.fileType;
   if (patch.originalFilename) row.original_filename = patch.originalFilename;
   if (patch.safeFilename) row.safe_filename = patch.safeFilename;
+  if (patch.storageProvider) row.storage_provider = patch.storageProvider;
   if (patch.storageBucket) row.storage_bucket = patch.storageBucket;
   if (patch.storageKey) row.storage_key = patch.storageKey;
   if (patch.mimeType) row.mime_type = patch.mimeType;
@@ -75,8 +90,30 @@ function uploadedFilePatchToRow(patch: Parameters<UploadedFileRepository["update
     row.signed_url_expires_at = patch.signedUrlExpiresAt;
   }
   if (patch.metadata) row.metadata_json = patch.metadata;
+  if (patch.checksum !== undefined) row.checksum = patch.checksum;
+  if (patch.scanStatus) row.scan_status = patch.scanStatus;
+  if (patch.sanitizedStatus) row.sanitized_status = patch.sanitizedStatus;
+  if (patch.deletedAt !== undefined) row.deleted_at = patch.deletedAt;
   row.updated_at = new Date().toISOString();
   return row;
+}
+
+function removeOptionalStorageColumns(row: Record<string, unknown>) {
+  const next = { ...row };
+  delete next.storage_provider;
+  delete next.checksum;
+  delete next.scan_status;
+  delete next.sanitized_status;
+  delete next.deleted_at;
+  return next;
+}
+
+function isOptionalStorageColumnError(error: unknown) {
+  return (
+    error instanceof SupabaseDatabaseError &&
+    error.reason === "query_error" &&
+    ["PGRST204", "42703"].includes(String(error.code))
+  );
 }
 
 function getRequiredClient() {

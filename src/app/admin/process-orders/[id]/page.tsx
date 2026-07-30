@@ -34,7 +34,7 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
         </Link>
       </div>
 
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">
@@ -79,7 +79,7 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
         tasks={tasks}
       />
 
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Task checklist</h3>
         <ol className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {tasks.map((task) => (
@@ -102,7 +102,7 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
         </ol>
       </section>
 
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Items & customization snapshot</h3>
         {items.length === 0 ? (
           <AdminEmptyState title="Item process order belum tersedia" />
@@ -132,7 +132,7 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
         )}
       </section>
 
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Event timeline</h3>
         {events.length === 0 ? (
           <AdminEmptyState title="Event belum tersedia" />
@@ -158,7 +158,7 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
         )}
       </section>
 
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Source order snapshot</h3>
         {!sourceOrder ? (
           <AdminEmptyState title="Source order tidak ditemukan" />

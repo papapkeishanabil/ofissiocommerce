@@ -2,6 +2,8 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import { repositoryRegistry } from "@/features/repositories/repository.factory";
+
 import { getClientIp } from "./rate-limit";
 import type { AuditActorType, AuditEvent } from "./security.types";
 
@@ -47,6 +49,9 @@ export function logAuditEvent(input: {
 
   state.events.unshift(event);
   state.events = state.events.slice(0, MAX_EVENTS);
+  void repositoryRegistry.auditLogs.writeAuditLog(event).catch(() => {
+    // Audit persistence must never break the user flow.
+  });
 
   if (process.env.NODE_ENV !== "production") {
     console.info("[audit]", {

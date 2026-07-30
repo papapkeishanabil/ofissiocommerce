@@ -193,7 +193,10 @@ create table if not exists company_logos (
   company_id text not null,
   file_id text not null,
   label text not null,
+  logo_type text not null default 'company_logo',
+  is_default boolean not null default false,
   status text not null default 'active' check (status in ('active', 'deleted')),
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -216,6 +219,7 @@ create table if not exists uploaded_files (
   ),
   original_filename text not null,
   safe_filename text not null,
+  storage_provider text not null default 'mock' check (storage_provider in ('mock', 'supabase', 's3')),
   storage_bucket text not null,
   storage_key text not null unique,
   mime_type text not null,
@@ -227,6 +231,10 @@ create table if not exists uploaded_files (
   public_url text,
   signed_url_expires_at timestamptz,
   metadata_json jsonb not null default '{}'::jsonb,
+  checksum text,
+  scan_status text not null default 'skipped' check (scan_status in ('pending', 'clean', 'flagged', 'skipped')),
+  sanitized_status text not null default 'not_required' check (sanitized_status in ('pending', 'sanitized', 'not_required', 'required')),
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -361,6 +369,12 @@ create index if not exists idx_shipments_order_id on shipments(order_id);
 create index if not exists idx_tracking_records_company_id on tracking_records(company_id);
 create index if not exists idx_tracking_records_order_id on tracking_records(order_id);
 create index if not exists idx_uploaded_files_company_id on uploaded_files(company_id);
+create index if not exists idx_uploaded_files_storage_provider on uploaded_files(storage_provider);
+create index if not exists idx_uploaded_files_storage_bucket on uploaded_files(storage_bucket);
+create index if not exists idx_uploaded_files_file_type on uploaded_files(file_type);
+create index if not exists idx_uploaded_files_status on uploaded_files(status);
+create index if not exists idx_uploaded_files_deleted_at on uploaded_files(deleted_at);
+create index if not exists idx_uploaded_files_created_at on uploaded_files(created_at desc);
 create index if not exists idx_uploaded_files_company_type_status_created_at
   on uploaded_files(company_id, file_type, status, created_at desc);
 create index if not exists idx_uploaded_files_storage_bucket_key

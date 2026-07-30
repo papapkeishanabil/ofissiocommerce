@@ -28,7 +28,11 @@ export async function POST(request: Request) {
     requireRole(session, "checkout:create");
     requireCompanyAccess(session, parsed.companyId, request, "payment");
 
-    const result = await createPayment(parsed);
+    const result = await createPayment({
+      ...parsed,
+      companyId: session.companyId,
+      userId: session.userId,
+    });
     logPaymentEvent({
       request,
       actorId: session.userId,

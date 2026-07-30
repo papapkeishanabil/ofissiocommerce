@@ -54,4 +54,17 @@ export const mockStorageProvider: StorageObjectProvider = {
   async deleteObject(input) {
     objects.delete(objectId(input.bucket, input.key));
   },
+
+  async fileExists(input) {
+    return objects.has(objectId(input.bucket, input.key));
+  },
+
+  async getFileMetadata(input) {
+    const object = objects.get(objectId(input.bucket, input.key));
+    return {
+      exists: Boolean(object),
+      sizeBytes: object?.data.byteLength ?? null,
+      contentType: object?.mimeType ?? null,
+    };
+  },
 };

@@ -22,14 +22,17 @@ export async function GET(request: Request, context: RouteContext) {
     const session = requireAuth(request);
     requireRole(session, "file:view");
     const { id } = await context.params;
-    const file = storageService.getFileById({
+    const file = await storageService.getFileById({
       companyId: session.companyId,
       fileId: id,
     });
     if (!file || file.status === "deleted") {
       throw createApiError("NOT_FOUND", "File tidak ditemukan.", 404);
     }
-    return NextResponse.json({ ok: true, file });
+    return NextResponse.json({
+      ok: true,
+      file: storageService.toPublicUploadedFile(file),
+    });
   } catch (error) {
     return safeErrorResponse(error, "File tidak ditemukan.", 404);
   }
@@ -54,7 +57,10 @@ export async function DELETE(request: Request, context: RouteContext) {
     if (!deleted) {
       throw createApiError("NOT_FOUND", "File tidak ditemukan.", 404);
     }
-    return NextResponse.json({ ok: true, file: deleted });
+    return NextResponse.json({
+      ok: true,
+      file: storageService.toPublicUploadedFile(deleted),
+    });
   } catch (error) {
     return safeErrorResponse(error, "File belum dapat dihapus.", 404);
   }

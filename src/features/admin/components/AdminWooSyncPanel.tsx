@@ -72,7 +72,7 @@ export function AdminWooSyncPanel({
   }
 
   return (
-    <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+    <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">
@@ -129,7 +129,7 @@ export function AdminWooSyncPanel({
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-slate-50 p-3">
+    <div className="rounded-2xl bg-slate-50/80 p-3 ring-1 ring-line/70">
       <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
         {label}
       </dt>

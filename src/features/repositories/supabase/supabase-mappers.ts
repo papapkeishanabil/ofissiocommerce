@@ -16,6 +16,7 @@ export function uploadedFileToRow(file: UploadedFile): Row {
     file_type: file.fileType,
     original_filename: file.originalFilename,
     safe_filename: file.safeFilename,
+    storage_provider: file.storageProvider,
     storage_bucket: file.storageBucket,
     storage_key: file.storageKey,
     mime_type: file.mimeType,
@@ -25,12 +26,27 @@ export function uploadedFileToRow(file: UploadedFile): Row {
     public_url: file.publicUrl,
     signed_url_expires_at: file.signedUrlExpiresAt,
     metadata_json: file.metadata,
+    checksum: file.checksum,
+    scan_status: file.scanStatus,
+    sanitized_status: file.sanitizedStatus,
+    deleted_at: file.deletedAt,
     created_at: file.createdAt,
     updated_at: file.updatedAt,
   };
 }
 
+export function uploadedFileToLegacyRow(file: UploadedFile): Row {
+  const row = uploadedFileToRow(file);
+  delete row.storage_provider;
+  delete row.checksum;
+  delete row.scan_status;
+  delete row.sanitized_status;
+  delete row.deleted_at;
+  return row;
+}
+
 export function rowToUploadedFile(row: Row): UploadedFile {
+  const metadata = objectOrEmpty(row.metadata_json);
   return {
     id: String(row.id),
     companyId: String(row.company_id),
@@ -38,6 +54,14 @@ export function rowToUploadedFile(row: Row): UploadedFile {
     fileType: row.file_type as UploadedFile["fileType"],
     originalFilename: String(row.original_filename),
     safeFilename: String(row.safe_filename),
+    storageProvider:
+      row.storage_provider === "supabase" || row.storage_provider === "s3" || row.storage_provider === "mock"
+        ? row.storage_provider
+        : metadata.activeStorageProvider === "supabase" ||
+            metadata.activeStorageProvider === "s3" ||
+            metadata.activeStorageProvider === "mock"
+          ? metadata.activeStorageProvider
+          : "mock",
     storageBucket: String(row.storage_bucket),
     storageKey: String(row.storage_key),
     mimeType: String(row.mime_type),
@@ -48,7 +72,25 @@ export function rowToUploadedFile(row: Row): UploadedFile {
     signedUrlExpiresAt: row.signed_url_expires_at
       ? String(row.signed_url_expires_at)
       : null,
-    metadata: objectOrEmpty(row.metadata_json),
+    metadata,
+    checksum: row.checksum ? String(row.checksum) : null,
+    scanStatus:
+      row.scan_status === "pending" ||
+      row.scan_status === "clean" ||
+      row.scan_status === "flagged" ||
+      row.scan_status === "skipped"
+        ? row.scan_status
+        : "skipped",
+    sanitizedStatus:
+      row.sanitized_status === "pending" ||
+      row.sanitized_status === "sanitized" ||
+      row.sanitized_status === "not_required" ||
+      row.sanitized_status === "required"
+        ? row.sanitized_status
+        : row.mime_type === "image/svg+xml"
+          ? "required"
+          : "not_required",
+    deletedAt: row.deleted_at ? String(row.deleted_at) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };

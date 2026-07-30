@@ -5,7 +5,6 @@ import {
   Building2,
   FileText,
   FolderArchive,
-  ImagePlus,
   MapPin,
   ShieldCheck,
   UserRound,
@@ -26,7 +25,14 @@ import {
   cacheClientTrackingOrders,
   getDashboardTrackingSnapshot,
 } from "@/features/tracking/tracking.service";
-import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
+import type {
+  CustomerQuotationTracking,
+  CustomerTrackingOrder,
+} from "@/features/tracking/tracking.types";
+import { CompanyLogoLibrary } from "@/features/company-assets/components/CompanyLogoLibrary";
+import { mapQuotationToTracking } from "@/features/quotation/quotation.mapper";
+import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import type { AuthSession } from "@/types/account";
 
 export function CustomerDashboard() {
   const { session, isAuthenticated, hydrated, isProfileComplete } = useAuth();
@@ -34,6 +40,9 @@ export function CustomerDashboard() {
   const cartHydrated = useCartHydrated();
   const openAuth = useUIStore((s) => s.openAuth);
   const [serverOrders, setServerOrders] = useState<CustomerTrackingOrder[]>([]);
+  const [serverQuotations, setServerQuotations] = useState<
+    CustomerQuotationTracking[]
+  >([]);
 
   const snapshot = useMemo(
     () =>
@@ -46,14 +55,23 @@ export function CustomerDashboard() {
       ),
     [serverOrders, session?.company.companyName, session?.company.id],
   );
+  const dashboardQuotations = useMemo(() => {
+    const seen = new Set<string>();
+    return [...serverQuotations, ...snapshot.quotations].filter((quotation) => {
+      if (seen.has(quotation.id)) return false;
+      seen.add(quotation.id);
+      return true;
+    });
+  }, [serverQuotations, snapshot.quotations]);
 
   useEffect(() => {
     if (!session) return;
+    const activeSession = session;
     const controller = new AbortController();
       const params = new URLSearchParams({
-        companyId: session.company.id,
-        userId: session.user.id,
-        companyName: session.company.companyName,
+        companyId: activeSession.company.id,
+        userId: activeSession.user.id,
+        companyName: activeSession.company.companyName,
       });
 
     async function loadTrackingOrders() {
@@ -75,7 +93,30 @@ export function CustomerDashboard() {
       }
     }
 
+    async function loadQuotations() {
+      try {
+        const response = await fetch(`/api/quotation?${params}`, {
+          cache: "no-store",
+          headers: authHeaders(activeSession),
+          signal: controller.signal,
+        });
+        const result = (await response.json()) as {
+          ok: boolean;
+          quotations?: QuotationRequestRecord[];
+        };
+        if (!response.ok || !result.ok) return;
+        setServerQuotations(
+          (result.quotations ?? []).map((quotation) =>
+            mapQuotationToTracking(quotation),
+          ),
+        );
+      } catch {
+        if (!controller.signal.aborted) setServerQuotations([]);
+      }
+    }
+
     void loadTrackingOrders();
+    void loadQuotations();
     return () => controller.abort();
   }, [session]);
 
@@ -138,7 +179,7 @@ export function CustomerDashboard() {
       <DashboardSummaryCards
         cartCount={cartHydrated ? cartCount : "-"}
         activeOrderCount={snapshot.activeOrders.length}
-        quotationCount={snapshot.quotations.length}
+        quotationCount={dashboardQuotations.length}
         addressCount={company.addresses.length}
       />
 
@@ -163,7 +204,7 @@ export function CustomerDashboard() {
                 Request baru
               </ButtonLink>
             </div>
-            <QuotationList quotations={snapshot.quotations} />
+            <QuotationList quotations={dashboardQuotations} />
           </section>
 
           <section id="order-history" aria-labelledby="order-history-heading">
@@ -219,11 +260,7 @@ export function CustomerDashboard() {
             </ButtonLink>
           </section>
 
-          <PlaceholderPanel
-            icon={<ImagePlus className="h-4 w-4 text-brand-700" />}
-            title="Logo library"
-            description="Placeholder penyimpanan logo perusahaan untuk order bordir berikutnya."
-          />
+          <CompanyLogoLibrary />
           <PlaceholderPanel
             icon={<FileText className="h-4 w-4 text-brand-700" />}
             title="Invoice"
@@ -277,4 +314,15 @@ function PlaceholderPanel({
       <p className="mt-2 text-xs leading-relaxed text-ink-muted">{description}</p>
     </section>
   );
+}
+
+function authHeaders(session: AuthSession): HeadersInit {
+  return {
+    "x-ofissio-company-id": session.company.id,
+    "x-ofissio-company-name": session.company.companyName,
+    "x-ofissio-user-id": session.user.id,
+    "x-ofissio-user-email": session.user.email,
+    "x-ofissio-user-name": session.user.fullName,
+    "x-ofissio-role": session.user.role,
+  };
 }

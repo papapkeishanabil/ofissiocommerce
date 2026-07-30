@@ -167,7 +167,13 @@ Jika nanti memakai Supabase Storage:
 STORAGE_PROVIDER=supabase
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` tetap hanya server-side. Bucket customer production sebaiknya private dan diakses lewat signed URL.
+Lalu jalankan:
+
+```bash
+npm run check:storage
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` tetap hanya server-side. Bucket customer production sebaiknya private dan diakses lewat signed URL. Setup bucket manual ada di `docs/supabase-storage-setup.md`.
 
 ## Email / Resend
 

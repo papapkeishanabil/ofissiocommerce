@@ -93,6 +93,22 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Replenishment warning hanya tampil di admin.
 - [ ] Customer UI tidak menampilkan “out of stock” atau “replenishment needed”.
 
+## Phase 20 Supabase Storage live flow
+
+- [ ] Jalankan `npm run check:storage`.
+- [ ] Jika `STORAGE_PROVIDER=mock`, hasil harus pass/skipped jelas.
+- [ ] Jika `STORAGE_PROVIDER=supabase`, bucket `ofissio-logos`, `ofissio-artwork`, `ofissio-documents`, dan `ofissio-3d-models` harus reachable.
+- [ ] Upload logo valid dari Logo Library.
+- [ ] Metadata `uploaded_files` tersimpan.
+- [ ] Metadata `company_logos` tersimpan.
+- [ ] Logo preview tampil via signed URL.
+- [ ] Restart dev/staging server.
+- [ ] Logo preview tetap tampil jika Supabase Storage aktif.
+- [ ] `/admin/uploads` menampilkan provider, bucket, file type, status, dan action View.
+- [ ] Invalid extension/MIME/size ditolak dengan safe error.
+- [ ] Company mismatch file detail/signed-url/delete ditolak 403/404.
+- [ ] `/3d/kk-006.glb` tetap 200 dan tidak dipindah ke Supabase Storage.
+
 ## Security smoke
 
 - [ ] Secret tidak muncul di client bundle.

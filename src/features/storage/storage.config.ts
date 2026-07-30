@@ -1,5 +1,7 @@
 import "server-only";
 
+import { assertNoPublicSecretEnv } from "@/lib/security/server-only-secret";
+
 import type { StorageProvider, StorageRuntimeConfig } from "./storage.types";
 
 const DEFAULTS = {
@@ -31,10 +33,11 @@ function envNumber(name: string, fallback: number) {
 }
 
 export function getStorageRuntimeConfig(): StorageRuntimeConfig {
+  assertNoPublicSecretEnv(["NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY"]);
+
   const requestedProvider = normalizeProvider(process.env.STORAGE_PROVIDER);
   const supabaseConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() &&
       process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
   );
   const provider =

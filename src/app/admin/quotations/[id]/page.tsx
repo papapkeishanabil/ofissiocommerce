@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminQuotationStatusActions } from "@/features/admin/components/AdminQuotationStatusActions";
+import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
 import { getAdminQuotationDetail } from "@/features/admin/admin.service";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
+import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -23,7 +25,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         ← Back to quotations
       </Link>
 
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">
@@ -66,8 +68,25 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         ) : null}
       </section>
 
+      <AdminWooSyncPanel
+        entityType="quotation"
+        entityId={quotation.id}
+        wooOrderId={quotation.wooOrderId}
+        wooOrderNumber={quotation.wooOrderNumber ?? null}
+        wooSyncStatus={quotation.wooSyncStatus ?? (quotation.wooOrderId ? "synced" : "disabled")}
+        wooSyncError={quotation.wooSyncError ?? null}
+        wooSyncedAt={quotation.wooSyncedAt ?? null}
+        wooAdminUrl={getWooCommerceOrderAdminUrl(quotation.wooOrderId)}
+        canRetry={Boolean(quotation.convertedOrderId)}
+        note={
+          quotation.convertedOrderId
+            ? "Quotation converted dapat membuat/menghubungkan order WooCommerce staging."
+            : "Sync WooCommerce aktif setelah quotation dikonversi menjadi order Ofissio."
+        }
+      />
+
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+        <div className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
           <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ink">
             Final pricing
           </h3>
@@ -99,7 +118,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
           ) : null}
         </div>
 
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+        <div className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
           <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ink">
             Internal notes
           </h3>
@@ -128,7 +147,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
           <AdminEmptyState title="Item quotation belum tersedia" />
         ) : (
           quotation.items.map((item) => (
-            <article key={`${quotation.id}-${item.productId}-${item.selectedColor}`} className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+            <article key={`${quotation.id}-${item.productId}-${item.selectedColor}`} className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h4 className="text-lg font-black text-ink">{item.productName}</h4>
@@ -205,7 +224,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         )}
       </section>
 
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Quotation events</h3>
         {events.length === 0 ? (
           <p className="mt-3 text-sm text-ink-muted">

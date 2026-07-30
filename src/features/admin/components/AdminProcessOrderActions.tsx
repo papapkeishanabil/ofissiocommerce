@@ -85,7 +85,7 @@ export function AdminProcessOrderActions({
   }
 
   return (
-    <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
+    <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">

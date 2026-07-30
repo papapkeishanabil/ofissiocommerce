@@ -5,6 +5,7 @@ import type {
   PaymentRecord,
   PaymentStatus,
 } from "./payment.types";
+import { repositoryRegistry } from "@/features/repositories/repository.factory";
 
 interface PaymentStoreState {
   payments: Map<string, PaymentRecord>;
@@ -31,6 +32,12 @@ export function savePayment(
 ) {
   state.payments.set(payment.id, payment);
   state.orders.set(order.id, order);
+  void repositoryRegistry.payments.savePayment?.({ payment, order }).catch(() => {
+    // Persistence foundation must not break payment mock flow.
+  });
+  void repositoryRegistry.orders.saveOrder?.({ paymentOrder: order }).catch(() => {
+    // Persistence foundation must not break payment mock flow.
+  });
 }
 
 export function findPaymentById(paymentId: string) {
@@ -64,6 +71,14 @@ export function updatePaymentStatus(
     updatedAt: new Date().toISOString(),
   };
   state.payments.set(paymentId, updated);
+  void repositoryRegistry.payments.updatePaymentStatus?.({
+    companyId: updated.companyId,
+    paymentId,
+    status,
+    rawProviderResponse,
+  }).catch(() => {
+    // Persistence foundation must not break payment status update.
+  });
   return updated;
 }
 
@@ -75,17 +90,40 @@ export function updateOrderAfterPayment(
   if (!order) return undefined;
   const updated = { ...order, status, updatedAt: new Date().toISOString() };
   state.orders.set(orderId, updated);
+  void repositoryRegistry.orders.updateOrderAfterPayment?.({
+    companyId: updated.companyId,
+    orderId,
+    status,
+  }).catch(() => {
+    // Persistence foundation must not break payment status update.
+  });
   return updated;
 }
 
 export function updatePaymentOrderSync(
   orderId: string,
-  patch: Pick<PaymentOrderRecord, "woocommerceOrderId" | "orderSyncStatus">,
+  patch: Pick<
+    PaymentOrderRecord,
+    | "wooOrderId"
+    | "wooOrderNumber"
+    | "wooSyncStatus"
+    | "wooSyncError"
+    | "wooSyncedAt"
+    | "woocommerceOrderId"
+    | "orderSyncStatus"
+  >,
 ) {
   const order = state.orders.get(orderId);
   if (!order) return undefined;
   const updated = { ...order, ...patch, updatedAt: new Date().toISOString() };
   state.orders.set(orderId, updated);
+  void repositoryRegistry.orders.updateOrderWooSync?.({
+    companyId: updated.companyId,
+    orderId,
+    patch,
+  }).catch(() => {
+    // Persistence foundation must not break payment sync flow.
+  });
   return updated;
 }
 

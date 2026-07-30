@@ -20,8 +20,11 @@ export async function GET(request: Request) {
     const session = requireAuth(request);
     requireRole(session, "file:view");
     const query = parseQueryParams(fileListQuerySchema, request);
-    const files = storageService.getFilesByCompany(session.companyId, query);
-    return NextResponse.json({ ok: true, files });
+    const files = await storageService.getFilesByCompany(session.companyId, query);
+    return NextResponse.json({
+      ok: true,
+      files: files.map(storageService.toPublicUploadedFile),
+    });
   } catch (error) {
     return safeErrorResponse(error, "File belum dapat ditampilkan.", 400);
   }

@@ -1,4 +1,11 @@
 import type { ValidatedCheckoutCartItem } from "@/features/checkout/checkout-cart.types";
+import type {
+  OrderCustomizationType,
+  OrderProcessRoute,
+  OrderProcessStatus,
+  OrderReplenishmentStatus,
+  WooOrderSyncStatus,
+} from "@/features/orders/order.types";
 
 export type PaymentProvider = "mock" | "ipaymu";
 
@@ -57,6 +64,7 @@ export type PaymentOrderStatus =
 
 export interface PaymentOrderRecord {
   id: string;
+  orderNumber?: string | null;
   cartId: string;
   companyId: string;
   userId: string;
@@ -64,6 +72,23 @@ export interface PaymentOrderRecord {
   shippingRateId: string | null;
   calculation: PaymentCalculation;
   status: PaymentOrderStatus;
+  quotationId?: string | null;
+  processRoute?: OrderProcessRoute;
+  processStatus?: OrderProcessStatus;
+  replenishmentStatus?: OrderReplenishmentStatus;
+  hasCustomization?: boolean;
+  customizationType?: OrderCustomizationType;
+  processRouteReason?: string | null;
+  wooOrderId?: string | null;
+  wooOrderNumber?: string | null;
+  wooSyncStatus?: WooOrderSyncStatus;
+  wooSyncError?: string | null;
+  wooSyncedAt?: string | null;
+  /**
+   * Legacy aliases kept for Phase 8/17 compatibility. New code should prefer
+   * wooOrderId + wooSyncStatus, but older dashboard/admin code still reads
+   * these fields.
+   */
   woocommerceOrderId?: string | null;
   orderSyncStatus?: "not_synced" | "synced" | "failed";
   createdAt: string;

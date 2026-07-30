@@ -7,6 +7,7 @@ import {
   syncOrderToWooCommerce,
   syncPaymentStatusToWooCommerce,
 } from "@/features/commerce/commerce.service";
+import { deriveOrderProcessRouting } from "@/features/orders/order-routing.service";
 import { shippingService } from "@/features/shipping/shipping.service";
 import { upsertTrackingFromPaymentOrder } from "@/features/tracking/tracking-payment.integration";
 
@@ -85,9 +86,11 @@ export async function createPayment(
       userId: parsed.userId,
     },
   });
+  const processRouting = deriveOrderProcessRouting({ items: cart.items });
 
   const order: PaymentOrderRecord = {
     id: orderId,
+    orderNumber: referenceId,
     cartId: cart.id,
     companyId: cart.companyId,
     userId: cart.userId,
@@ -95,6 +98,13 @@ export async function createPayment(
     shippingRateId: parsed.shippingRateId,
     calculation,
     status: "waiting_payment",
+    quotationId: null,
+    ...processRouting,
+    wooOrderId: null,
+    wooOrderNumber: null,
+    wooSyncStatus: "disabled",
+    wooSyncError: null,
+    wooSyncedAt: null,
     woocommerceOrderId: null,
     orderSyncStatus: "not_synced",
     createdAt: now,
@@ -118,6 +128,12 @@ export async function createPayment(
   const sync = await syncOrderToWooCommerce({ order, payment });
   if (sync.provider === "woocommerce" && !sync.skipped) {
     updatePaymentOrderSync(order.id, {
+      wooOrderId: sync.externalOrderId ?? null,
+      wooOrderNumber: sync.externalOrderNumber ?? null,
+      wooSyncStatus: sync.syncStatus ?? (sync.ok ? "synced" : "failed"),
+      wooSyncError: sync.ok ? null : sync.message,
+      wooSyncedAt:
+        sync.ok && sync.externalOrderId ? new Date().toISOString() : null,
       woocommerceOrderId: sync.externalOrderId ?? null,
       orderSyncStatus: sync.ok ? "synced" : "failed",
     });

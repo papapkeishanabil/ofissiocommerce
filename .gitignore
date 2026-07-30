@@ -29,6 +29,7 @@ yarn-error.log*
 .pnpm-debug.log*
 debug.log
 .server-dev.log
+.server-dev-*.log
 .server-prod.log
 .server-9000.log
 .server-9000-prod.log

@@ -2,6 +2,11 @@ import Link from "next/link";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import {
+  ADMIN_TABLE_CLASS,
+  AdminPageHeader,
+  AdminTableShell,
+} from "@/features/admin/components/AdminSurface";
 import { listAdminProcessOrders } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
 import { processOrderRouteLabel } from "@/features/process-orders/process-order.config";
@@ -9,25 +14,19 @@ import { processOrderRouteLabel } from "@/features/process-orders/process-order.
 export default async function AdminProcessOrdersPage() {
   const processOrders = await listAdminProcessOrders();
   return (
-    <div className="space-y-5">
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">
-          Process orders
-        </p>
-        <h2 className="mt-1 text-2xl font-black text-ink">
-          Fulfillment, Customization & SPK foundation
-        </h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Dokumen kerja internal yang dibuat dari Sales Order/WooCommerce Order tanpa input ulang.
-        </p>
-      </section>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Process orders"
+        title="Fulfillment, Customization & SPK foundation"
+        description="Dokumen kerja internal yang dibuat dari Sales Order/WooCommerce Order tanpa input ulang. Route menentukan checklist dan progress customer-friendly."
+      />
 
       {processOrders.length === 0 ? (
         <AdminEmptyState title="Belum ada process order" />
       ) : (
-        <div className="overflow-x-auto rounded-3xl border border-line bg-surface shadow-soft-sm">
-          <table className="w-full min-w-[1180px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-ink-muted">
+        <AdminTableShell>
+          <table className={`${ADMIN_TABLE_CLASS} min-w-[1180px]`}>
+            <thead className="bg-slate-50/80">
               <tr>
                 <th className="px-4 py-3">Process Order</th>
                 <th className="px-4 py-3">Related Order</th>
@@ -43,7 +42,7 @@ export default async function AdminProcessOrdersPage() {
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody>
               {processOrders.map((processOrder) => (
                 <tr key={processOrder.id} className="align-top">
                   <td className="px-4 py-3">
@@ -95,7 +94,7 @@ export default async function AdminProcessOrdersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </AdminTableShell>
       )}
     </div>
   );

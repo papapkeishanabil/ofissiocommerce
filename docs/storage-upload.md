@@ -1,20 +1,12 @@
-# Storage upload foundation
+# Storage upload
 
-Phase 12 menambahkan storage abstraction untuk file customer seperti logo, artwork, quotation attachment, invoice, PO, snapshot 3D, dan future GLB admin.
+Phase 20 menyediakan live storage foundation untuk file customer/ofissio.
 
 ## Provider
 
-Default:
-
-```bash
-STORAGE_PROVIDER=mock
-```
-
-Provider yang disiapkan:
-
-- `mock`: aktif default, menyimpan metadata dan object bytes sementara di memory server.
-- `supabase`: boundary server-side, fallback aman ke mock jika env Supabase belum lengkap.
-- `s3`: boundary interface untuk S3-compatible/R2, belum live.
+- `mock`: default aman; object binary hanya memory server dan hilang saat restart.
+- `supabase`: live private storage via Supabase Storage server-side.
+- `s3`: boundary future, belum live.
 
 ## API
 
@@ -24,32 +16,48 @@ Provider yang disiapkan:
 - `GET /api/files/[id]/signed-url`
 - `DELETE /api/files/[id]`
 
-Semua endpoint wajib auth/session dan company-scoped. Client tidak boleh mengirim file mentah ke checkout; checkout hanya menerima `logoFileId` yang sudah tersimpan.
+Semua endpoint customer wajib auth/session, role check, rate limit, Zod validation, company scope, dan safe error response. Client tidak boleh dipercaya untuk `companyId`; scope berasal dari session/header server context.
 
-## File types
+## File type routing
 
-| File type | Bucket | Format |
+| File type | Bucket purpose | Default bucket |
 | --- | --- | --- |
-| `company_logo` | logos | png, jpg, jpeg, svg |
-| `embroidery_logo` | logos | png, jpg, jpeg, svg |
-| `artwork` | artwork | png, jpg, jpeg, svg, pdf |
-| `quotation_attachment` | documents | pdf, xlsx, png, jpg, jpeg |
-| `invoice_document` | documents | pdf, xlsx, png, jpg, jpeg |
-| `purchase_order_document` | documents | pdf, xlsx, png, jpg, jpeg |
-| `3d_snapshot` | artwork | png, jpg, jpeg |
-| `product_glb_admin_future` | 3D | glb |
+| `company_logo` | logos | `ofissio-logos` |
+| `embroidery_logo` | logos | `ofissio-logos` |
+| `artwork` | artwork | `ofissio-artwork` |
+| `quotation_attachment` | documents | `ofissio-documents` |
+| `invoice_document` | documents | `ofissio-documents` |
+| `purchase_order_document` | documents | `ofissio-documents` |
+| `3d_snapshot` | artwork | `ofissio-artwork` |
+| `product_glb_admin_future` | 3D | `ofissio-3d-models` |
 
-## Security rules
+Phase 20 tidak mengaktifkan upload GLB admin penuh dan tidak memindahkan `KK-006`.
 
-- Storage key generated server-side.
-- Storage key includes company id and file type.
-- Original filename is only metadata/display.
-- Extension, MIME, and size are allowlisted.
-- Error response is safe and does not expose stack trace.
-- Upload success/fail is audit logged.
-- SVG is marked `requiresSvgSanitization`.
-- Antivirus scan remains TODO/foundation.
+## Storage key
 
-## Mock limitation
+Storage key dibuat server-side dengan pola:
 
-Mock storage is in-memory. Uploaded files reset when the dev server restarts.
+```text
+{companyId}/{fileType}/{yyyy}/{mm}/{randomId}.{ext}
+```
+
+Original filename hanya metadata display. Storage key tidak ditampilkan ke customer UI.
+
+## Metadata
+
+Metadata utama:
+
+- `uploaded_files`
+- `company_logos` untuk logo company/embroidery
+
+Jika migration `006_storage_live.sql` sudah dijalankan, `uploaded_files.storage_provider` akan terisi `mock`/`supabase`/`s3`. Sebelum migration dijalankan, aplikasi tetap fallback ke schema lama dan menyimpan provider di metadata JSON agar tidak merusak staging.
+
+## Signed URL
+
+Preview/download memakai signed URL dari:
+
+```text
+GET /api/files/[id]/signed-url
+```
+
+API mengecek ownership company sebelum meminta provider membuat signed URL. Supabase signed URL default expired dalam 3600 detik.

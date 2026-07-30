@@ -2,28 +2,29 @@ import Link from "next/link";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import {
+  ADMIN_TABLE_CLASS,
+  AdminPageHeader,
+  AdminTableShell,
+} from "@/features/admin/components/AdminSurface";
 import { listAdminCustomers } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
 
 export default async function AdminCustomersPage() {
   const customers = await listAdminCustomers();
   return (
-    <div className="space-y-5">
-      <section className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">
-          Customers
-        </p>
-        <h2 className="mt-1 text-2xl font-black text-ink">Company operational overview</h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Menggabungkan company table dan jejak operasional quotation/order/upload.
-        </p>
-      </section>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Customers"
+        title="Company operational overview"
+        description="Menggabungkan company table dan jejak operasional quotation, order, upload, serta status customer untuk admin internal."
+      />
       {customers.length === 0 ? (
         <AdminEmptyState title="Belum ada company" />
       ) : (
-        <div className="overflow-x-auto rounded-3xl border border-line bg-surface shadow-soft-sm">
-          <table className="min-w-[920px] w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-ink-muted">
+        <AdminTableShell>
+          <table className={`${ADMIN_TABLE_CLASS} min-w-[920px]`}>
+            <thead className="bg-slate-50/80">
               <tr>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Industry</th>
@@ -36,7 +37,7 @@ export default async function AdminCustomersPage() {
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody>
               {customers.map((customer) => (
                 <tr key={customer.companyId}>
                   <td className="px-4 py-3">
@@ -55,7 +56,7 @@ export default async function AdminCustomersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </AdminTableShell>
       )}
     </div>
   );

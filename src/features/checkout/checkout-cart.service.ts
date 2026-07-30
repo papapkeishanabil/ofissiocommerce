@@ -47,7 +47,7 @@ async function validateAndPriceItem(
   if (totalQty < product.moq) {
     throw new Error(`MOQ ${product.moq} pcs belum terpenuhi.`);
   }
-  validateEmbroideryLogoFiles(companyId, input.embroideryPlacements);
+  await validateEmbroideryLogoFiles(companyId, input.embroideryPlacements);
 
   return {
     productId: product.id,
@@ -70,12 +70,12 @@ async function validateAndPriceItem(
   };
 }
 
-function validateEmbroideryLogoFiles(
+async function validateEmbroideryLogoFiles(
   companyId: string,
   placements: LogoPlacement[],
 ) {
   for (const placement of placements) {
-    const file = storageService.getFileById({
+    const file = await storageService.getFileById({
       companyId,
       fileId: placement.logoFileId,
     });
@@ -86,7 +86,7 @@ function validateEmbroideryLogoFiles(
     if (file.fileType !== "company_logo" && file.fileType !== "embroidery_logo") {
       throw new Error("File yang dipilih bukan logo bordir.");
     }
-    storageService.markFileAsUsed({ companyId, fileId: file.id });
+    await storageService.markFileAsUsed({ companyId, fileId: file.id });
   }
 }
 

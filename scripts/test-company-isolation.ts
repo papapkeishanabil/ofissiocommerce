@@ -60,6 +60,7 @@ const companyA = `${runId}_COMPANY_A`;
 const companyB = `${runId}_COMPANY_B`;
 const userA = `${runId}_USER_A`;
 const userB = `${runId}_USER_B`;
+const storageProvider = process.env.STORAGE_PROVIDER?.trim() || "mock";
 
 run().catch((error: unknown) => {
   console.error("ERROR: Company isolation smoke test gagal.");
@@ -124,7 +125,7 @@ async function run() {
     headers: headersA,
   });
   assertStatus(signed.status, 200, "Company A signed URL");
-  console.log("OK: mock signed URL works for Company A file.");
+  console.log(`OK: ${storageProvider} signed URL works for Company A file.`);
 
   const invalidUpload = await uploadInvalidFile(headersA);
   assertStatus(invalidUpload.status, 400, "Invalid file upload");
@@ -415,8 +416,8 @@ function assertSupabaseEnv() {
   if (process.env.DATABASE_PROVIDER !== "supabase") {
     throw new Error("DATABASE_PROVIDER harus supabase.");
   }
-  if (process.env.STORAGE_PROVIDER !== "mock") {
-    throw new Error("STORAGE_PROVIDER harus mock untuk Phase 15B.");
+  if (storageProvider !== "mock" && storageProvider !== "supabase") {
+    throw new Error("STORAGE_PROVIDER harus mock atau supabase.");
   }
   if (process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     throw new Error("NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY tidak boleh diset.");

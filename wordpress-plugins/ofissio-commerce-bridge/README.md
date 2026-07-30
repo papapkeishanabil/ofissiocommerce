@@ -35,3 +35,12 @@ Plugin ini masih skeleton. File ini sengaja tidak menjadi bagian dari build Next
 ```text
 GET /wp-json/ofissio/v1/health
 ```
+
+## Phase 18 next hooks
+
+Plugin ini nanti disarankan menambahkan:
+
+- badge "Ofissio-ready" di WooCommerce product list;
+- validasi publish untuk metadata GLB wajib;
+- helper field untuk zones bordir dan camera presets;
+- panel order meta yang menampilkan `ofissio_order_id`, `quotation_id`, dan status sync.

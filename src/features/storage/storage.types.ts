@@ -46,6 +46,7 @@ export interface UploadedFile {
   fileType: StorageFileType;
   originalFilename: string;
   safeFilename: string;
+  storageProvider: StorageProvider;
   storageBucket: string;
   storageKey: string;
   mimeType: string;
@@ -55,6 +56,10 @@ export interface UploadedFile {
   publicUrl: string | null;
   signedUrlExpiresAt: string | null;
   metadata: Record<string, unknown>;
+  checksum: string | null;
+  scanStatus: "pending" | "clean" | "flagged" | "skipped";
+  sanitizedStatus: "pending" | "sanitized" | "not_required" | "required";
+  deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,6 +99,11 @@ export interface StorageObjectProvider {
     expiresInSeconds: number;
   }): Promise<{ signedUrl: string; expiresAt: string }>;
   deleteObject(input: { bucket: string; key: string }): Promise<void>;
+  fileExists(input: { bucket: string; key: string }): Promise<boolean>;
+  getFileMetadata(input: {
+    bucket: string;
+    key: string;
+  }): Promise<{ exists: boolean; sizeBytes: number | null; contentType: string | null }>;
 }
 
 export interface SignedFileUrl {

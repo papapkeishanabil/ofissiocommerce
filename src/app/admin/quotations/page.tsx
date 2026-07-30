@@ -3,6 +3,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import {
+  ADMIN_TABLE_CLASS,
+  AdminPageHeader,
+  AdminTableShell,
+} from "@/features/admin/components/AdminSurface";
 import { listAdminQuotations } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
 
@@ -17,28 +22,23 @@ export default async function AdminQuotationsPage({ searchParams }: PageProps) {
   const quotations = await listAdminQuotations({ status, search });
 
   return (
-    <div className="space-y-5">
-      <section className="flex flex-col justify-between gap-4 rounded-3xl border border-line bg-surface p-5 shadow-soft-sm md:flex-row md:items-end">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">
-            Admin quotations
-          </p>
-          <h2 className="mt-1 text-2xl font-black text-ink">Request quotation B2B</h2>
-          <p className="mt-1 text-sm text-ink-muted">
-            Membaca data dari quotation repository/Supabase. Filter ini server-side ringan.
-          </p>
-        </div>
-        <form className="flex flex-col gap-2 sm:flex-row" action="/admin/quotations">
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Admin quotations"
+        title="Request quotation B2B"
+        description="Membaca data dari quotation repository/Supabase. Filter ini server-side ringan, aman untuk review sales dan convert order foundation."
+        actions={
+          <form className="flex flex-col gap-2 sm:flex-row" action="/admin/quotations">
           <input
             name="search"
             defaultValue={search}
             placeholder="Cari company / nomor"
-            className="h-10 rounded-full border border-line bg-white px-4 text-sm outline-none focus:border-brand-500"
+            className="h-11 rounded-full border border-line bg-white px-4 text-sm font-semibold outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
           />
           <select
             name="status"
             defaultValue={status ?? ""}
-            className="h-10 rounded-full border border-line bg-white px-4 text-sm outline-none focus:border-brand-500"
+            className="h-11 rounded-full border border-line bg-white px-4 text-sm font-semibold outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
           >
             <option value="">Semua status</option>
             <option value="submitted">Submitted</option>
@@ -51,14 +51,15 @@ export default async function AdminQuotationsPage({ searchParams }: PageProps) {
           </select>
           <Button type="submit" size="sm">Filter</Button>
         </form>
-      </section>
+        }
+      />
 
       {quotations.length === 0 ? (
         <AdminEmptyState title="Quotation belum ada" />
       ) : (
-        <div className="overflow-x-auto rounded-3xl border border-line bg-surface shadow-soft-sm">
-          <table className="min-w-[920px] w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-ink-muted">
+        <AdminTableShell>
+          <table className={`${ADMIN_TABLE_CLASS} min-w-[920px]`}>
+            <thead className="bg-slate-50/80">
               <tr>
                 <th className="px-4 py-3">Quotation</th>
                 <th className="px-4 py-3">Company / PIC</th>
@@ -70,7 +71,7 @@ export default async function AdminQuotationsPage({ searchParams }: PageProps) {
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody>
               {quotations.map((quotation) => (
                 <tr key={quotation.id} className="align-top">
                   <td className="px-4 py-3 font-bold text-ink">{quotation.quotationNumber}</td>
@@ -96,7 +97,7 @@ export default async function AdminQuotationsPage({ searchParams }: PageProps) {
               ))}
             </tbody>
           </table>
-        </div>
+        </AdminTableShell>
       )}
     </div>
   );
