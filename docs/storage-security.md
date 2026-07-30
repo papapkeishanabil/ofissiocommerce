@@ -2,7 +2,7 @@
 
 Phase 20 security foundation:
 
-1. Private bucket untuk logo, artwork, dokumen, dan future GLB admin.
+1. Private bucket untuk logo, artwork, dokumen PDF, dan future GLB admin.
 2. Preview/download melalui signed URL, bukan public URL permanen.
 3. Extension allowlist aktif.
 4. MIME allowlist aktif.
@@ -21,6 +21,8 @@ Phase 20 security foundation:
 14. Company logo write dibatasi ke role customer `company_admin` dan `purchasing`.
 15. Role customer `approver`, `viewer`, dan `finance` hanya dapat melihat logo/file company-scoped.
 16. Internal admin dapat melihat upload melalui route admin yang memakai internal guard, tetapi tidak dapat upload logo atas nama customer melalui endpoint customer.
+17. Dokumen PDF quotation/invoice disimpan di bucket private `ofissio-documents` dan diunduh lewat signed URL server-side.
+18. Response customer untuk dokumen PDF tidak menampilkan `storageKey`, bucket, provider internals, atau service-role data.
 
 ## Role guard logo upload
 
@@ -37,3 +39,4 @@ Phase 20 security foundation:
 - Admin upload atas nama customer belum tersedia.
 - Product GLB admin upload belum aktif.
 - Monitoring provider belum aktif.
+- PDF attachment email belum aktif; customer diarahkan ke portal/signed URL.

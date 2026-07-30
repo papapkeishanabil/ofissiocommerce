@@ -57,6 +57,9 @@ Test email dikirim ke `SALES_QUOTATION_EMAIL` dengan subject `[Ofissio Staging] 
   - `quotation_confirmation_customer` ke email customer/PIC jika ada.
 - Admin `send_quote_to_customer`:
   - `quotation_ready_customer` ke customer.
+- Jika quotation PDF Phase 22 sudah tersedia:
+  - email menyebut PDF dapat diunduh melalui portal `/quotes/[id]`;
+  - signed URL langsung tidak dikirim sebagai default agar tidak kadaluarsa di inbox.
 - Email failure tidak membatalkan quotation/order flow.
 - Customer response tidak menampilkan provider, raw error, internal notes, atau secret.
 
@@ -82,7 +85,8 @@ Restart server setelah mengubah env. Quotation tetap berjalan, email real tidak 
 
 ## Known limitation
 
-- PDF quotation belum dilampirkan.
+- PDF quotation/invoice belum dilampirkan sebagai attachment; link portal menjadi default aman.
+- Template email invoice ready baru foundation, belum live transactional penuh.
 - Attachment logo/artwork belum dikirim via email.
 - Marketing/newsletter/mass email tidak termasuk Phase 21.
 - Auth customer/admin masih mock.

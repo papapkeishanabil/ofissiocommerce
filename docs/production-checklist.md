@@ -16,7 +16,9 @@
 - [ ] Storage bucket customer private.
 - [ ] Signed URL private file berjalan.
 - [ ] Migration 006 storage live sudah direview dan dijalankan jika kolom Phase 20 dibutuhkan.
+- [ ] Migration 007 PDF documents sudah direview dan dijalankan jika quotation/invoice PDF production diaktifkan.
 - [ ] `npm run check:storage` pass untuk provider production.
+- [ ] `npm run check:documents` pass untuk provider production.
 - [ ] Bucket `ofissio-logos`, `ofissio-artwork`, `ofissio-documents`, dan `ofissio-3d-models` private/reachable.
 - [ ] Logo library tetap tampil setelah server restart dengan Supabase Storage.
 - [ ] Admin uploads tidak menampilkan storage key penuh atau service role.
@@ -76,6 +78,9 @@
 - [ ] Quotation request sales email berhasil.
 - [ ] Quotation confirmation customer email berhasil.
 - [ ] Quotation ready customer email berhasil.
+- [ ] Quotation PDF berhasil digenerate dan didownload dari portal customer.
+- [ ] Invoice PDF `invoice_ofissio_custom` berhasil digenerate dan didownload dari portal customer.
+- [ ] PDF tidak menampilkan internal notes, storage key, audit logs, margin, atau replenishment internal.
 - [ ] Email failure safe dan tidak membatalkan quotation/order flow.
 - [ ] Test tracking berhasil.
 - [ ] Test mobile berhasil.

@@ -125,6 +125,25 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Customer tidak bisa trigger `/api/quotation/email` legacy.
 - [ ] `RESEND_API_KEY` tidak muncul di client bundle.
 
+## Phase 22 PDF document flow
+
+- [ ] Jalankan manual migration `database/migrations/007_documents_pdf.sql` jika ingin menguji PDF persistence live.
+- [ ] Jalankan `npm run check:documents`.
+- [ ] Jika migration 007 belum diterapkan, hasil harus `SKIP` dengan alasan jelas.
+- [ ] Jika migration 007 sudah diterapkan, table `documents` dan kolom PDF quotation/order harus ready.
+- [ ] Admin buka `/admin/quotations/[id]` dengan status final.
+- [ ] Klik Generate PDF penawaran.
+- [ ] Dokumen muncul di bucket `ofissio-documents` dan metadata `documents`.
+- [ ] Admin download PDF penawaran.
+- [ ] Customer buka `/quotes/[id]` dan download PDF milik company sendiri.
+- [ ] Customer company lain tidak bisa download.
+- [ ] Admin buka `/admin/orders/[id]`.
+- [ ] Generate invoice dengan template `invoice_ofissio_custom`.
+- [ ] Invoice menampilkan header OFISSIO, badge payment, hero navy/kuning, amount in words, tabel item, summary, signature, dan footer.
+- [ ] Customer `/orders/[id]` dapat download invoice jika tersedia.
+- [ ] Storage key/bucket/provider internals tidak muncul di response customer.
+- [ ] Email quotation ready mengarah ke portal link PDF foundation.
+
 ## Security smoke
 
 - [ ] Secret tidak muncul di client bundle.
@@ -140,6 +159,9 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` tidak muncul di client bundle.
 - [ ] `RESEND_API_KEY` tidak muncul di client bundle.
 - [ ] `NEXT_PUBLIC_RESEND_API_KEY` tidak diset.
+- [ ] `ofissio-documents` tetap private dan PDF hanya lewat signed URL.
+- [ ] Customer tidak bisa generate PDF lewat endpoint admin.
+- [ ] Internal notes quotation/order tidak muncul di PDF customer.
 
 ## Conditional staging integrations
 

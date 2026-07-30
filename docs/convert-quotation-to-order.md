@@ -40,6 +40,15 @@ Order hasil convert muncul di:
 
 Payment dan shipping tetap foundation/mock.
 
+## Invoice PDF
+
+Setelah quotation dikonversi menjadi order, admin dapat membuat invoice PDF dari `/admin/orders/[id]`.
+
+- Template default: `invoice_ofissio_custom`.
+- Payment link/QR hanya muncul jika data payment benar-benar tersedia.
+- Jika payment masih mock, invoice menampilkan instruksi pembayaran placeholder yang aman.
+- Customer dapat download invoice dari `/orders/[id]` jika dokumen sudah tersedia dan company scope cocok.
+
 ## Idempotency
 
 Jika admin klik convert lebih dari sekali:
@@ -53,4 +62,5 @@ Jika admin klik convert lebih dari sekali:
 - Payment URL real belum dibuat.
 - Shipping provider real belum dipanggil.
 - WooCommerce order belum dibuat.
+- Invoice PDF live persistence membutuhkan migration `007_documents_pdf.sql`.
 - Production tracking update lengkap masuk fase berikutnya.
