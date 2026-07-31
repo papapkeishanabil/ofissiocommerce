@@ -23,6 +23,7 @@ WOOCOMMERCE_BASE_URL=https://staging-wordpress.example.com
 WOOCOMMERCE_CONSUMER_KEY=
 WOOCOMMERCE_CONSUMER_SECRET=
 WOOCOMMERCE_SYNC_ORDERS=true
+WOOCOMMERCE_TEST_WRITE=false
 ```
 
 `WOOCOMMERCE_CONSUMER_SECRET` wajib server-side. Jangan pernah membuat `NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET`.
@@ -31,6 +32,9 @@ WOOCOMMERCE_SYNC_ORDERS=true
 
 Order WooCommerce menerima:
 
+- status `pending` untuk unpaid dan `processing` untuk paid;
+- customer note berisi ringkasan order Ofissio;
+- billing company/name/phone jika tersedia;
 - line item produk, SKU, quantity, subtotal/total;
 - selected color;
 - size matrix JSON;
@@ -40,6 +44,7 @@ Order WooCommerce menerima:
 - `ofissio_order_id`;
 - `ofissio_order_number`;
 - `quotation_id` jika order berasal dari quotation;
+- `source=ofissio`;
 - payment provider dan payment reference;
 - fulfillment type dan transaction mode.
 - process route, process status, replenishment status, dan customization type.
@@ -91,11 +96,33 @@ Route:
 - `POST /api/admin/quotations/[id]/sync-woocommerce`
 - `GET /api/admin/woocommerce/status`
 
-Semua route memakai internal admin guard, rate limit, dan safe error response.
+Semua route memakai internal admin guard, rate limit, audit log, dan safe error response. Customer tidak boleh memanggil route sync WooCommerce.
+
+## Write smoke staging
+
+`npm run check:woocommerce` selalu menguji `/products` dan `/orders` read saat env lengkap. Script tidak membuat order kecuali:
+
+```bash
+WOOCOMMERCE_TEST_WRITE=true
+```
+
+Write smoke memakai idempotency key:
+
+- default: `ofissio-check-{host}-{YYYY-MM-DD}`;
+- override: `WOOCOMMERCE_TEST_ID`.
+
+Order smoke diberi meta:
+
+- `source=ofissio`
+- `ofissio_test=true`
+- `ofissio_test_id`
+- `ofissio_order_id`
+
+Jalankan write smoke hanya di WooCommerce staging sandbox, bukan production.
 
 ## Known limitation
 
 - Belum ada webhook WooCommerce balik ke Ofissio.
-- Belum ada write test otomatis karena membuat order staging perlu sandbox eksplisit.
+- Write test tetap opt-in eksplisit via `WOOCOMMERCE_TEST_WRITE=true`.
 - WooCommerce order number berasal dari response Woo; jika response tidak memberi `number`, Ofissio menyimpan `id`.
 - `woo_sync_logs` baru aktif setelah migration 004 dijalankan manual.
