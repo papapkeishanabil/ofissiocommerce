@@ -1,5 +1,9 @@
 import type { Product } from "@/types/product";
 import type { EmbroideryZone, CameraPreset } from "@/types/uniform-3d";
+import type {
+  ProductAttributeValue,
+  ProductTaxonomyReference,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 
 export type ProductStatus = "draft" | "published" | "archived";
 export type TransactionMode = "DIRECT_CHECKOUT" | "REQUEST_QUOTATION" | "HYBRID";
@@ -7,6 +11,7 @@ export type ProductModelSource =
   | "tripo3d"
   | "blender"
   | "manual"
+  | "supabase"
   | "woocommerce"
   | "other";
 
@@ -25,4 +30,11 @@ export interface OfissioProduct extends Product {
   supports_dtf: boolean; embroidery_zones: EmbroideryZone[]; has_3d_model: boolean;
   model_3d: Product3DModel | null; model_3d_url: string | null; model_3d_id: string | null; model_3d_version: string | null;
   camera_presets: CameraPreset[]; status: ProductStatus;
+  /** Full WooCommerce taxonomy. Legacy category/industries remain for existing UI. */
+  categories?: ProductTaxonomyReference[];
+  categorySlugs?: string[];
+  industrySlugs?: string[];
+  tags?: ProductTaxonomyReference[];
+  attributes?: ProductAttributeValue[];
+  searchableTerms?: string[];
 }

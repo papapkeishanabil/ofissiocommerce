@@ -19,6 +19,7 @@ import type {
   UploadedFile,
   UploadedFileListFilter,
   UploadFileInput,
+  UploadObjectInput,
 } from "./storage.types";
 import { mockStorageProvider } from "./providers/mock-storage.provider";
 import { s3StorageProvider } from "./providers/s3-storage.provider";
@@ -331,6 +332,36 @@ export async function markFileAsRejected(input: {
   return uploadedFileRepository.setStatus(file.id, "rejected");
 }
 
+export async function uploadManagedStorageObject(input: UploadObjectInput) {
+  return activeObjectProvider().uploadObject(input);
+}
+
+export async function getManagedStorageObjectMetadata(input: {
+  bucket: string;
+  key: string;
+}) {
+  return activeObjectProvider().getFileMetadata(input);
+}
+
+export async function getManagedStorageObjectSignedUrl(input: {
+  bucket: string;
+  key: string;
+  mimeType: string;
+}) {
+  const config = getStorageRuntimeConfig();
+  return activeObjectProvider().getSignedUrl({
+    ...input,
+    expiresInSeconds: config.signedUrlExpiresSeconds,
+  });
+}
+
+export async function deleteManagedStorageObject(input: {
+  bucket: string;
+  key: string;
+}) {
+  return activeObjectProvider().deleteObject(input);
+}
+
 export const storageService = {
   validateUploadRequest,
   uploadFile,
@@ -344,4 +375,8 @@ export const storageService = {
   toPublicUploadedFile,
   createStorageKey,
   getUploadBucketForFileType,
+  uploadManagedStorageObject,
+  getManagedStorageObjectMetadata,
+  getManagedStorageObjectSignedUrl,
+  deleteManagedStorageObject,
 };

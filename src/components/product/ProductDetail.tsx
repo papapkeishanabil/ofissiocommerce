@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatIDR } from "@/types/product";
 import type { OfissioProduct } from "@/features/products/product.types";
+import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
 import { getModel3DForProduct } from "@/data/uniform-3d";
@@ -146,13 +147,15 @@ export function ProductDetail({ product }: ProductDetailProps) {
       ]);
       if (cancelled) return;
       const { useGLTF } = await import("@react-three/drei");
-      useGLTF.preload(product3DModel.glbUrl!);
+      const resolvedUrl = await resolveProduct3DUrl(product3DModel.glbUrl!);
+      if (cancelled) return;
+      useGLTF.preload(resolvedUrl);
       // Keep the module reference alive through this task so bundlers do not
       // treat the viewer import as an unused speculative request.
       void viewerModule;
     };
 
-    const timer = window.setTimeout(() => void preload(), 80);
+    const timer = window.setTimeout(() => void preload().catch(() => undefined), 80);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);

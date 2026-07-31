@@ -67,7 +67,7 @@ export const supabaseStorageProvider: StorageObjectProvider = {
         method: "PUT",
         headers: {
           ...headers(input.mimeType),
-          "x-upsert": "false",
+          "x-upsert": input.upsert ? "true" : "false",
         },
         body: new Blob([input.data as BlobPart], { type: input.mimeType }),
       });

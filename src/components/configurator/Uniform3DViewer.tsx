@@ -17,6 +17,7 @@ import type {
   LogoPlacement,
 } from "@/types/uniform-3d";
 import { CAMERA_PRESET_VIEWS, ZONE_ANCHORS, type Model3DEntry } from "@/data/uniform-3d";
+import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { ProceduralShirt } from "./ProceduralShirt";
 
 interface Uniform3DViewerProps {
@@ -42,9 +43,42 @@ export function Uniform3DViewer({
   onSurfaceClick,
 }: Uniform3DViewerProps) {
   const view = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
-  const isGLB = !!model.glbUrl;
+  const [resolvedGlbUrl, setResolvedGlbUrl] = useState<string | null>(() =>
+    model.glbUrl?.startsWith("/api/products/woocommerce/") ? null : model.glbUrl ?? null,
+  );
+  const [resolverError, setResolverError] = useState(false);
   const controlsRef = useRef<any>(null);
   const zoomUntil = useRef(0);
+
+  useEffect(() => {
+    let active = true;
+    setResolverError(false);
+    if (!model.glbUrl) {
+      setResolvedGlbUrl(null);
+      return () => { active = false; };
+    }
+    void resolveProduct3DUrl(model.glbUrl)
+      .then((url) => {
+        if (active) setResolvedGlbUrl(url);
+      })
+      .catch(() => {
+        if (!active) return;
+        setResolverError(true);
+        onModelReady?.();
+      });
+    return () => { active = false; };
+  }, [model.glbUrl, onModelReady]);
+
+  if (resolverError) {
+    return (
+      <div className="grid h-full w-full place-items-center px-6 text-center" role="alert">
+        <div>
+          <p className="text-sm font-bold text-ink">Model 3D belum dapat dimuat</p>
+          <p className="mt-1 text-xs text-ink-muted">Muat ulang halaman atau coba beberapa saat lagi.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Canvas
@@ -81,21 +115,21 @@ export function Uniform3DViewer({
 
       <Suspense fallback={null}>
         {/* Real GLB path (Phase 8+) — guarded by glbUrl */}
-        {model.glbUrl ? (
+        {resolvedGlbUrl ? (
           <GLBModel
-            url={model.glbUrl}
+            url={resolvedGlbUrl}
             placements={placements}
             highlightZone={highlightZone}
             onModelReady={onModelReady}
             onSurfaceClick={onSurfaceClick}
           />
-        ) : (
+        ) : !model.glbUrl ? (
           <ProceduralShirt
             color={color}
             placements={placements}
             highlightZone={highlightZone}
           />
-        )}
+        ) : null}
 
       </Suspense>
 

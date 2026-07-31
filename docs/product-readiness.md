@@ -8,10 +8,10 @@ Task A2.6 menjelaskan kenapa produk yang sudah dibuat di WooCommerce belum muncu
 2. Cari produk berdasarkan nama, SKU, atau Woo Product ID pada tabel.
 3. Lihat **Status Ofissio**, **Status 3D**, dan **Yang Belum Lengkap**.
 4. Klik **Lengkapi Produk** untuk melihat semua blocking issue dan warning.
-5. Gunakan **Buka WooCommerce** untuk memperbaiki field sumber.
-6. Buka ulang detail produk agar readiness dihitung dari data terbaru.
+5. Klik **Edit/Lengkapi Produk** untuk memperbaiki data langsung di Ofissio Admin.
+6. Upload atau ganti GLB pada bagian **Model 3D GLB** lalu simpan.
 
-Upload GLB di Ofissio Admin masih disabled. Tombol tersebut baru diaktifkan pada Task A3.
+Task A3 mengaktifkan create, edit, dan upload GLB dalam satu halaman. Link WooCommerce tetap tersedia sebagai jalur inspeksi sumber.
 
 ## Field blocking
 
@@ -66,5 +66,9 @@ Jika `supports_embroidery=true` namun zona kosong, admin melihat warning kuat **
 - `GET /api/admin/products/woocommerce`
 - `GET /api/admin/products/woocommerce/[id]`
 - `GET /api/admin/products/woocommerce/[id]/readiness`
+- `POST /api/admin/products/woocommerce`
+- `PATCH /api/admin/products/woocommerce/[id]`
+- `POST /api/admin/products/woocommerce/[id]/3d-model`
+- `GET /api/admin/products/woocommerce/[id]/3d-model/status`
 
 Endpoint memakai `admin:catalog:view`, rate limit, safe error response, dan audit log. Response hanya berisi field produk yang telah dipilih; raw provider payload dan secret WooCommerce tidak diteruskan.

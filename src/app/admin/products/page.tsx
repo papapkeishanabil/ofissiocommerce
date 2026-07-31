@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, Box, ExternalLink, FileBox, Pencil } from "lucide-react";
+import { Boxes, Box, ExternalLink, FileBox, Pencil, Plus } from "lucide-react";
 
 import { requireInternalAdmin } from "@/features/admin/admin.service";
 import { AdminBadge } from "@/features/admin/components/AdminBadge";
@@ -37,6 +37,12 @@ export default async function AdminProductsPage() {
           eyebrow="Product readiness"
           title="Produk WooCommerce"
           description="Lihat semua produk dari WooCommerce, termasuk produk yang belum tampil di Ofissio, beserta field yang masih harus dilengkapi."
+          actions={
+            <Link href="/admin/products/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-brand-700 px-4 text-sm font-black text-white shadow-lg shadow-brand-900/15 transition hover:bg-brand-800">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Tambah Produk Baru
+            </Link>
+          }
         >
           <div className="flex flex-wrap gap-2 text-xs font-semibold text-ink-muted">
             <span className="rounded-full border border-line bg-white/80 px-3 py-1.5">
@@ -188,15 +194,13 @@ function ProductActions({
         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
         {product.readiness.isVisibleInOfissio ? "Edit" : "Lengkapi Produk"}
       </Link>
-      <button
-        type="button"
-        disabled
-        title="Upload GLB akan tersedia di Task A3."
-        className="inline-flex min-h-10 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-line bg-slate-100 px-3 py-2 text-xs font-black text-ink-muted opacity-70"
+      <Link
+        href={`/admin/products/woocommerce/${product.id}#model-3d`}
+        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-3 py-2 text-xs font-black text-brand-700 transition hover:bg-brand-50"
       >
         <FileBox className="h-3.5 w-3.5" aria-hidden="true" />
         Upload GLB
-      </button>
+      </Link>
       {product.wooEditUrl ? (
         <a
           href={product.wooEditUrl}

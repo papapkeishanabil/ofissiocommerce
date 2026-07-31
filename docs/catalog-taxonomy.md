@@ -1,5 +1,7 @@
 # Catalog Taxonomy Foundation
 
+Task A3 memakai category dan industry master ini sebagai pilihan multi-select di form produk. Nilai `industries` disimpan sebagai JSON array berisi slug, sedangkan category tetap memakai WooCommerce category ID.
+
 Task A2.5 memisahkan tiga konsep agar katalog dan Ofistant tidak mencampur jenis produk dengan target penggunaannya.
 
 ## Sumber data

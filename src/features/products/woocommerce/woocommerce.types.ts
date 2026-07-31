@@ -64,6 +64,26 @@ export interface WooCommerceProduct {
   meta_data?: WooCommerceMetaData[];
 }
 
+export interface WooCommerceProductWritePayload {
+  name?: string;
+  slug?: string;
+  sku?: string;
+  status?: "draft" | "publish";
+  description?: string;
+  short_description?: string;
+  regular_price?: string;
+  categories?: Array<{ id: number }>;
+  images?: Array<{ src: string }>;
+  attributes?: Array<{
+    id?: number;
+    name?: string;
+    visible?: boolean;
+    variation?: boolean;
+    options: string[];
+  }>;
+  meta_data?: WooCommerceMetaData[];
+}
+
 export interface WooCommerceListParams {
   page?: number;
   per_page?: number;

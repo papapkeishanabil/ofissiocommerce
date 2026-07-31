@@ -31,7 +31,7 @@ export function mapWooCommerceProductToOfissioProduct(
 ): OfissioProduct {
   const meta = raw.meta_data ?? [];
   const modelUrl =
-    getMetaString(meta, "model_3d_url") || resolveStorageModelUrl(meta);
+    getMetaString(meta, "model_3d_url") || resolveStorageModelUrl(raw.id, meta);
   const modelId = getMetaString(meta, "model_3d_id");
   const modelVersion = getMetaString(meta, "model_3d_version");
   const modelFilename =
@@ -133,7 +133,11 @@ export function mapWooCommerceProductToOfissioProduct(
     usage: normalizeEnum(getMetaString(meta, "usage"), ["indoor", "outdoor", "both"], "both"),
     safety_features: getMetaStringArray(meta, "safety_features"),
     supports_embroidery: getMetaBoolean(meta, "supports_embroidery", false),
-    supports_screen_printing: getMetaBoolean(meta, "supports_screen_printing", false),
+    supports_screen_printing: getMetaBoolean(
+      meta,
+      "supports_screen_printing",
+      getMetaBoolean(meta, "supports_screen_print", false),
+    ),
     supports_dtf: getMetaBoolean(meta, "supports_dtf", false),
     embroidery_zones: embroideryZones,
     has_3d_model: has3DModel,
@@ -201,23 +205,17 @@ function filenameFromUrl(value: string) {
 }
 
 function resolveStorageModelUrl(
+  productId: number,
   meta: NonNullable<WooCommerceProduct["meta_data"]> = [],
 ) {
   const bucket = getMetaString(meta, "model_3d_storage_bucket");
   const key = getMetaString(meta, "model_3d_storage_key");
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/+$/, "");
-  if (!bucket || !key || !supabaseUrl) return "";
-  const encodedBucket = encodeURIComponent(bucket);
-  const encodedKey = key
-    .split("/")
-    .filter(Boolean)
-    .map(encodeURIComponent)
-    .join("/");
-  return `${supabaseUrl}/storage/v1/object/public/${encodedBucket}/${encodedKey}`;
+  if (!bucket || !key) return "";
+  return `/api/products/woocommerce/${productId}/3d-model/signed-url`;
 }
 
 function normalizeModelSource(value: string): ProductModelSource {
-  return ["tripo3d", "blender", "manual", "woocommerce", "other"].includes(value)
+  return ["tripo3d", "blender", "manual", "supabase", "woocommerce", "other"].includes(value)
     ? (value as ProductModelSource)
     : "woocommerce";
 }
@@ -241,7 +239,11 @@ function normalizeSizes(values: string[]) {
 }
 
 function normalizeEmbroideryZones(values: string[]) {
-  return values.filter((value): value is (typeof EMBROIDERY_ZONES)[number] =>
+  return [...new Set(values.map((value) => {
+    const normalized = enumLookupKey(value);
+    if (["back", "center_back", "middle_back"].includes(normalized)) return "middle_back";
+    return normalized;
+  }))].filter((value): value is (typeof EMBROIDERY_ZONES)[number] =>
     EMBROIDERY_ZONES.includes(value as never),
   );
 }
@@ -281,7 +283,10 @@ function buildSpecs(raw: WooCommerceProduct, material: string, leadTime: string)
   const specs = [
     { label: "Material", value: material },
     { label: "Lead time", value: leadTime },
-    ...(raw.attributes ?? []).flatMap((attribute) => {
+    ...(raw.attributes ?? []).filter((attribute) => {
+      const slug = (attribute.slug || attribute.name).toLowerCase().replace(/^pa_/, "");
+      return !["material", "bahan"].includes(slug);
+    }).flatMap((attribute) => {
       const value = (attribute.options ?? []).join(", ");
       return value ? [{ label: attribute.name, value }] : [];
     }),

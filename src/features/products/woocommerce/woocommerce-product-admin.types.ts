@@ -17,6 +17,7 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
   description: string;
   shortDescription: string;
   imageCount: number;
+  imageUrls: string[];
   attributes: Array<{ name: string; slug: string; options: string[] }>;
   ofissioMeta: {
     has3DModel: boolean;
@@ -32,6 +33,14 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
     fulfillmentType: string;
     transactionMode: string;
     supportsEmbroidery: boolean;
+    supportsScreenPrinting: boolean;
+    supportsDtf: boolean;
     embroideryZones: string[];
+    alwaysOrderable: boolean;
+    replenishmentPolicy: string;
+    processRoute: string;
+    gender: string;
+    sleeveType: string;
+    safetyFeatures: string[];
   };
 }

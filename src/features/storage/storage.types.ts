@@ -87,6 +87,7 @@ export interface UploadObjectInput {
   mimeType: string;
   data: Uint8Array;
   metadata?: Record<string, unknown>;
+  upsert?: boolean;
 }
 
 export interface StorageObjectProvider {

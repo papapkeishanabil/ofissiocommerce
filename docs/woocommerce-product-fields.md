@@ -38,7 +38,7 @@ Tambahkan meta/custom fields:
 Aturan GLB:
 
 - `has_3d_model` harus `true`.
-- `model_3d_url` wajib berakhiran `.glb`.
+- `model_3d_url` boleh berupa URL `.glb` legacy atau endpoint resolver signed URL internal.
 - Sebagai foundation A3, pasangan `model_3d_storage_bucket` dan `model_3d_storage_key` dengan key `.glb` juga dikenali oleh readiness checker.
 - `model_3d_filename` wajib berakhiran `.glb`.
 - `model_3d_id`, `model_3d_version`, dan `model_3d_source` wajib ada.
@@ -71,7 +71,9 @@ Nilai zona bordir yang didukung:
 - `left_sleeve`
 - `right_sleeve`
 - `upper_back`
-- `middle_back`
+- `center_back` (dinormalisasi ke zona viewer internal `middle_back`)
+
+Nilai legacy `back` dan `middle_back` tetap diterima dan dinormalisasi ke zona punggung tengah.
 
 Camera presets yang didukung:
 
@@ -163,7 +165,7 @@ Global product attributes tetap dikelola dari WooCommerce. Halaman `/admin/catal
 
 ## Upload GLB
 
-Untuk Phase 8, GLB cukup berupa URL custom field. Ke depan, upload GLB final sebaiknya dilakukan melalui bridge plugin agar admin tidak perlu edit metadata manual.
+Task A3 mengunggah GLB dari Ofissio Admin ke bucket privat Supabase. WooCommerce menyimpan bucket/key dan URL resolver, bukan signed URL permanen. Format legacy `/3d/*.glb` tetap didukung agar KK-006 tidak berubah.
 
 ## Aturan stok standar
 
@@ -178,7 +180,7 @@ Ofissio hanya menampilkan produk WooCommerce jika semua ini valid:
 - minimal satu category dipilih;
 - harga dasar lebih dari 0;
 - `has_3d_model=true`;
-- `model_3d_url` berakhiran `.glb`;
+- `model_3d_url` berupa `.glb` valid atau endpoint resolver signed URL internal;
 - `model_3d_filename` berakhiran `.glb`;
 - `model_3d_id`, `model_3d_version`, dan `model_3d_source` terisi;
 - `moq`, `lead_time`, `fulfillment_type`, `transaction_mode`, dan `industries` terisi valid;

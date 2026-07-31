@@ -14,6 +14,7 @@ import type {
   WooCommerceListParams,
   WooCommerceOrder,
   WooCommerceProduct,
+  WooCommerceProductWritePayload,
 } from "./woocommerce.types";
 import {
   allowSelfSignedTlsForWooUrl,
@@ -24,6 +25,8 @@ export const woocommerceClient = {
   getProducts,
   getProductById,
   getProductBySlug,
+  createProduct,
+  updateProduct,
   getCategories,
   createCategory,
   updateCategory,
@@ -33,6 +36,24 @@ export const woocommerceClient = {
   updateOrderStatus,
   getOrderById,
 };
+
+async function createProduct(payload: WooCommerceProductWritePayload) {
+  return wcFetch<WooCommerceProduct>("/products", undefined, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+async function updateProduct(
+  id: string | number,
+  payload: WooCommerceProductWritePayload,
+) {
+  return wcFetch<WooCommerceProduct>(
+    `/products/${encodeURIComponent(String(id))}`,
+    undefined,
+    { method: "PUT", body: JSON.stringify(payload) },
+  );
+}
 
 async function getProducts(params: WooCommerceListParams = {}) {
   return wcFetch<WooCommerceProduct[]>("/products", {

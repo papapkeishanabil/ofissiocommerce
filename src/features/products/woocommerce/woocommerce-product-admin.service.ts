@@ -1,6 +1,8 @@
 import "server-only";
 
 import { getCommerceRuntimeConfig } from "@/features/commerce/commerce.config";
+import { normalizeIndustrySlug } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
+import { logAuditEvent } from "@/lib/security/audit-log";
 
 import { woocommerceClient } from "./woocommerce.client";
 import {
@@ -15,6 +17,8 @@ import type {
   AdminWooCommerceProductDetail,
 } from "./woocommerce-product-admin.types";
 import type { WooCommerceProduct } from "./woocommerce.types";
+import type { WooCommerceMetaData, WooCommerceProductWritePayload } from "./woocommerce.types";
+import type { AdminWooProductPayload } from "./woocommerce-product-management.validation";
 
 const ADMIN_PAGE_SIZE = 100;
 const MAX_ADMIN_PAGES = 100;
@@ -45,9 +49,10 @@ export async function getAdminWooCommerceProduct(
   const meta = product.meta_data ?? [];
   return {
     ...summary,
-    description: stripHtml(product.description),
-    shortDescription: stripHtml(product.short_description),
+    description: product.description ?? "",
+    shortDescription: product.short_description ?? "",
     imageCount: product.images?.length ?? 0,
+    imageUrls: (product.images ?? []).map((image) => image.src).filter(Boolean),
     attributes: (product.attributes ?? []).map((attribute) => ({
       name: attribute.name,
       slug: attribute.slug?.replace(/^pa_/, "") ?? "",
@@ -67,9 +72,209 @@ export async function getAdminWooCommerceProduct(
       fulfillmentType: getMetaString(meta, "fulfillment_type"),
       transactionMode: getMetaString(meta, "transaction_mode"),
       supportsEmbroidery: getMetaBoolean(meta, "supports_embroidery", false),
+      supportsScreenPrinting: getMetaBoolean(
+        meta,
+        "supports_screen_printing",
+        getMetaBoolean(meta, "supports_screen_print", false),
+      ),
+      supportsDtf: getMetaBoolean(meta, "supports_dtf", false),
       embroideryZones: getMetaStringArray(meta, "embroidery_zones"),
+      alwaysOrderable: getMetaBoolean(meta, "always_orderable", true),
+      replenishmentPolicy: getMetaString(meta, "replenishment_policy") || "internal_warning_only",
+      processRoute: getMetaString(meta, "process_route") || "fulfillment",
+      gender: getMetaString(meta, "gender") || "unisex",
+      sleeveType: getMetaString(meta, "sleeve_type") || "short",
+      safetyFeatures: getMetaStringArray(meta, "safety_features"),
     },
   };
+}
+
+export async function createAdminWooCommerceProduct(input: {
+  payload: AdminWooProductPayload;
+  actorId: string;
+  request?: Request;
+}) {
+  try {
+    const created = await woocommerceClient.createProduct(
+      buildWritePayload(input.payload),
+    );
+    logProductAudit("product_created", created.id, input, {
+      status: created.status,
+      sku: created.sku,
+    });
+    logProductAudit("product_ofissio_fields_updated", created.id, input);
+    logProductAudit("product_meta_updated", created.id, input);
+    return getAdminWooCommerceProduct(created.id);
+  } catch (error) {
+    logProductAudit("product_create_failed", null, input, {
+      reason: "provider_or_validation_error",
+    });
+    throw error;
+  }
+}
+
+export async function updateAdminWooCommerceProduct(input: {
+  id: number;
+  payload: AdminWooProductPayload;
+  actorId: string;
+  request?: Request;
+}) {
+  try {
+    const current = await woocommerceClient.getProductById(input.id);
+    const updated = await woocommerceClient.updateProduct(
+      input.id,
+      buildWritePayload(input.payload, current),
+    );
+    logProductAudit("product_updated", updated.id, input, {
+      status: updated.status,
+      sku: updated.sku,
+    });
+    logProductAudit("product_ofissio_fields_updated", updated.id, input);
+    logProductAudit("product_meta_updated", updated.id, input);
+    return getAdminWooCommerceProduct(updated.id);
+  } catch (error) {
+    logProductAudit("product_update_failed", input.id, input, {
+      reason: "provider_or_validation_error",
+    });
+    logProductAudit("product_meta_update_failed", input.id, input, {
+      reason: "provider_or_validation_error",
+    });
+    throw error;
+  }
+}
+
+export async function updateAdminWooCommerceProduct3DMeta(input: {
+  id: number;
+  values: Record<string, string | boolean | number>;
+  actorId: string;
+  request?: Request;
+}) {
+  try {
+    const current = await woocommerceClient.getProductById(input.id);
+    const metaData = Object.entries(input.values).map(([key, value]) =>
+      metaEntry(current.meta_data ?? [], key, value),
+    );
+    await woocommerceClient.updateProduct(input.id, { meta_data: metaData });
+    logProductAudit("product_meta_updated", input.id, input, {
+      fields: Object.keys(input.values),
+    });
+    return getAdminWooCommerceProduct(input.id);
+  } catch (error) {
+    logProductAudit("product_meta_update_failed", input.id, input, {
+      fields: Object.keys(input.values),
+      reason: "provider_error",
+    });
+    throw error;
+  }
+}
+
+function buildWritePayload(
+  payload: AdminWooProductPayload,
+  current?: WooCommerceProduct,
+): WooCommerceProductWritePayload {
+  const meta = current?.meta_data ?? [];
+  const industries = unique(
+    payload.industries.map(normalizeIndustrySlug).filter(Boolean),
+  );
+  const entries: Array<[string, unknown]> = [
+    ["industries", JSON.stringify(industries)],
+    ["moq", payload.moq],
+    ["lead_time", `${payload.leadTimeDays} hari`],
+    ["fulfillment_type", payload.fulfillmentType],
+    ["transaction_mode", payload.transactionMode],
+    ["always_orderable", payload.alwaysOrderable],
+    ["replenishment_policy", payload.replenishmentPolicy],
+    ["process_route", payload.processRoute],
+    ["supports_embroidery", payload.supportsEmbroidery],
+    ["supports_screen_print", payload.supportsScreenPrinting],
+    ["supports_screen_printing", payload.supportsScreenPrinting],
+    ["supports_dtf", payload.supportsDtf],
+    ["embroidery_zones", JSON.stringify(unique(payload.embroideryZones))],
+    ["available_colors", JSON.stringify(unique(payload.colors))],
+    ["available_sizes", JSON.stringify(unique(payload.sizes))],
+    ["material", payload.materials[0] ?? ""],
+    ["gender", payload.gender],
+    ["sleeve_type", payload.sleeveType],
+    ["safety_features", JSON.stringify(unique(payload.safetyFeatures))],
+  ];
+
+  return {
+    name: payload.name,
+    ...(payload.slug ? { slug: payload.slug } : {}),
+    sku: payload.sku,
+    regular_price: String(payload.regularPrice),
+    status: payload.status,
+    description: payload.description,
+    short_description: payload.shortDescription,
+    categories: payload.categoryIds.map((id) => ({ id })),
+    images: payload.imageUrls.map((src) => ({ src })),
+    attributes: mergeManagedAttributes(current?.attributes ?? [], [
+      managedAttribute("Color", "color", payload.colors),
+      managedAttribute("Size", "size", payload.sizes),
+      managedAttribute("Material", "material", payload.materials),
+      managedAttribute("Gender", "gender", [payload.gender]),
+      managedAttribute("Sleeve", "sleeve", [payload.sleeveType]),
+      managedAttribute("Safety Features", "safety-features", payload.safetyFeatures),
+    ]),
+    meta_data: entries.map(([key, value]) => metaEntry(meta, key, value)),
+  };
+}
+
+function managedAttribute(name: string, slug: string, options: string[]) {
+  return { id: 0, name, slug, visible: true, variation: false, options: unique(options) };
+}
+
+function mergeManagedAttributes(
+  current: NonNullable<WooCommerceProduct["attributes"]>,
+  managed: Array<{
+    id?: number;
+    name?: string;
+    slug: string;
+    visible?: boolean;
+    variation?: boolean;
+    options: string[];
+  }>,
+) {
+  const managedSlugs = new Set(managed.map((item) => normalizeAttributeSlug(item.slug ?? item.name ?? "")));
+  const preserved = current
+    .filter((item) => !managedSlugs.has(normalizeAttributeSlug(item.slug || item.name)))
+    .map((item) => ({
+      ...(item.id ? { id: item.id } : { name: item.name }),
+      visible: item.visible ?? true,
+      variation: item.variation ?? false,
+      options: item.options ?? [],
+    }));
+  return [...preserved, ...managed.filter((item) => item.options.length > 0).map(({ slug: _slug, ...item }) => item)];
+}
+
+function normalizeAttributeSlug(value: string) {
+  return value.toLowerCase().replace(/^pa_/, "").replace(/[ _]+/g, "-");
+}
+
+function metaEntry(meta: WooCommerceMetaData[], key: string, value: unknown): WooCommerceMetaData {
+  const existing = [...meta].reverse().find((item) => item.key === key && item.id);
+  return { ...(existing?.id ? { id: existing.id } : {}), key, value };
+}
+
+function unique(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function logProductAudit(
+  action: string,
+  productId: number | null,
+  input: { actorId: string; request?: Request },
+  metadata: Record<string, unknown> = {},
+) {
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    action,
+    entityType: "product",
+    entityId: productId == null ? null : String(productId),
+    metadata,
+  });
 }
 
 function toAdminSummary(product: WooCommerceProduct): AdminWooCommerceProduct {

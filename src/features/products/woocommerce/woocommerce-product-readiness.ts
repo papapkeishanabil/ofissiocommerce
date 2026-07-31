@@ -75,6 +75,7 @@ export function normalizeWooTransactionMode(
     case "direct_checkout":
       return "DIRECT_CHECKOUT";
     case "request_quotation":
+    case "quotation":
       return "REQUEST_QUOTATION";
     case "hybrid":
       return "HYBRID";
@@ -350,10 +351,16 @@ function isRawWooCommerceProduct(
 export function isValidGlbReference(value: string) {
   if (!value.trim()) return false;
   try {
-    return new URL(value, "https://ofissio.local").pathname.toLowerCase().endsWith(".glb");
+    const pathname = new URL(value, "https://ofissio.local").pathname.toLowerCase();
+    return pathname.endsWith(".glb") || isProductModelResolverPath(pathname);
   } catch {
-    return (value.split(/[?#]/)[0] ?? "").toLowerCase().endsWith(".glb");
+    const pathname = (value.split(/[?#]/)[0] ?? "").toLowerCase();
+    return pathname.endsWith(".glb") || isProductModelResolverPath(pathname);
   }
+}
+
+function isProductModelResolverPath(pathname: string) {
+  return /^\/api\/products\/woocommerce\/\d+\/3d-model\/signed-url\/?$/.test(pathname);
 }
 
 function isLocalGlb(value: string) {
