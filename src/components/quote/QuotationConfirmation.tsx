@@ -297,6 +297,28 @@ export function QuotationConfirmation({
                     ))}
                   </ul>
                 )}
+                {item.embroideryLines.length > 0 ? (
+                  <div className="mt-3 border-t border-line pt-3">
+                    <p className="font-black text-ink">Estimasi harga bordir</p>
+                    <ul className="mt-2 space-y-1 text-ink-muted">
+                      {item.embroideryLines.map((line) => (
+                        <li key={line.zoneId} className="flex justify-between gap-3">
+                          <span>{line.label} · {line.quantity} pcs × {formatIDR(line.unitPrice)}</span>
+                          <strong className="text-ink">{formatIDR(line.subtotal)}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-3 flex justify-between gap-3 border-t border-line pt-3 text-sm">
+                      <span className="font-black text-ink">Total estimasi bordir</span>
+                      <strong className="text-brand-800">{formatIDR(item.embroideryTotal)}</strong>
+                    </div>
+                    <div className="mt-2 flex justify-between gap-3 text-xs text-ink-muted">
+                      <span>Estimasi produk + bordir</span>
+                      <strong className="text-ink">{formatIDR(item.finalEstimatedTotal)}</strong>
+                    </div>
+                  </div>
+                ) : null}
+                {item.missingEmbroideryPricingZones.length > 0 ? <p className="mt-3 text-xs font-semibold text-amber-800">Harga bordir untuk zona ini perlu dikonfirmasi admin.</p> : null}
               </div>
             </div>
           </article>

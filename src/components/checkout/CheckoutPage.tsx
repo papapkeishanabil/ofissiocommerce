@@ -64,7 +64,7 @@ export function CheckoutPage() {
   const [profileSaved, setProfileSaved] = useState(false);
 
   const clientSubtotal = useMemo(
-    () => items.reduce((a, it) => a + (it.subtotal ?? it.estimatedPrice), 0),
+    () => items.reduce((a, it) => a + (it.finalEstimatedTotal ?? it.estimatedPrice), 0),
     [items],
   );
   const subtotal = backendSubtotal ?? clientSubtotal;
@@ -351,8 +351,9 @@ export function CheckoutPage() {
                       {it.color} · {it.totalQty} pcs · {formatIDR(it.finalUnitPrice ?? it.unitPrice)}/pcs
                       {it.quantityTierApplied && it.quantityTierLabel ? ` · Tier ${it.quantityTierLabel}` : ""}
                     </p>
+                    {(it.embroideryLines?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Bordir {formatIDR(it.embroideryTotal)}</p> : null}
                   </div>
-                  <p className="text-sm font-bold">{formatIDR(it.subtotal ?? it.estimatedPrice)}</p>
+                  <p className="text-sm font-bold">{formatIDR(it.finalEstimatedTotal ?? it.estimatedPrice)}</p>
                 </li>
               ))}
             </ul>

@@ -59,6 +59,11 @@ export interface QuotationPricingInputItem {
   unitPrice: number;
   discountAmount?: number;
   finalUnitPrice?: number | null;
+  embroideryLines?: Array<{
+    zoneId: string;
+    unitPrice: number;
+    setupFee?: number;
+  }>;
 }
 
 export interface QuotationPricingInput {

@@ -24,6 +24,10 @@ import {
 import type { OfistantContext, OfistantResponse } from "./ofistant.types";
 import type { AddToCartAction } from "./ofistant.actions";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
+import {
+  calculateEmbroideryPricing,
+  embroideryZoneLabel,
+} from "@/features/products/embroidery-pricing";
 import { formatIDR } from "@/types/product";
 
 interface RuleInput {
@@ -182,6 +186,61 @@ const quantityPricing: Rule = ({
       type: "OPEN_PRODUCT_DETAIL",
       payload: { slug: product.slug, reason: "Hasil kalkulasi harga quantity" },
     },
+    quickReplies: ["Request quotation", "Lihat produk"],
+  };
+};
+
+const embroideryPricing: Rule = ({
+  text,
+  ctx,
+  taxonomy,
+  catalogSearchResult,
+}) => {
+  const detected = detectIntent(text, taxonomy);
+  if (detected.intent !== "ASK_EMBROIDERY_PRICE") return null;
+  const products = catalogSearchResult?.products ?? [];
+  const product =
+    products.find((item) => item.slug === ctx.selectedProductSlug) ?? products[0];
+  if (!product) {
+    return {
+      message: "Sebutkan produk yang ingin dihitung. Harga bordir hanya akan saya ambil dari produk aktif di katalog Ofissio.",
+      quickReplies: ["Lihat katalog", "Hubungi sales"],
+    };
+  }
+  const selectedZones = detected.requestedEmbroideryZones ?? [];
+  if (!detected.requestedQty) {
+    return {
+      message: `Sebutkan jumlah pesanan untuk menghitung bordir ${selectedZones.map(embroideryZoneLabel).join(" dan ")} pada ${product.name}. Harga final mengikuti quotation admin.`,
+      quickReplies: ["Hitung 100 pcs", "Request quotation"],
+    };
+  }
+  const embroidery = calculateEmbroideryPricing({
+    totalQty: detected.requestedQty,
+    selectedZones,
+    embroideryPricing: product.embroideryPricing,
+  });
+  if (embroidery.missingPricingZones.length > 0 || embroidery.lines.length === 0) {
+    return {
+      message: `Harga bordir untuk zona ${selectedZones.map(embroideryZoneLabel).join(" dan ")} pada ${product.name} perlu dikonfirmasi admin karena bergantung detail logo. Saya tidak akan mengarang harga bordir. Harga final mengikuti quotation admin.`,
+      action: { type: "OPEN_PRODUCT_DETAIL", payload: { slug: product.slug, reason: "Konfirmasi harga bordir" } },
+      quickReplies: ["Request quotation", "Lihat produk"],
+    };
+  }
+  const productPrice = calculateQuantityTierPrice({
+    regularPrice: product.regularPrice,
+    totalQty: detected.requestedQty,
+    quantityPricing: product.quantityPricing,
+  });
+  const lineText = embroidery.lines
+    .map((line) => `${line.label.replace("Bordir ", "")} ${formatIDR(line.unitPrice)}/pcs${line.setupFeeApplied ? ` + setup ${formatIDR(line.setupFee)}` : ""}`)
+    .join(" dan ");
+  const estimatedTotal = productPrice.subtotal + embroidery.total;
+  const tierText = productPrice.tierApplied && productPrice.tierLabel
+    ? ` masuk tier ${productPrice.tierLabel}, yaitu ${formatIDR(productPrice.unitPrice)}/pcs`
+    : ` memakai estimasi harga produk ${formatIDR(productPrice.unitPrice)}/pcs`;
+  return {
+    message: `Untuk ${product.name} ${detected.requestedQty} pcs, estimasi harga produk${tierText}. Bordir ${lineText}. Estimasi total produk + bordir ${formatIDR(estimatedTotal)}. Harga final mengikuti quotation admin.`,
+    action: { type: "OPEN_PRODUCT_DETAIL", payload: { slug: product.slug, reason: "Hasil kalkulasi harga bordir" } },
     quickReplies: ["Request quotation", "Lihat produk"],
   };
 };
@@ -555,6 +614,7 @@ export const RULES: Rule[] = [
   humanHandoff,
   greeting,
   askHelp,
+  embroideryPricing,
   quantityPricing,
   searchCatalog,
   viewCart,

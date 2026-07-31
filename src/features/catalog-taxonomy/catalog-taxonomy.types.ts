@@ -107,6 +107,7 @@ export interface CatalogSearchResult {
     industries: string[];
     regularPrice: number;
     quantityPricing?: QuantityPricing;
+    embroideryPricing?: EmbroideryPricing;
   }>;
   alternatives: {
     categories: Array<{ name: string; slug: string }>;
@@ -134,3 +135,4 @@ export interface CatalogTaxonomyRepository {
   ): Promise<IndustryMaster | null>;
 }
 import type { QuantityPricing } from "@/features/products/quantity-pricing";
+import type { EmbroideryPricing } from "@/features/products/embroidery-pricing";

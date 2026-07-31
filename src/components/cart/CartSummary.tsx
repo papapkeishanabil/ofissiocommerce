@@ -23,7 +23,7 @@ export function CartSummary({ showActions = false }: CartSummaryProps) {
   const hydrated = useCartHydrated();
 
   const totalQty = items.reduce((a, it) => a + it.totalQty, 0);
-  const subtotal = items.reduce((a, it) => a + (it.subtotal ?? it.estimatedPrice), 0);
+  const subtotal = items.reduce((a, it) => a + (it.finalEstimatedTotal ?? it.estimatedPrice), 0);
   const estimatedTax = Math.round(subtotal * 0.11); // PPN 11% dummy
   const estimatedShipping = 0; // Phase 4B
   const total = subtotal + estimatedTax + estimatedShipping;

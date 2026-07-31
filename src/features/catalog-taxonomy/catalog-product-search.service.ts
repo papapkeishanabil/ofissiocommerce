@@ -81,6 +81,7 @@ export async function searchCatalogProducts(
       industries: product.industries,
       regularPrice: product.priceFrom,
       quantityPricing: product.quantityPricing,
+      embroideryPricing: product.embroideryPricing,
     })),
     alternatives: {
       categories: publicTaxonomy.categories

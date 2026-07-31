@@ -17,6 +17,7 @@ import { validateProductForCart } from "@/features/products/product.validation";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { mapOfissioProductToCartItem } from "@/features/products/product.mapper";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
+import { calculateEmbroideryPricing } from "@/features/products/embroidery-pricing";
 
 interface CartState {
   items: CartLineItem[];
@@ -65,6 +66,11 @@ export const useCartStore = create<CartState>()(
           totalQty,
           quantityPricing: product.quantityPricing,
         });
+        const embroideryPrice = calculateEmbroideryPricing({
+          totalQty,
+          selectedZones: uniform3DConfig?.placements.map((placement) => placement.zone) ?? [],
+          embroideryPricing: product.embroideryPricing,
+        });
 
         const existing = get().items;
         const idx = existing.findIndex((it) => it.id === id);
@@ -83,12 +89,18 @@ export const useCartStore = create<CartState>()(
             totalQty: mergedQty,
             quantityPricing: product.quantityPricing ?? cur.quantityPricing,
           });
+          const effective3DConfig = uniform3DConfig ?? cur.uniform3DConfig;
+          const mergedEmbroideryPrice = calculateEmbroideryPricing({
+            totalQty: mergedQty,
+            selectedZones: effective3DConfig?.placements.map((placement) => placement.zone) ?? cur.selectedEmbroideryZones ?? [],
+            embroideryPricing: product.embroideryPricing ?? cur.embroideryPricingSnapshot,
+          });
           next[idx] = {
             ...cur,
             sizes: mergedSizes,
             totalQty: mergedQty,
             unitPrice: mergedPrice.unitPrice,
-            estimatedPrice: mergedPrice.subtotal,
+            estimatedPrice: mergedPrice.subtotal + mergedEmbroideryPrice.total,
             regularPrice: cur.regularPrice ?? product.priceFrom,
             finalUnitPrice: mergedPrice.unitPrice,
             quantityTierLabel: mergedPrice.tierLabel,
@@ -96,9 +108,17 @@ export const useCartStore = create<CartState>()(
             quantityPricingMode: product.quantityPricing?.mode ?? cur.quantityPricingMode ?? "fixed_unit_price",
             quantityTierApplied: mergedPrice.tierApplied,
             subtotal: mergedPrice.subtotal,
+            productSubtotal: mergedPrice.subtotal,
             quantityPricing: product.quantityPricing ?? cur.quantityPricing,
+            selectedEmbroideryZones: mergedEmbroideryPrice.lines.map((line) => line.zoneId).concat(mergedEmbroideryPrice.missingPricingZones),
+            embroideryPricingSnapshot: product.embroideryPricing ?? cur.embroideryPricingSnapshot,
+            embroideryLines: mergedEmbroideryPrice.lines,
+            embroideryTotal: mergedEmbroideryPrice.total,
+            missingEmbroideryPricingZones: mergedEmbroideryPrice.missingPricingZones,
+            customizationTotal: mergedEmbroideryPrice.total,
+            finalEstimatedTotal: mergedPrice.subtotal + mergedEmbroideryPrice.total,
             customization: customization ?? cur.customization,
-            uniform3DConfig: uniform3DConfig ?? cur.uniform3DConfig,
+            uniform3DConfig: effective3DConfig,
             embroideryPlacements:
               uniform3DConfig?.placements ?? cur.embroideryPlacements,
           };
@@ -117,7 +137,7 @@ export const useCartStore = create<CartState>()(
           sizes,
           totalQty,
           unitPrice: calculatedPrice.unitPrice,
-          estimatedPrice: calculatedPrice.subtotal,
+          estimatedPrice: calculatedPrice.subtotal + embroideryPrice.total,
           regularPrice: product.priceFrom,
           finalUnitPrice: calculatedPrice.unitPrice,
           quantityTierLabel: calculatedPrice.tierLabel,
@@ -125,7 +145,15 @@ export const useCartStore = create<CartState>()(
           quantityPricingMode: product.quantityPricing?.mode ?? "fixed_unit_price",
           quantityTierApplied: calculatedPrice.tierApplied,
           subtotal: calculatedPrice.subtotal,
+          productSubtotal: calculatedPrice.subtotal,
           quantityPricing: product.quantityPricing,
+          selectedEmbroideryZones: embroideryPrice.lines.map((line) => line.zoneId).concat(embroideryPrice.missingPricingZones),
+          embroideryPricingSnapshot: product.embroideryPricing,
+          embroideryLines: embroideryPrice.lines,
+          embroideryTotal: embroideryPrice.total,
+          missingEmbroideryPricingZones: embroideryPrice.missingPricingZones,
+          customizationTotal: embroideryPrice.total,
+          finalEstimatedTotal: calculatedPrice.subtotal + embroideryPrice.total,
           customization,
           uniform3DConfig: uniform3DConfig ?? undefined,
           embroideryPlacements: uniform3DConfig?.placements,
@@ -144,18 +172,30 @@ export const useCartStore = create<CartState>()(
               totalQty,
               quantityPricing: it.quantityPricing,
             });
+            const embroideryPrice = calculateEmbroideryPricing({
+              totalQty,
+              selectedZones: it.embroideryPlacements?.map((placement) => placement.zone) ?? it.selectedEmbroideryZones ?? [],
+              embroideryPricing: it.embroideryPricingSnapshot,
+            });
             return {
               ...it,
               sizes,
               totalQty,
               unitPrice: calculatedPrice.unitPrice,
-              estimatedPrice: calculatedPrice.subtotal,
+              estimatedPrice: calculatedPrice.subtotal + embroideryPrice.total,
               finalUnitPrice: calculatedPrice.unitPrice,
               quantityTierLabel: calculatedPrice.tierLabel,
               quantityTierApplied: calculatedPrice.tierApplied,
               quantityPricingBasis: it.quantityPricing?.basis ?? it.quantityPricingBasis ?? "total_order_qty",
               quantityPricingMode: it.quantityPricing?.mode ?? it.quantityPricingMode ?? "fixed_unit_price",
               subtotal: calculatedPrice.subtotal,
+              productSubtotal: calculatedPrice.subtotal,
+              selectedEmbroideryZones: embroideryPrice.lines.map((line) => line.zoneId).concat(embroideryPrice.missingPricingZones),
+              embroideryLines: embroideryPrice.lines,
+              embroideryTotal: embroideryPrice.total,
+              missingEmbroideryPricingZones: embroideryPrice.missingPricingZones,
+              customizationTotal: embroideryPrice.total,
+              finalEstimatedTotal: calculatedPrice.subtotal + embroideryPrice.total,
             };
           }),
         })),
@@ -168,7 +208,7 @@ export const useCartStore = create<CartState>()(
       totalQty: () => get().items.reduce((acc, it) => acc + it.totalQty, 0),
 
       totalEstimatedPrice: () =>
-        get().items.reduce((acc, it) => acc + it.estimatedPrice, 0),
+        get().items.reduce((acc, it) => acc + (it.finalEstimatedTotal ?? it.estimatedPrice), 0),
 
       snapshot: () => [...get().items],
     }),

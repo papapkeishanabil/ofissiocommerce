@@ -4,6 +4,11 @@ import type {
   QuantityPricingBasis,
   QuantityPricingMode,
 } from "@/features/products/quantity-pricing";
+import type {
+  EmbroideryPricing,
+  EmbroideryPricingLine,
+  EmbroideryPricingZoneId,
+} from "@/features/products/embroidery-pricing";
 
 export interface CheckoutCartItemInput {
   productId: string;
@@ -37,6 +42,14 @@ export interface ValidatedCheckoutCartItem {
   quantityPricingMode: QuantityPricingMode;
   quantityTierApplied: boolean;
   subtotal: number;
+  productSubtotal: number;
+  selectedEmbroideryZones: EmbroideryPricingZoneId[];
+  embroideryPricingSnapshot: EmbroideryPricing;
+  embroideryLines: EmbroideryPricingLine[];
+  embroideryTotal: number;
+  missingEmbroideryPricingZones: EmbroideryPricingZoneId[];
+  customizationTotal: number;
+  finalEstimatedTotal: number;
   moq: number;
   fulfillmentType: string;
   transactionMode: string;

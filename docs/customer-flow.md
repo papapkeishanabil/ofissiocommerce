@@ -68,3 +68,5 @@ Customer route utama harus tetap responsif tanpa horizontal overflow:
 - `/quote`
 - `/quotes/[id]`
 - `/orders/[id]`
+
+Pada produk yang mendukung bordir, customer melihat **Harga Bordir Estimasi** dari product meta. Setelah memilih placement pada configurator 3D, product detail dan cart menampilkan subtotal produk A5, line bordir per zona, setup fee hanya bila lebih dari nol, serta total estimasi. Zona tanpa pricing tetap dapat diajukan melalui quotation dengan pesan bahwa harga perlu dikonfirmasi admin.

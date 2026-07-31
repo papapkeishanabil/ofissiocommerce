@@ -23,7 +23,7 @@ export function normalizeQuotationRecord(
   );
   const subtotalEstimate =
     Number(quotation.subtotalEstimate) ||
-    normalizedItems.reduce((total, item) => total + item.priceFrom * item.totalQty, 0);
+    normalizedItems.reduce((total, item) => total + (item.finalLineTotal ?? item.priceFrom * item.totalQty), 0);
   const pricingSubtotal =
     quotation.subtotal == null
       ? null
@@ -91,10 +91,12 @@ export function normalizeQuotationItem(input: {
   const calculatedUnitPrice =
     item.unitPrice ?? item.finalUnitPrice ?? item.priceFrom;
   const calculatedLineSubtotal = calculatedUnitPrice * item.totalQty;
+  const embroideryLines = Array.isArray(item.embroideryLines) ? item.embroideryLines : [];
+  const embroideryTotal = item.embroideryTotal ?? embroideryLines.reduce((total, line) => total + line.subtotal, 0);
   const finalUnitPrice = item.finalUnitPrice ?? calculatedUnitPrice;
   const finalLineTotal = Math.max(
     0,
-    finalUnitPrice * item.totalQty - safeMoney(item.discountAmount),
+    finalUnitPrice * item.totalQty + embroideryTotal - safeMoney(item.discountAmount),
   );
 
   return {
@@ -103,9 +105,17 @@ export function normalizeQuotationItem(input: {
     quotationId: item.quotationId ?? input.quotationId,
     unitPrice: calculatedUnitPrice,
     lineSubtotal: item.lineSubtotal ?? calculatedLineSubtotal,
+    productSubtotal: item.productSubtotal ?? calculatedLineSubtotal,
     discountAmount: safeMoney(item.discountAmount),
     finalUnitPrice,
     finalLineTotal: item.finalLineTotal ?? finalLineTotal,
+    selectedEmbroideryZones: item.selectedEmbroideryZones ?? embroideryLines.map((line) => line.zoneId),
+    embroideryPricingSnapshot: item.embroideryPricingSnapshot ?? { enabled: false, mode: "flat_per_piece", zones: [] },
+    embroideryLines,
+    embroideryTotal,
+    missingEmbroideryPricingZones: item.missingEmbroideryPricingZones ?? [],
+    customizationTotal: item.customizationTotal ?? embroideryTotal,
+    finalEstimatedTotal: item.finalEstimatedTotal ?? calculatedLineSubtotal + embroideryTotal,
     logoFileId,
     itemSnapshot: item.itemSnapshot ?? {
       productId: item.productId,
@@ -125,6 +135,14 @@ export function normalizeQuotationItem(input: {
       quantityPricingMode: item.quantityPricingMode ?? "fixed_unit_price",
       quantityTierApplied: item.quantityTierApplied ?? false,
       subtotal: item.subtotal ?? item.priceFrom * item.totalQty,
+      productSubtotal: item.productSubtotal ?? item.subtotal ?? item.priceFrom * item.totalQty,
+      selectedEmbroideryZones: item.selectedEmbroideryZones ?? embroideryLines.map((line) => line.zoneId),
+      embroideryPricingSnapshot: item.embroideryPricingSnapshot ?? { enabled: false, mode: "flat_per_piece", zones: [] },
+      embroideryLines,
+      embroideryTotal,
+      missingEmbroideryPricingZones: item.missingEmbroideryPricingZones ?? [],
+      customizationTotal: item.customizationTotal ?? embroideryTotal,
+      finalEstimatedTotal: item.finalEstimatedTotal ?? (item.subtotal ?? item.priceFrom * item.totalQty) + embroideryTotal,
       moq: item.moq,
       fulfillmentType: item.fulfillmentType,
       transactionMode: item.transactionMode,
@@ -167,9 +185,25 @@ export function calculateQuotationPricing(
     const discountAmount = safeMoney(patch.discountAmount);
     const finalUnitPrice =
       patch.finalUnitPrice == null ? unitPrice : safeMoney(patch.finalUnitPrice);
+    const embroideryLines = patch.embroideryLines
+      ? item.embroideryLines.map((line) => {
+          const embroideryPatch = patch.embroideryLines?.find((candidate) => candidate.zoneId === line.zoneId);
+          if (!embroideryPatch) return line;
+          const embroideryUnitPrice = safeMoney(embroideryPatch.unitPrice);
+          const setupFee = safeMoney(embroideryPatch.setupFee);
+          return {
+            ...line,
+            unitPrice: embroideryUnitPrice,
+            setupFee,
+            setupFeeApplied: setupFee > 0,
+            subtotal: embroideryUnitPrice * item.totalQty + setupFee,
+          };
+        })
+      : item.embroideryLines;
+    const embroideryTotal = embroideryLines.reduce((total, line) => total + line.subtotal, 0);
     const finalLineTotal = Math.max(
       0,
-      finalUnitPrice * item.totalQty - discountAmount,
+      finalUnitPrice * item.totalQty + embroideryTotal - discountAmount,
     );
     return {
       ...item,
@@ -177,6 +211,10 @@ export function calculateQuotationPricing(
       lineSubtotal,
       discountAmount,
       finalUnitPrice,
+      embroideryLines,
+      embroideryTotal,
+      customizationTotal: embroideryTotal,
+      finalEstimatedTotal: finalUnitPrice * item.totalQty + embroideryTotal,
       finalLineTotal,
       updatedAt: now,
     };

@@ -6,6 +6,11 @@ import type {
   QuantityPricingBasis,
   QuantityPricingMode,
 } from "@/features/products/quantity-pricing";
+import type {
+  EmbroideryPricing,
+  EmbroideryPricingLine,
+  EmbroideryPricingZoneId,
+} from "@/features/products/embroidery-pricing";
 
 export interface CartLineItem {
   /** stable id derived from productId + color (one line per product+color) */
@@ -38,8 +43,16 @@ export interface CartLineItem {
   quantityPricingMode: QuantityPricingMode;
   quantityTierApplied: boolean;
   subtotal: number;
+  productSubtotal: number;
   /** Canonical tier snapshot used when quantity is edited in the client cart. */
   quantityPricing?: QuantityPricing;
+  selectedEmbroideryZones: EmbroideryPricingZoneId[];
+  embroideryPricingSnapshot?: EmbroideryPricing;
+  embroideryLines: EmbroideryPricingLine[];
+  embroideryTotal: number;
+  missingEmbroideryPricingZones: EmbroideryPricingZoneId[];
+  customizationTotal: number;
+  finalEstimatedTotal: number;
   /** placeholder for future customization (logo/bordir) */
   customization: string | null;
   /** full 3D embroidery config — present when customer used the 3D tab */

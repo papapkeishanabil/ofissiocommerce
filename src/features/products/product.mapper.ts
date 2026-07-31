@@ -20,6 +20,7 @@ import {
   getMetaValue,
 } from "./woocommerce/woocommerce-product-meta";
 import { normalizeQuantityPricing } from "./quantity-pricing";
+import { normalizeEmbroideryPricing } from "./embroidery-pricing";
 import {
   normalizeWooFulfillmentType,
   normalizeWooTransactionMode,
@@ -109,6 +110,12 @@ export function mapWooCommerceProductToOfissioProduct(
     tiers: getMetaValue(meta, "quantity_pricing_tiers"),
     moq,
   }).quantityPricing;
+  const embroideryPricing = normalizeEmbroideryPricing({
+    enabled: getMetaBoolean(meta, "embroidery_pricing_enabled", true),
+    mode: getMetaString(meta, "embroidery_pricing_mode"),
+    zones: getMetaValue(meta, "embroidery_pricing"),
+    supportsEmbroidery: getMetaBoolean(meta, "supports_embroidery", false),
+  }).embroideryPricing;
 
   return {
     id: `wc-${raw.id}`,
@@ -182,11 +189,12 @@ export function mapWooCommerceProductToOfissioProduct(
       ]),
       ]),
     quantityPricing,
+    embroideryPricing,
   };
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
   if (!product.model_3d) throw new Error("Produk tanpa GLB tidak dapat dipetakan ke cart.");
-  return { source: product.source, sourceId: product.source_id, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing };
+  return { source: product.source, sourceId: product.source_id, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing, embroideryPricing: product.embroideryPricing };
 }
 
 function stripHtml(value = "") {

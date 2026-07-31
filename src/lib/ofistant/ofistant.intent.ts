@@ -9,6 +9,7 @@ import type {
   CatalogSearchNormalization,
   PublicCatalogTaxonomy,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
+import type { EmbroideryPricingZoneId } from "@/features/products/embroidery-pricing";
 
 export type Intent =
   | "GREETING"
@@ -26,6 +27,7 @@ export type Intent =
   | "ASK_TRACKING"
   | "ASK_3D_CONFIGURATOR"
   | "ASK_QUANTITY_PRICE"
+  | "ASK_EMBROIDERY_PRICE"
   | "ASK_HUMAN"
   | "ASK_HELP"
   | "UNKNOWN";
@@ -38,6 +40,7 @@ export interface DetectedIntent {
   categorySlug?: string;
   catalogSearch?: CatalogSearchNormalization;
   requestedQty?: number;
+  requestedEmbroideryZones?: EmbroideryPricingZoneId[];
 }
 
 export function detectIndustry(
@@ -100,6 +103,8 @@ export function detectIntent(
     categorySlug,
     catalogSearch,
   };
+  const requestedQty = extractRequestedQuantity(value);
+  const requestedEmbroideryZones = extractRequestedEmbroideryZones(value);
 
   if (
     /\b(sales (manusia|asli)|hubungi sales|sales ofissio|cs|customer service|agent manusia|human|operator)\b/.test(
@@ -116,6 +121,17 @@ export function detectIntent(
     return { intent: "ASK_TRACKING" };
   }
   if (
+    requestedEmbroideryZones.length > 0 &&
+    (requestedQty != null || /\b(harga|berapa|biaya|estimasi|ongkos)\b/.test(value))
+  ) {
+    return {
+      intent: "ASK_EMBROIDERY_PRICE",
+      ...taxonomyFields,
+      requestedEmbroideryZones,
+      ...(requestedQty == null ? {} : { requestedQty }),
+    };
+  }
+  if (
     /\b(3d|3 d|preview 3d|konfigur.*3d|atur bordir|bordir logo|logo bordir|embroidery|lihat 3d)\b/.test(
       value,
     )
@@ -129,7 +145,6 @@ export function detectIntent(
   ) {
     return { intent: "ASK_QUOTATION", ...taxonomyFields };
   }
-  const requestedQty = extractRequestedQuantity(value);
   if (
     requestedQty != null ||
     /\b(harga quantity|harga bertingkat|diskon (kalau )?(banyak|quantity)|tier harga)\b/.test(value)
@@ -181,6 +196,23 @@ export function detectIntent(
     return { intent: "ASK_HELP" };
   }
   return { intent: "UNKNOWN", catalogSearch };
+}
+
+export function extractRequestedEmbroideryZones(value: string) {
+  const zones: EmbroideryPricingZoneId[] = [];
+  const normalized = value.toLowerCase();
+  const patterns: Array<[EmbroideryPricingZoneId, RegExp]> = [
+    ["left_chest", /\b(dada kiri|left chest)\b/],
+    ["right_chest", /\b(dada kanan|right chest)\b/],
+    ["left_sleeve", /\b(lengan kiri|left sleeve)\b/],
+    ["right_sleeve", /\b(lengan kanan|right sleeve)\b/],
+    ["upper_back", /\b(punggung atas|upper back)\b/],
+    ["center_back", /\b(punggung tengah|center back|middle back)\b/],
+  ];
+  for (const [zoneId, pattern] of patterns) {
+    if (pattern.test(normalized)) zones.push(zoneId);
+  }
+  return zones;
 }
 
 export function extractRequestedQuantity(value: string) {

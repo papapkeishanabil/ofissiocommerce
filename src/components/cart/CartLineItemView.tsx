@@ -90,7 +90,7 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
         </div>
         <div className="text-right">
           <p className="text-sm font-bold text-ink">
-            {formatIDR(item.subtotal ?? item.estimatedPrice)}
+            {formatIDR(item.finalEstimatedTotal ?? item.estimatedPrice)}
           </p>
           <p className="text-[11px] text-ink-muted">
             {formatIDR(item.finalUnitPrice ?? item.unitPrice)} / pcs
@@ -100,6 +100,20 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
           ) : null}
         </div>
       </div>
+
+      {(item.embroideryLines?.length ?? 0) > 0 ? (
+        <div className="mt-3 space-y-2 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+          <div className="flex justify-between text-[11px]"><span className="font-semibold text-ink-muted">Subtotal produk</span><strong>{formatIDR(item.productSubtotal ?? item.subtotal)}</strong></div>
+          {item.embroideryLines.map((line) => (
+            <div key={line.zoneId} className="flex items-start justify-between gap-3 text-[11px]">
+              <div><p className="font-semibold text-ink">{line.label}</p><p className="text-ink-muted">{line.quantity} pcs × {formatIDR(line.unitPrice)}{line.setupFeeApplied ? ` + setup ${formatIDR(line.setupFee)}` : ""}</p></div>
+              <strong>{formatIDR(line.subtotal)}</strong>
+            </div>
+          ))}
+          <div className="flex justify-between border-t border-amber-200 pt-2 text-xs font-black text-amber-950"><span>Total bordir</span><span>{formatIDR(item.embroideryTotal)}</span></div>
+        </div>
+      ) : null}
+      {(item.missingEmbroideryPricingZones?.length ?? 0) > 0 ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">Harga bordir untuk zona ini perlu dikonfirmasi admin.</p> : null}
 
       {/* Per-size editor (compact) */}
       <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-6">

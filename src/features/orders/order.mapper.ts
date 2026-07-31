@@ -39,13 +39,16 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
         item.source === "woocommerce" && /^\d+$/.test(item.sourceId)
           ? Number(item.sourceId)
           : undefined;
+      const lineTotal = item.finalEstimatedTotal ??
+        (item.finalUnitPrice ?? item.priceFrom) * item.totalQty +
+          (item.embroideryTotal ?? 0);
       return {
         product_id: productId,
         name: item.productName,
         sku: item.sku,
         quantity: item.totalQty,
-        subtotal: String(item.priceFrom * item.totalQty),
-        total: String(item.priceFrom * item.totalQty),
+        subtotal: String(lineTotal),
+        total: String(lineTotal),
         meta_data: compactMeta([
           ["ofissio_product_id", item.productId],
           ["ofissio_product_source", item.source],
@@ -70,6 +73,11 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
           ["ofissio_quantity_pricing_mode", item.quantityPricingMode],
           ["ofissio_final_unit_price", String(item.finalUnitPrice ?? item.priceFrom)],
           ["ofissio_total_qty", String(item.totalQty)],
+          ["ofissio_embroidery_total", String(item.embroideryTotal ?? 0)],
+          ["ofissio_embroidery_zones", JSON.stringify(item.selectedEmbroideryZones ?? [])],
+          ["ofissio_embroidery_lines", JSON.stringify(item.embroideryLines ?? [])],
+          ["ofissio_customization_total", String(item.customizationTotal ?? item.embroideryTotal ?? 0)],
+          ["ofissio_pricing_source", "ofissio"],
           ["configuration_id", `${order.id}-${index}`],
           ["snapshot_front", ""],
           ["snapshot_right", ""],
@@ -112,6 +120,10 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
       ["ofissio_quantity_pricing_mode", order.items[0]?.quantityPricingMode],
       ["ofissio_final_unit_price", order.items[0] ? String(order.items[0].finalUnitPrice ?? order.items[0].priceFrom) : null],
       ["ofissio_total_qty", String(order.items.reduce((total, item) => total + item.totalQty, 0))],
+      ["ofissio_embroidery_total", String(order.items.reduce((total, item) => total + (item.embroideryTotal ?? 0), 0))],
+      ["ofissio_embroidery_zones", JSON.stringify([...new Set(order.items.flatMap((item) => item.selectedEmbroideryZones ?? []))])],
+      ["ofissio_customization_total", String(order.items.reduce((total, item) => total + (item.customizationTotal ?? item.embroideryTotal ?? 0), 0))],
+      ["ofissio_pricing_source", "ofissio"],
     ]),
   };
 }

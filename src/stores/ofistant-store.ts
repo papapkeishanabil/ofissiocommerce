@@ -155,9 +155,10 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
       if (
         detected.intent === "SEARCH_CATALOG" ||
         detected.intent === "SELECT_INDUSTRY" ||
-        detected.intent === "ASK_QUANTITY_PRICE"
+        detected.intent === "ASK_QUANTITY_PRICE" ||
+        detected.intent === "ASK_EMBROIDERY_PRICE"
       ) {
-        const pricingSearchQuery = detected.intent === "ASK_QUANTITY_PRICE"
+        const pricingSearchQuery = detected.intent === "ASK_QUANTITY_PRICE" || detected.intent === "ASK_EMBROIDERY_PRICE"
           ? [detected.category, detected.industry].filter(Boolean).join(" ") || ctx.selectedProductSlug || trimmed
           : trimmed;
         catalogSearchResult = await fetch(

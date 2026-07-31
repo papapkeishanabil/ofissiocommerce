@@ -268,6 +268,8 @@ export async function updateQuotationPricing(input: {
         itemId: item.id,
         unitPrice: item.unitPrice ?? item.priceFrom,
         tierLabel: item.quantityTierLabel ?? null,
+        embroideryTotal: item.embroideryTotal,
+        embroideryLines: item.embroideryLines,
       })),
     },
   });
@@ -531,6 +533,17 @@ export async function convertQuotationToOrder(input: {
     finalUnitPrice: item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom,
     subtotal:
       (item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom) * item.totalQty,
+    productSubtotal:
+      (item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom) * item.totalQty,
+    selectedEmbroideryZones: item.selectedEmbroideryZones,
+    embroideryPricingSnapshot: item.embroideryPricingSnapshot,
+    embroideryLines: item.embroideryLines,
+    embroideryTotal: item.embroideryTotal,
+    missingEmbroideryPricingZones: item.missingEmbroideryPricingZones,
+    customizationTotal: item.embroideryTotal,
+    finalEstimatedTotal:
+      (item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom) * item.totalQty +
+      item.embroideryTotal,
     quantityTierLabel: item.quantityTierLabel ?? null,
     quantityPricingBasis: item.quantityPricingBasis ?? "total_order_qty",
     quantityPricingMode: item.quantityPricingMode ?? "fixed_unit_price",
@@ -547,8 +560,17 @@ export async function convertQuotationToOrder(input: {
     items: orderItems,
     shippingRateId: null,
     calculation: {
-      itemSubtotal: safeMoney(quotation.subtotal),
-      customizationFee: 0,
+      itemSubtotal: quotation.items.reduce(
+        (total, item) =>
+          total +
+          Math.max(
+            0,
+            (item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom) * item.totalQty -
+              item.discountAmount,
+          ),
+        0,
+      ),
+      customizationFee: quotation.items.reduce((total, item) => total + item.embroideryTotal, 0),
       shippingFee: safeMoney(quotation.shippingEstimate),
       tax: safeMoney(quotation.taxTotal),
       grandTotal: safeMoney(quotation.grandTotal),

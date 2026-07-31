@@ -37,6 +37,11 @@ export const adminQuotationPatchSchema = z.union([
           unitPrice: moneySchema,
           discountAmount: moneySchema.optional(),
           finalUnitPrice: moneySchema.nullable().optional(),
+          embroideryLines: z.array(z.object({
+            zoneId: z.string().trim().min(1).max(80),
+            unitPrice: moneySchema,
+            setupFee: moneySchema.optional(),
+          })).max(12).optional(),
         }),
       )
       .min(1)

@@ -7,6 +7,7 @@ import { storageService } from "@/features/storage/storage.service";
 import type { SizeMatrix } from "@/types/industry";
 import type { LogoPlacement } from "@/types/uniform-3d";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
+import { calculateEmbroideryPricing } from "@/features/products/embroidery-pricing";
 
 import type {
   CheckoutCartRecord,
@@ -54,6 +55,16 @@ async function validateAndPriceItem(
     totalQty,
     quantityPricing: product.quantityPricing,
   });
+  const embroideryPricingSnapshot = product.embroideryPricing ?? {
+    enabled: false,
+    mode: "flat_per_piece" as const,
+    zones: [],
+  };
+  const embroideryPrice = calculateEmbroideryPricing({
+    totalQty,
+    selectedZones: input.embroideryPlacements.map((placement) => placement.zone),
+    embroideryPricing: embroideryPricingSnapshot,
+  });
 
   return {
     productId: product.id,
@@ -73,6 +84,14 @@ async function validateAndPriceItem(
     quantityPricingMode: product.quantityPricing?.mode ?? "fixed_unit_price",
     quantityTierApplied: calculatedPrice.tierApplied,
     subtotal: calculatedPrice.subtotal,
+    productSubtotal: calculatedPrice.subtotal,
+    selectedEmbroideryZones: embroideryPrice.lines.map((line) => line.zoneId).concat(embroideryPrice.missingPricingZones),
+    embroideryPricingSnapshot,
+    embroideryLines: embroideryPrice.lines,
+    embroideryTotal: embroideryPrice.total,
+    missingEmbroideryPricingZones: embroideryPrice.missingPricingZones,
+    customizationTotal: embroideryPrice.total,
+    finalEstimatedTotal: calculatedPrice.subtotal + embroideryPrice.total,
     moq: product.moq,
     fulfillmentType: product.fulfillment,
     transactionMode: product.transaction_mode,
@@ -114,10 +133,7 @@ export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<Ch
     companyId: parsed.companyId,
     userId: parsed.userId,
     items,
-    subtotal: items.reduce(
-      (total, item) => total + item.finalUnitPrice * item.totalQty,
-      0,
-    ),
+    subtotal: items.reduce((total, item) => total + item.finalEstimatedTotal, 0),
     totalQty: items.reduce((total, item) => total + item.totalQty, 0),
     createdAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + CART_TTL_MS).toISOString(),
@@ -157,10 +173,7 @@ export async function getValidatedCheckoutCart(
   return {
     ...stored,
     items,
-    subtotal: items.reduce(
-      (total, item) => total + item.finalUnitPrice * item.totalQty,
-      0,
-    ),
+    subtotal: items.reduce((total, item) => total + item.finalEstimatedTotal, 0),
     totalQty: items.reduce((total, item) => total + item.totalQty, 0),
   };
 }

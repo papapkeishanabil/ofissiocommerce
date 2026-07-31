@@ -202,3 +202,13 @@ Field berikut hanya warning dan tidak memblokir produk: deskripsi panjang, foto 
 Admin dapat melihat semua produk—termasuk yang belum valid—di `/admin/products`. Customer catalog dan Ofistant hanya menerima produk yang lolos seluruh field blocking.
 
 Jalankan `npm run check:woocommerce` untuk memeriksa koneksi, jumlah produk valid, dan ringkasan field blocking maksimal lima produk invalid.
+
+## Embroidery pricing Task A4
+
+| Meta key | Format | Keterangan |
+| --- | --- | --- |
+| `embroidery_pricing_enabled` | boolean | Mengaktifkan calculator harga bordir Ofissio |
+| `embroidery_pricing_mode` | `flat_per_piece` | Mode harga yang didukung Task A4 |
+| `embroidery_pricing` | JSON array | Harga, batas ukuran, setup fee, dan catatan per zona |
+
+Meta pricing bordir merupakan warning/readiness data dan bukan blocking catalog field. Order sync membawa `ofissio_embroidery_total`, `ofissio_embroidery_zones`, `ofissio_customization_total`, dan `ofissio_pricing_source=ofissio` agar WooCommerce tidak menghitung ulang customization.

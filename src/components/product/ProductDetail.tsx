@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatIDR } from "@/types/product";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
+import { calculateEmbroideryPricing } from "@/features/products/embroidery-pricing";
 import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
@@ -210,7 +211,15 @@ export function ProductDetail({ product }: ProductDetailProps) {
     }),
     [product.priceFrom, product.quantityPricing, totalQty],
   );
-  const estimatedPrice = quantityPrice.subtotal;
+  const embroideryPrice = useMemo(
+    () => calculateEmbroideryPricing({
+      totalQty,
+      selectedZones: uniform3DConfig?.placements.map((placement) => placement.zone) ?? [],
+      embroideryPricing: product.embroideryPricing,
+    }),
+    [product.embroideryPricing, totalQty, uniform3DConfig?.placements],
+  );
+  const estimatedPrice = quantityPrice.subtotal + embroideryPrice.total;
   const lowestTierPrice = useMemo(
     () => product.quantityPricing?.enabled && product.quantityPricing.tiers.length
       ? Math.min(...product.quantityPricing.tiers.map((tier) => tier.unitPrice))
@@ -409,6 +418,31 @@ export function ProductDetail({ product }: ProductDetailProps) {
               </div>
             ) : null}
 
+            {product.supports_embroidery ? (
+              product.embroideryPricing?.enabled && product.embroideryPricing.zones.some((zone) => zone.enabled) ? (
+                <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-bold text-amber-950">Harga Bordir Estimasi</p>
+                    <span className="text-[10px] font-semibold text-amber-800">Per zona / pcs</span>
+                  </div>
+                  <dl className="mt-2 grid gap-1 sm:grid-cols-2">
+                    {product.embroideryPricing.zones.filter((zone) => zone.enabled).map((zone) => (
+                      <div key={zone.zoneId} className="rounded-lg bg-white/85 px-2.5 py-2 text-[11px]">
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="font-semibold text-ink-muted">{zone.label}</dt>
+                          <dd className="font-bold text-ink">{formatIDR(zone.unitPrice)} / pcs</dd>
+                        </div>
+                        {zone.setupFee > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Biaya setup opsional: {formatIDR(zone.setupFee)}</p> : null}
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="mt-2 text-[10px] leading-4 text-amber-900">Estimasi biaya bordir. Harga final mengikuti validasi logo oleh admin.</p>
+                </div>
+              ) : (
+                <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">Harga bordir perlu dikonfirmasi admin.</p>
+              )
+            ) : null}
+
             {/* Color picker */}
             <div className="mt-5">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
@@ -557,8 +591,21 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
             {/* Total + CTA */}
             <div className="mt-5 border-t border-line pt-4">
+              {embroideryPrice.lines.length > 0 ? (
+                <div className="mb-4 space-y-2 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+                  <div className="flex justify-between text-[11px]"><span className="font-semibold text-ink-muted">Subtotal produk</span><strong className="text-ink">{formatIDR(quantityPrice.subtotal)}</strong></div>
+                  {embroideryPrice.lines.map((line) => (
+                    <div key={line.zoneId} className="flex items-start justify-between gap-3 text-[11px]">
+                      <div><p className="font-semibold text-ink">{line.label}</p><p className="text-ink-muted">{line.quantity} pcs × {formatIDR(line.unitPrice)}{line.setupFeeApplied ? ` + setup ${formatIDR(line.setupFee)}` : ""}</p></div>
+                      <strong className="text-ink">{formatIDR(line.subtotal)}</strong>
+                    </div>
+                  ))}
+                  <div className="flex justify-between border-t border-amber-200 pt-2 text-xs font-black text-amber-950"><span>Total bordir</span><span>{formatIDR(embroideryPrice.total)}</span></div>
+                </div>
+              ) : null}
+              {embroideryPrice.missingPricingZones.length > 0 ? <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">Harga bordir untuk zona ini perlu dikonfirmasi admin.</p> : null}
               <div className="flex items-end justify-between">
-                <span className="text-xs text-ink-muted">Estimasi harga</span>
+                <span className="text-xs text-ink-muted">Estimasi produk + bordir</span>
                 <div className="text-right">
                   <p className="text-xl font-bold text-ink">
                     {formatIDR(estimatedPrice)}

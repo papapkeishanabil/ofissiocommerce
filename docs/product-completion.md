@@ -19,3 +19,5 @@ Setelah save, form menampilkan salah satu hasil:
 Warning foto tambahan, pricing tier, dan kelengkapan atribut tidak memblokir katalog pada Task A3.
 
 Task A5 memvalidasi isi quantity pricing secara lebih rinci. Tier kosong, JSON invalid, overlap, harga per pcs tidak valid, dan ketidaksesuaian tier pertama dengan MOQ tetap berstatus **warning**, bukan blocking. Produk valid tetap tampil dan fallback ke `regular_price` bila tier tidak dapat diterapkan.
+
+Task A4 menambahkan warning non-blocking untuk produk yang mendukung bordir tetapi belum memiliki pricing, tidak memiliki zona enabled, atau memiliki unit price/dimensi yang invalid. Warning menggunakan label **Harga bordir belum diatur**, **Harga bordir per zona tidak valid**, **Zona bordir belum dipilih**, atau **Harga per pcs bordir belum valid**. Produk tidak dikeluarkan dari katalog hanya karena warning pricing ini.

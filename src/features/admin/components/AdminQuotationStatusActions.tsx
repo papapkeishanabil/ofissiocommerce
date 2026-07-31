@@ -77,6 +77,11 @@ export function AdminQuotationStatusActions({
       unitPrice: Number(formData.get(`unitPrice:${item.id}`) ?? 0),
       discountAmount: Number(formData.get(`discount:${item.id}`) ?? 0),
       finalUnitPrice: Number(formData.get(`finalUnitPrice:${item.id}`) ?? 0),
+      embroideryLines: item.embroideryLines.map((line) => ({
+        zoneId: line.zoneId,
+        unitPrice: Number(formData.get(`embroideryUnitPrice:${item.id}:${line.zoneId}`) ?? line.unitPrice),
+        setupFee: Number(formData.get(`embroiderySetupFee:${item.id}:${line.zoneId}`) ?? line.setupFee),
+      })),
     }));
     patchQuotation(
       {
@@ -228,6 +233,23 @@ export function AdminQuotationStatusActions({
                   {formatIDR(item.finalLineTotal ?? 0)}
                 </p>
               </div>
+              {item.embroideryLines.length > 0 ? (
+                <div className="md:col-span-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-3">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-900">Breakdown bordir · kalkulasi awal {formatIDR(item.embroideryTotal)}</p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {item.embroideryLines.map((line) => (
+                      <div key={line.zoneId} className="grid gap-3 rounded-xl bg-white p-3 ring-1 ring-amber-100 sm:grid-cols-2">
+                        <NumberField label={`${line.label} / pcs`} name={`embroideryUnitPrice:${item.id}:${line.zoneId}`} defaultValue={line.unitPrice} />
+                        <NumberField label="Setup fee" name={`embroiderySetupFee:${item.id}:${line.zoneId}`} defaultValue={line.setupFee} />
+                        <p className="sm:col-span-2 text-xs text-ink-muted">Original: {line.quantity} pcs × {formatIDR(line.unitPrice)}{line.setupFeeApplied ? ` + setup ${formatIDR(line.setupFee)}` : ""} = <strong>{formatIDR(line.subtotal)}</strong></p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs font-semibold text-amber-800">Admin dapat override harga per zona. Total final selalu dihitung ulang server-side dan dicatat pada audit pricing.</p>
+                </div>
+              ) : item.missingEmbroideryPricingZones.length > 0 ? (
+                <p className="md:col-span-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">Harga bordir untuk zona ini perlu dikonfirmasi admin.</p>
+              ) : null}
             </fieldset>
           ))}
         </div>

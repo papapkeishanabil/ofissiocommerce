@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Calculator, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Plus, RotateCcw, Save, Settings2, Shirt, Trash2 } from "lucide-react";
+import { Box, Calculator, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Plus, RotateCcw, Save, Scissors, Settings2, Shirt, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import type { CatalogAttribute, CatalogCategory, IndustryMaster } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
@@ -12,6 +12,10 @@ import {
   quantityTierLabel,
   validateQuantityPricing,
 } from "@/features/products/quantity-pricing";
+import {
+  createDefaultEmbroideryPricingZones,
+  validateEmbroideryPricing,
+} from "@/features/products/embroidery-pricing";
 import {
   WOO_EMBROIDERY_ZONES,
   WOO_FULFILLMENT_TYPES,
@@ -62,6 +66,7 @@ export function AdminProductForm({ mode, product, options }: AdminProductFormPro
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
   const [showPricingValidation, setShowPricingValidation] = useState(false);
+  const [showEmbroideryValidation, setShowEmbroideryValidation] = useState(false);
 
   const pricingValidation = useMemo(
     () => validateQuantityPricing({
@@ -71,6 +76,14 @@ export function AdminProductForm({ mode, product, options }: AdminProductFormPro
     }),
     [form.moq, form.quantityPricingEnabled, form.quantityPricingTiers],
   );
+  const embroideryValidation = useMemo(
+    () => validateEmbroideryPricing({
+      enabled: form.embroideryPricingEnabled,
+      zones: form.embroideryPricingZones,
+      supportsEmbroidery: form.supportsEmbroidery,
+    }),
+    [form.embroideryPricingEnabled, form.embroideryPricingZones, form.supportsEmbroidery],
+  );
 
   const set = <K extends keyof AdminWooProductInput>(key: K, value: AdminWooProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -78,9 +91,15 @@ export function AdminProductForm({ mode, product, options }: AdminProductFormPro
   async function submit(event: FormEvent) {
     event.preventDefault();
     setShowPricingValidation(true);
+    setShowEmbroideryValidation(true);
     if (!pricingValidation.valid) {
       setMessage({ tone: "error", text: pricingValidation.errors[0]?.message ?? "Tier harga quantity belum valid." });
       document.getElementById("quantity-pricing")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (!embroideryValidation.valid) {
+      setMessage({ tone: "error", text: embroideryValidation.errors[0]?.message ?? "Harga bordir per zona belum valid." });
+      document.getElementById("embroidery-pricing")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     setBusy(true);
@@ -198,6 +217,71 @@ export function AdminProductForm({ mode, product, options }: AdminProductFormPro
     } finally {
       setBusy(false);
     }
+  }
+
+  async function saveEmbroideryPricing() {
+    if (!workingProductId) {
+      setMessage({ tone: "warning", text: "Buat produk terlebih dahulu sebelum menyimpan harga bordir secara terpisah." });
+      return;
+    }
+    setShowEmbroideryValidation(true);
+    if (!embroideryValidation.valid) {
+      setMessage({ tone: "error", text: embroideryValidation.errors[0]?.message ?? "Harga bordir per zona belum valid." });
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch(
+        `/api/admin/products/woocommerce/${workingProductId}/embroidery-pricing`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            ...MOCK_INTERNAL_HEADERS,
+          },
+          body: JSON.stringify({
+            embroideryPricingEnabled: form.embroideryPricingEnabled,
+            embroideryPricingMode: form.embroideryPricingMode,
+            supportsEmbroidery: form.supportsEmbroidery,
+            zones: form.embroideryPricingZones,
+          }),
+        },
+      );
+      const payload = (await response.json().catch(() => null)) as ApiProductResponse | null;
+      if (!response.ok || !payload?.product) {
+        throw new Error(payload?.message || "Harga bordir belum dapat disimpan.");
+      }
+      set("embroideryPricingZones", payload.product.ofissioMeta.embroideryPricingZones);
+      setMessage({ tone: "success", text: "Harga bordir berhasil disimpan." });
+      router.refresh();
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "Harga bordir belum dapat disimpan." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function updateEmbroideryZone(
+    index: number,
+    patch: Partial<AdminWooProductInput["embroideryPricingZones"][number]>,
+  ) {
+    set("embroideryPricingZones", form.embroideryPricingZones.map((zone, zoneIndex) => {
+      if (zoneIndex !== index) return zone;
+      const next = { ...zone, ...patch };
+      return {
+        ...next,
+        showSetupFee: next.setupFee > 0,
+        pricingMode: "flat_per_piece",
+      };
+    }));
+  }
+
+  function resetEmbroideryPricing() {
+    set("embroideryPricingZones", createDefaultEmbroideryPricingZones());
+    set("embroideryPricingEnabled", true);
+    setShowEmbroideryValidation(false);
   }
 
   function updateTier(index: number, patch: Partial<AdminWooProductInput["quantityPricingTiers"][number]>) {
@@ -410,6 +494,105 @@ export function AdminProductForm({ mode, product, options }: AdminProductFormPro
         </div>
       </FormSection>
 
+      <div id="embroidery-pricing" className="scroll-mt-28">
+        <FormSection
+          icon={Scissors}
+          title="Harga Bordir per Zona"
+          description="Atur estimasi harga bordir per pcs untuk setiap zona yang tersedia pada configurator 3D."
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <Toggle
+              label="Aktifkan Harga Bordir"
+              description={form.supportsEmbroidery ? "Harga zona aktif akan dipakai di product detail, cart, dan quotation." : "Aktifkan dukungan Bordir pada section Customization untuk memakai pricing ini."}
+              checked={form.embroideryPricingEnabled}
+              onChange={(value) => set("embroideryPricingEnabled", value)}
+            />
+            <Field label="Mode Harga">
+              <select
+                className={INPUT}
+                value={form.embroideryPricingMode}
+                onChange={(event) => set("embroideryPricingMode", event.target.value as AdminWooProductInput["embroideryPricingMode"])}
+              >
+                <option value="flat_per_piece">Harga Tetap per Zona / pcs</option>
+              </select>
+            </Field>
+          </div>
+
+          <div
+            className="mt-5 overflow-x-auto rounded-2xl border border-slate-200"
+            role="region"
+            aria-label="Tabel harga bordir per zona"
+            tabIndex={0}
+          >
+            <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-black uppercase tracking-[0.08em] text-ink-subtle">
+                <tr>
+                  <th className="px-3 py-3">Aktif</th>
+                  <th className="px-3 py-3">Zona</th>
+                  <th className="px-3 py-3">Maks Lebar cm</th>
+                  <th className="px-3 py-3">Maks Tinggi cm</th>
+                  <th className="px-3 py-3">Harga / pcs</th>
+                  <th className="px-3 py-3">Biaya Setup / Punching Opsional</th>
+                  <th className="px-3 py-3">Catatan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {form.embroideryPricingZones.map((zone, index) => (
+                  <tr key={zone.zoneId} className={zone.enabled ? "" : "bg-slate-50/80 text-ink-muted"}>
+                    <td className="p-2 text-center">
+                      <input
+                        type="checkbox"
+                        aria-label={`Aktifkan zona ${zone.label}`}
+                        checked={zone.enabled}
+                        onChange={(event) => updateEmbroideryZone(index, { enabled: event.target.checked })}
+                        disabled={!form.embroideryPricingEnabled}
+                        className="h-5 w-5 accent-brand-700"
+                      />
+                    </td>
+                    <td className="p-2">
+                      <div className="min-w-36 rounded-xl bg-brand-50 px-3 py-3">
+                        <p className="font-black text-brand-900">{zone.label}</p>
+                        <p className="mt-0.5 font-mono text-[10px] text-brand-700">{zone.zoneId}</p>
+                      </div>
+                    </td>
+                    <td className="p-2"><input aria-label={`Maks lebar ${zone.label}`} className={INPUT} type="number" min={0} step="0.1" value={zone.maxWidthCm} onChange={(event) => updateEmbroideryZone(index, { maxWidthCm: Number(event.target.value) })} disabled={!form.embroideryPricingEnabled || !zone.enabled} /></td>
+                    <td className="p-2"><input aria-label={`Maks tinggi ${zone.label}`} className={INPUT} type="number" min={0} step="0.1" value={zone.maxHeightCm} onChange={(event) => updateEmbroideryZone(index, { maxHeightCm: Number(event.target.value) })} disabled={!form.embroideryPricingEnabled || !zone.enabled} /></td>
+                    <td className="p-2"><input aria-label={`Harga per pcs ${zone.label}`} className={INPUT} type="number" min={0} step={500} value={zone.unitPrice} onChange={(event) => updateEmbroideryZone(index, { unitPrice: Number(event.target.value) })} disabled={!form.embroideryPricingEnabled || !zone.enabled} /></td>
+                    <td className="p-2">
+                      <input aria-label={`Biaya setup ${zone.label}`} className={INPUT} type="number" min={0} step={1000} value={zone.setupFee} onChange={(event) => updateEmbroideryZone(index, { setupFee: Number(event.target.value) })} disabled={!form.embroideryPricingEnabled || !zone.enabled} />
+                      {zone.setupFee > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-700">Ditambahkan satu kali per zona.</p> : null}
+                    </td>
+                    <td className="p-2"><input aria-label={`Catatan ${zone.label}`} className={INPUT} value={zone.notes ?? ""} maxLength={500} onChange={(event) => updateEmbroideryZone(index, { notes: event.target.value })} disabled={!form.embroideryPricingEnabled} /></td>
+                  </tr>
+                ))}
+                {form.embroideryPricingZones.length === 0 ? (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-ink-muted">Harga bordir belum diatur. Gunakan Reset Default Zona.</td></tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          {showEmbroideryValidation ? (
+            <div className="mt-4 space-y-2" aria-live="polite">
+              {embroideryValidation.errors.map((issue, index) => <p key={`${issue.code}-${issue.zoneIndex ?? index}`} role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{issue.message}</p>)}
+              {embroideryValidation.valid ? <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">Harga bordir per zona valid.</p> : null}
+            </div>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={resetEmbroideryPricing} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-ink hover:bg-slate-50"><RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset Default Zona</button>
+            <button type="button" onClick={() => setShowEmbroideryValidation(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 text-sm font-black text-brand-800 hover:bg-brand-100"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Validasi Harga Bordir</button>
+            {mode === "edit" ? <button type="button" onClick={() => void saveEmbroideryPricing()} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-black text-white hover:bg-brand-800 disabled:opacity-50"><Save className="h-4 w-4" aria-hidden="true" /> Simpan Harga Bordir</button> : null}
+          </div>
+          <ul className="mt-4 space-y-1 text-xs leading-5 text-ink-muted">
+            <li>Harga bordir dihitung per pcs berdasarkan zona yang dipilih customer.</li>
+            <li>Biaya setup/punching opsional, isi 0 jika tidak ingin dibebankan ke customer.</li>
+            <li>Jika biaya setup 0, customer tidak akan melihat biaya setup.</li>
+            <li>Harga final tetap mengikuti validasi logo oleh admin.</li>
+          </ul>
+        </FormSection>
+      </div>
+
       <div id="model-3d" className="scroll-mt-28">
       <FormSection icon={FileBox} title="Model 3D GLB" description="File disimpan privat di Supabase Storage. Viewer meminta signed URL baru saat diperlukan.">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
@@ -479,6 +662,11 @@ function initialForm(product?: AdminWooCommerceProductDetail): AdminWooProductIn
     supportsScreenPrinting: product?.ofissioMeta.supportsScreenPrinting ?? false,
     supportsDtf: product?.ofissioMeta.supportsDtf ?? false,
     embroideryZones: (product?.ofissioMeta.embroideryZones ?? []).map((zone) => ["back", "middle_back"].includes(zone) ? "center_back" : zone).filter((zone) => WOO_EMBROIDERY_ZONES.includes(zone as never)),
+    embroideryPricingEnabled: product?.ofissioMeta.embroideryPricingEnabled ?? true,
+    embroideryPricingMode: "flat_per_piece",
+    embroideryPricingZones: product?.ofissioMeta.embroideryPricingZones?.length
+      ? product.ofissioMeta.embroideryPricingZones
+      : createDefaultEmbroideryPricingZones(),
     quantityPricingEnabled: product?.ofissioMeta.quantityPricingEnabled ?? true,
     quantityPricingMode: "fixed_unit_price",
     quantityBasis: "total_order_qty",

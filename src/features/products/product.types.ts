@@ -5,6 +5,7 @@ import type {
   ProductTaxonomyReference,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 import type { QuantityPricing } from "./quantity-pricing";
+import type { EmbroideryPricing } from "./embroidery-pricing";
 
 export type ProductStatus = "draft" | "published" | "archived";
 export type TransactionMode = "DIRECT_CHECKOUT" | "REQUEST_QUOTATION" | "HYBRID";
@@ -40,4 +41,6 @@ export interface OfissioProduct extends Product {
   searchableTerms?: string[];
   /** Optional for legacy mock products; WooCommerce products always map this field. */
   quantityPricing?: QuantityPricing;
+  /** Optional for legacy mock products; WooCommerce products map pricing from product meta. */
+  embroideryPricing?: EmbroideryPricing;
 }

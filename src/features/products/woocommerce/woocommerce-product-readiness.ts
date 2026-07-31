@@ -12,6 +12,11 @@ import {
   validateQuantityPricing,
   type QuantityPricingIssue,
 } from "../quantity-pricing";
+import {
+  normalizeEmbroideryPricing,
+  validateEmbroideryPricing,
+  type EmbroideryPricingIssue,
+} from "../embroidery-pricing";
 
 const VALID_FULFILLMENT_TYPES = ["READY_STOCK", "MADE_TO_ORDER"] as const;
 const VALID_TRANSACTION_MODES = ["DIRECT_CHECKOUT", "REQUEST_QUOTATION", "HYBRID"] as const;
@@ -193,9 +198,6 @@ function getRawWooCommerceReadiness(
     moq: getMetaNumber(meta, "moq", 0),
   });
   pushQuantityPricingWarnings(warnings, quantityPricing.issues);
-  if (!hasAnyMetaValue(meta, ["embroidery_pricing", "embroidery_pricing_tiers"])) {
-    warnings.push(warning("embroidery_pricing", "Embroidery pricing belum diisi", "Lengkapi pricing bordir"));
-  }
   const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
   const embroideryZones = getMetaStringArray(meta, "embroidery_zones");
   if (!supportsEmbroidery) {
@@ -205,6 +207,18 @@ function getRawWooCommerceReadiness(
     }
   } else if (embroideryZones.length === 0) {
     warnings.push(warning("embroidery_zones", "Zona bordir belum dipilih.", "Pilih zona bordir"));
+  }
+  if (supportsEmbroidery) {
+    const embroideryPricing = normalizeEmbroideryPricing({
+      enabled: getMetaBoolean(meta, "embroidery_pricing_enabled", true),
+      mode: getMetaString(meta, "embroidery_pricing_mode"),
+      zones: getMetaValue(meta, "embroidery_pricing"),
+      supportsEmbroidery,
+    });
+    if (embroideryPricing.embroideryPricing.zones.length === 0) {
+      warnings.push(warning("embroidery_pricing", "Harga bordir belum diatur", "Lengkapi pricing bordir"));
+    }
+    pushEmbroideryPricingWarnings(warnings, embroideryPricing.issues);
   }
 
   return finishReadiness({
@@ -256,6 +270,18 @@ function getMappedProductReadiness(product: OfissioProduct): ProductReadiness {
   if (!product.available_sizes.length) warnings.push(warning("sizes", "Atribut ukuran belum lengkap", "Lengkapi atribut"));
   if (!product.supports_embroidery) warnings.push(warning("supports_embroidery", "Dukungan bordir belum diaktifkan", "Tinjau dukungan bordir"));
   if (!product.embroidery_zones.length) warnings.push(warning("embroidery_zones", product.supports_embroidery ? "Zona bordir belum dipilih." : "Zona bordir belum diisi", "Pilih zona bordir"));
+  if (product.supports_embroidery) {
+    if (!product.embroideryPricing?.zones.length) {
+      warnings.push(warning("embroidery_pricing", "Harga bordir belum diatur", "Lengkapi pricing bordir"));
+    } else {
+      const embroideryPricing = validateEmbroideryPricing({
+        enabled: product.embroideryPricing.enabled,
+        zones: product.embroideryPricing.zones,
+        supportsEmbroidery: product.supports_embroidery,
+      });
+      pushEmbroideryPricingWarnings(warnings, embroideryPricing.errors);
+    }
+  }
   if (product.quantityPricing) {
     const pricing = validateQuantityPricing({
       enabled: product.quantityPricing.enabled,
@@ -342,13 +368,6 @@ function pushAttributeWarning(
   if (!available) issues.push(warning(field, label, "Lengkapi atribut"));
 }
 
-function hasAnyMetaValue(
-  meta: NonNullable<WooCommerceProduct["meta_data"]>,
-  keys: string[],
-) {
-  return keys.some((key) => getMetaValue(meta, key) !== undefined);
-}
-
 function pushQuantityPricingWarnings(
   warnings: ProductReadinessIssue[],
   issues: QuantityPricingIssue[],
@@ -377,6 +396,29 @@ function pushQuantityPricingWarnings(
     if (labels.has(label)) continue;
     labels.add(label);
     warnings.push(warning("quantity_pricing", label, "Lengkapi pricing"));
+  }
+}
+
+function pushEmbroideryPricingWarnings(
+  warnings: ProductReadinessIssue[],
+  issues: EmbroideryPricingIssue[],
+) {
+  const labels = new Set<string>();
+  for (const issue of issues) {
+    let label: string;
+    switch (issue.code) {
+      case "invalid_unit_price":
+        label = "Harga per pcs bordir belum valid";
+        break;
+      case "no_enabled_zone":
+        label = "Zona bordir belum dipilih";
+        break;
+      default:
+        label = "Harga bordir per zona tidak valid";
+    }
+    if (labels.has(label)) continue;
+    labels.add(label);
+    warnings.push(warning("embroidery_pricing", label, "Lengkapi pricing bordir"));
   }
 }
 

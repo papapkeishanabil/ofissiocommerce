@@ -33,3 +33,7 @@ Semua route memakai internal guard, permission catalog, rate limit, validasi Zod
 ## Harga quantity Task A5
 
 Form create/edit sekarang memiliki section **Harga & Diskon Quantity**. Admin dapat menambah, menghapus, mereset, dan memvalidasi tier tanpa masuk WooCommerce. Edit produk juga menyediakan endpoint khusus `PATCH /api/admin/products/woocommerce/[id]/quantity-pricing`; create/update utama tetap menerima field pricing yang sama. Detail operasional ada di [quantity-pricing.md](quantity-pricing.md).
+
+## Harga bordir Task A4
+
+Jika produk mendukung bordir, admin mengatur enam zona melalui section **Harga Bordir per Zona**. Harga, batas ukuran, setup fee opsional, dan catatan disimpan ke meta `embroidery_pricing`. Endpoint edit khusus adalah `PATCH /api/admin/products/woocommerce/[id]/embroidery-pricing`; detail formula dan validasi tersedia di [embroidery-pricing.md](embroidery-pricing.md).

@@ -190,3 +190,7 @@ Phase 25 smoke terbaru membuktikan:
 ## Task A5 quantity pricing
 
 Product admin mengatur harga bertingkat dari `/admin/products/new` atau `/admin/products/woocommerce/[id]`. Permission write tetap `admin:catalog:update`; customer dan role view-only tidak dapat memanggil endpoint update. Semua write action memakai rate limit, validasi server, safe error, serta audit `product_quantity_pricing_updated` atau `product_quantity_pricing_update_failed`.
+
+## Task A4 embroidery pricing
+
+Product admin mengatur harga bordir per zona dari form create/edit yang sama. Setup fee bernilai nol tidak ditampilkan ke customer. Endpoint khusus memakai permission `admin:catalog:update` dan mencatat audit `product_embroidery_pricing_updated` atau `product_embroidery_pricing_update_failed`. Admin quotation dapat melihat original breakdown dan override unit price/setup fee per zona sebelum mengirim penawaran.
