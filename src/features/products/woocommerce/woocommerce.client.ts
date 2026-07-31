@@ -14,6 +14,10 @@ import type {
   WooCommerceOrder,
   WooCommerceProduct,
 } from "./woocommerce.types";
+import {
+  allowSelfSignedTlsForWooUrl,
+  requestWooCommerceJson,
+} from "./woocommerce-http";
 
 export const woocommerceClient = {
   getProducts,
@@ -99,20 +103,21 @@ async function wcFetch<T>(
   ).toString("base64");
 
   try {
-    const response = await fetch(url, {
-      ...init,
+    const response = await requestWooCommerceJson<T>(url, {
+      method: init?.method,
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/json",
         Accept: "application/json",
-        ...init?.headers,
+        ...(init?.headers as Record<string, string> | undefined),
       },
-      cache: "no-store",
+      body: typeof init?.body === "string" ? init.body : undefined,
+      allowSelfSignedTls: allowSelfSignedTlsForWooUrl(url),
     });
     if (!response.ok) {
       throw new Error(`WooCommerce responded ${response.status}`);
     }
-    return (await response.json()) as T;
+    return response.data;
   } catch (error) {
     logAuditEvent({
       action: "woocommerce_request_failed",

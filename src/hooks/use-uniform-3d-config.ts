@@ -31,22 +31,27 @@ export interface UseUniform3DConfig {
   reset: () => void;
 }
 
-export function useUniform3DConfig(productId: string, initialColor: string): UseUniform3DConfig {
-  const model = useMemo(() => getModel3DForProduct(productId), [productId]);
-  const hasModel = !!model;
-  const isFallback = !!model && model.glbUrl === null;
+export function useUniform3DConfig(
+  productId: string,
+  initialColor: string,
+  model3dIdOverride?: string,
+): UseUniform3DConfig {
+  const registeredModel = useMemo(() => getModel3DForProduct(productId), [productId]);
+  const model3dId = registeredModel?.model3dId ?? model3dIdOverride;
+  const hasModel = Boolean(model3dId);
+  const isFallback = !!registeredModel && registeredModel.glbUrl === null;
 
   const [config, setConfig] = useState<Uniform3DConfig | null>(() => {
-    if (!model) return null;
-    return empty3DConfig(productId, model.model3dId, initialColor);
+    if (!model3dId) return null;
+    return empty3DConfig(productId, model3dId, initialColor);
   });
 
   const init = useCallback(
     (pid: string, color: string) => {
-      if (!model) return;
-      setConfig(empty3DConfig(pid, model.model3dId, color));
+      if (!model3dId) return;
+      setConfig(empty3DConfig(pid, model3dId, color));
     },
-    [model],
+    [model3dId],
   );
 
   const setColor = useCallback((color: string) => {
@@ -107,9 +112,9 @@ export function useUniform3DConfig(productId: string, initialColor: string): Use
   }, []);
 
   const reset = useCallback(() => {
-    if (!model) return;
-    setConfig(empty3DConfig(productId, model.model3dId, initialColor));
-  }, [model, productId, initialColor]);
+    if (!model3dId) return;
+    setConfig(empty3DConfig(productId, model3dId, initialColor));
+  }, [model3dId, productId, initialColor]);
 
   return {
     config,

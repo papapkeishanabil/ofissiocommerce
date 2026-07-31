@@ -3,6 +3,7 @@ import {
   validateProduct3DModel,
   validateProductForCatalog,
 } from "../product.validation";
+export { validateRawWooCommerceProductForOfissio } from "./woocommerce-product-readiness";
 
 export function validateWooCommerceProductForOfissio(product: OfissioProduct) {
   if (product.source !== "woocommerce") {

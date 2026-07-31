@@ -1,7 +1,12 @@
 import type { WooCommerceMetaData } from "./woocommerce.types";
 
 export function getMetaValue(meta: WooCommerceMetaData[], key: string) {
-  return meta.find((item) => item.key === key)?.value;
+  for (let index = meta.length - 1; index >= 0; index -= 1) {
+    const item = meta[index];
+    if (item?.key !== key) continue;
+    if (isNonEmptyMetaValue(item.value)) return item.value;
+  }
+  return undefined;
 }
 
 export function getMetaString(meta: WooCommerceMetaData[], key: string) {
@@ -51,7 +56,9 @@ export function getMetaStringArray(meta: WooCommerceMetaData[], key: string) {
 }
 
 export function normalizeStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(String).map((v) => v.trim()).filter(Boolean);
+  if (Array.isArray(value)) {
+    return value.flatMap(metaArrayItemToStrings).map((v) => v.trim()).filter(Boolean);
+  }
   if (typeof value !== "string") return [];
   const trimmed = value.trim();
   if (!trimmed) return [];
@@ -66,4 +73,34 @@ export function normalizeStringArray(value: unknown): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function isNonEmptyMetaValue(value: unknown) {
+  if (value == null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function metaArrayItemToStrings(value: unknown): string[] {
+  if (value == null) return [];
+  if (Array.isArray(value)) return normalizeStringArray(value);
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return [String(value)];
+  }
+  if (typeof value !== "object") return [];
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["id", "value", "slug", "name", "label"]) {
+    const itemValue = record[key];
+    if (
+      typeof itemValue === "string" ||
+      typeof itemValue === "number" ||
+      typeof itemValue === "boolean"
+    ) {
+      const normalized = String(itemValue).trim();
+      if (normalized) return [normalized];
+    }
+  }
+  return [];
 }

@@ -77,7 +77,7 @@ export function Uniform3DConfigurator({
     removePlacement,
     getPlacement,
     setSnapshot,
-  } = useUniform3DConfig(product.id, initialColor);
+  } = useUniform3DConfig(product.id, initialColor, model?.model3dId);
 
   const [selectedZone, setSelectedZone] = useState<EmbroideryZone | null>("left_chest");
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);

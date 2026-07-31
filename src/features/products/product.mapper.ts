@@ -14,6 +14,10 @@ import {
   getMetaString,
   getMetaStringArray,
 } from "./woocommerce/woocommerce-product-meta";
+import {
+  normalizeWooFulfillmentType,
+  normalizeWooTransactionMode,
+} from "./woocommerce/woocommerce-product-readiness";
 
 const DEFAULT_SIZES = [...SIZES];
 
@@ -159,13 +163,11 @@ function normalizeModelSource(value: string): ProductModelSource {
 }
 
 function normalizeFulfillment(value: string) {
-  return value === "READY_STOCK" ? "READY_STOCK" : "MADE_TO_ORDER";
+  return normalizeWooFulfillmentType(value) ?? "MADE_TO_ORDER";
 }
 
 function normalizeTransactionMode(value: string): TransactionMode {
-  return ["DIRECT_CHECKOUT", "REQUEST_QUOTATION", "HYBRID"].includes(value)
-    ? (value as TransactionMode)
-    : "REQUEST_QUOTATION";
+  return normalizeWooTransactionMode(value) ?? "REQUEST_QUOTATION";
 }
 
 function normalizeCategory(value?: string) {
@@ -175,9 +177,10 @@ function normalizeCategory(value?: string) {
 }
 
 function normalizeIndustries(values: string[]) {
-  return values.filter((value): value is (typeof INDUSTRIES)[number] =>
-    INDUSTRIES.includes(value as never),
-  );
+  const byKey = new Map(INDUSTRIES.map((industry) => [enumLookupKey(industry), industry]));
+  return values
+    .map((value) => byKey.get(enumLookupKey(value)))
+    .filter((value): value is (typeof INDUSTRIES)[number] => Boolean(value));
 }
 
 function normalizeSizes(values: string[]) {
@@ -204,6 +207,10 @@ function normalizeEnum<T extends string>(
   fallback: T,
 ) {
   return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+function enumLookupKey(value: string) {
+  return value.trim().toLowerCase().replace(/[-\s]+/g, "_");
 }
 
 function attributeOptions(raw: WooCommerceProduct, names: string[]) {

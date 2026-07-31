@@ -74,10 +74,19 @@ export interface WooCommerceShippingLine {
   total: string;
 }
 
+export interface WooCommerceBilling {
+  first_name?: string;
+  company?: string;
+  phone?: string;
+  email?: string;
+}
+
 export interface WooCommerceCreateOrderInput {
   status?: string;
   currency?: "IDR";
   set_paid?: boolean;
+  customer_note?: string;
+  billing?: WooCommerceBilling;
   line_items: WooCommerceOrderLineItem[];
   shipping_lines?: WooCommerceShippingLine[];
   meta_data?: WooCommerceOrderMeta[];

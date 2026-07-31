@@ -16,6 +16,8 @@ Isi field berikut di WooCommerce Product Admin:
 
 Produk harus berstatus `publish`. Produk draft/private tidak tampil di Ofissio.
 
+Harga dasar wajib lebih dari 0. Produk tanpa SKU atau tanpa harga dasar tidak tampil dan tidak bisa masuk cart.
+
 ## Field custom Ofissio wajib
 
 Tambahkan meta/custom fields:
@@ -40,6 +42,17 @@ Aturan GLB:
 - `model_3d_id`, `model_3d_version`, dan `model_3d_source` wajib ada.
 - Produk tanpa SKU tidak valid.
 - Produk tanpa GLB valid tidak tampil di katalog dan tidak bisa masuk cart.
+- `moq`, `lead_time`, `fulfillment_type`, `transaction_mode`, dan `industries` wajib ada.
+
+Nilai `fulfillment_type` dari WooCommerce dinormalisasi sebelum masuk enum internal Ofissio:
+
+- `READY_STOCK`, `ready_stock`, `ready-stock` → `READY_STOCK`
+- `READY_STOCK_WITH_CUSTOMIZATION`, `ready_stock_with_customization`, `ready-stock-with-customization`, `ready_stock_customization` → `READY_STOCK`
+- `MADE_TO_ORDER`, `made_to_order`, `made-to-order` → `MADE_TO_ORDER`
+- `QUOTATION_ONLY`, `quotation_only`, `quotation-only` → `MADE_TO_ORDER`
+
+Jika ada meta duplikat dengan key sama, Ofissio memakai value terakhir yang tidak kosong.
+Nilai `transaction_mode` juga menerima format lowercase/dash seperti `hybrid`, `direct-checkout`, atau `request_quotation`, lalu dinormalisasi ke enum uppercase internal.
 
 ## Field custom bordir
 
@@ -84,6 +97,7 @@ Camera presets yang didukung:
 ## Format array
 
 Field array boleh berupa JSON array atau string dipisahkan koma.
+Untuk field seperti `embroidery_zones`, array object dari WooCommerce juga diterima selama object punya `id`, `value`, `slug`, `name`, atau `label`. Ofissio akan mengambil value pertama yang tersedia, dengan prioritas `id`.
 
 Contoh:
 
@@ -125,16 +139,22 @@ Corporate, Perhotelan, Security
 
 Untuk Phase 8, GLB cukup berupa URL custom field. Ke depan, upload GLB final sebaiknya dilakukan melalui bridge plugin agar admin tidak perlu edit metadata manual.
 
+## Aturan stok standar
+
+`stock_status` WooCommerce tidak menjadi blocker customer-facing untuk produk standar. Produk standar tetap bisa tampil dan dipesan jika metadata Ofissio valid, termasuk saat stok fisik rendah/kosong di WooCommerce. Kekurangan stok ditangani sebagai warning internal `Replenishment needed` di Ofissio Admin, bukan pesan `stok habis` ke customer.
+
 ## Validasi Phase 18
 
 Ofissio hanya menampilkan produk WooCommerce jika semua ini valid:
 
 - product status `publish`;
 - SKU tidak kosong;
+- harga dasar lebih dari 0;
 - `has_3d_model=true`;
 - `model_3d_url` berakhiran `.glb`;
 - `model_3d_filename` berakhiran `.glb`;
 - `model_3d_id`, `model_3d_version`, dan `model_3d_source` terisi;
+- `moq`, `lead_time`, `fulfillment_type`, `transaction_mode`, dan `industries` terisi valid;
 - jika `supports_embroidery=true`, maka `embroidery_zones` tidak kosong.
 
 Jalankan `npm run check:woocommerce` untuk memeriksa koneksi dan jumlah produk WooCommerce yang valid GLB.
