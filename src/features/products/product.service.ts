@@ -1,15 +1,42 @@
 import { productRepository } from "./product.repository";
 import { validateProduct3DModel, validateProductForCart, validateProductForCatalog } from "./product.validation";
+import {
+  normalizeIndustrySlug,
+  slugifyTaxonomy,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 export { validateProduct3DModel, validateProductForCart, validateProductForCatalog };
 const visible = () => productRepository.getPublishedProducts().filter((p) => validateProductForCatalog(p).ok);
 export const productService = {
   getPublishedProducts: visible, getProductsWith3DModel: visible,
   getProductById: (id: string) => productRepository.getProductById(id),
   getProductBySlug: (slug: string) => { const p = productRepository.getProductBySlug(slug); return p && validateProductForCatalog(p).ok ? p : undefined; },
-  getProductsByIndustry: (industry: string) => visible().filter((p) => p.industries.includes(industry as never)),
-  getProductsByCategory: (category: string) => visible().filter((p) => p.category === category),
-  getRecommendedProducts: (industry?: string) => industry ? visible().filter((p) => p.industries.includes(industry as never)) : visible(),
-  searchProducts: (query: string) => { const q = query.toLowerCase(); return visible().filter((p) => [p.name, p.sku, p.category, p.material, ...p.industries].join(" ").toLowerCase().includes(q)); },
+  getProductsByIndustry: (industry: string) => {
+    const slug = normalizeIndustrySlug(industry);
+    return visible().filter((p) =>
+      p.industrySlugs?.includes(slug) ||
+      p.industries.some((item) => normalizeIndustrySlug(item) === slug),
+    );
+  },
+  getProductsByCategory: (category: string) => {
+    const slug = slugifyTaxonomy(category);
+    return visible().filter((p) =>
+      p.categorySlugs?.includes(slug) || slugifyTaxonomy(p.category) === slug,
+    );
+  },
+  getRecommendedProducts: (industry?: string) => industry ? productService.getProductsByIndustry(industry) : visible(),
+  searchProducts: (query: string) => {
+    const q = query.toLowerCase();
+    return visible().filter((p) =>
+      [
+        p.name,
+        p.sku,
+        p.category,
+        p.material,
+        ...p.industries,
+        ...(p.searchableTerms ?? []),
+      ].join(" ").toLowerCase().includes(q),
+    );
+  },
   validateProductForCart,
   validateProductForCatalog,
   validateProduct3DModel,

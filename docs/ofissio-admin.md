@@ -186,3 +186,7 @@ Phase 25 smoke terbaru membuktikan:
 - task checklist memperbarui progress;
 - shipment manual tersimpan sampai delivered;
 - upload/logo customer terlihat di admin uploads tanpa membocorkan service-role key.
+
+## Task A5 quantity pricing
+
+Product admin mengatur harga bertingkat dari `/admin/products/new` atau `/admin/products/woocommerce/[id]`. Permission write tetap `admin:catalog:update`; customer dan role view-only tidak dapat memanggil endpoint update. Semua write action memakai rate limit, validasi server, safe error, serta audit `product_quantity_pricing_updated` atau `product_quantity_pricing_update_failed`.

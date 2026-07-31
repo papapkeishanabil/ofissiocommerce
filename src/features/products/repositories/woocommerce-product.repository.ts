@@ -1,10 +1,17 @@
 import "server-only";
 
 import { logAuditEvent } from "@/lib/security/audit-log";
+import {
+  normalizeIndustrySlug,
+  slugifyTaxonomy,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 
 import { mapWooCommerceProductToOfissioProduct } from "../product.mapper";
 import type { OfissioProduct } from "../product.types";
-import { validateWooCommerceProductForOfissio } from "../woocommerce/woocommerce-product.validation";
+import {
+  validateRawWooCommerceProductForOfissio,
+  validateWooCommerceProductForOfissio,
+} from "../woocommerce/woocommerce-product.validation";
 import { woocommerceClient } from "../woocommerce/woocommerce.client";
 import type { WooCommerceProduct } from "../woocommerce/woocommerce.types";
 
@@ -37,26 +44,32 @@ async function getProductBySlug(slug: string) {
 }
 
 async function getProductsByIndustry(industry: string) {
+  const slug = normalizeIndustrySlug(industry);
   return (await getPublishedProducts()).filter((product) =>
-    product.industries.includes(industry as never),
+    product.industrySlugs?.includes(slug) ||
+    product.industries.some((item) => normalizeIndustrySlug(item) === slug),
   );
 }
 
 async function getProductsByCategory(category: string) {
+  const slug = slugifyTaxonomy(category);
   return (await getPublishedProducts()).filter(
-    (product) => product.category === category,
+    (product) =>
+      product.categorySlugs?.includes(slug) ||
+      slugifyTaxonomy(product.category) === slug,
   );
 }
 
 async function searchProducts(query: string) {
-  const remoteProducts = await woocommerceClient.getProducts({
-    status: "publish",
-    search: query,
-    per_page: 100,
-  });
   const q = query.trim().toLowerCase();
-  return mapAndFilter(remoteProducts).filter((product) =>
-    [product.name, product.sku, product.category, ...product.industries]
+  return (await getPublishedProducts()).filter((product) =>
+    [
+      product.name,
+      product.sku,
+      product.category,
+      ...product.industries,
+      ...(product.searchableTerms ?? []),
+    ]
       .join(" ")
       .toLowerCase()
       .includes(q),
@@ -66,6 +79,20 @@ async function searchProducts(query: string) {
 function mapAndFilter(products: WooCommerceProduct[]) {
   const valid: OfissioProduct[] = [];
   for (const raw of products) {
+    const rawValidation = validateRawWooCommerceProductForOfissio(raw);
+    if (!rawValidation.ok) {
+      logAuditEvent({
+        action: "woocommerce_product_invalid",
+        entityType: "product",
+        entityId: String(raw.id),
+        metadata: {
+          sku: raw.sku,
+          slug: raw.slug,
+          reason: rawValidation.reason,
+        },
+      });
+      continue;
+    }
     const product = mapWooCommerceProductToOfissioProduct(raw);
     const validation = validateWooCommerceProductForOfissio(product);
     if (!validation.ok) {

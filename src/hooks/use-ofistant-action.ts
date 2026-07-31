@@ -97,18 +97,18 @@ export function useOfistantAction() {
         case "SHOW_PRODUCTS": {
           const p = action.payload;
           const params = new URLSearchParams();
-          if (p?.industry) params.set("industri", p.industry);
-          if (p?.category) params.set("kategori", p.category);
+          if (p?.industrySlug ?? p?.industry) {
+            params.set("industri", p?.industrySlug ?? p?.industry ?? "");
+          }
+          if (p?.categorySlug ?? p?.category) {
+            params.set("kategori", p?.categorySlug ?? p?.category ?? "");
+          }
           const qs = params.toString();
           router.push(qs ? `/catalog?${qs}` : "/catalog");
           return { ok: true };
         }
         case "OPEN_PRODUCT_DETAIL": {
-          const product = productService.getProductBySlug(action.payload.slug);
-          if (!product) {
-            return { ok: false, reason: "Produk belum published atau model GLB tidak valid." };
-          }
-          router.push(`/product/${product.slug}`);
+          router.push(`/product/${action.payload.slug}`);
           return { ok: true };
         }
         case "SHOW_PRODUCT_COMPARISON": {

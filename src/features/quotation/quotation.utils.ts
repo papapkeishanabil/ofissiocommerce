@@ -88,16 +88,24 @@ export function normalizeQuotationItem(input: {
     item.logoFileId ??
     item.embroideryPlacements.find((placement) => placement.logoFileId)?.logoFileId ??
     null;
+  const calculatedUnitPrice =
+    item.unitPrice ?? item.finalUnitPrice ?? item.priceFrom;
+  const calculatedLineSubtotal = calculatedUnitPrice * item.totalQty;
+  const finalUnitPrice = item.finalUnitPrice ?? calculatedUnitPrice;
+  const finalLineTotal = Math.max(
+    0,
+    finalUnitPrice * item.totalQty - safeMoney(item.discountAmount),
+  );
 
   return {
     ...item,
     id: item.id ?? fallbackId,
     quotationId: item.quotationId ?? input.quotationId,
-    unitPrice: item.unitPrice ?? null,
-    lineSubtotal: item.lineSubtotal ?? null,
+    unitPrice: calculatedUnitPrice,
+    lineSubtotal: item.lineSubtotal ?? calculatedLineSubtotal,
     discountAmount: safeMoney(item.discountAmount),
-    finalUnitPrice: item.finalUnitPrice ?? null,
-    finalLineTotal: item.finalLineTotal ?? null,
+    finalUnitPrice,
+    finalLineTotal: item.finalLineTotal ?? finalLineTotal,
     logoFileId,
     itemSnapshot: item.itemSnapshot ?? {
       productId: item.productId,
@@ -110,6 +118,13 @@ export function normalizeQuotationItem(input: {
       sizeMatrix: item.sizeMatrix,
       totalQty: item.totalQty,
       priceFrom: item.priceFrom,
+      regularPrice: item.regularPrice ?? item.priceFrom,
+      finalUnitPrice: item.finalUnitPrice ?? item.priceFrom,
+      quantityTierLabel: item.quantityTierLabel ?? null,
+      quantityPricingBasis: item.quantityPricingBasis ?? "total_order_qty",
+      quantityPricingMode: item.quantityPricingMode ?? "fixed_unit_price",
+      quantityTierApplied: item.quantityTierApplied ?? false,
+      subtotal: item.subtotal ?? item.priceFrom * item.totalQty,
       moq: item.moq,
       fulfillmentType: item.fulfillmentType,
       transactionMode: item.transactionMode,

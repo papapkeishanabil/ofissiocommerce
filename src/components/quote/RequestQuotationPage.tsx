@@ -30,7 +30,7 @@ export function RequestQuotationPage() {
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
   const subtotal = useMemo(
-    () => items.reduce((a, it) => a + it.estimatedPrice, 0),
+    () => items.reduce((a, it) => a + (it.subtotal ?? it.estimatedPrice), 0),
     [items],
   );
 
@@ -161,8 +161,11 @@ export function RequestQuotationPage() {
                     </p>
                   </div>
                   <p className="text-sm font-bold">
-                    {formatIDR(it.estimatedPrice)}
+                    {formatIDR(it.subtotal ?? it.estimatedPrice)}
                   </p>
+                  {it.quantityTierApplied && it.quantityTierLabel ? (
+                    <p className="text-[10px] font-semibold text-brand-700">Tier harga: {it.quantityTierLabel}</p>
+                  ) : null}
                 </li>
               ))}
             </ul>

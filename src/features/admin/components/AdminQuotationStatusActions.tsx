@@ -200,13 +200,18 @@ export function AdminQuotationStatusActions({
               <legend className="px-1 text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">
                 {item.productName} - {item.totalQty} pcs
               </legend>
+              <div className="md:col-span-4 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-900">
+                Harga kalkulasi Ofissio: <strong>{formatIDR(item.unitPrice ?? item.finalUnitPrice ?? item.priceFrom)} / pcs</strong>
+                {item.quantityTierApplied && item.quantityTierLabel ? <> · Tier harga: <strong>{item.quantityTierLabel}</strong></> : <> · Harga regular</>}
+                <span className="mt-1 block text-brand-700">Harga final tetap dapat di-override oleh admin sebelum quotation dikirim.</span>
+              </div>
               <NumberField
-                label="Unit price"
+                label="Original calculated price"
                 name={`unitPrice:${item.id}`}
                 defaultValue={item.unitPrice ?? item.priceFrom}
               />
               <NumberField
-                label="Final unit price"
+                label="Override / final unit price"
                 name={`finalUnitPrice:${item.id}`}
                 defaultValue={item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom}
               />

@@ -3,17 +3,15 @@
 // Phase 2 swaps this with real WooCommerce images via next/image.
 // Uses typographic initials (editorial) instead of emoji for brand consistency.
 
-import type { Category } from "@/types/industry";
-
 interface ProductImagePlaceholderProps {
   name: string;
   accentColor: string;
-  category: Category;
+  category: string;
   className?: string;
   variant?: "card" | "detail";
 }
 
-const CATEGORY_INITIAL: Record<Category, string> = {
+const CATEGORY_INITIAL: Record<string, string> = {
   "Kemeja Lapangan": "KL",
   Wearpack: "WP",
   "Rompi Safety": "RS",

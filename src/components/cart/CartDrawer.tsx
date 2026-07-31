@@ -77,8 +77,11 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                     {it.color} · {it.totalQty} pcs
                   </p>
                   <p className="mt-1 text-xs font-bold">
-                    {formatIDR(it.estimatedPrice)}
+                    {formatIDR(it.subtotal ?? it.estimatedPrice)}
                   </p>
+                  {it.quantityTierApplied && it.quantityTierLabel ? (
+                    <p className="mt-0.5 text-[10px] font-semibold text-brand-700">Tier {it.quantityTierLabel}</p>
+                  ) : null}
                 </li>
               ))}
             </ul>

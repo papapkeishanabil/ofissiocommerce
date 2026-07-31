@@ -17,7 +17,9 @@ import {
   getMetaNumber,
   getMetaString,
   getMetaStringArray,
+  getMetaValue,
 } from "./woocommerce/woocommerce-product-meta";
+import { normalizeQuantityPricing } from "./quantity-pricing";
 import {
   normalizeWooFulfillmentType,
   normalizeWooTransactionMode,
@@ -97,9 +99,16 @@ export function mapWooCommerceProductToOfissioProduct(
     getMetaStringArray(meta, "camera_presets"),
   );
   const material = getMetaString(meta, "material") || attributeOptions(raw, ["material"])[0] || "Material belum diisi";
-  const priceFrom = parseMoney(raw.sale_price || raw.price || raw.regular_price) || 0;
+  const priceFrom = parseMoney(raw.regular_price || raw.price || raw.sale_price) || 0;
   const moq = getMetaNumber(meta, "moq", 12);
   const leadTime = getMetaString(meta, "lead_time") || "Hubungi tim Ofissio";
+  const quantityPricing = normalizeQuantityPricing({
+    enabled: getMetaBoolean(meta, "quantity_pricing_enabled", true),
+    mode: getMetaString(meta, "quantity_pricing_mode"),
+    basis: getMetaString(meta, "quantity_basis"),
+    tiers: getMetaValue(meta, "quantity_pricing_tiers"),
+    moq,
+  }).quantityPricing;
 
   return {
     id: `wc-${raw.id}`,
@@ -171,12 +180,13 @@ export function mapWooCommerceProductToOfissioProduct(
         item.slug,
         ...item.options,
       ]),
-    ]),
+      ]),
+    quantityPricing,
   };
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
   if (!product.model_3d) throw new Error("Produk tanpa GLB tidak dapat dipetakan ke cart.");
-  return { source: product.source, sourceId: product.source_id, priceFrom: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url };
+  return { source: product.source, sourceId: product.source_id, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing };
 }
 
 function stripHtml(value = "") {

@@ -17,9 +17,10 @@
     "check:documents": "tsx scripts/check-documents.ts",
     "check:payment": "tsx scripts/check-payment.ts",
     "check:shipping": "tsx scripts/check-shipping.ts",
+    "test:quantity-pricing": "tsx scripts/test-quantity-pricing.ts",
     "test:company-isolation": "tsx scripts/test-company-isolation.ts",
     "verify:supabase-persistence": "tsx scripts/verify-supabase-persistence.ts",
-    "check:all": "npm run check:env && npm run check:email && npm run check:documents && npm run check:payment && npm run check:shipping && npm run typecheck && npm run lint && npm run build"
+    "check:all": "npm run check:env && npm run check:email && npm run check:documents && npm run check:payment && npm run check:shipping && npm run test:quantity-pricing && npm run typecheck && npm run lint && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

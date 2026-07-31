@@ -9,6 +9,7 @@ import {
   buildPaymentSnapshotForWooRetry,
   createWooCommerceOrderFromOfissioOrder,
 } from "@/features/orders/woocommerce-order-sync.service";
+import { logAuditEvent } from "@/lib/security/audit-log";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
 import { createApiError, safeErrorResponse } from "@/lib/security/safe-error-response";
 import { validateInput } from "@/lib/security/validate-input";
@@ -39,6 +40,21 @@ export async function POST(request: Request, context: RouteContext) {
       actorType: "internal",
       companyName: detail.tracking?.companyName ?? detail.order.companyId,
       quotationId: detail.order.quotationId ?? null,
+    });
+    logAuditEvent({
+      request,
+      actorId: actor.id,
+      actorType: "internal",
+      companyId: detail.order.companyId,
+      action: "admin_woocommerce_order_sync_requested",
+      entityType: "order",
+      entityId: detail.order.id,
+      metadata: {
+        syncStatus: result.syncStatus,
+        skipped: result.skipped,
+        provider: result.provider,
+        externalOrderId: result.externalOrderId ?? null,
+      },
     });
 
     return NextResponse.json({ ok: true, sync: result });

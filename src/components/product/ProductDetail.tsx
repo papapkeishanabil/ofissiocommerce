@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatIDR } from "@/types/product";
 import type { OfissioProduct } from "@/features/products/product.types";
+import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
@@ -201,7 +202,21 @@ export function ProductDetail({ product }: ProductDetailProps) {
     () => Object.values(sizes).reduce((a, b) => a + (b || 0), 0),
     [sizes],
   );
-  const estimatedPrice = totalQty * product.priceFrom;
+  const quantityPrice = useMemo(
+    () => calculateQuantityTierPrice({
+      regularPrice: product.priceFrom,
+      totalQty,
+      quantityPricing: product.quantityPricing,
+    }),
+    [product.priceFrom, product.quantityPricing, totalQty],
+  );
+  const estimatedPrice = quantityPrice.subtotal;
+  const lowestTierPrice = useMemo(
+    () => product.quantityPricing?.enabled && product.quantityPricing.tiers.length
+      ? Math.min(...product.quantityPricing.tiers.map((tier) => tier.unitPrice))
+      : product.priceFrom,
+    [product.priceFrom, product.quantityPricing],
+  );
   const meetsMoq = totalQty >= product.moq;
   const snapshotUrl = uniform3DConfig?.snapshots.front ?? Object.values(uniform3DConfig?.snapshots ?? {})[0];
   const floatingPreviewOpen =
@@ -363,7 +378,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
               <Stat
                 icon={<span className="text-sm font-bold">Rp</span>}
                 label="Mulai dari"
-                value={formatIDR(product.priceFrom)}
+                value={formatIDR(lowestTierPrice)}
               />
               <Stat
                 icon={<Layers className="h-4 w-4" />}
@@ -376,6 +391,23 @@ export function ProductDetail({ product }: ProductDetailProps) {
                 value={`${product.leadTimeDays} hari`}
               />
             </div>
+
+            {product.quantityPricing?.enabled && product.quantityPricing.tiers.length > 0 ? (
+              <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/60 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold text-brand-900">Harga bertingkat tersedia</p>
+                  <span className="text-[10px] font-semibold text-brand-700">Total seluruh ukuran</span>
+                </div>
+                <dl className="mt-2 grid gap-1 sm:grid-cols-2">
+                  {product.quantityPricing.tiers.map((tier) => (
+                    <div key={`${tier.minQty}-${tier.maxQty ?? "plus"}`} className="flex items-center justify-between gap-3 rounded-lg bg-white/80 px-2.5 py-1.5 text-[11px]">
+                      <dt className="font-semibold text-ink-muted">{tier.label}</dt>
+                      <dd className="font-bold text-ink">{formatIDR(tier.unitPrice)} / pcs</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ) : null}
 
             {/* Color picker */}
             <div className="mt-5">
@@ -532,10 +564,19 @@ export function ProductDetail({ product }: ProductDetailProps) {
                     {formatIDR(estimatedPrice)}
                   </p>
                   <p className="text-[11px] text-ink-muted">
-                    {totalQty} pcs × {formatIDR(product.priceFrom)}
+                    {totalQty} pcs × {formatIDR(quantityPrice.unitPrice)}
                   </p>
+                  {quantityPrice.tierApplied && quantityPrice.tierLabel ? (
+                    <p className="mt-1 text-[10px] font-bold text-brand-700">Tier {quantityPrice.tierLabel}</p>
+                  ) : null}
                 </div>
               </div>
+
+              {quantityPrice.nextTier ? (
+                <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">
+                  Tambah {quantityPrice.nextTier.qtyToNextTier} pcs lagi untuk harga {formatIDR(quantityPrice.nextTier.potentialUnitPrice)} / pcs.
+                </p>
+              ) : null}
 
               {error && (
                 <p role="alert" className="mt-3 text-xs text-red-600">

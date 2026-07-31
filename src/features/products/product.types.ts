@@ -4,6 +4,7 @@ import type {
   ProductAttributeValue,
   ProductTaxonomyReference,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
+import type { QuantityPricing } from "./quantity-pricing";
 
 export type ProductStatus = "draft" | "published" | "archived";
 export type TransactionMode = "DIRECT_CHECKOUT" | "REQUEST_QUOTATION" | "HYBRID";
@@ -37,4 +38,6 @@ export interface OfissioProduct extends Product {
   tags?: ProductTaxonomyReference[];
   attributes?: ProductAttributeValue[];
   searchableTerms?: string[];
+  /** Optional for legacy mock products; WooCommerce products always map this field. */
+  quantityPricing?: QuantityPricing;
 }

@@ -1,10 +1,5 @@
 // src/types/product.ts
-import type {
-  Category,
-  FulfillmentType,
-  Industry,
-  Size,
-} from "./industry";
+import type { FulfillmentType, Size } from "./industry";
 
 export interface ProductSizeRow {
   size: Size;
@@ -25,8 +20,8 @@ export interface Product {
   name: string;
   sku: string;
   /** a product may serve multiple industries */
-  industries: Industry[];
-  category: Category;
+  industries: string[];
+  category: string;
   /** lowest unit price (IDR) before size/quantity adjustment */
   priceFrom: number;
   /** minimum order quantity across all sizes combined */

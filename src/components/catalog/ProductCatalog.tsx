@@ -1,9 +1,13 @@
 // src/components/catalog/ProductCatalog.tsx
 
+import Link from "next/link";
 import { useMemo } from "react";
 
 import type { OfissioProduct } from "@/features/products/product.types";
-import { INDUSTRIES, CATEGORIES } from "@/types/industry";
+import {
+  normalizeIndustrySlug,
+  slugifyTaxonomy,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import { PackageOpen } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -15,24 +19,58 @@ interface ProductCatalogProps {
   industry?: string;
   /** category filter */
   category?: string;
+  industryLabel?: string;
+  categoryLabel?: string;
+  categoryStrict?: boolean;
+  alternativeCategories?: Array<{ name: string; slug: string }>;
+  alternativeIndustries?: Array<{ name: string; slug: string }>;
 }
 
-export function ProductCatalog({ products, industry, category }: ProductCatalogProps) {
+export function ProductCatalog({
+  products,
+  industry,
+  category,
+  industryLabel,
+  categoryLabel,
+  categoryStrict = true,
+  alternativeCategories = [],
+  alternativeIndustries = [],
+}: ProductCatalogProps) {
   const filteredProducts = useMemo(() => {
     let list = products;
     if (industry) {
-      list = list.filter((p) =>
-        p.industries.includes(industry as (typeof INDUSTRIES)[number]),
+      list = list.filter(
+        (p) =>
+          p.industrySlugs?.includes(industry) ||
+          p.industries.some((item) => normalizeIndustrySlug(item) === industry),
       );
     }
     if (category) {
-      list = list.filter((p) => p.category === category);
+      list = list.filter(
+        (p) => {
+          if (categoryStrict) {
+            return (
+              p.categorySlugs?.includes(category) ||
+              slugifyTaxonomy(p.category) === category
+            );
+          }
+          const haystack = [
+            p.name,
+            p.sku,
+            p.category,
+            ...(p.searchableTerms ?? []),
+          ]
+            .join(" ")
+            .toLowerCase();
+          return category.split("-").every((term) => haystack.includes(term));
+        },
+      );
     }
     return list;
-  }, [products, industry, category]);
+  }, [products, industry, category, categoryStrict]);
 
-  const activeIndustry = INDUSTRIES.find((i) => i === industry);
-  const activeCategory = CATEGORIES.find((c) => c === category);
+  const activeIndustry = industry ? industryLabel ?? industry : undefined;
+  const activeCategory = category ? categoryLabel ?? category : undefined;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
@@ -70,6 +108,26 @@ export function ProductCatalog({ products, industry, category }: ProductCatalogP
           <p className="mt-1 text-xs text-ink-muted">
             Coba industri atau kategori lain.
           </p>
+          <div className="mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
+            {alternativeCategories.slice(0, 4).map((item) => (
+              <Link
+                key={`category-${item.slug}`}
+                href={`/catalog?kategori=${encodeURIComponent(item.slug)}`}
+                className="rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-brand-700 transition hover:border-brand-300 hover:bg-brand-50"
+              >
+                {item.name}
+              </Link>
+            ))}
+            {alternativeIndustries.slice(0, 3).map((item) => (
+              <Link
+                key={`industry-${item.slug}`}
+                href={`/catalog?industri=${encodeURIComponent(item.slug)}`}
+                className="rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-ink-muted transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
+              >
+                {item.name}
+              </Link>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

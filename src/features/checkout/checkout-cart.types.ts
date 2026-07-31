@@ -1,5 +1,9 @@
 import type { SizeMatrix } from "@/types/industry";
 import type { LogoPlacement } from "@/types/uniform-3d";
+import type {
+  QuantityPricingBasis,
+  QuantityPricingMode,
+} from "@/features/products/quantity-pricing";
 
 export interface CheckoutCartItemInput {
   productId: string;
@@ -26,6 +30,13 @@ export interface ValidatedCheckoutCartItem {
   sizeMatrix: SizeMatrix;
   totalQty: number;
   priceFrom: number;
+  regularPrice: number;
+  finalUnitPrice: number;
+  quantityTierLabel: string | null;
+  quantityPricingBasis: QuantityPricingBasis;
+  quantityPricingMode: QuantityPricingMode;
+  quantityTierApplied: boolean;
+  subtotal: number;
   moq: number;
   fulfillmentType: string;
   transactionMode: string;

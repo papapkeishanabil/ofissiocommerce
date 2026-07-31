@@ -29,3 +29,7 @@ Gambar produk pada Task A3 menggunakan input URL, satu URL per baris. Upload med
 - `GET /api/admin/products/woocommerce/[id]/3d-model/status`
 
 Semua route memakai internal guard, permission catalog, rate limit, validasi Zod, safe error, dan audit log. WooCommerce consumer secret serta Supabase service-role key hanya digunakan server-side.
+
+## Harga quantity Task A5
+
+Form create/edit sekarang memiliki section **Harga & Diskon Quantity**. Admin dapat menambah, menghapus, mereset, dan memvalidasi tier tanpa masuk WooCommerce. Edit produk juga menyediakan endpoint khusus `PATCH /api/admin/products/woocommerce/[id]/quantity-pricing`; create/update utama tetap menerima field pricing yang sama. Detail operasional ada di [quantity-pricing.md](quantity-pricing.md).

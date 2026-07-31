@@ -13,6 +13,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 
 interface CartLineItemViewProps {
   item: CartLineItem;
@@ -22,6 +23,11 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
   const router = useRouter();
   const updateLineSizes = useCartStore((s) => s.updateLineSizes);
   const removeLine = useCartStore((s) => s.removeLine);
+  const pricing = calculateQuantityTierPrice({
+    regularPrice: item.regularPrice ?? item.priceFrom ?? item.unitPrice,
+    totalQty: item.totalQty,
+    quantityPricing: item.quantityPricing,
+  });
 
   function setSize(size: (typeof SIZES)[number], qty: unknown) {
     updateLineSizes(item.id, {
@@ -84,11 +90,14 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
         </div>
         <div className="text-right">
           <p className="text-sm font-bold text-ink">
-            {formatIDR(item.estimatedPrice)}
+            {formatIDR(item.subtotal ?? item.estimatedPrice)}
           </p>
           <p className="text-[11px] text-ink-muted">
-            {formatIDR(item.unitPrice)} / pcs
+            {formatIDR(item.finalUnitPrice ?? item.unitPrice)} / pcs
           </p>
+          {(item.quantityTierApplied ?? pricing.tierApplied) && (item.quantityTierLabel ?? pricing.tierLabel) ? (
+            <p className="mt-1 text-[10px] font-bold text-brand-700">Tier: {item.quantityTierLabel ?? pricing.tierLabel}</p>
+          ) : null}
         </div>
       </div>
 
@@ -136,6 +145,12 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
           );
         })}
       </div>
+
+      {pricing.nextTier ? (
+        <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">
+          Tambah {pricing.nextTier.qtyToNextTier} pcs lagi untuk harga {formatIDR(pricing.nextTier.potentialUnitPrice)} / pcs.
+        </p>
+      ) : null}
 
       <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
         <p className="text-[11px] text-ink-muted">

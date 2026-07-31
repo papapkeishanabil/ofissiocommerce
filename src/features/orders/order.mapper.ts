@@ -21,9 +21,19 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
   const { payment } = input;
   const order = ensureOrderProcessRouting(input.order);
   return {
-    status: "pending",
+    status: mapPaymentStatusToWooCommerceStatus(payment.status),
     currency: "IDR",
     set_paid: false,
+    customer_note: [
+      `Ofissio order ${order.orderNumber ?? order.id}`,
+      input.companyName ? `Company: ${input.companyName}` : null,
+      input.quotationId ? `Quotation: ${input.quotationId}` : null,
+    ].filter(Boolean).join(" | "),
+    billing: {
+      first_name: input.picName ?? input.companyName ?? "Ofissio Customer",
+      company: input.companyName ?? undefined,
+      phone: input.picWhatsapp ?? undefined,
+    },
     line_items: order.items.map((item, index): WooCommerceOrderLineItem => {
       const productId =
         item.source === "woocommerce" && /^\d+$/.test(item.sourceId)
@@ -55,6 +65,11 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
           ["customization_notes", item.customization],
           ["model_3d_id", item.model3dId],
           ["model_3d_url", item.model3dUrl],
+          ["ofissio_quantity_tier_label", item.quantityTierLabel],
+          ["ofissio_quantity_basis", item.quantityPricingBasis],
+          ["ofissio_quantity_pricing_mode", item.quantityPricingMode],
+          ["ofissio_final_unit_price", String(item.finalUnitPrice ?? item.priceFrom)],
+          ["ofissio_total_qty", String(item.totalQty)],
           ["configuration_id", `${order.id}-${index}`],
           ["snapshot_front", ""],
           ["snapshot_right", ""],
@@ -73,6 +88,7 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
           ]
         : [],
     meta_data: compactMeta([
+      ["source", "ofissio"],
       ["ofissio_source", "ofissio"],
       ["ofissio_order_id", order.id],
       ["ofissio_order_number", order.orderNumber ?? order.id],
@@ -91,6 +107,11 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
       ["has_customization", String(order.hasCustomization ?? false)],
       ["customization_type", order.customizationType],
       ["tracking_id", order.id],
+      ["ofissio_quantity_tier_label", order.items[0]?.quantityTierLabel],
+      ["ofissio_quantity_basis", order.items[0]?.quantityPricingBasis],
+      ["ofissio_quantity_pricing_mode", order.items[0]?.quantityPricingMode],
+      ["ofissio_final_unit_price", order.items[0] ? String(order.items[0].finalUnitPrice ?? order.items[0].priceFrom) : null],
+      ["ofissio_total_qty", String(order.items.reduce((total, item) => total + item.totalQty, 0))],
     ]),
   };
 }

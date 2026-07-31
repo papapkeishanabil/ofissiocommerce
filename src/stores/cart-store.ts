@@ -16,6 +16,7 @@ import type { SizeMatrix } from "@/types/industry";
 import { validateProductForCart } from "@/features/products/product.validation";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { mapOfissioProductToCartItem } from "@/features/products/product.mapper";
+import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 
 interface CartState {
   items: CartLineItem[];
@@ -59,8 +60,11 @@ export const useCartStore = create<CartState>()(
           };
         }
         const id = lineItemId(product.id, color);
-        const unitPrice = product.priceFrom;
-        const estimatedPrice = unitPrice * totalQty;
+        const calculatedPrice = calculateQuantityTierPrice({
+          regularPrice: product.priceFrom,
+          totalQty,
+          quantityPricing: product.quantityPricing,
+        });
 
         const existing = get().items;
         const idx = existing.findIndex((it) => it.id === id);
@@ -74,11 +78,25 @@ export const useCartStore = create<CartState>()(
             mergedSizes[k] = (cur.sizes[k] ?? 0) + (sizes[k] ?? 0);
           });
           const mergedQty = sumSizeMatrix(mergedSizes);
+          const mergedPrice = calculateQuantityTierPrice({
+            regularPrice: cur.regularPrice ?? product.priceFrom,
+            totalQty: mergedQty,
+            quantityPricing: product.quantityPricing ?? cur.quantityPricing,
+          });
           next[idx] = {
             ...cur,
             sizes: mergedSizes,
             totalQty: mergedQty,
-            estimatedPrice: cur.unitPrice * mergedQty,
+            unitPrice: mergedPrice.unitPrice,
+            estimatedPrice: mergedPrice.subtotal,
+            regularPrice: cur.regularPrice ?? product.priceFrom,
+            finalUnitPrice: mergedPrice.unitPrice,
+            quantityTierLabel: mergedPrice.tierLabel,
+            quantityPricingBasis: product.quantityPricing?.basis ?? cur.quantityPricingBasis ?? "total_order_qty",
+            quantityPricingMode: product.quantityPricing?.mode ?? cur.quantityPricingMode ?? "fixed_unit_price",
+            quantityTierApplied: mergedPrice.tierApplied,
+            subtotal: mergedPrice.subtotal,
+            quantityPricing: product.quantityPricing ?? cur.quantityPricing,
             customization: customization ?? cur.customization,
             uniform3DConfig: uniform3DConfig ?? cur.uniform3DConfig,
             embroideryPlacements:
@@ -94,15 +112,23 @@ export const useCartStore = create<CartState>()(
           productSlug: product.slug,
           productName: product.name,
           sku: product.sku,
+          ...mapOfissioProductToCartItem(product),
           color,
           sizes,
           totalQty,
-          unitPrice,
-          estimatedPrice,
+          unitPrice: calculatedPrice.unitPrice,
+          estimatedPrice: calculatedPrice.subtotal,
+          regularPrice: product.priceFrom,
+          finalUnitPrice: calculatedPrice.unitPrice,
+          quantityTierLabel: calculatedPrice.tierLabel,
+          quantityPricingBasis: product.quantityPricing?.basis ?? "total_order_qty",
+          quantityPricingMode: product.quantityPricing?.mode ?? "fixed_unit_price",
+          quantityTierApplied: calculatedPrice.tierApplied,
+          subtotal: calculatedPrice.subtotal,
+          quantityPricing: product.quantityPricing,
           customization,
           uniform3DConfig: uniform3DConfig ?? undefined,
           embroideryPlacements: uniform3DConfig?.placements,
-          ...mapOfissioProductToCartItem(product),
         };
         set({ items: [...existing, line] });
         return { ok: true, lineId: id };
@@ -113,11 +139,23 @@ export const useCartStore = create<CartState>()(
           items: s.items.map((it) => {
             if (it.id !== lineId) return it;
             const totalQty = sumSizeMatrix(sizes);
+            const calculatedPrice = calculateQuantityTierPrice({
+              regularPrice: it.regularPrice ?? it.priceFrom ?? it.unitPrice,
+              totalQty,
+              quantityPricing: it.quantityPricing,
+            });
             return {
               ...it,
               sizes,
               totalQty,
-              estimatedPrice: it.unitPrice * totalQty,
+              unitPrice: calculatedPrice.unitPrice,
+              estimatedPrice: calculatedPrice.subtotal,
+              finalUnitPrice: calculatedPrice.unitPrice,
+              quantityTierLabel: calculatedPrice.tierLabel,
+              quantityTierApplied: calculatedPrice.tierApplied,
+              quantityPricingBasis: it.quantityPricing?.basis ?? it.quantityPricingBasis ?? "total_order_qty",
+              quantityPricingMode: it.quantityPricing?.mode ?? it.quantityPricingMode ?? "fixed_unit_price",
+              subtotal: calculatedPrice.subtotal,
             };
           }),
         })),

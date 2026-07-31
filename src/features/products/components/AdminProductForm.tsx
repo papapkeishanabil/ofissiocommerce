@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Save, Settings2, Shirt } from "lucide-react";
+import { Box, Calculator, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Plus, RotateCcw, Save, Settings2, Shirt, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import type { CatalogAttribute, CatalogCategory, IndustryMaster } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 import type { AdminWooCommerceProductDetail } from "@/features/products/woocommerce/woocommerce-product-admin.types";
+import {
+  createDefaultQuantityPricingTier,
+  quantityTierLabel,
+  validateQuantityPricing,
+} from "@/features/products/quantity-pricing";
 import {
   WOO_EMBROIDERY_ZONES,
   WOO_FULFILLMENT_TYPES,
@@ -56,12 +61,28 @@ export function AdminProductForm({ mode, product, options }: AdminProductFormPro
   const [workingProductId, setWorkingProductId] = useState<number | null>(product?.id ?? null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
+  const [showPricingValidation, setShowPricingValidation] = useState(false);
+
+  const pricingValidation = useMemo(
+    () => validateQuantityPricing({
+      enabled: form.quantityPricingEnabled,
+      tiers: form.quantityPricingTiers,
+      moq: form.moq,
+    }),
+    [form.moq, form.quantityPricingEnabled, form.quantityPricingTiers],
+  );
 
   const set = <K extends keyof AdminWooProductInput>(key: K, value: AdminWooProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    setShowPricingValidation(true);
+    if (!pricingValidation.valid) {
+      setMessage({ tone: "error", text: pricingValidation.errors[0]?.message ?? "Tier harga quantity belum valid." });
+      document.getElementById("quantity-pricing")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
@@ -134,6 +155,94 @@ export function AdminProductForm({ mode, product, options }: AdminProductFormPro
     }
   }
 
+  async function saveQuantityPricing() {
+    if (!workingProductId) {
+      setMessage({ tone: "warning", text: "Buat produk terlebih dahulu sebelum menyimpan harga quantity secara terpisah." });
+      return;
+    }
+    setShowPricingValidation(true);
+    if (!pricingValidation.valid) {
+      setMessage({ tone: "error", text: pricingValidation.errors[0]?.message ?? "Tier harga quantity belum valid." });
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch(
+        `/api/admin/products/woocommerce/${workingProductId}/quantity-pricing`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            ...MOCK_INTERNAL_HEADERS,
+          },
+          body: JSON.stringify({
+            quantityPricingEnabled: form.quantityPricingEnabled,
+            quantityPricingMode: form.quantityPricingMode,
+            quantityBasis: form.quantityBasis,
+            tiers: form.quantityPricingTiers,
+            moq: form.moq,
+          }),
+        },
+      );
+      const payload = (await response.json().catch(() => null)) as ApiProductResponse | null;
+      if (!response.ok || !payload?.product) {
+        throw new Error(payload?.message || "Harga quantity belum dapat disimpan.");
+      }
+      set("quantityPricingTiers", payload.product.ofissioMeta.quantityPricingTiers);
+      setMessage({ tone: "success", text: "Harga quantity berhasil disimpan." });
+      router.refresh();
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "Harga quantity belum dapat disimpan." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function updateTier(index: number, patch: Partial<AdminWooProductInput["quantityPricingTiers"][number]>) {
+    set("quantityPricingTiers", form.quantityPricingTiers.map((tier, tierIndex) => {
+      if (tierIndex !== index) return tier;
+      const next = { ...tier, ...patch };
+      const generatedBefore = quantityTierLabel(tier.minQty, tier.maxQty);
+      if (!tier.label || tier.label === generatedBefore) {
+        next.label = quantityTierLabel(next.minQty, next.maxQty);
+      }
+      return next;
+    }));
+  }
+
+  function addTier() {
+    const tiers = [...form.quantityPricingTiers];
+    const last = tiers[tiers.length - 1];
+    const suggestedMin = last
+      ? [20, 50, 100, 300, 500].find((value) => value > last.minQty) ?? last.minQty + 500
+      : form.moq;
+    const minQty = last?.maxQty == null ? suggestedMin : last.maxQty + 1;
+    if (last && last.maxQty == null) {
+      const closedMax = Math.max(last.minQty, minQty - 1);
+      tiers[tiers.length - 1] = {
+        ...last,
+        maxQty: closedMax,
+        label: quantityTierLabel(last.minQty, closedMax),
+      };
+    }
+    tiers.push({
+      minQty,
+      maxQty: null,
+      unitPrice: last?.unitPrice || form.regularPrice,
+      label: quantityTierLabel(minQty, null),
+    });
+    set("quantityPricingTiers", tiers);
+  }
+
+  function resetQuantityPricing() {
+    set("quantityPricingTiers", [
+      createDefaultQuantityPricingTier(form.regularPrice, form.moq),
+    ]);
+    setShowPricingValidation(false);
+  }
+
   return (
     <form onSubmit={submit} className="space-y-5">
       {message ? <StatusMessage {...message} /> : null}
@@ -150,7 +259,16 @@ export function AdminProductForm({ mode, product, options }: AdminProductFormPro
             <input className={INPUT} value={form.slug ?? ""} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} maxLength={180} />
           </Field>
           <Field label="Harga reguler" required>
-            <input className={INPUT} type="number" min={1} step={1} value={form.regularPrice} onChange={(e) => set("regularPrice", Number(e.target.value))} required />
+            <input className={INPUT} type="number" min={1} step={1} value={form.regularPrice} onChange={(e) => {
+              const regularPrice = Number(e.target.value);
+              setForm((current) => ({
+                ...current,
+                regularPrice,
+                quantityPricingTiers: current.quantityPricingTiers.length === 1 && current.quantityPricingTiers[0]?.unitPrice === 0
+                  ? [{ ...current.quantityPricingTiers[0], unitPrice: regularPrice }]
+                  : current.quantityPricingTiers,
+              }));
+            }} required />
           </Field>
           <Field label="Status WooCommerce" required>
             <select className={INPUT} value={form.status} onChange={(e) => set("status", e.target.value as AdminWooProductInput["status"])}>
@@ -168,6 +286,83 @@ export function AdminProductForm({ mode, product, options }: AdminProductFormPro
           </Field>
         </div>
       </FormSection>
+
+      <div id="quantity-pricing" className="scroll-mt-28">
+        <FormSection
+          icon={Calculator}
+          title="Harga & Diskon Quantity"
+          description="Harga quantity dihitung dari total jumlah pesanan seluruh ukuran, bukan per ukuran."
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            <Toggle
+              label="Aktifkan Harga Quantity"
+              description="Jika dinonaktifkan, sistem memakai harga regular WooCommerce."
+              checked={form.quantityPricingEnabled}
+              onChange={(value) => set("quantityPricingEnabled", value)}
+            />
+            <Field label="Mode Harga">
+              <select className={INPUT} value={form.quantityPricingMode} onChange={(event) => set("quantityPricingMode", event.target.value as AdminWooProductInput["quantityPricingMode"])}>
+                <option value="fixed_unit_price">Harga Tetap per Tier Quantity</option>
+              </select>
+            </Field>
+            <Field label="Dasar Perhitungan Quantity">
+              <select className={INPUT} value={form.quantityBasis} onChange={(event) => set("quantityBasis", event.target.value as AdminWooProductInput["quantityBasis"])}>
+                <option value="total_order_qty">Total Jumlah Pesanan</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200" role="region" aria-label="Tabel tier harga quantity" tabIndex={0}>
+            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-black uppercase tracking-[0.1em] text-ink-subtle">
+                <tr>
+                  <th className="px-3 py-3">Min Qty</th>
+                  <th className="px-3 py-3">Max Qty</th>
+                  <th className="px-3 py-3">Harga / pcs</th>
+                  <th className="px-3 py-3">Label Tier</th>
+                  <th className="px-3 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {form.quantityPricingTiers.map((tier, index) => (
+                  <tr key={`${index}-${tier.minQty}`}>
+                    <td className="p-2"><input aria-label={`Min Qty tier ${index + 1}`} className={INPUT} type="number" min={1} step={1} value={tier.minQty} onChange={(event) => updateTier(index, { minQty: Number(event.target.value) })} disabled={!form.quantityPricingEnabled} /></td>
+                    <td className="p-2"><input aria-label={`Max Qty tier ${index + 1}`} className={INPUT} type="number" min={tier.minQty} step={1} value={tier.maxQty ?? ""} placeholder="Tanpa batas" onChange={(event) => updateTier(index, { maxQty: event.target.value === "" ? null : Number(event.target.value) })} disabled={!form.quantityPricingEnabled} /></td>
+                    <td className="p-2"><input aria-label={`Harga per pcs tier ${index + 1}`} className={INPUT} type="number" min={1} step={1} value={tier.unitPrice} onChange={(event) => updateTier(index, { unitPrice: Number(event.target.value) })} disabled={!form.quantityPricingEnabled} /></td>
+                    <td className="p-2"><input aria-label={`Label tier ${index + 1}`} className={INPUT} value={tier.label} maxLength={100} onChange={(event) => updateTier(index, { label: event.target.value })} disabled={!form.quantityPricingEnabled} /></td>
+                    <td className="p-2 text-right"><button type="button" aria-label={`Hapus tier ${index + 1}`} onClick={() => set("quantityPricingTiers", form.quantityPricingTiers.filter((_, tierIndex) => tierIndex !== index))} disabled={!form.quantityPricingEnabled} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-black text-red-700 hover:bg-red-50 disabled:opacity-40"><Trash2 className="h-4 w-4" aria-hidden="true" /> Hapus Tier</button></td>
+                  </tr>
+                ))}
+                {form.quantityPricingTiers.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-ink-muted">Harga quantity belum diatur.</td></tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          {showPricingValidation ? (
+            <div className="mt-4 space-y-2" aria-live="polite">
+              {pricingValidation.errors.map((issue, index) => <p key={`${issue.code}-${index}`} role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{issue.message}</p>)}
+              {pricingValidation.warnings.map((issue, index) => <p key={`${issue.code}-${index}`} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">{issue.message}</p>)}
+              {pricingValidation.info.map((issue, index) => <p key={`${issue.code}-${index}`} className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800">{issue.message}</p>)}
+              {pricingValidation.valid && pricingValidation.warnings.length === 0 && pricingValidation.info.length === 0 ? <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">Tier harga quantity valid.</p> : null}
+            </div>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={addTier} disabled={!form.quantityPricingEnabled} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-black text-white hover:bg-brand-800 disabled:opacity-40"><Plus className="h-4 w-4" aria-hidden="true" /> Tambah Tier</button>
+            <button type="button" onClick={resetQuantityPricing} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-ink hover:bg-slate-50"><RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset dari Harga Regular</button>
+            <button type="button" onClick={() => setShowPricingValidation(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 text-sm font-black text-brand-800 hover:bg-brand-100"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Validasi Tier</button>
+            {mode === "edit" ? <button type="button" onClick={() => void saveQuantityPricing()} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-brand-700 bg-white px-4 text-sm font-black text-brand-800 hover:bg-brand-50 disabled:opacity-50"><Save className="h-4 w-4" aria-hidden="true" /> Simpan Harga Quantity</button> : null}
+          </div>
+          <ul className="mt-4 space-y-1 text-xs leading-5 text-ink-muted">
+            <li>Harga quantity dihitung dari total jumlah pesanan seluruh ukuran.</li>
+            <li>Contoh: S 20 + M 30 + L 50 = total 100 pcs.</li>
+            <li>Jika tidak ada tier yang cocok, sistem memakai harga regular WooCommerce.</li>
+            <li>Kosongkan Max Qty untuk tier terakhir, misalnya 500+ pcs.</li>
+          </ul>
+        </FormSection>
+      </div>
 
       <FormSection icon={Settings2} title="Katalog dan atribut" description="Kategori dan industri menentukan filter katalog serta rekomendasi Ofistant.">
         <div className="grid gap-5 xl:grid-cols-2">
@@ -284,6 +479,12 @@ function initialForm(product?: AdminWooCommerceProductDetail): AdminWooProductIn
     supportsScreenPrinting: product?.ofissioMeta.supportsScreenPrinting ?? false,
     supportsDtf: product?.ofissioMeta.supportsDtf ?? false,
     embroideryZones: (product?.ofissioMeta.embroideryZones ?? []).map((zone) => ["back", "middle_back"].includes(zone) ? "center_back" : zone).filter((zone) => WOO_EMBROIDERY_ZONES.includes(zone as never)),
+    quantityPricingEnabled: product?.ofissioMeta.quantityPricingEnabled ?? true,
+    quantityPricingMode: "fixed_unit_price",
+    quantityBasis: "total_order_qty",
+    quantityPricingTiers: product?.ofissioMeta.quantityPricingTiers?.length
+      ? product.ofissioMeta.quantityPricingTiers
+      : [createDefaultQuantityPricingTier(product?.price || 0, product?.ofissioMeta.moq || 20)],
   };
 }
 

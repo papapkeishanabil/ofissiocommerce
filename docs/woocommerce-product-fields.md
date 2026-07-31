@@ -163,6 +163,17 @@ Global product attributes tetap dikelola dari WooCommerce. Halaman `/admin/catal
 ]
 ```
 
+## Quantity pricing Task A5
+
+| Meta key | Nilai |
+| --- | --- |
+| `quantity_pricing_enabled` | boolean, default `true` |
+| `quantity_pricing_mode` | `fixed_unit_price` |
+| `quantity_basis` | `total_order_qty` |
+| `quantity_pricing_tiers` | JSON array `{ minQty, maxQty, unitPrice, label }` |
+
+`maxQty: null` berarti tanpa batas atas dan hanya boleh dipakai tier terakhir. Meta dapat dibaca sebagai JSON string atau array/object hasil parse WooCommerce. Detail lengkap ada di [quantity-pricing.md](quantity-pricing.md).
+
 ## Upload GLB
 
 Task A3 mengunggah GLB dari Ofissio Admin ke bucket privat Supabase. WooCommerce menyimpan bucket/key dan URL resolver, bukan signed URL permanen. Format legacy `/3d/*.glb` tetap didukung agar KK-006 tidak berubah.

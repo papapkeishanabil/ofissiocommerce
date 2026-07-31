@@ -18,6 +18,15 @@ export const WOO_EMBROIDERY_ZONES = [
   "upper_back",
   "center_back",
 ] as const;
+export const WOO_QUANTITY_PRICING_MODES = ["fixed_unit_price"] as const;
+export const WOO_QUANTITY_BASES = ["total_order_qty"] as const;
+
+export interface AdminQuantityPricingTierInput {
+  minQty: number;
+  maxQty: number | null;
+  unitPrice: number;
+  label: string;
+}
 
 export interface AdminWooProductInput {
   name: string;
@@ -47,6 +56,10 @@ export interface AdminWooProductInput {
   supportsScreenPrinting: boolean;
   supportsDtf: boolean;
   embroideryZones: string[];
+  quantityPricingEnabled: boolean;
+  quantityPricingMode: (typeof WOO_QUANTITY_PRICING_MODES)[number];
+  quantityBasis: (typeof WOO_QUANTITY_BASES)[number];
+  quantityPricingTiers: AdminQuantityPricingTierInput[];
 }
 
 export interface ProductGlbUploadResult {

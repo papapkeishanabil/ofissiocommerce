@@ -9,10 +9,22 @@ import {
   WOO_REPLENISHMENT_POLICIES,
   WOO_SLEEVE_TYPES,
   WOO_TRANSACTION_MODES,
+  WOO_QUANTITY_BASES,
+  WOO_QUANTITY_PRICING_MODES,
 } from "./woocommerce-product-management.types";
+import { validateQuantityPricing } from "../quantity-pricing";
 
 const shortText = z.string().trim().max(180);
 const stringList = z.array(z.string().trim().min(1).max(100)).max(60);
+const quantityPricingTierSchema = z.object({
+  minQty: z.coerce.number().int(),
+  maxQty: z.preprocess(
+    (value) => (value == null || value === "" ? null : value),
+    z.union([z.null(), z.coerce.number().int()]),
+  ),
+  unitPrice: z.coerce.number(),
+  label: z.string().trim().max(100).default(""),
+});
 
 export const adminWooProductPayloadSchema = z.object({
   name: z.string().trim().min(2).max(180),
@@ -42,12 +54,49 @@ export const adminWooProductPayloadSchema = z.object({
   supportsScreenPrinting: z.boolean(),
   supportsDtf: z.boolean(),
   embroideryZones: z.array(z.enum(WOO_EMBROIDERY_ZONES)).max(WOO_EMBROIDERY_ZONES.length),
+  quantityPricingEnabled: z.boolean().default(true),
+  quantityPricingMode: z.enum(WOO_QUANTITY_PRICING_MODES).default("fixed_unit_price"),
+  quantityBasis: z.enum(WOO_QUANTITY_BASES).default("total_order_qty"),
+  quantityPricingTiers: z.array(quantityPricingTierSchema).max(50).default([]),
 }).superRefine((value, context) => {
   if (value.supportsEmbroidery && value.embroideryZones.length === 0) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["embroideryZones"],
       message: "Pilih minimal satu zona bordir.",
+    });
+  }
+  const pricing = validateQuantityPricing({
+    enabled: value.quantityPricingEnabled,
+    tiers: value.quantityPricingTiers,
+    moq: value.moq,
+  });
+  for (const issue of pricing.errors) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["quantityPricingTiers", ...(issue.tierIndex == null ? [] : [issue.tierIndex])],
+      message: issue.message,
+    });
+  }
+});
+
+export const adminWooQuantityPricingPayloadSchema = z.object({
+  quantityPricingEnabled: z.boolean(),
+  quantityPricingMode: z.enum(WOO_QUANTITY_PRICING_MODES),
+  quantityBasis: z.enum(WOO_QUANTITY_BASES),
+  tiers: z.array(quantityPricingTierSchema).max(50),
+  moq: z.coerce.number().int().positive().max(1_000_000),
+}).superRefine((value, context) => {
+  const pricing = validateQuantityPricing({
+    enabled: value.quantityPricingEnabled,
+    tiers: value.tiers,
+    moq: value.moq,
+  });
+  for (const issue of pricing.errors) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["tiers", ...(issue.tierIndex == null ? [] : [issue.tierIndex])],
+      message: issue.message,
     });
   }
 });
@@ -59,3 +108,4 @@ export const adminProductGlbVersionSchema = z.object({
 });
 
 export type AdminWooProductPayload = z.infer<typeof adminWooProductPayloadSchema>;
+export type AdminWooQuantityPricingPayload = z.infer<typeof adminWooQuantityPricingPayloadSchema>;

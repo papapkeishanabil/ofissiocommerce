@@ -1,4 +1,9 @@
 import type { ProductReadiness } from "./woocommerce-product-readiness";
+import type {
+  QuantityPricingBasis,
+  QuantityPricingMode,
+  QuantityPricingTier,
+} from "../quantity-pricing";
 
 export interface AdminWooCommerceProduct {
   id: number;
@@ -42,5 +47,9 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
     gender: string;
     sleeveType: string;
     safetyFeatures: string[];
+    quantityPricingEnabled: boolean;
+    quantityPricingMode: QuantityPricingMode;
+    quantityBasis: QuantityPricingBasis;
+    quantityPricingTiers: QuantityPricingTier[];
   };
 }

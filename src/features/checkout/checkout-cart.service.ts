@@ -6,6 +6,7 @@ import { productServerService } from "@/features/products/product.server-service
 import { storageService } from "@/features/storage/storage.service";
 import type { SizeMatrix } from "@/types/industry";
 import type { LogoPlacement } from "@/types/uniform-3d";
+import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 
 import type {
   CheckoutCartRecord,
@@ -48,6 +49,11 @@ async function validateAndPriceItem(
     throw new Error(`MOQ ${product.moq} pcs belum terpenuhi.`);
   }
   await validateEmbroideryLogoFiles(companyId, input.embroideryPlacements);
+  const calculatedPrice = calculateQuantityTierPrice({
+    regularPrice: product.priceFrom,
+    totalQty,
+    quantityPricing: product.quantityPricing,
+  });
 
   return {
     productId: product.id,
@@ -59,7 +65,14 @@ async function validateAndPriceItem(
     selectedColor: input.selectedColor,
     sizeMatrix: input.sizeMatrix,
     totalQty,
-    priceFrom: product.priceFrom,
+    priceFrom: calculatedPrice.unitPrice,
+    regularPrice: product.priceFrom,
+    finalUnitPrice: calculatedPrice.unitPrice,
+    quantityTierLabel: calculatedPrice.tierLabel,
+    quantityPricingBasis: product.quantityPricing?.basis ?? "total_order_qty",
+    quantityPricingMode: product.quantityPricing?.mode ?? "fixed_unit_price",
+    quantityTierApplied: calculatedPrice.tierApplied,
+    subtotal: calculatedPrice.subtotal,
     moq: product.moq,
     fulfillmentType: product.fulfillment,
     transactionMode: product.transaction_mode,
@@ -102,7 +115,7 @@ export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<Ch
     userId: parsed.userId,
     items,
     subtotal: items.reduce(
-      (total, item) => total + item.priceFrom * item.totalQty,
+      (total, item) => total + item.finalUnitPrice * item.totalQty,
       0,
     ),
     totalQty: items.reduce((total, item) => total + item.totalQty, 0),
@@ -145,7 +158,7 @@ export async function getValidatedCheckoutCart(
     ...stored,
     items,
     subtotal: items.reduce(
-      (total, item) => total + item.priceFrom * item.totalQty,
+      (total, item) => total + item.finalUnitPrice * item.totalQty,
       0,
     ),
     totalQty: items.reduce((total, item) => total + item.totalQty, 0),

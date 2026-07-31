@@ -13,6 +13,9 @@ export const showProductsSchema = z.object({
     .object({
       industry: z.string().optional(),
       category: z.string().optional(),
+      industrySlug: z.string().optional(),
+      categorySlug: z.string().optional(),
+      searchTerms: z.array(z.string()).max(12).optional(),
       /** optional rationale shown to the user */
       reason: z.string().optional(),
     })

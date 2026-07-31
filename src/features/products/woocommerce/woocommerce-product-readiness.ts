@@ -7,6 +7,11 @@ import {
   getMetaValue,
 } from "./woocommerce-product-meta";
 import type { WooCommerceAttribute, WooCommerceProduct } from "./woocommerce.types";
+import {
+  normalizeQuantityPricing,
+  validateQuantityPricing,
+  type QuantityPricingIssue,
+} from "../quantity-pricing";
 
 const VALID_FULFILLMENT_TYPES = ["READY_STOCK", "MADE_TO_ORDER"] as const;
 const VALID_TRANSACTION_MODES = ["DIRECT_CHECKOUT", "REQUEST_QUOTATION", "HYBRID"] as const;
@@ -180,9 +185,14 @@ function getRawWooCommerceReadiness(
   pushAttributeWarning(warnings, product.attributes, ["warna", "color"], "colors", "Atribut warna belum lengkap");
   pushAttributeWarning(warnings, product.attributes, ["bahan", "material"], "material", "Atribut bahan belum lengkap");
   pushAttributeWarning(warnings, product.attributes, ["ukuran", "size"], "sizes", "Atribut ukuran belum lengkap");
-  if (!hasAnyMetaValue(meta, ["quantity_pricing_tiers", "quantity_pricing"])) {
-    warnings.push(warning("quantity_pricing", "Quantity pricing tiers belum diisi", "Lengkapi pricing"));
-  }
+  const quantityPricing = normalizeQuantityPricing({
+    enabled: getMetaBoolean(meta, "quantity_pricing_enabled", true),
+    mode: getMetaString(meta, "quantity_pricing_mode"),
+    basis: getMetaString(meta, "quantity_basis"),
+    tiers: getMetaValue(meta, "quantity_pricing_tiers"),
+    moq: getMetaNumber(meta, "moq", 0),
+  });
+  pushQuantityPricingWarnings(warnings, quantityPricing.issues);
   if (!hasAnyMetaValue(meta, ["embroidery_pricing", "embroidery_pricing_tiers"])) {
     warnings.push(warning("embroidery_pricing", "Embroidery pricing belum diisi", "Lengkapi pricing bordir"));
   }
@@ -246,6 +256,18 @@ function getMappedProductReadiness(product: OfissioProduct): ProductReadiness {
   if (!product.available_sizes.length) warnings.push(warning("sizes", "Atribut ukuran belum lengkap", "Lengkapi atribut"));
   if (!product.supports_embroidery) warnings.push(warning("supports_embroidery", "Dukungan bordir belum diaktifkan", "Tinjau dukungan bordir"));
   if (!product.embroidery_zones.length) warnings.push(warning("embroidery_zones", product.supports_embroidery ? "Zona bordir belum dipilih." : "Zona bordir belum diisi", "Pilih zona bordir"));
+  if (product.quantityPricing) {
+    const pricing = validateQuantityPricing({
+      enabled: product.quantityPricing.enabled,
+      tiers: product.quantityPricing.tiers,
+      moq: product.moq,
+    });
+    pushQuantityPricingWarnings(warnings, [
+      ...pricing.errors,
+      ...pricing.warnings,
+      ...pricing.info,
+    ]);
+  }
 
   return finishReadiness({
     blockingIssues,
@@ -325,6 +347,37 @@ function hasAnyMetaValue(
   keys: string[],
 ) {
   return keys.some((key) => getMetaValue(meta, key) !== undefined);
+}
+
+function pushQuantityPricingWarnings(
+  warnings: ProductReadinessIssue[],
+  issues: QuantityPricingIssue[],
+) {
+  const labels = new Set<string>();
+  for (const issue of issues) {
+    let label: string;
+    switch (issue.code) {
+      case "tiers_empty":
+        label = "Harga quantity belum diatur";
+        break;
+      case "tier_overlap":
+        label = "Tier harga quantity overlap";
+        break;
+      case "unit_price_invalid":
+        label = "Harga per pcs pada tier belum valid";
+        break;
+      case "first_tier_above_moq":
+      case "first_tier_below_moq":
+      case "tier_order":
+        label = issue.message;
+        break;
+      default:
+        label = "Tier harga quantity tidak valid";
+    }
+    if (labels.has(label)) continue;
+    labels.add(label);
+    warnings.push(warning("quantity_pricing", label, "Lengkapi pricing"));
+  }
 }
 
 function resolveRawModelStatus(input: {

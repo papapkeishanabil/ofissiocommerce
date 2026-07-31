@@ -25,6 +25,14 @@ import {
   type ChatMessage,
   type OfistantContext,
 } from "@/lib/ofistant/ofistant.types";
+import {
+  withCatalogSearchVocabulary,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
+import type {
+  CatalogSearchResult,
+  PublicCatalogTaxonomy,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.types";
+import { detectIntent } from "@/lib/ofistant/ofistant.intent";
 
 interface OfistantState {
   messages: ChatMessage[];
@@ -34,6 +42,7 @@ interface OfistantState {
   /** action attached to the most recent assistant message awaiting confirm */
   pendingAction: { messageId: string; action: OfistantAction } | null;
   hydrated: boolean;
+  catalogTaxonomy: PublicCatalogTaxonomy | null;
 
   /** Bootstrap: push the welcome message once. */
   init: () => void;
@@ -78,6 +87,7 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
   quickReplies: [],
   pendingAction: null,
   hydrated: false,
+  catalogTaxonomy: null,
 
   init: () => {
     if (get().hydrated) return;
@@ -93,6 +103,23 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
       ],
       quickReplies: WELCOME_QUICK_REPLIES,
     });
+    void fetch("/api/catalog/taxonomy")
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const payload = (await response.json()) as {
+          ok?: boolean;
+          taxonomy?: PublicCatalogTaxonomy;
+        };
+        return payload.ok ? payload.taxonomy ?? null : null;
+      })
+      .then((taxonomy) => {
+        if (taxonomy) {
+          set({
+            catalogTaxonomy: withCatalogSearchVocabulary(taxonomy),
+          });
+        }
+      })
+      .catch(() => undefined);
   },
 
   sendUserTurn: (text, opts) => {
@@ -120,9 +147,39 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
 
     // Small artificial think delay for natural feel + to show the typing UI.
     const delay = 380 + Math.min(800, trimmed.length * 8);
-    window.setTimeout(() => {
+    window.setTimeout(async () => {
       const ctx = get().context;
-      const res = respond({ text: trimmed, ctx, cart });
+      const taxonomy = get().catalogTaxonomy;
+      const detected = detectIntent(trimmed, taxonomy ?? undefined);
+      let catalogSearchResult: CatalogSearchResult | null = null;
+      if (
+        detected.intent === "SEARCH_CATALOG" ||
+        detected.intent === "SELECT_INDUSTRY" ||
+        detected.intent === "ASK_QUANTITY_PRICE"
+      ) {
+        const pricingSearchQuery = detected.intent === "ASK_QUANTITY_PRICE"
+          ? [detected.category, detected.industry].filter(Boolean).join(" ") || ctx.selectedProductSlug || trimmed
+          : trimmed;
+        catalogSearchResult = await fetch(
+          `/api/catalog/search?q=${encodeURIComponent(pricingSearchQuery)}`,
+        )
+          .then(async (response) => {
+            if (!response.ok) return null;
+            const payload = (await response.json()) as {
+              ok?: boolean;
+              result?: CatalogSearchResult;
+            };
+            return payload.ok ? payload.result ?? null : null;
+          })
+          .catch(() => null);
+      }
+      const res = respond({
+        text: trimmed,
+        ctx,
+        cart,
+        taxonomy,
+        catalogSearchResult,
+      });
 
       // Apply context patch first so the assistant message reflects the
       // fresh state.

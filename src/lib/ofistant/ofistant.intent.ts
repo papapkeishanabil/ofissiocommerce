@@ -25,6 +25,7 @@ export type Intent =
   | "ASK_QUOTATION"
   | "ASK_TRACKING"
   | "ASK_3D_CONFIGURATOR"
+  | "ASK_QUANTITY_PRICE"
   | "ASK_HUMAN"
   | "ASK_HELP"
   | "UNKNOWN";
@@ -36,6 +37,7 @@ export interface DetectedIntent {
   category?: string;
   categorySlug?: string;
   catalogSearch?: CatalogSearchNormalization;
+  requestedQty?: number;
 }
 
 export function detectIndustry(
@@ -127,6 +129,17 @@ export function detectIntent(
   ) {
     return { intent: "ASK_QUOTATION", ...taxonomyFields };
   }
+  const requestedQty = extractRequestedQuantity(value);
+  if (
+    requestedQty != null ||
+    /\b(harga quantity|harga bertingkat|diskon (kalau )?(banyak|quantity)|tier harga)\b/.test(value)
+  ) {
+    return {
+      intent: "ASK_QUANTITY_PRICE",
+      ...taxonomyFields,
+      ...(requestedQty == null ? {} : { requestedQty }),
+    };
+  }
   if (
     /\b(checkout|bayar|pembayaran|lanjut.*bayar|selesaikan.*pesanan)\b/.test(
       value,
@@ -168,4 +181,11 @@ export function detectIntent(
     return { intent: "ASK_HELP" };
   }
   return { intent: "UNKNOWN", catalogSearch };
+}
+
+export function extractRequestedQuantity(value: string) {
+  const match = value.match(/\b(\d{1,7})\s*(?:pcs|pc|pieces|buah|potong)\b/i);
+  if (!match) return null;
+  const quantity = Number(match[1]);
+  return Number.isInteger(quantity) && quantity > 0 ? quantity : null;
 }

@@ -1,6 +1,11 @@
 // src/types/cart.ts
 import type { SizeMatrix } from "./industry";
 import type { Uniform3DConfig } from "./uniform-3d";
+import type {
+  QuantityPricing,
+  QuantityPricingBasis,
+  QuantityPricingMode,
+} from "@/features/products/quantity-pricing";
 
 export interface CartLineItem {
   /** stable id derived from productId + color (one line per product+color) */
@@ -26,6 +31,15 @@ export interface CartLineItem {
   unitPrice: number;
   /** estimated price = unitPrice * totalQty */
   estimatedPrice: number;
+  regularPrice: number;
+  finalUnitPrice: number;
+  quantityTierLabel: string | null;
+  quantityPricingBasis: QuantityPricingBasis;
+  quantityPricingMode: QuantityPricingMode;
+  quantityTierApplied: boolean;
+  subtotal: number;
+  /** Canonical tier snapshot used when quantity is edited in the client cart. */
+  quantityPricing?: QuantityPricing;
   /** placeholder for future customization (logo/bordir) */
   customization: string | null;
   /** full 3D embroidery config — present when customer used the 3D tab */

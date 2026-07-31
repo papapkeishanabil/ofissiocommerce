@@ -33,6 +33,15 @@ Dokumen ini merangkum flow customer yang sudah tersedia di staging MVP.
 6. Internal notes, sales notes, storage key, dan raw provider data tidak tampil ke customer.
 7. Customer dapat accept/reject/request revision sesuai status.
 
+## Harga quantity
+
+1. Product detail menampilkan tier harga jika data tersedia.
+2. Quantity dihitung dari total seluruh ukuran; S 20 + M 30 + L 50 berarti 100 pcs.
+3. Harga dan subtotal diperbarui saat size matrix berubah.
+4. Cart menampilkan tier aktif dan jumlah menuju tier berikutnya yang lebih murah.
+5. Checkout/quotation menghitung ulang server-side. Jika pricing nonaktif atau tidak ada tier cocok, harga regular WooCommerce dipakai.
+6. Harga quotation tetap menunggu review final admin.
+
 ## Order dan payment
 
 1. Setelah quotation accepted, admin convert ke order.
@@ -59,4 +68,3 @@ Customer route utama harus tetap responsif tanpa horizontal overflow:
 - `/quote`
 - `/quotes/[id]`
 - `/orders/[id]`
-

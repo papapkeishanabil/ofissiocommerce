@@ -9,6 +9,11 @@ import { ofistantActionSchema, type OfistantAction } from "./ofistant.actions";
 import { runRules } from "./ofistant.rules";
 import { mergePatch, withCartSummary } from "./ofistant.context";
 import type { OfistantContext, OfistantResponse } from "./ofistant.types";
+import { DEFAULT_PUBLIC_TAXONOMY } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
+import type {
+  CatalogSearchResult,
+  PublicCatalogTaxonomy,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 
 export interface RespondInput {
   text: string;
@@ -18,6 +23,8 @@ export interface RespondInput {
     totalQty: number;
     totalEstimatedPrice: number;
   };
+  taxonomy?: PublicCatalogTaxonomy | null;
+  catalogSearchResult?: CatalogSearchResult | null;
 }
 
 /**
@@ -28,7 +35,13 @@ export interface RespondInput {
 export function respond(input: RespondInput): OfistantResponse {
   // Keep cart summary fresh in the context before deciding.
   const ctx = withCartSummary(input.ctx, input.cart);
-  const raw = runRules({ text: input.text, ctx, cart: input.cart });
+  const raw = runRules({
+    text: input.text,
+    ctx,
+    cart: input.cart,
+    taxonomy: input.taxonomy ?? DEFAULT_PUBLIC_TAXONOMY,
+    catalogSearchResult: input.catalogSearchResult ?? null,
+  });
 
   // Validate the action shape at the boundary.
   if (raw.action) {

@@ -105,6 +105,8 @@ export interface CatalogSearchResult {
     sku: string;
     category: string;
     industries: string[];
+    regularPrice: number;
+    quantityPricing?: QuantityPricing;
   }>;
   alternatives: {
     categories: Array<{ name: string; slug: string }>;
@@ -131,3 +133,4 @@ export interface CatalogTaxonomyRepository {
     >,
   ): Promise<IndustryMaster | null>;
 }
+import type { QuantityPricing } from "@/features/products/quantity-pricing";

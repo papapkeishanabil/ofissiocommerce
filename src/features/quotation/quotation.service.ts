@@ -261,6 +261,14 @@ export async function updateQuotationPricing(input: {
       subtotal: updated.subtotal,
       grandTotal: updated.grandTotal,
       itemCount: updated.items.length,
+      overrideCount: updated.items.filter(
+        (item) => item.finalUnitPrice !== item.unitPrice,
+      ).length,
+      originalCalculatedPrices: current.items.map((item) => ({
+        itemId: item.id,
+        unitPrice: item.unitPrice ?? item.priceFrom,
+        tierLabel: item.quantityTierLabel ?? null,
+      })),
     },
   });
   logAuditEvent({
@@ -274,6 +282,9 @@ export async function updateQuotationPricing(input: {
     metadata: {
       grandTotal: updated.grandTotal,
       subtotal: updated.subtotal,
+      overrideCount: updated.items.filter(
+        (item) => item.finalUnitPrice !== item.unitPrice,
+      ).length,
       phase: "17_quotation_management",
     },
   });
@@ -517,6 +528,13 @@ export async function convertQuotationToOrder(input: {
   const orderItems = quotation.items.map((item) => ({
     ...item.itemSnapshot,
     priceFrom: item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom,
+    finalUnitPrice: item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom,
+    subtotal:
+      (item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom) * item.totalQty,
+    quantityTierLabel: item.quantityTierLabel ?? null,
+    quantityPricingBasis: item.quantityPricingBasis ?? "total_order_qty",
+    quantityPricingMode: item.quantityPricingMode ?? "fixed_unit_price",
+    quantityTierApplied: item.quantityTierApplied ?? false,
     transactionMode: "quotation_converted",
   }));
   const processRouting = deriveOrderProcessRouting({ items: orderItems });

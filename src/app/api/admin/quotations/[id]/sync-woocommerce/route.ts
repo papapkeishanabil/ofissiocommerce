@@ -10,6 +10,7 @@ import {
   createWooCommerceOrderFromQuotation,
 } from "@/features/orders/woocommerce-order-sync.service";
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
+import { logAuditEvent } from "@/lib/security/audit-log";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
 import { createApiError, safeErrorResponse } from "@/lib/security/safe-error-response";
 import { validateInput } from "@/lib/security/validate-input";
@@ -56,6 +57,22 @@ export async function POST(request: Request, context: RouteContext) {
       request,
       actorId: actor.id,
       actorType: "internal",
+    });
+    logAuditEvent({
+      request,
+      actorId: actor.id,
+      actorType: "internal",
+      companyId: detail.quotation.companyId,
+      action: "admin_woocommerce_quotation_sync_requested",
+      entityType: "quotation",
+      entityId: detail.quotation.id,
+      metadata: {
+        orderId: order.id,
+        syncStatus: result.syncStatus,
+        skipped: result.skipped,
+        provider: result.provider,
+        externalOrderId: result.externalOrderId ?? null,
+      },
     });
 
     return NextResponse.json({ ok: true, sync: result });

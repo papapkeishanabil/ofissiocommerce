@@ -10,7 +10,12 @@ import {
   getMetaNumber,
   getMetaString,
   getMetaStringArray,
+  getMetaValue,
 } from "./woocommerce-product-meta";
+import {
+  normalizeQuantityPricing,
+  sortQuantityPricingTiers,
+} from "../quantity-pricing";
 import { getProductReadiness } from "./woocommerce-product-readiness";
 import type {
   AdminWooCommerceProduct,
@@ -19,6 +24,7 @@ import type {
 import type { WooCommerceProduct } from "./woocommerce.types";
 import type { WooCommerceMetaData, WooCommerceProductWritePayload } from "./woocommerce.types";
 import type { AdminWooProductPayload } from "./woocommerce-product-management.validation";
+import type { AdminWooQuantityPricingPayload } from "./woocommerce-product-management.validation";
 
 const ADMIN_PAGE_SIZE = 100;
 const MAX_ADMIN_PAGES = 100;
@@ -47,6 +53,13 @@ export async function getAdminWooCommerceProduct(
   const product = await woocommerceClient.getProductById(id);
   const summary = toAdminSummary(product);
   const meta = product.meta_data ?? [];
+  const quantityPricing = normalizeQuantityPricing({
+    enabled: getMetaBoolean(meta, "quantity_pricing_enabled", true),
+    mode: getMetaString(meta, "quantity_pricing_mode"),
+    basis: getMetaString(meta, "quantity_basis"),
+    tiers: getMetaValue(meta, "quantity_pricing_tiers"),
+    moq: getMetaNumber(meta, "moq", 0),
+  }).quantityPricing;
   return {
     ...summary,
     description: product.description ?? "",
@@ -85,6 +98,10 @@ export async function getAdminWooCommerceProduct(
       gender: getMetaString(meta, "gender") || "unisex",
       sleeveType: getMetaString(meta, "sleeve_type") || "short",
       safetyFeatures: getMetaStringArray(meta, "safety_features"),
+      quantityPricingEnabled: quantityPricing.enabled,
+      quantityPricingMode: quantityPricing.mode,
+      quantityBasis: quantityPricing.basis,
+      quantityPricingTiers: quantityPricing.tiers,
     },
   };
 }
@@ -104,6 +121,10 @@ export async function createAdminWooCommerceProduct(input: {
     });
     logProductAudit("product_ofissio_fields_updated", created.id, input);
     logProductAudit("product_meta_updated", created.id, input);
+    logProductAudit("product_quantity_pricing_updated", created.id, input, {
+      tierCount: input.payload.quantityPricingTiers.length,
+      enabled: input.payload.quantityPricingEnabled,
+    });
     return getAdminWooCommerceProduct(created.id);
   } catch (error) {
     logProductAudit("product_create_failed", null, input, {
@@ -131,12 +152,52 @@ export async function updateAdminWooCommerceProduct(input: {
     });
     logProductAudit("product_ofissio_fields_updated", updated.id, input);
     logProductAudit("product_meta_updated", updated.id, input);
+    logProductAudit("product_quantity_pricing_updated", updated.id, input, {
+      tierCount: input.payload.quantityPricingTiers.length,
+      enabled: input.payload.quantityPricingEnabled,
+    });
     return getAdminWooCommerceProduct(updated.id);
   } catch (error) {
     logProductAudit("product_update_failed", input.id, input, {
       reason: "provider_or_validation_error",
     });
     logProductAudit("product_meta_update_failed", input.id, input, {
+      reason: "provider_or_validation_error",
+    });
+    logProductAudit("product_quantity_pricing_update_failed", input.id, input, {
+      reason: "provider_or_validation_error",
+    });
+    throw error;
+  }
+}
+
+export async function updateAdminWooCommerceQuantityPricing(input: {
+  id: number;
+  payload: AdminWooQuantityPricingPayload;
+  actorId: string;
+  request?: Request;
+}) {
+  try {
+    const current = await woocommerceClient.getProductById(input.id);
+    const tiers = sortQuantityPricingTiers(input.payload.tiers);
+    const entries: Array<[string, unknown]> = [
+      ["quantity_pricing_enabled", input.payload.quantityPricingEnabled],
+      ["quantity_pricing_mode", input.payload.quantityPricingMode],
+      ["quantity_basis", input.payload.quantityBasis],
+      ["quantity_pricing_tiers", JSON.stringify(tiers)],
+    ];
+    await woocommerceClient.updateProduct(input.id, {
+      meta_data: entries.map(([key, value]) =>
+        metaEntry(current.meta_data ?? [], key, value),
+      ),
+    });
+    logProductAudit("product_quantity_pricing_updated", input.id, input, {
+      tierCount: tiers.length,
+      enabled: input.payload.quantityPricingEnabled,
+    });
+    return getAdminWooCommerceProduct(input.id);
+  } catch (error) {
+    logProductAudit("product_quantity_pricing_update_failed", input.id, input, {
       reason: "provider_or_validation_error",
     });
     throw error;
@@ -196,6 +257,13 @@ function buildWritePayload(
     ["gender", payload.gender],
     ["sleeve_type", payload.sleeveType],
     ["safety_features", JSON.stringify(unique(payload.safetyFeatures))],
+    ["quantity_pricing_enabled", payload.quantityPricingEnabled],
+    ["quantity_pricing_mode", payload.quantityPricingMode],
+    ["quantity_basis", payload.quantityBasis],
+    [
+      "quantity_pricing_tiers",
+      JSON.stringify(sortQuantityPricingTiers(payload.quantityPricingTiers)),
+    ],
   ];
 
   return {
@@ -283,7 +351,7 @@ function toAdminSummary(product: WooCommerceProduct): AdminWooCommerceProduct {
     name: stripHtml(product.name) || `Produk #${product.id}`,
     slug: product.slug,
     sku: product.sku?.trim() ?? "",
-    price: parseMoney(product.sale_price || product.price || product.regular_price),
+    price: parseMoney(product.regular_price || product.price || product.sale_price),
     status: product.status,
     categories: (product.categories ?? []).map((category) => ({
       id: category.id,

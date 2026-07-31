@@ -39,7 +39,8 @@ export interface QuotationNote {
   createdAt: string;
 }
 
-export interface QuotationItemRecord extends ValidatedCheckoutCartItem {
+export interface QuotationItemRecord
+  extends Omit<ValidatedCheckoutCartItem, "finalUnitPrice"> {
   id: string;
   quotationId: string;
   unitPrice: number | null;

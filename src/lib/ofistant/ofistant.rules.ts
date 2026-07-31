@@ -9,6 +9,10 @@ import { productService } from "@/features/products/product.service";
 import { getOfistantOrderStatusText } from "@/features/tracking/tracking.service";
 import { emptySizeMatrix } from "@/types/cart";
 import { SIZES } from "@/types/industry";
+import type {
+  CatalogSearchResult,
+  PublicCatalogTaxonomy,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 
 import { detectIntent } from "./ofistant.intent";
 import {
@@ -19,9 +23,13 @@ import {
 } from "./ofistant.context";
 import type { OfistantContext, OfistantResponse } from "./ofistant.types";
 import type { AddToCartAction } from "./ofistant.actions";
+import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
+import { formatIDR } from "@/types/product";
 
 interface RuleInput {
   text: string;
+  taxonomy: PublicCatalogTaxonomy;
+  catalogSearchResult: CatalogSearchResult | null;
   ctx: OfistantContext;
   cart: {
     totalQty: number;
@@ -75,8 +83,8 @@ function buildAddToCartActionFromSelected(
 
 // ---------- rules (priority order) ----------
 
-const humanHandoff: Rule = ({ text }) => {
-  const d = detectIntent(text);
+const humanHandoff: Rule = ({ text, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_HUMAN") return null;
   return {
     message:
@@ -87,8 +95,8 @@ const humanHandoff: Rule = ({ text }) => {
   };
 };
 
-const greeting: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
+const greeting: Rule = ({ text, ctx, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "GREETING") return null;
   if (ctx.journeyStage === "NEW_VISITOR") {
     return {
@@ -103,8 +111,8 @@ const greeting: Rule = ({ text, ctx }) => {
   };
 };
 
-const askHelp: Rule = ({ text }) => {
-  const d = detectIntent(text);
+const askHelp: Rule = ({ text, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_HELP") return null;
   return {
     message:
@@ -113,33 +121,155 @@ const askHelp: Rule = ({ text }) => {
   };
 };
 
-const selectIndustry: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
-  if (d.intent !== "SELECT_INDUSTRY" || !d.industry) return null;
-  const recs = pickRecommendedForIndustry(d.industry, 3);
-  if (!recs.length) {
+const quantityPricing: Rule = ({
+  text,
+  ctx,
+  taxonomy,
+  catalogSearchResult,
+}) => {
+  const detected = detectIntent(text, taxonomy);
+  if (detected.intent !== "ASK_QUANTITY_PRICE") return null;
+  const products = catalogSearchResult?.products ?? [];
+  const product =
+    products.find((item) => item.slug === ctx.selectedProductSlug) ?? products[0];
+  if (!product) {
     return {
-      message: "Saat ini belum ada produk yang siap ditampilkan untuk industri tersebut. Tim Ofissio dapat membantu menyiapkan rekomendasi manual.",
-      contextPatch: withSelectedIndustry(ctx, d.industry),
+      message: "Sebutkan produk yang ingin dihitung. Harga quantity hanya akan saya ambil dari produk aktif di katalog Ofissio.",
+      quickReplies: ["Lihat katalog", "Hubungi sales"],
     };
   }
-  const names = recs.map((p) => p.category.toLowerCase()).join(", ");
+  const pricing = product.quantityPricing;
+  if (!pricing?.enabled || pricing.tiers.length === 0) {
+    return {
+      message: `Harga quantity untuk ${product.name} perlu dikonfirmasi admin. Saya tidak akan mengarang diskon yang belum tersimpan di data produk.`,
+      action: {
+        type: "OPEN_PRODUCT_DETAIL",
+        payload: { slug: product.slug, reason: "Konfirmasi harga quantity" },
+      },
+      quickReplies: ["Request quotation", "Hubungi sales"],
+    };
+  }
+  if (!detected.requestedQty) {
+    const tierSummary = pricing.tiers
+      .map((tier) => `${tier.label}: ${formatIDR(tier.unitPrice)}/pcs`)
+      .join("; ");
+    return {
+      message: `${product.name} memiliki harga bertingkat: ${tierSummary}. Sebutkan quantity agar saya hitungkan estimasinya.`,
+      action: {
+        type: "OPEN_PRODUCT_DETAIL",
+        payload: { slug: product.slug, reason: "Lihat harga bertingkat" },
+      },
+      quickReplies: ["Hitung 100 pcs", "Request quotation"],
+    };
+  }
+  const result = calculateQuantityTierPrice({
+    regularPrice: product.regularPrice,
+    totalQty: detected.requestedQty,
+    quantityPricing: pricing,
+  });
+  if (!result.tierApplied || !result.tierLabel) {
+    return {
+      message: `Untuk ${product.name}, quantity ${detected.requestedQty} pcs belum masuk tier yang tersedia. Estimasi memakai harga regular ${formatIDR(result.unitPrice)}/pcs, tetapi harga final perlu dikonfirmasi admin.`,
+      quickReplies: ["Request quotation", "Lihat produk"],
+    };
+  }
+  const nextTierHint = result.nextTier
+    ? ` Tambah ${result.nextTier.qtyToNextTier} pcs lagi untuk harga ${formatIDR(result.nextTier.potentialUnitPrice)}/pcs.`
+    : "";
   return {
-    message: `Baik ${address(ctx)}, untuk industri ${d.industry} biasanya kebutuhan utamanya ${names}. Saya tampilkan rekomendasinya di sebelah kanan.`,
+    message: `Untuk ${product.name}, estimasi harga ${detected.requestedQty} pcs masuk tier ${result.tierLabel}, yaitu ${formatIDR(result.unitPrice)}/pcs. Estimasi subtotal produk ${formatIDR(result.subtotal)}.${nextTierHint} Harga final tetap mengikuti quotation admin.`,
+    action: {
+      type: "OPEN_PRODUCT_DETAIL",
+      payload: { slug: product.slug, reason: "Hasil kalkulasi harga quantity" },
+    },
+    quickReplies: ["Request quotation", "Lihat produk"],
+  };
+};
+
+const searchCatalog: Rule = ({
+  text,
+  ctx,
+  taxonomy,
+  catalogSearchResult,
+}) => {
+  const detected = detectIntent(text, taxonomy);
+  if (
+    detected.intent !== "SEARCH_CATALOG" ||
+    !detected.categorySlug ||
+    !detected.category
+  ) {
+    return null;
+  }
+  const industryText = detected.industry
+    ? ` untuk industri ${detected.industry}`
+    : "";
+  const isEmpty = catalogSearchResult?.resultCount === 0;
+  return {
+    message: isEmpty
+      ? `Belum ada produk aktif untuk ${detected.category}${industryText}. Saya tetap buka hasil filter dan menyediakan kategori atau industri alternatif.`
+      : `Baik ${address(ctx)}, saya buka katalog ${detected.category}${industryText}. Hasil hanya berasal dari katalog produk yang aktif.`,
     action: {
       type: "SHOW_PRODUCTS",
-      payload: { industry: d.industry, reason: `Rekomendasi ${d.industry}` },
+      payload: {
+        category: detected.category,
+        categorySlug: detected.categorySlug,
+        industry: detected.industry,
+        industrySlug: detected.industrySlug,
+        searchTerms: detected.catalogSearch?.searchTerms,
+        reason: "Filter taxonomy Ofistant",
+      },
     },
-    quickReplies: [
-      ...recs.slice(0, 2).map((p) => `Lihat ${p.name}`),
-      "Bandingkan produk",
-    ],
+    quickReplies: isEmpty
+      ? [
+          ...(catalogSearchResult?.alternatives.categories
+            .slice(0, 2)
+            .map((item) => item.name) ?? []),
+          "Hubungi sales",
+        ]
+      : ["Lihat kategori lain", "Hubungi sales"],
+    contextPatch: detected.industry
+      ? withSelectedIndustry(ctx, detected.industry)
+      : undefined,
+  };
+};
+
+const selectIndustry: Rule = ({
+  text,
+  ctx,
+  taxonomy,
+  catalogSearchResult,
+}) => {
+  const d = detectIntent(text, taxonomy);
+  if (d.intent !== "SELECT_INDUSTRY" || !d.industry || !d.industrySlug) {
+    return null;
+  }
+  const isEmpty = catalogSearchResult?.resultCount === 0;
+  return {
+    message: isEmpty
+      ? `Belum ada produk aktif untuk industri ${d.industry}. Saya buka hasilnya bersama alternatif kategori/industri yang tersedia.`
+      : `Baik ${address(ctx)}, saya tampilkan produk aktif untuk industri ${d.industry}. Hasil dibaca dari katalog, bukan dibuat oleh Ofistant.`,
+    action: {
+      type: "SHOW_PRODUCTS",
+      payload: {
+        industry: d.industry,
+        industrySlug: d.industrySlug,
+        reason: `Filter industri ${d.industry}`,
+      },
+    },
+    quickReplies: isEmpty
+      ? [
+          ...(catalogSearchResult?.alternatives.industries
+            .slice(0, 2)
+            .map((item) => item.name) ?? []),
+          "Hubungi sales",
+        ]
+      : ["Lihat kategori lain", "Hubungi sales"],
     contextPatch: withSelectedIndustry(ctx, d.industry),
   };
 };
 
-const recommendAfterContext: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
+const recommendAfterContext: Rule = ({ text, ctx, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_RECOMMEND") return null;
   const industry = ctx.selectedIndustry;
   if (!industry) {
@@ -168,8 +298,8 @@ const recommendAfterContext: Rule = ({ text, ctx }) => {
   };
 };
 
-const openProductByCategory: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
+const openProductByCategory: Rule = ({ text, ctx, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "OPEN_PRODUCT" || !d.category) return null;
   // Find a product matching the category (prefer current industry).
   const candidates = ctx.selectedIndustry
@@ -195,8 +325,8 @@ const openProductByCategory: Rule = ({ text, ctx }) => {
   };
 };
 
-const viewCart: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
+const viewCart: Rule = ({ text, ctx, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_VIEW_CART") return null;
   if (ctx.cartSummary && ctx.cartSummary.itemCount > 0) {
     return {
@@ -213,8 +343,8 @@ const viewCart: Rule = ({ text, ctx }) => {
   };
 };
 
-const checkout: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
+const checkout: Rule = ({ text, ctx, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_CHECKOUT") return null;
   if (!ctx.cartSummary || ctx.cartSummary.itemCount === 0) {
     return {
@@ -233,8 +363,8 @@ const checkout: Rule = ({ text, ctx }) => {
   };
 };
 
-const quotation: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
+const quotation: Rule = ({ text, ctx, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_QUOTATION") return null;
   if (/\b(status|bagaimana|sudah jadi|lihat|setuju|accept|lanjutkan|lanjut.*pesanan)\b/i.test(text)) {
     return {
@@ -261,8 +391,8 @@ const quotation: Rule = ({ text, ctx }) => {
   };
 };
 
-const register: Rule = ({ text }) => {
-  const d = detectIntent(text);
+const register: Rule = ({ text, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_REGISTER") return null;
   return {
     message:
@@ -272,8 +402,8 @@ const register: Rule = ({ text }) => {
   };
 };
 
-const tracking: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
+const tracking: Rule = ({ text, ctx, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_TRACKING") return null;
   const trackingStatus = getOfistantOrderStatusText({
     companyId: ctx.companyId,
@@ -290,8 +420,8 @@ const tracking: Rule = ({ text, ctx }) => {
   };
 };
 
-const addToCart: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
+const addToCart: Rule = ({ text, ctx, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_ADD_TO_CART") return null;
   if (!ctx.selectedProductSlug) {
     return {
@@ -331,8 +461,8 @@ const addToCart: Rule = ({ text, ctx }) => {
   };
 };
 
-const open3DConfigurator: Rule = ({ text, ctx }) => {
-  const d = detectIntent(text);
+const open3DConfigurator: Rule = ({ text, ctx, taxonomy }) => {
+  const d = detectIntent(text, taxonomy);
   if (d.intent !== "ASK_3D_CONFIGURATOR") return null;
   // Ofistant cannot toggle ProductDetail's local "show 3D" state directly;
   // it guides the user to the right product + instructs them. If no product
@@ -425,6 +555,8 @@ export const RULES: Rule[] = [
   humanHandoff,
   greeting,
   askHelp,
+  quantityPricing,
+  searchCatalog,
   viewCart,
   checkout,
   quotation,
