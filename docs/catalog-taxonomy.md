@@ -17,6 +17,7 @@ Kategori menjawab “produk apa”, industri menjawab “dipakai untuk sektor ap
 - `/admin/catalog/categories` membaca dan mengubah WooCommerce categories. Active state serta synonym disimpan sebagai metadata Ofissio.
 - `/admin/catalog/industries` mengelola master industri Ofissio.
 - `/admin/catalog/attributes` membaca global attributes dan terms WooCommerce. Task A2.5 masih read-only.
+- `/admin/products` memakai kategori, industri, dan atribut tersebut untuk menjelaskan kesiapan setiap produk WooCommerce.
 
 Endpoint admin memakai internal guard, permission `admin:catalog:view` atau `admin:catalog:update`, rate limit, safe error, dan audit event.
 
@@ -52,5 +53,7 @@ Jika produk tidak muncul:
 3. Pastikan kategori/industri terkait aktif.
 4. Pastikan slug pada meta `industries` cocok dengan industry master.
 5. Jalankan `npm run check:woocommerce`.
+
+Task A2.6 memusatkan pemeriksaan tersebut pada `getProductReadiness(product)`. Produk incomplete tetap terlihat oleh admin, tetapi tidak masuk ke `/catalog`, pencarian customer, atau rekomendasi Ofistant.
 
 `Uncategorized` secara teknis adalah kategori, tetapi sebaiknya diganti dengan kategori bisnis yang benar agar pencarian seperti “kemeja” bekerja akurat.

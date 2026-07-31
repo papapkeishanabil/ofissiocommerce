@@ -42,6 +42,8 @@ Ofissio Admin dipakai untuk:
 - `/admin/process-orders/[id]`
 - `/admin/customers`
 - `/admin/customers/[id]`
+- `/admin/products`
+- `/admin/products/woocommerce/[id]`
 - `/admin/catalog/categories`
 - `/admin/catalog/industries`
 - `/admin/catalog/attributes`
@@ -64,6 +66,12 @@ Task A2.5 menambahkan catalog workbench:
 - Product attributes dan terms dibaca dari WooCommerce (read-only pada task ini).
 
 Role `super_admin` dan `product_admin` dapat mengubah taxonomy. Role internal yang memiliki `admin:catalog:view` hanya dapat membaca.
+
+## Product readiness
+
+Task A2.6 menambahkan `/admin/products` sebagai daftar lengkap produk WooCommerce, termasuk produk yang belum valid untuk customer. Halaman ini menampilkan status Ofissio, status GLB, dan maksimal tiga field blocking pertama. Detail `/admin/products/woocommerce/[id]` menampilkan seluruh blocking issue dan warning.
+
+Customer catalog dan Ofistant tetap membaca produk yang lolos readiness saja. Upload GLB dari Ofissio Admin masih disabled sampai Task A3; perbaikan metadata saat ini dilakukan melalui link WooCommerce Product.
 
 ## Internal auth status
 
@@ -89,6 +97,7 @@ Internal admin role `super_admin`, `sales`, dan `support` dapat melihat semua up
 - PDF document persistence membutuhkan migration 007 di Supabase sebelum live generate.
 - Monitoring provider belum aktif.
 - Persistence taxonomy lintas restart membutuhkan migration 010. Sebelum migration diterapkan, development memakai fallback in-memory.
+- Product readiness Task A2.6 masih read-only; upload GLB admin baru tersedia pada Task A3.
 
 ## Phase 17 quotation management
 

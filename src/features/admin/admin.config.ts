@@ -4,11 +4,13 @@ import type { AdminPermission } from "./admin.types";
 
 export const ADMIN_NAV_ITEMS = [
   { href: "/admin", label: "Dashboard" },
+  { href: "/admin/products", label: "Produk" },
   { href: "/admin/quotations", label: "Quotations" },
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/process-orders", label: "Process Orders" },
   { href: "/admin/shipments", label: "Shipments" },
   { href: "/admin/customers", label: "Customers" },
+  { href: "/admin/catalog", label: "Catalog" },
   { href: "/admin/uploads", label: "Uploads / Logos" },
   { href: "/admin/tracking", label: "Tracking" },
   { href: "/admin/audit", label: "Audit" },
@@ -29,6 +31,8 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:tracking:update",
     "admin:upload:view",
     "admin:customer:view",
+    "admin:catalog:view",
+    "admin:catalog:update",
     "admin:audit:view",
   ],
   sales: [
@@ -43,9 +47,16 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:shipment:update",
     "admin:upload:view",
     "admin:customer:view",
+    "admin:catalog:view",
   ],
   finance_internal: ["admin:view", "admin:quotation:view", "admin:order:view", "admin:order:update", "admin:process-order:view", "admin:shipment:view"],
-  product_admin: ["admin:view", "admin:upload:view", "admin:customer:view"],
+  product_admin: [
+    "admin:view",
+    "admin:upload:view",
+    "admin:customer:view",
+    "admin:catalog:view",
+    "admin:catalog:update",
+  ],
   production_admin: [
     "admin:view",
     "admin:order:view",
@@ -57,6 +68,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:tracking:view",
     "admin:tracking:update",
     "admin:upload:view",
+    "admin:catalog:view",
   ],
   ppic: ["admin:view", "admin:order:view", "admin:process-order:view", "admin:process-order:update", "admin:shipment:view", "admin:tracking:view", "admin:tracking:update"],
   qc: ["admin:view", "admin:order:view", "admin:process-order:view", "admin:process-order:update", "admin:shipment:view", "admin:tracking:view", "admin:tracking:update"],
@@ -70,6 +82,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:tracking:view",
     "admin:upload:view",
     "admin:customer:view",
+    "admin:catalog:view",
     "admin:audit:view",
   ],
 };

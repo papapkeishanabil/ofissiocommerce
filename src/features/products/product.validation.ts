@@ -1,4 +1,8 @@
 import type { OfissioProduct } from "./product.types";
+import {
+  getProductReadiness,
+  isValidGlbReference,
+} from "./woocommerce/woocommerce-product-readiness";
 export type ProductValidation = { ok: true } | { ok: false; reason: string };
 export function validateProduct3DModel(product: Pick<OfissioProduct, "model_3d" | "has_3d_model" | "status">): ProductValidation {
   const model = product.model_3d;
@@ -11,16 +15,37 @@ export function validateProduct3DModel(product: Pick<OfissioProduct, "model_3d" 
     !model.filename ||
     !model.is_required ||
     model.file_type !== "glb" ||
-    !model.url.toLowerCase().endsWith(".glb") ||
+    !isValidGlbReference(model.url) ||
     !model.filename.toLowerCase().endsWith(".glb")
   ) return { ok: false, reason: "Model GLB produk tidak valid." };
   return { ok: true };
 }
 export function validateProductForCatalog(product: OfissioProduct): ProductValidation {
+  if (product.source === "woocommerce") {
+    const readiness = getProductReadiness(product);
+    return readiness.isVisibleInOfissio
+      ? { ok: true }
+      : {
+          ok: false,
+          reason:
+            readiness.blockingIssues[0]?.label ??
+            "Produk belum siap untuk katalog Ofissio.",
+        };
+  }
   if (product.status !== "published") return { ok: false, reason: "Produk belum published." };
   if (!product.sku.trim()) return { ok: false, reason: "SKU wajib." };
-  if (product.supports_embroidery && !product.embroidery_zones.length) {
-    return { ok: false, reason: "Zona bordir wajib." };
+  if (!(product.categorySlugs?.length || product.category?.trim())) {
+    return { ok: false, reason: "Kategori produk belum dipilih." };
+  }
+  if (!(product.industrySlugs?.length || product.industries.length)) {
+    return { ok: false, reason: "Industri belum dipilih." };
+  }
+  if (product.priceFrom <= 0) return { ok: false, reason: "Harga produk wajib." };
+  if (product.moq <= 0 || !product.lead_time.trim()) {
+    return { ok: false, reason: "MOQ dan lead time wajib." };
+  }
+  if (!product.fulfillment || !product.transaction_mode) {
+    return { ok: false, reason: "Fulfillment dan transaction mode wajib." };
   }
   return validateProduct3DModel(product);
 }
@@ -28,7 +53,6 @@ export function validateProductForCart(product: OfissioProduct): ProductValidati
   const catalog = validateProductForCatalog(product);
   if (!catalog.ok) return catalog;
   if (!product.sku || product.moq <= 0 || product.priceFrom <= 0 || !product.fulfillment || !product.transaction_mode) return { ok: false, reason: "Data produk belum lengkap untuk keranjang." };
-  if (product.supports_embroidery && !product.embroidery_zones.length) return { ok: false, reason: "Zona bordir belum tersedia." };
   return { ok: true };
 }
 
@@ -38,9 +62,9 @@ export function validateProduct(product: OfissioProduct): ProductValidation {
   if (!product.slug.trim()) return { ok: false, reason: "Slug wajib." };
   if (product.moq <= 0) return { ok: false, reason: "MOQ harus positif." };
   if (product.priceFrom <= 0) return { ok: false, reason: "Harga harus positif." };
-  if (!product.category || !product.industries.length) return { ok: false, reason: "Kategori dan industri wajib." };
+  if (!product.category) return { ok: false, reason: "Kategori produk belum dipilih." };
+  if (!product.industries.length) return { ok: false, reason: "Industri belum dipilih." };
   if (!product.available_sizes.length || !product.available_colors.length) return { ok: false, reason: "Ukuran dan warna wajib." };
-  if (product.supports_embroidery && !product.embroidery_zones.length) return { ok: false, reason: "Zona bordir wajib." };
   if (product.has_3d_model && !product.model_3d) return { ok: false, reason: "Metadata model 3D wajib." };
   if (product.status === "published") return validateProductForCatalog(product);
   return { ok: true };

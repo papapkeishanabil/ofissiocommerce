@@ -15,15 +15,34 @@ export interface WooCommerceCategory {
   id: number;
   name: string;
   slug: string;
+  description?: string;
+  count?: number;
 }
 
 export interface WooCommerceAttribute {
-  id?: number;
+  id: number;
   name: string;
-  slug?: string;
+  slug: string;
+  type?: string;
+  order_by?: string;
+  has_archives?: boolean;
   options?: string[];
   visible?: boolean;
   variation?: boolean;
+}
+
+export interface WooCommerceAttributeTerm {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  count?: number;
+}
+
+export interface WooCommerceTag {
+  id: number;
+  name: string;
+  slug: string;
 }
 
 export interface WooCommerceProduct {
@@ -40,6 +59,7 @@ export interface WooCommerceProduct {
   stock_status?: "instock" | "outofstock" | "onbackorder" | string;
   images?: WooCommerceImage[];
   categories?: WooCommerceCategory[];
+  tags?: WooCommerceTag[];
   attributes?: WooCommerceAttribute[];
   meta_data?: WooCommerceMetaData[];
 }

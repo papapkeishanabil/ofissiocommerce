@@ -1,10 +1,12 @@
+import type { OfissioProduct } from "../product.types";
 import {
   getMetaBoolean,
   getMetaNumber,
   getMetaString,
   getMetaStringArray,
+  getMetaValue,
 } from "./woocommerce-product-meta";
-import type { WooCommerceProduct } from "./woocommerce.types";
+import type { WooCommerceAttribute, WooCommerceProduct } from "./woocommerce.types";
 
 const VALID_FULFILLMENT_TYPES = ["READY_STOCK", "MADE_TO_ORDER"] as const;
 const VALID_TRANSACTION_MODES = ["DIRECT_CHECKOUT", "REQUEST_QUOTATION", "HYBRID"] as const;
@@ -14,15 +16,41 @@ export type NormalizedWooFulfillmentType =
 export type NormalizedWooTransactionMode =
   (typeof VALID_TRANSACTION_MODES)[number];
 
+export type ProductReadinessStatus =
+  | "valid"
+  | "draft_woocommerce"
+  | "missing_required_fields"
+  | "invalid_3d_model";
+
+export type Product3DReadinessStatus =
+  | "glb_available"
+  | "glb_missing"
+  | "glb_invalid"
+  | "supabase_glb"
+  | "local_glb";
+
+export interface ProductReadinessIssue {
+  field: string;
+  label: string;
+  action: string;
+  severity: "blocking" | "warning";
+}
+
+export interface ProductReadiness {
+  isVisibleInOfissio: boolean;
+  status: ProductReadinessStatus;
+  statusLabel: string;
+  model3DStatus: Product3DReadinessStatus;
+  model3DStatusLabel: string;
+  blockingIssues: ProductReadinessIssue[];
+  warnings: ProductReadinessIssue[];
+}
+
 export function normalizeWooFulfillmentType(
   value: unknown,
 ): NormalizedWooFulfillmentType | null {
   if (value == null) return null;
-  const normalized = String(value)
-    .trim()
-    .toLowerCase()
-    .replace(/[-\s]+/g, "_")
-    .replace(/_+/g, "_");
+  const normalized = normalizeEnumValue(value);
 
   switch (normalized) {
     case "ready_stock":
@@ -41,11 +69,7 @@ export function normalizeWooTransactionMode(
   value: unknown,
 ): NormalizedWooTransactionMode | null {
   if (value == null) return null;
-  const normalized = String(value)
-    .trim()
-    .toLowerCase()
-    .replace(/[-\s]+/g, "_")
-    .replace(/_+/g, "_");
+  const normalized = normalizeEnumValue(value);
 
   switch (normalized) {
     case "direct_checkout":
@@ -59,69 +83,286 @@ export function normalizeWooTransactionMode(
   }
 }
 
+/**
+ * Single readiness policy for WooCommerce admin, catalog filtering, mapper
+ * validation, Ofistant search, and the staging check script.
+ */
+export function getProductReadiness(
+  product: WooCommerceProduct | OfissioProduct,
+): ProductReadiness {
+  return isRawWooCommerceProduct(product)
+    ? getRawWooCommerceReadiness(product)
+    : getMappedProductReadiness(product);
+}
+
 export function validateRawWooCommerceProductForOfissio(
   product: WooCommerceProduct,
 ) {
+  const readiness = getProductReadiness(product);
+  if (readiness.isVisibleInOfissio) {
+    return { ok: true as const, readiness };
+  }
+  return {
+    ok: false as const,
+    reason: readiness.blockingIssues[0]?.label ?? "Produk belum siap untuk Ofissio.",
+    readiness,
+  };
+}
+
+function getRawWooCommerceReadiness(
+  product: WooCommerceProduct,
+): ProductReadiness {
   const meta = product.meta_data ?? [];
+  const blockingIssues: ProductReadinessIssue[] = [];
+  const warnings: ProductReadinessIssue[] = [];
   const modelUrl = getMetaString(meta, "model_3d_url");
-  const modelFilename =
-    getMetaString(meta, "model_3d_filename") || filenameFromUrl(modelUrl);
-  const fulfillmentType = getMetaString(meta, "fulfillment_type");
-  const normalizedFulfillmentType = normalizeWooFulfillmentType(fulfillmentType);
-  const transactionMode = getMetaString(meta, "transaction_mode");
-  const normalizedTransactionMode = normalizeWooTransactionMode(transactionMode);
-  const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
-  const embroideryZones = getMetaStringArray(meta, "embroidery_zones");
-  const price = parseMoney(product.sale_price || product.price || product.regular_price);
+  const storageBucket = getMetaString(meta, "model_3d_storage_bucket");
+  const storageKey = getMetaString(meta, "model_3d_storage_key");
+  const hasModelReference = Boolean(modelUrl || (storageBucket && storageKey));
+  const hasValidDirectModel = isValidGlbReference(modelUrl);
+  const hasValidStorageModel = Boolean(storageBucket && isValidGlbReference(storageKey));
+  const modelIsValid = hasValidDirectModel || hasValidStorageModel;
+  const model3DStatus = resolveRawModelStatus({
+    modelUrl,
+    storageBucket,
+    storageKey,
+    hasModelReference,
+    modelIsValid,
+  });
 
   if (product.status !== "publish") {
-    return { ok: false as const, reason: "Produk WooCommerce belum published." };
+    blockingIssues.push(blocking("status", "WooCommerce status belum publish", "Buka WooCommerce Product"));
   }
   if (!product.sku?.trim()) {
-    return { ok: false as const, reason: "Produk WooCommerce tanpa SKU." };
+    blockingIssues.push(blocking("sku", "SKU belum diisi", "Buka WooCommerce Product"));
   }
-  if (price <= 0) {
-    return { ok: false as const, reason: "Harga dasar WooCommerce wajib." };
+  if (parseMoney(product.sale_price || product.price || product.regular_price) <= 0) {
+    blockingIssues.push(blocking("price", "Harga belum diisi", "Buka WooCommerce Product"));
   }
-  if (!getMetaBoolean(meta, "has_3d_model", false)) {
-    return { ok: false as const, reason: "Meta has_3d_model wajib true." };
-  }
-  if (!modelUrl.toLowerCase().endsWith(".glb")) {
-    return { ok: false as const, reason: "model_3d_url GLB wajib." };
-  }
-  if (!modelFilename.toLowerCase().endsWith(".glb")) {
-    return { ok: false as const, reason: "model_3d_filename GLB wajib." };
-  }
-  for (const key of ["model_3d_id", "model_3d_version", "model_3d_source"]) {
-    if (!getMetaString(meta, key)) {
-      return { ok: false as const, reason: `${key} wajib.` };
-    }
-  }
-  if (getMetaNumber(meta, "moq", 0) <= 0) {
-    return { ok: false as const, reason: "Meta moq wajib lebih dari 0." };
-  }
-  if (!getMetaString(meta, "lead_time")) {
-    return { ok: false as const, reason: "Meta lead_time wajib." };
-  }
-  if (!normalizedFulfillmentType) {
-    return {
-      ok: false as const,
-      reason: `Meta fulfillment_type tidak valid: ${fulfillmentType || "kosong"}.`,
-    };
-  }
-  if (!normalizedTransactionMode) {
-    return {
-      ok: false as const,
-      reason: `Meta transaction_mode tidak valid: ${transactionMode || "kosong"}.`,
-    };
+  if (!product.categories?.length) {
+    blockingIssues.push(blocking("categories", "Kategori produk belum dipilih", "Buka WooCommerce Product"));
   }
   if (getMetaStringArray(meta, "industries").length === 0) {
-    return { ok: false as const, reason: "Meta industries wajib." };
+    blockingIssues.push(blocking("industries", "Industri belum dipilih", "Pilih Industri"));
   }
-  if (supportsEmbroidery && embroideryZones.length === 0) {
-    return { ok: false as const, reason: "Zona bordir wajib untuk produk bordir." };
+  if (!getMetaBoolean(meta, "has_3d_model", false)) {
+    blockingIssues.push(blocking("has_3d_model", "Produk belum ditandai memiliki model 3D", "Isi Field Ofissio"));
   }
-  return { ok: true as const };
+  if (!hasModelReference) {
+    blockingIssues.push(blocking("model_3d", "File GLB belum diupload", "Upload GLB"));
+  } else if (!modelIsValid) {
+    blockingIssues.push(blocking("model_3d", "File GLB tidak valid", "Upload GLB"));
+  }
+  pushMissingMeta(blockingIssues, meta, "model_3d_id", "ID model 3D belum diisi");
+  pushMissingMeta(blockingIssues, meta, "model_3d_version", "Versi model 3D belum diisi");
+  pushMissingMeta(blockingIssues, meta, "model_3d_source", "Sumber model 3D belum diisi");
+  pushMissingMeta(blockingIssues, meta, "model_3d_filename", "Nama file model 3D belum diisi");
+  if (getMetaNumber(meta, "moq", 0) <= 0) {
+    blockingIssues.push(blocking("moq", "MOQ belum diisi", "Isi Field Ofissio"));
+  }
+  if (!getMetaString(meta, "lead_time")) {
+    blockingIssues.push(blocking("lead_time", "Lead time belum diisi", "Isi Field Ofissio"));
+  }
+  if (!normalizeWooFulfillmentType(getMetaString(meta, "fulfillment_type"))) {
+    blockingIssues.push(blocking("fulfillment_type", "Fulfillment type belum dipilih", "Isi Field Ofissio"));
+  }
+  if (!normalizeWooTransactionMode(getMetaString(meta, "transaction_mode"))) {
+    blockingIssues.push(blocking("transaction_mode", "Transaction mode belum dipilih", "Isi Field Ofissio"));
+  }
+
+  if (!stripHtml(product.description).trim()) {
+    warnings.push(warning("description", "Deskripsi panjang belum diisi", "Lengkapi deskripsi"));
+  }
+  if ((product.images?.length ?? 0) <= 1) {
+    warnings.push(warning("gallery", "Foto tambahan belum diisi", "Lengkapi foto"));
+  }
+  pushAttributeWarning(warnings, product.attributes, ["warna", "color"], "colors", "Atribut warna belum lengkap");
+  pushAttributeWarning(warnings, product.attributes, ["bahan", "material"], "material", "Atribut bahan belum lengkap");
+  pushAttributeWarning(warnings, product.attributes, ["ukuran", "size"], "sizes", "Atribut ukuran belum lengkap");
+  if (!hasAnyMetaValue(meta, ["quantity_pricing_tiers", "quantity_pricing"])) {
+    warnings.push(warning("quantity_pricing", "Quantity pricing tiers belum diisi", "Lengkapi pricing"));
+  }
+  if (!hasAnyMetaValue(meta, ["embroidery_pricing", "embroidery_pricing_tiers"])) {
+    warnings.push(warning("embroidery_pricing", "Embroidery pricing belum diisi", "Lengkapi pricing bordir"));
+  }
+  const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
+  const embroideryZones = getMetaStringArray(meta, "embroidery_zones");
+  if (!supportsEmbroidery) {
+    warnings.push(warning("supports_embroidery", "Dukungan bordir belum diaktifkan", "Tinjau dukungan bordir"));
+    if (embroideryZones.length === 0) {
+      warnings.push(warning("embroidery_zones", "Zona bordir belum diisi", "Pilih zona bordir"));
+    }
+  } else if (embroideryZones.length === 0) {
+    warnings.push(warning("embroidery_zones", "Zona bordir belum dipilih.", "Pilih zona bordir"));
+  }
+
+  return finishReadiness({
+    blockingIssues,
+    warnings,
+    model3DStatus,
+    isDraft: product.status !== "publish",
+    invalidModel: hasModelReference && !modelIsValid,
+  });
+}
+
+function getMappedProductReadiness(product: OfissioProduct): ProductReadiness {
+  const blockingIssues: ProductReadinessIssue[] = [];
+  const warnings: ProductReadinessIssue[] = [];
+  const model = product.model_3d;
+  const modelUrl = model?.url ?? product.model_3d_url ?? "";
+  const hasModelReference = Boolean(modelUrl);
+  const modelIsValid = isValidGlbReference(modelUrl);
+  const model3DStatus = !hasModelReference
+    ? "glb_missing"
+    : !modelIsValid
+      ? "glb_invalid"
+      : isLocalGlb(modelUrl)
+        ? "local_glb"
+        : isSupabaseGlb(modelUrl)
+          ? "supabase_glb"
+          : "glb_available";
+
+  if (product.status !== "published") blockingIssues.push(blocking("status", "WooCommerce status belum publish", "Buka WooCommerce Product"));
+  if (!product.sku.trim()) blockingIssues.push(blocking("sku", "SKU belum diisi", "Buka WooCommerce Product"));
+  if (product.priceFrom <= 0) blockingIssues.push(blocking("price", "Harga belum diisi", "Buka WooCommerce Product"));
+  if (!(product.categorySlugs?.length || product.category.trim())) blockingIssues.push(blocking("categories", "Kategori produk belum dipilih", "Buka WooCommerce Product"));
+  if (!(product.industrySlugs?.length || product.industries.length)) blockingIssues.push(blocking("industries", "Industri belum dipilih", "Pilih Industri"));
+  if (!product.has_3d_model) blockingIssues.push(blocking("has_3d_model", "Produk belum ditandai memiliki model 3D", "Isi Field Ofissio"));
+  if (!hasModelReference) blockingIssues.push(blocking("model_3d", "File GLB belum diupload", "Upload GLB"));
+  else if (!modelIsValid) blockingIssues.push(blocking("model_3d", "File GLB tidak valid", "Upload GLB"));
+  if (!model?.id) blockingIssues.push(blocking("model_3d_id", "ID model 3D belum diisi", "Isi Field Ofissio"));
+  if (!model?.version) blockingIssues.push(blocking("model_3d_version", "Versi model 3D belum diisi", "Isi Field Ofissio"));
+  if (!model?.source) blockingIssues.push(blocking("model_3d_source", "Sumber model 3D belum diisi", "Isi Field Ofissio"));
+  if (!model?.filename) blockingIssues.push(blocking("model_3d_filename", "Nama file model 3D belum diisi", "Isi Field Ofissio"));
+  if (product.moq <= 0) blockingIssues.push(blocking("moq", "MOQ belum diisi", "Isi Field Ofissio"));
+  if (!product.lead_time.trim()) blockingIssues.push(blocking("lead_time", "Lead time belum diisi", "Isi Field Ofissio"));
+  if (!VALID_FULFILLMENT_TYPES.includes(product.fulfillment)) blockingIssues.push(blocking("fulfillment_type", "Fulfillment type belum dipilih", "Isi Field Ofissio"));
+  if (!VALID_TRANSACTION_MODES.includes(product.transaction_mode)) blockingIssues.push(blocking("transaction_mode", "Transaction mode belum dipilih", "Isi Field Ofissio"));
+
+  if (!product.description.trim()) warnings.push(warning("description", "Deskripsi panjang belum diisi", "Lengkapi deskripsi"));
+  if (!product.available_colors.length) warnings.push(warning("colors", "Atribut warna belum lengkap", "Lengkapi atribut"));
+  if (!product.material.trim()) warnings.push(warning("material", "Atribut bahan belum lengkap", "Lengkapi atribut"));
+  if (!product.available_sizes.length) warnings.push(warning("sizes", "Atribut ukuran belum lengkap", "Lengkapi atribut"));
+  if (!product.supports_embroidery) warnings.push(warning("supports_embroidery", "Dukungan bordir belum diaktifkan", "Tinjau dukungan bordir"));
+  if (!product.embroidery_zones.length) warnings.push(warning("embroidery_zones", product.supports_embroidery ? "Zona bordir belum dipilih." : "Zona bordir belum diisi", "Pilih zona bordir"));
+
+  return finishReadiness({
+    blockingIssues,
+    warnings,
+    model3DStatus,
+    isDraft: product.status !== "published",
+    invalidModel: hasModelReference && !modelIsValid,
+  });
+}
+
+function finishReadiness(input: {
+  blockingIssues: ProductReadinessIssue[];
+  warnings: ProductReadinessIssue[];
+  model3DStatus: Product3DReadinessStatus;
+  isDraft: boolean;
+  invalidModel: boolean;
+}): ProductReadiness {
+  const isVisibleInOfissio = input.blockingIssues.length === 0;
+  const status: ProductReadinessStatus = isVisibleInOfissio
+    ? "valid"
+    : input.isDraft
+      ? "draft_woocommerce"
+      : input.invalidModel
+        ? "invalid_3d_model"
+        : "missing_required_fields";
+  return {
+    isVisibleInOfissio,
+    status,
+    statusLabel: statusLabel(status),
+    model3DStatus: input.model3DStatus,
+    model3DStatusLabel: modelStatusLabel(input.model3DStatus),
+    blockingIssues: input.blockingIssues,
+    warnings: input.warnings,
+  };
+}
+
+function blocking(field: string, label: string, action: string): ProductReadinessIssue {
+  return { field, label, action, severity: "blocking" };
+}
+
+function warning(field: string, label: string, action: string): ProductReadinessIssue {
+  return { field, label, action, severity: "warning" };
+}
+
+function pushMissingMeta(
+  issues: ProductReadinessIssue[],
+  meta: NonNullable<WooCommerceProduct["meta_data"]>,
+  field: string,
+  label: string,
+) {
+  if (!getMetaString(meta, field)) {
+    issues.push(blocking(field, label, "Isi Field Ofissio"));
+  }
+}
+
+function pushAttributeWarning(
+  issues: ProductReadinessIssue[],
+  attributes: WooCommerceAttribute[] | undefined,
+  names: string[],
+  field: string,
+  label: string,
+) {
+  const wanted = names.map((name) => name.toLowerCase());
+  const available = (attributes ?? []).some((attribute) => {
+    const name = attribute.name.toLowerCase();
+    const slug = attribute.slug?.toLowerCase().replace(/^pa_/, "") ?? "";
+    return (
+      (wanted.includes(name) || wanted.includes(slug)) &&
+      (attribute.options?.length ?? 0) > 0
+    );
+  });
+  if (!available) issues.push(warning(field, label, "Lengkapi atribut"));
+}
+
+function hasAnyMetaValue(
+  meta: NonNullable<WooCommerceProduct["meta_data"]>,
+  keys: string[],
+) {
+  return keys.some((key) => getMetaValue(meta, key) !== undefined);
+}
+
+function resolveRawModelStatus(input: {
+  modelUrl: string;
+  storageBucket: string;
+  storageKey: string;
+  hasModelReference: boolean;
+  modelIsValid: boolean;
+}): Product3DReadinessStatus {
+  if (!input.hasModelReference) return "glb_missing";
+  if (!input.modelIsValid) return "glb_invalid";
+  if (input.storageBucket && isValidGlbReference(input.storageKey)) return "supabase_glb";
+  if (isLocalGlb(input.modelUrl)) return "local_glb";
+  if (isSupabaseGlb(input.modelUrl)) return "supabase_glb";
+  return "glb_available";
+}
+
+function isRawWooCommerceProduct(
+  product: WooCommerceProduct | OfissioProduct,
+): product is WooCommerceProduct {
+  return typeof product.id === "number";
+}
+
+export function isValidGlbReference(value: string) {
+  if (!value.trim()) return false;
+  try {
+    return new URL(value, "https://ofissio.local").pathname.toLowerCase().endsWith(".glb");
+  } catch {
+    return (value.split(/[?#]/)[0] ?? "").toLowerCase().endsWith(".glb");
+  }
+}
+
+function isLocalGlb(value: string) {
+  return /^\/3d\//i.test(value.trim());
+}
+
+function isSupabaseGlb(value: string) {
+  const normalized = value.toLowerCase();
+  return normalized.includes("supabase") || normalized.includes("/storage/v1/object/");
 }
 
 function parseMoney(value?: string) {
@@ -130,11 +371,42 @@ function parseMoney(value?: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function filenameFromUrl(value: string) {
-  if (!value) return "";
-  try {
-    return new URL(value, "https://ofissio.local").pathname.split("/").pop() ?? "";
-  } catch {
-    return value.split("/").pop() ?? "";
+function stripHtml(value = "") {
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+}
+
+function normalizeEnumValue(value: unknown) {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[-\s]+/g, "_")
+    .replace(/_+/g, "_");
+}
+
+function statusLabel(status: ProductReadinessStatus) {
+  switch (status) {
+    case "valid":
+      return "Valid untuk Ofissio";
+    case "draft_woocommerce":
+      return "Draft WooCommerce";
+    case "invalid_3d_model":
+      return "Invalid 3D Model";
+    case "missing_required_fields":
+      return "Belum Tampil";
+  }
+}
+
+function modelStatusLabel(status: Product3DReadinessStatus) {
+  switch (status) {
+    case "glb_available":
+      return "GLB Ada";
+    case "glb_missing":
+      return "GLB Belum Ada";
+    case "glb_invalid":
+      return "GLB Invalid";
+    case "supabase_glb":
+      return "Supabase GLB";
+    case "local_glb":
+      return "Local GLB";
   }
 }

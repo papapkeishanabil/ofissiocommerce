@@ -8,6 +8,7 @@ import { createApiError } from "@/lib/security/safe-error-response";
 
 import type {
   WooCommerceAttribute,
+  WooCommerceAttributeTerm,
   WooCommerceCategory,
   WooCommerceCreateOrderInput,
   WooCommerceListParams,
@@ -24,7 +25,10 @@ export const woocommerceClient = {
   getProductById,
   getProductBySlug,
   getCategories,
+  createCategory,
+  updateCategory,
   getAttributes,
+  getAttributeTerms,
   createOrder,
   updateOrderStatus,
   getOrderById,
@@ -53,13 +57,57 @@ async function getProductBySlug(slug: string) {
 async function getCategories() {
   return wcFetch<WooCommerceCategory[]>("/products/categories", {
     per_page: "100",
+    hide_empty: "false",
+    orderby: "name",
+    order: "asc",
   });
+}
+
+async function createCategory(input: {
+  name: string;
+  slug?: string;
+  description?: string;
+}) {
+  return wcFetch<WooCommerceCategory>("/products/categories", undefined, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+async function updateCategory(
+  id: string | number,
+  patch: {
+    name?: string;
+    slug?: string;
+    description?: string;
+  },
+) {
+  return wcFetch<WooCommerceCategory>(
+    `/products/categories/${encodeURIComponent(String(id))}`,
+    undefined,
+    {
+      method: "PUT",
+      body: JSON.stringify(patch),
+    },
+  );
 }
 
 async function getAttributes() {
   return wcFetch<WooCommerceAttribute[]>("/products/attributes", {
     per_page: "100",
   });
+}
+
+async function getAttributeTerms(id: string | number) {
+  return wcFetch<WooCommerceAttributeTerm[]>(
+    `/products/attributes/${encodeURIComponent(String(id))}/terms`,
+    {
+      per_page: "100",
+      hide_empty: "false",
+      orderby: "name",
+      order: "asc",
+    },
+  );
 }
 
 async function createOrder(payload: WooCommerceCreateOrderInput) {

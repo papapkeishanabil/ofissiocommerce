@@ -11,6 +11,10 @@ export const adminIdParamSchema = z.object({
   id: z.string().trim().min(1).max(180),
 });
 
+export const adminWooProductIdParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
 export const adminQuotationStatusPatchSchema = z.object({
   status: z.enum(ADMIN_QUOTATION_UPDATE_STATUSES),
   internalNote: z.string().trim().max(500).optional(),

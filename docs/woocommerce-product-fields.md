@@ -39,6 +39,7 @@ Aturan GLB:
 
 - `has_3d_model` harus `true`.
 - `model_3d_url` wajib berakhiran `.glb`.
+- Sebagai foundation A3, pasangan `model_3d_storage_bucket` dan `model_3d_storage_key` dengan key `.glb` juga dikenali oleh readiness checker.
 - `model_3d_filename` wajib berakhiran `.glb`.
 - `model_3d_id`, `model_3d_version`, dan `model_3d_source` wajib ada.
 - Produk tanpa SKU tidak valid.
@@ -61,7 +62,7 @@ Nilai `transaction_mode` juga menerima format lowercase/dash seperti `hybrid`, `
 - `embroidery_zones`
 - `camera_presets`
 
-Jika `supports_embroidery=true`, maka `embroidery_zones` wajib ada.
+Jika `supports_embroidery=true` tetapi `embroidery_zones` kosong, readiness menampilkan warning kuat. Kondisi ini belum memblokir katalog pada Task A2.6 karena pricing dan workflow bordir dilanjutkan pada Task A4.
 
 Nilai zona bordir yang didukung:
 
@@ -168,7 +169,7 @@ Untuk Phase 8, GLB cukup berupa URL custom field. Ke depan, upload GLB final seb
 
 `stock_status` WooCommerce tidak menjadi blocker customer-facing untuk produk standar. Produk standar tetap bisa tampil dan dipesan jika metadata Ofissio valid, termasuk saat stok fisik rendah/kosong di WooCommerce. Kekurangan stok ditangani sebagai warning internal `Replenishment needed` di Ofissio Admin, bukan pesan `stok habis` ke customer.
 
-## Validasi Phase 18
+## Validasi product readiness A2.6
 
 Ofissio hanya menampilkan produk WooCommerce jika semua ini valid:
 
@@ -181,6 +182,10 @@ Ofissio hanya menampilkan produk WooCommerce jika semua ini valid:
 - `model_3d_filename` berakhiran `.glb`;
 - `model_3d_id`, `model_3d_version`, dan `model_3d_source` terisi;
 - `moq`, `lead_time`, `fulfillment_type`, `transaction_mode`, dan `industries` terisi valid;
-- jika `supports_embroidery=true`, maka `embroidery_zones` tidak kosong.
+- minimal satu industri dipilih.
 
-Jalankan `npm run check:woocommerce` untuk memeriksa koneksi dan jumlah produk WooCommerce yang valid GLB.
+Field berikut hanya warning dan tidak memblokir produk: deskripsi panjang, foto tambahan, atribut warna/bahan/ukuran, quantity pricing tiers, embroidery pricing, dukungan bordir, dan zona bordir.
+
+Admin dapat melihat semua produk—termasuk yang belum valid—di `/admin/products`. Customer catalog dan Ofistant hanya menerima produk yang lolos seluruh field blocking.
+
+Jalankan `npm run check:woocommerce` untuk memeriksa koneksi, jumlah produk valid, dan ringkasan field blocking maksimal lima produk invalid.

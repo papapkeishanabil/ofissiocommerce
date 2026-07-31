@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 
 import { loadEnvConfig } from "@next/env";
 
-import { validateRawWooCommerceProductForOfissio } from "../src/features/products/woocommerce/woocommerce-product-readiness";
+import { getProductReadiness } from "../src/features/products/woocommerce/woocommerce-product-readiness";
 import {
   allowSelfSignedTlsForWooUrl,
   requestWooCommerceJson,
@@ -83,8 +83,8 @@ async function run() {
     consumerSecret,
     "/products",
     {
-      status: "publish",
-      per_page: "20",
+      status: "any",
+      per_page: "100",
     },
   );
   if (!Array.isArray(products)) {
@@ -95,12 +95,14 @@ async function run() {
 
   const validated = products.map((product) => ({
     product,
-    validation: validateRawWooCommerceProductForOfissio(product),
+    readiness: getProductReadiness(product),
   }));
   const validProducts = validated
-    .filter((row) => row.validation.ok)
+    .filter((row) => row.readiness.isVisibleInOfissio)
     .map((row) => row.product);
-  const invalidProducts = validated.filter((row) => !row.validation.ok);
+  const invalidProducts = validated.filter(
+    (row) => !row.readiness.isVisibleInOfissio,
+  );
   printResult(
     "connected",
     `Products endpoint reachable. Valid GLB products: ${validProducts.length}; filtered invalid/missing GLB: ${invalidProducts.length}.`,
@@ -121,6 +123,16 @@ async function run() {
         .map(([reason, count]) => `${reason}=${count}`)
         .join(", ")}`,
     );
+    for (const row of invalidProducts.slice(0, 5)) {
+      console.log(
+        `INFO: Product ${row.product.name || "Tanpa nama"} / ID ${row.product.id} filtered:`,
+      );
+      for (const issue of row.readiness.blockingIssues.slice(0, 6)) {
+        console.log(`  - ${issue.label}`);
+      }
+      const remaining = row.readiness.blockingIssues.length - 6;
+      if (remaining > 0) console.log(`  - + ${remaining} lainnya`);
+    }
   }
 
   const ordersRead = await wooFetch<unknown[]>(
@@ -298,12 +310,13 @@ async function wooFetch<T>(
 
 function countInvalidReasons(
   invalidProducts: Array<{
-    validation: ReturnType<typeof validateRawWooCommerceProductForOfissio>;
+    readiness: ReturnType<typeof getProductReadiness>;
   }>,
 ) {
   const counts: Record<string, number> = {};
   for (const row of invalidProducts) {
-    const reason = row.validation.ok ? "unknown" : row.validation.reason;
+    const reason =
+      row.readiness.blockingIssues[0]?.label ?? "Produk belum siap";
     counts[reason] = (counts[reason] ?? 0) + 1;
   }
   return counts;

@@ -10,6 +10,8 @@ import {
   Home,
   ListChecks,
   PackageCheck,
+  PackageSearch,
+  Tags,
   Truck,
   Workflow,
 } from "lucide-react";
@@ -19,11 +21,13 @@ import { cn } from "@/lib/utils";
 
 const ICONS = {
   "/admin": Home,
+  "/admin/products": PackageSearch,
   "/admin/quotations": ListChecks,
   "/admin/orders": PackageCheck,
   "/admin/process-orders": Workflow,
   "/admin/shipments": Truck,
   "/admin/customers": Building2,
+  "/admin/catalog": Tags,
   "/admin/uploads": FileArchive,
   "/admin/tracking": Boxes,
   "/admin/audit": Activity,

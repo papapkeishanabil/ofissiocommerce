@@ -30,7 +30,8 @@ export function mapWooCommerceProductToOfissioProduct(
   raw: WooCommerceProduct,
 ): OfissioProduct {
   const meta = raw.meta_data ?? [];
-  const modelUrl = getMetaString(meta, "model_3d_url");
+  const modelUrl =
+    getMetaString(meta, "model_3d_url") || resolveStorageModelUrl(meta);
   const modelId = getMetaString(meta, "model_3d_id");
   const modelVersion = getMetaString(meta, "model_3d_version");
   const modelFilename =
@@ -197,6 +198,22 @@ function filenameFromUrl(value: string) {
   } catch {
     return value.split("/").pop() ?? "";
   }
+}
+
+function resolveStorageModelUrl(
+  meta: NonNullable<WooCommerceProduct["meta_data"]> = [],
+) {
+  const bucket = getMetaString(meta, "model_3d_storage_bucket");
+  const key = getMetaString(meta, "model_3d_storage_key");
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/+$/, "");
+  if (!bucket || !key || !supabaseUrl) return "";
+  const encodedBucket = encodeURIComponent(bucket);
+  const encodedKey = key
+    .split("/")
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join("/");
+  return `${supabaseUrl}/storage/v1/object/public/${encodedBucket}/${encodedKey}`;
 }
 
 function normalizeModelSource(value: string): ProductModelSource {
