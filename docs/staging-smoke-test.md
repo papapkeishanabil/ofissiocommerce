@@ -222,3 +222,22 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Pastikan browser console 0 error pada route customer/admin utama.
 - [ ] Pastikan mobile customer/admin tidak horizontal overflow.
 - [ ] Update `docs/final-staging-e2e-test.md` dengan ID smoke test terbaru.
+
+## Task A WooCommerce staging activation
+
+- [ ] Set `PRODUCT_SOURCE=mock` dan `WOOCOMMERCE_ENABLED=false`; `/catalog` tetap 200 dan KK-006 tampil.
+- [ ] Jalankan `npm run check:woocommerce`; hasil mock boleh `SKIP` jelas.
+- [ ] Jika env WooCommerce staging tersedia, set `PRODUCT_SOURCE=woocommerce` dan `WOOCOMMERCE_ENABLED=true`.
+- [ ] Jalankan `npm run check:woocommerce`; products endpoint dan orders read endpoint harus reachable.
+- [ ] Pastikan script tidak mencetak consumer key/secret.
+- [ ] Pastikan produk WooCommerce valid GLB tampil di `/catalog`.
+- [ ] Pastikan produk WooCommerce tanpa GLB/SKU/harga/meta wajib tidak tampil.
+- [ ] Buka detail produk WooCommerce valid dan buka 3D configurator.
+- [ ] Cart menyimpan `source=woocommerce`, `source_id`, `sku`, `model3dId`, `model3dUrl`, fulfillment type, transaction mode, dan size matrix.
+- [ ] Jangan tampilkan `out of stock` / `stok habis` ke customer untuk produk standar.
+- [ ] Setelah product source pass, aktifkan `WOOCOMMERCE_SYNC_ORDERS=true` jika ingin test sync order.
+- [ ] Jalankan write smoke hanya jika staging sandbox siap: `WOOCOMMERCE_TEST_WRITE=true npm run check:woocommerce`.
+- [ ] Admin sync order menyimpan `woo_order_id` di Supabase dan `ofissio_order_id` di Woo order meta.
+- [ ] Retry sync tidak membuat Woo order duplikat.
+- [ ] Customer tidak bisa trigger endpoint admin sync WooCommerce.
+- [ ] `WOOCOMMERCE_CONSUMER_SECRET` tidak muncul di `.next/static`.

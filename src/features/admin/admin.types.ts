@@ -43,6 +43,8 @@ export type AdminPermission =
   | "admin:tracking:update"
   | "admin:upload:view"
   | "admin:customer:view"
+  | "admin:catalog:view"
+  | "admin:catalog:update"
   | "admin:audit:view";
 
 export interface InternalAdminUser {

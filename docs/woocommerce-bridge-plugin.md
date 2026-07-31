@@ -32,6 +32,15 @@ Bridge plugin nantinya perlu membantu:
 
 - validasi metadata GLB sebelum publish;
 - field upload/URL GLB yang aman;
+- validasi SKU, harga dasar, MOQ, lead time, fulfillment type, transaction mode, dan industries;
 - field zones bordir dan camera presets;
 - preview status "Ofissio-ready";
 - optional helper untuk menampilkan `ofissio_order_id` pada WooCommerce order admin.
+
+## Task A staging activation note
+
+Bridge plugin masih skeleton. Task A tidak membutuhkan plugin production final; staging activation tetap bisa dilakukan dengan custom fields WooCommerce/manual meta. Namun plugin final sebaiknya:
+
+- mencegah publish produk Ofissio-ready tanpa GLB valid;
+- memberi indicator produk "Visible in Ofissio" / "Filtered by Ofissio";
+- menampilkan meta `ofissio_order_id` pada WooCommerce order admin agar admin Harmas tidak perlu mencari ulang manual.

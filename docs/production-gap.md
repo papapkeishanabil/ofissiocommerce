@@ -26,7 +26,10 @@ Dokumen ini memisahkan **staging foundation complete** dari **production launch 
    - Isi WooCommerce URL/key/secret di server secret manager.
    - Uji product source WooCommerce.
    - Pastikan hanya produk published dengan GLB valid yang tampil.
+   - Pastikan `/orders` read permission WooCommerce berjalan.
+   - Uji write smoke hanya di staging dengan `WOOCOMMERCE_TEST_WRITE=true`.
    - Uji order sync idempotent.
+   - Pastikan `woo_order_id` tersimpan di Supabase dan `ofissio_order_id` masuk Woo order meta.
    - Pastikan secret WooCommerce tidak muncul di client bundle.
 
 5. Shipping provider
@@ -60,9 +63,9 @@ Dokumen ini memisahkan **staging foundation complete** dari **production launch 
 - Admin upload logo atas nama customer belum aktif.
 - Shipping API real belum aktif.
 - WooCommerce live belum aktif.
+- WooCommerce staging activation dapat tetap skipped jika WP staging/env belum tersedia.
 - Auth production belum aktif.
 
 ## Prinsip go-live
 
 Jangan deploy production hanya karena build pass. Production boleh dipertimbangkan setelah semua gap kritikal di atas punya owner, env, smoke test, dan rollback plan.
-

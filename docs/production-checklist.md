@@ -49,10 +49,14 @@
 - [ ] WooCommerce production configured.
 - [ ] WooCommerce products punya GLB valid.
 - [ ] Produk tanpa GLB tidak tampil.
+- [ ] WooCommerce staging activation selesai: products endpoint dan orders read endpoint reachable.
+- [ ] `WOOCOMMERCE_TEST_WRITE=true` sudah diuji di staging sandbox jika order write sync akan dipakai.
+- [ ] `WOOCOMMERCE_TEST_WRITE=false` di production default.
 - [ ] Migration 004 WooCommerce sync sudah dijalankan dan diverifikasi di staging.
 - [ ] Migration 005 process orders sudah dijalankan dan diverifikasi di staging sebelum process-order persistence live.
 - [ ] `woo_sync_logs` terisi saat order sync staging diuji.
 - [ ] WooCommerce order sync idempotent dan retry admin diverifikasi.
+- [ ] Woo order meta menyimpan `source=ofissio` dan `ofissio_order_id`.
 - [ ] Order routing diverifikasi: fulfillment/customization/production.
 - [ ] Admin order tidak otomatis membuat Production Order untuk semua Sales Order.
 - [ ] Produk standar tidak menampilkan `out of stock` / `stok habis` ke customer.

@@ -806,3 +806,27 @@ create index if not exists idx_process_order_events_created_at
 -- create policy email_logs_company_select
 --   on email_logs for select
 --   using (company_id::text = auth.jwt() ->> 'company_id');
+
+-- Task A2.5 catalog taxonomy foundation. WooCommerce remains the source for
+-- product categories/attributes; these tables persist Ofissio-only metadata.
+create table if not exists catalog_category_metadata (
+  id text primary key,
+  woo_category_id bigint not null unique,
+  category_slug text not null,
+  active boolean not null default true,
+  synonyms text[] not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists industries (
+  id text primary key,
+  name text not null,
+  slug text not null unique,
+  description text not null default '',
+  active boolean not null default true,
+  synonyms text[] not null default '{}',
+  sort_order integer not null default 100 check (sort_order >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);

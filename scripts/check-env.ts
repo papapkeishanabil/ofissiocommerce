@@ -38,6 +38,7 @@ const rules: EnvRule[] = [
   { name: "WOOCOMMERCE_CONSUMER_KEY", secret: true },
   { name: "WOOCOMMERCE_CONSUMER_SECRET", secret: true },
   { name: "WOOCOMMERCE_SYNC_ORDERS" },
+  { name: "WOOCOMMERCE_TEST_WRITE" },
   { name: "PAYMENT_PROVIDER" },
   { name: "IPAYMU_ENABLED" },
   { name: "IPAYMU_MODE" },
