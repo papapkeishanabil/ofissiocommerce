@@ -17,6 +17,7 @@ Isi field berikut di WooCommerce Product Admin:
 Produk harus berstatus `publish`. Produk draft/private tidak tampil di Ofissio.
 
 Harga dasar wajib lebih dari 0. Produk tanpa SKU atau tanpa harga dasar tidak tampil dan tidak bisa masuk cart.
+Minimal satu WooCommerce Product Category wajib dipilih. Hindari `Uncategorized` agar category search Ofistant tetap akurat.
 
 ## Field custom Ofissio wajib
 
@@ -111,6 +112,30 @@ atau:
 Corporate, Perhotelan, Security
 ```
 
+Meta `industries` juga menerima slug lowercase:
+
+```json
+["corporate", "mining"]
+```
+
+serta format lama:
+
+```text
+corporate
+```
+
+atau:
+
+```text
+corporate,mining
+```
+
+## Category, tag, dan attributes
+
+Mapper membaca seluruh `categories`, `tags`, dan `attributes` WooCommerce. Domain product mengekspos `categorySlugs`, `industrySlugs`, `attributes`, dan `searchableTerms` untuk katalog/Ofistant.
+
+Global product attributes tetap dikelola dari WooCommerce. Halaman `/admin/catalog/attributes` hanya menyediakan read/list foundation pada Task A2.5.
+
 ## Contoh meta_data KK-006
 
 ```json
@@ -149,6 +174,7 @@ Ofissio hanya menampilkan produk WooCommerce jika semua ini valid:
 
 - product status `publish`;
 - SKU tidak kosong;
+- minimal satu category dipilih;
 - harga dasar lebih dari 0;
 - `has_3d_model=true`;
 - `model_3d_url` berakhiran `.glb`;

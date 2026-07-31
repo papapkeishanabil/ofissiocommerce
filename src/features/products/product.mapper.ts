@@ -1,4 +1,8 @@
-import { CATEGORIES, INDUSTRIES, SIZES } from "@/types/industry";
+import {
+  normalizeIndustrySlug,
+  slugifyTaxonomy,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
+import { SIZES } from "@/types/industry";
 import { CAMERA_PRESETS, EMBROIDERY_ZONES } from "@/types/uniform-3d";
 
 import type {
@@ -56,8 +60,29 @@ export function mapWooCommerceProductToOfissioProduct(
       ? getMetaStringArray(meta, "available_sizes")
       : attributeOptions(raw, ["size", "ukuran", "pa_size"]),
   );
-  const industries = normalizeIndustries(getMetaStringArray(meta, "industries"));
-  const category = normalizeCategory(raw.categories?.[0]?.name);
+  const industryValues = getMetaStringArray(meta, "industries");
+  const industries = normalizeIndustries(industryValues);
+  const industrySlugs = industryValues.map(normalizeIndustrySlug).filter(Boolean);
+  const categories = (raw.categories ?? []).map((item) => ({
+    id: item.id,
+    name: item.name,
+    slug: item.slug || slugifyTaxonomy(item.name),
+  }));
+  const category = categories[0]?.name ?? "";
+  const categorySlugs = categories.map((item) => item.slug).filter(Boolean);
+  const tags = (raw.tags ?? []).map((item) => ({
+    id: item.id,
+    name: item.name,
+    slug: item.slug || slugifyTaxonomy(item.name),
+  }));
+  const attributes = (raw.attributes ?? []).map((attribute) => ({
+    id: attribute.id || null,
+    name: attribute.name,
+    slug: (attribute.slug || slugifyTaxonomy(attribute.name)).replace(/^pa_/, ""),
+    options: (attribute.options ?? []).map(String).filter(Boolean),
+    visible: attribute.visible ?? true,
+    variation: attribute.variation ?? false,
+  }));
   const fulfillment = normalizeFulfillment(
     getMetaString(meta, "fulfillment_type"),
   );
@@ -90,7 +115,7 @@ export function mapWooCommerceProductToOfissioProduct(
       stripHtml(raw.short_description).trim() ||
       "Deskripsi produk belum tersedia.",
     category,
-    subcategory: raw.categories?.[1]?.name ?? category,
+    subcategory: categories[1]?.name ?? category,
     industries,
     priceFrom,
     moq,
@@ -124,6 +149,24 @@ export function mapWooCommerceProductToOfissioProduct(
     })),
     accentColor: "#1e3a8a",
     status: raw.status === "publish" ? "published" : "draft",
+    categories,
+    categorySlugs,
+    industrySlugs,
+    tags,
+    attributes,
+    searchableTerms: uniqueTerms([
+      raw.name,
+      raw.sku,
+      ...categories.flatMap((item) => [item.name, item.slug]),
+      ...tags.flatMap((item) => [item.name, item.slug]),
+      ...industries,
+      ...industrySlugs,
+      ...attributes.flatMap((item) => [
+        item.name,
+        item.slug,
+        ...item.options,
+      ]),
+    ]),
   };
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
@@ -170,17 +213,8 @@ function normalizeTransactionMode(value: string): TransactionMode {
   return normalizeWooTransactionMode(value) ?? "REQUEST_QUOTATION";
 }
 
-function normalizeCategory(value?: string) {
-  return CATEGORIES.includes(value as never)
-    ? (value as (typeof CATEGORIES)[number])
-    : "Kemeja Kantor";
-}
-
 function normalizeIndustries(values: string[]) {
-  const byKey = new Map(INDUSTRIES.map((industry) => [enumLookupKey(industry), industry]));
-  return values
-    .map((value) => byKey.get(enumLookupKey(value)))
-    .filter((value): value is (typeof INDUSTRIES)[number] => Boolean(value));
+  return uniqueTerms(values.map(industryDisplayName));
 }
 
 function normalizeSizes(values: string[]) {
@@ -230,6 +264,50 @@ function buildSpecs(raw: WooCommerceProduct, material: string, leadTime: string)
   const specs = [
     { label: "Material", value: material },
     { label: "Lead time", value: leadTime },
+    ...(raw.attributes ?? []).flatMap((attribute) => {
+      const value = (attribute.options ?? []).join(", ");
+      return value ? [{ label: attribute.name, value }] : [];
+    }),
   ];
   return specs.filter((spec) => spec.value);
+}
+
+const INDUSTRY_DISPLAY_NAMES: Record<string, string> = {
+  corporate: "Corporate",
+  mining: "Mining",
+  pertambangan: "Mining",
+  manufacturing: "Manufacturing",
+  manufaktur: "Manufacturing",
+  hospitality: "Hospitality",
+  perhotelan: "Hospitality",
+  healthcare: "Healthcare",
+  kesehatan: "Healthcare",
+  education: "Education",
+  construction: "Construction",
+  konstruksi: "Construction",
+  logistics: "Logistics",
+  logistik: "Logistics",
+  security: "Security",
+  government: "Government",
+  retail: "Retail",
+  food_beverage: "Food & Beverage",
+  f_b: "Food & Beverage",
+  fnb: "Food & Beverage",
+};
+
+function industryDisplayName(value: string) {
+  const normalized = enumLookupKey(value).replace(/&/g, "_");
+  return (
+    INDUSTRY_DISPLAY_NAMES[normalized] ??
+    value
+      .trim()
+      .split(/[-_\s]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(" ")
+  );
+}
+
+function uniqueTerms(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }

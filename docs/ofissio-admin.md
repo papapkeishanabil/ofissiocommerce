@@ -42,6 +42,9 @@ Ofissio Admin dipakai untuk:
 - `/admin/process-orders/[id]`
 - `/admin/customers`
 - `/admin/customers/[id]`
+- `/admin/catalog/categories`
+- `/admin/catalog/industries`
+- `/admin/catalog/attributes`
 - `/admin/uploads`
 - `/admin/tracking`
 - `/admin/audit`
@@ -51,6 +54,16 @@ Ofissio Admin dipakai untuk:
 Admin membaca data melalui server-side service/repository/API route. Client component tidak boleh import Supabase service-role logic atau `supabase-admin.client`.
 
 Jika `DATABASE_PROVIDER=supabase`, admin membaca data Supabase melalui repository factory. Jika `DATABASE_PROVIDER=mock`, admin tetap memakai mock fallback.
+
+## Catalog taxonomy
+
+Task A2.5 menambahkan catalog workbench:
+
+- Product categories berasal dari WooCommerce; Ofissio hanya menambahkan active state dan synonym.
+- Industry master berasal dari Ofissio dan disimpan ke Supabase setelah migration 010.
+- Product attributes dan terms dibaca dari WooCommerce (read-only pada task ini).
+
+Role `super_admin` dan `product_admin` dapat mengubah taxonomy. Role internal yang memiliki `admin:catalog:view` hanya dapat membaca.
 
 ## Internal auth status
 
@@ -75,6 +88,7 @@ Internal admin role `super_admin`, `sales`, dan `support` dapat melihat semua up
 - Email real staging sudah siap via Resend Phase 21 jika env/domain verified; default tetap mock.
 - PDF document persistence membutuhkan migration 007 di Supabase sebelum live generate.
 - Monitoring provider belum aktif.
+- Persistence taxonomy lintas restart membutuhkan migration 010. Sebelum migration diterapkan, development memakai fallback in-memory.
 
 ## Phase 17 quotation management
 

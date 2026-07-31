@@ -1,16 +1,19 @@
-// src/lib/ofistant/ofistant.intent.ts
-// Lightweight, rule-based intent detection. Returns at most one strongest
-// intent per turn so the rules engine can act deterministically.
-//
-// NOTE: This is intentionally simple keyword/heuristic matching. When the LLM
-// layer is wired in (Phase 7), the LLM will produce the action directly and
-// these intents become fallback / guardrail signals.
-
-import { INDUSTRIES, CATEGORIES } from "@/types/industry";
+import {
+  DEFAULT_PUBLIC_TAXONOMY,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
+import {
+  getTaxonomyEntryLabel,
+  normalizeCatalogSearch,
+} from "@/features/catalog-taxonomy/catalog-search";
+import type {
+  CatalogSearchNormalization,
+  PublicCatalogTaxonomy,
+} from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 
 export type Intent =
   | "GREETING"
   | "ASK_BROWSE"
+  | "SEARCH_CATALOG"
   | "SELECT_INDUSTRY"
   | "SELECT_CATEGORY"
   | "ASK_RECOMMEND"
@@ -28,164 +31,141 @@ export type Intent =
 
 export interface DetectedIntent {
   intent: Intent;
-  /** extracted industry / category slug when relevant */
   industry?: string;
+  industrySlug?: string;
   category?: string;
+  categorySlug?: string;
+  catalogSearch?: CatalogSearchNormalization;
 }
 
-const INDUSTRY_ALIASES: Record<string, string> = {
-  "tambang": "Pertambangan",
-  "tambang batubara": "Pertambangan",
-  "mining": "Pertambangan",
-  "konstruksi": "Konstruksi",
-  "construction": "Konstruksi",
-  "bangunan": "Konstruksi",
-  "manufaktur": "Manufaktur",
-  "pabrik": "Manufaktur",
-  "manufacturing": "Manufaktur",
-  "hotel": "Perhotelan",
-  "perhotelan": "Perhotelan",
-  "hospitality": "Perhotelan",
-  "kesehatan": "Kesehatan",
-  "medis": "Kesehatan",
-  "rs": "Kesehatan",
-  "rumah sakit": "Kesehatan",
-  "klinik": "Kesehatan",
-  "healthcare": "Kesehatan",
-  "fnb": "F&B",
-  "kuliner": "F&B",
-  "restoran": "F&B",
-  "makanan": "F&B",
-  "minuman": "F&B",
-  "food beverage": "F&B",
-  "security": "Security",
-  "satpam": "Security",
-  "keamanan": "Security",
-  "corporate": "Corporate",
-  "kantor": "Corporate",
-  "perkantoran": "Corporate",
-  "office": "Corporate",
-};
-
-const CATEGORY_ALIASES: Record<string, string> = {
-  "kemeja lapangan": "Kemeja Lapangan",
-  "wearpack": "Wearpack",
-  "coverall": "Wearpack",
-  "rompi": "Rompi Safety",
-  "rompi safety": "Rompi Safety",
-  "jaket": "Jaket Kerja",
-  "jaket kerja": "Jaket Kerja",
-  "polo": "Polo Shirt",
-  "polo shirt": "Polo Shirt",
-  "kemeja kantor": "Kemeja Kantor",
-  "kemeja": "Kemeja Kantor",
-};
-
-export function detectIndustry(text: string): string | undefined {
-  const t = text.toLowerCase();
-  // longest-first match
-  const keys = Object.keys(INDUSTRY_ALIASES).sort(
-    (a, b) => b.length - a.length,
+export function detectIndustry(
+  text: string,
+  taxonomy: PublicCatalogTaxonomy = DEFAULT_PUBLIC_TAXONOMY,
+) {
+  const normalized = normalizeCatalogSearch(text, taxonomy);
+  return getTaxonomyEntryLabel(
+    taxonomy,
+    "industry",
+    normalized.industrySlugs[0],
   );
-  for (const k of keys) {
-    if (t.includes(k)) return INDUSTRY_ALIASES[k]!;
-  }
-  // exact canonical match
-  for (const ind of INDUSTRIES) {
-    if (t.includes(ind.toLowerCase())) return ind;
-  }
-  return undefined;
 }
 
-export function detectCategory(text: string): string | undefined {
-  const t = text.toLowerCase();
-  const keys = Object.keys(CATEGORY_ALIASES).sort(
-    (a, b) => b.length - a.length,
+export function detectCategory(
+  text: string,
+  taxonomy: PublicCatalogTaxonomy = DEFAULT_PUBLIC_TAXONOMY,
+) {
+  const normalized = normalizeCatalogSearch(text, taxonomy);
+  return getTaxonomyEntryLabel(
+    taxonomy,
+    "category",
+    normalized.categorySlugs[0],
   );
-  for (const k of keys) {
-    if (t.includes(k)) return CATEGORY_ALIASES[k]!;
-  }
-  for (const c of CATEGORIES) {
-    if (t.includes(c.toLowerCase())) return c;
-  }
-  return undefined;
 }
 
-export function detectIntent(text: string): DetectedIntent {
-  const t = text.toLowerCase().trim();
-
-  if (!t) return { intent: "UNKNOWN" };
+export function detectIntent(
+  text: string,
+  taxonomy: PublicCatalogTaxonomy = DEFAULT_PUBLIC_TAXONOMY,
+): DetectedIntent {
+  const value = text.toLowerCase().trim();
+  if (!value) return { intent: "UNKNOWN" };
 
   if (
     /\b(halo|hai|hi|hallo|hello|selamat (pagi|siang|sore|malam)|pagi|siang|sore|malam)\b/.test(
-      t,
+      value,
     ) ||
-    /^(p|bu|pak|kak)$/i.test(t)
+    /^(p|bu|pak|kak)$/i.test(value)
   ) {
     return { intent: "GREETING" };
   }
 
-  const industry = detectIndustry(t);
-  const category = detectCategory(t);
+  const catalogSearch = normalizeCatalogSearch(value, taxonomy);
+  const industrySlug = catalogSearch.industrySlugs[0];
+  const categorySlug = catalogSearch.categorySlugs[0];
+  const industry = getTaxonomyEntryLabel(
+    taxonomy,
+    "industry",
+    industrySlug,
+  );
+  const category = getTaxonomyEntryLabel(
+    taxonomy,
+    "category",
+    categorySlug,
+  );
+  const taxonomyFields = {
+    industry,
+    industrySlug,
+    category,
+    categorySlug,
+    catalogSearch,
+  };
 
   if (
     /\b(sales (manusia|asli)|hubungi sales|sales ofissio|cs|customer service|agent manusia|human|operator)\b/.test(
-      t,
+      value,
     )
   ) {
     return { intent: "ASK_HUMAN" };
   }
-
-  if (/\b(tracking|lacak|resi|nomor resi|status (order|pengiriman|produksi)|pengiriman saya|where.*order|pesanan saya)\b/.test(t)) {
+  if (
+    /\b(tracking|lacak|resi|nomor resi|status (order|pengiriman|produksi)|pengiriman saya|where.*order|pesanan saya)\b/.test(
+      value,
+    )
+  ) {
     return { intent: "ASK_TRACKING" };
   }
-
-  if (/\b(3d|3 d|preview 3d|konfigur.*3d|atur bordir|bordir logo|logo bordir|embroidery|lihat 3d)\b/.test(t)) {
+  if (
+    /\b(3d|3 d|preview 3d|konfigur.*3d|atur bordir|bordir logo|logo bordir|embroidery|lihat 3d)\b/.test(
+      value,
+    )
+  ) {
     return { intent: "ASK_3D_CONFIGURATOR" };
   }
-
-  if (/\b(quotation|penawaran|quote|rfq|request.*(quote|penawaran))\b/.test(t)) {
-    if (industry) return { intent: "ASK_QUOTATION", industry };
-    return { intent: "ASK_QUOTATION" };
+  if (
+    /\b(quotation|penawaran|quote|rfq|request.*(quote|penawaran))\b/.test(
+      value,
+    )
+  ) {
+    return { intent: "ASK_QUOTATION", ...taxonomyFields };
   }
-
-  if (/\b(checkout|bayar|pembayaran|lanjut.*bayar|selesaikan.*pesanan)\b/.test(t)) {
+  if (
+    /\b(checkout|bayar|pembayaran|lanjut.*bayar|selesaikan.*pesanan)\b/.test(
+      value,
+    )
+  ) {
     return { intent: "ASK_CHECKOUT" };
   }
-
-  if (/\b(daftar|register|bikin akun|buat akun|sign up|signup)\b/.test(t)) {
+  if (/\b(daftar|register|bikin akun|buat akun|sign up|signup)\b/.test(value)) {
     return { intent: "ASK_REGISTER" };
   }
-
-  if (/\b(keranjang|cart|lihat.*cart|cek.*cart|item saya)\b/.test(t)) {
+  if (/\b(keranjang|cart|lihat.*cart|cek.*cart|item saya)\b/.test(value)) {
     return { intent: "ASK_VIEW_CART" };
   }
-
-  if (/\b(tambah.*keranjang|masuk.*keranjang|add.*cart|pesan|pesan ini|beli|beli ini|add to cart)\b/.test(t)) {
+  if (
+    /\b(tambah.*keranjang|masuk.*keranjang|add.*cart|pesan|pesan ini|beli|beli ini|add to cart)\b/.test(
+      value,
+    )
+  ) {
     return { intent: "ASK_ADD_TO_CART" };
   }
 
-  // explicit product category request → OPEN_PRODUCT
-  if (category && /\b(lihat|tampilkan|buka|mau|cari|butuh|tolong.*lihat)\b/.test(t)) {
-    return { intent: "OPEN_PRODUCT", category };
+  if (categorySlug) {
+    return { intent: "SEARCH_CATALOG", ...taxonomyFields };
   }
-
-  // recommend
-  if (industry || /\b(rekomendasi|saran|sarankan|rekomendasikan|bagus.*untuk|cocok.*untuk|paling sesuai)\b/.test(t)) {
-    if (industry) return { intent: "SELECT_INDUSTRY", industry };
-    return { intent: "ASK_RECOMMEND" };
+  if (
+    industrySlug ||
+    /\b(rekomendasi|saran|sarankan|rekomendasikan|bagus.*untuk|cocok.*untuk|paling sesuai)\b/.test(
+      value,
+    )
+  ) {
+    return industrySlug
+      ? { intent: "SELECT_INDUSTRY", ...taxonomyFields }
+      : { intent: "ASK_RECOMMEND", catalogSearch };
   }
-
-  if (industry) return { intent: "SELECT_INDUSTRY", industry };
-  if (category) return { intent: "SELECT_CATEGORY", category };
-
-  if (/\b(browse|katalog|catalog|lihat.*produk|semua produk|lihat semua)\b/.test(t)) {
+  if (/\b(browse|katalog|catalog|lihat.*produk|semua produk|lihat semua)\b/.test(value)) {
     return { intent: "ASK_BROWSE" };
   }
-
-  if (/\b(help|bantuan|bantu|gimana|bagaimana|apa.*bisa|bisa.*bantu)\b/.test(t)) {
+  if (/\b(help|bantuan|bantu|gimana|bagaimana|apa.*bisa|bisa.*bantu)\b/.test(value)) {
     return { intent: "ASK_HELP" };
   }
-
-  return { intent: "UNKNOWN" };
+  return { intent: "UNKNOWN", catalogSearch };
 }
