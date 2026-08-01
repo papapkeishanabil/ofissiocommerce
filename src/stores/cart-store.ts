@@ -17,7 +17,7 @@ import { validateProductForCart } from "@/features/products/product.validation";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { mapOfissioProductToCartItem } from "@/features/products/product.mapper";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
-import { calculateEmbroideryPricing } from "@/features/products/embroidery-pricing";
+import { calculateEmbroideryPricing, normalizeEmbroideryZoneId, type EmbroideryPricing, type EmbroideryPricingZoneId } from "@/features/products/embroidery-pricing";
 
 interface CartState {
   items: CartLineItem[];
@@ -30,6 +30,7 @@ interface CartState {
     sizes: SizeMatrix;
     customization?: string | null;
     uniform3DConfig?: import("@/types/uniform-3d").Uniform3DConfig | null;
+    globalEmbroideryPricing?: EmbroideryPricing;
   }) => { ok: boolean; reason?: string; lineId?: string };
   updateLineSizes: (lineId: string, sizes: SizeMatrix) => void;
   removeLine: (lineId: string) => void;
@@ -47,7 +48,7 @@ export const useCartStore = create<CartState>()(
       hydrated: false,
       setHydrated: () => set({ hydrated: true }),
 
-      add: ({ product, color, sizes, customization = null, uniform3DConfig = null }) => {
+      add: ({ product, color, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing }) => {
         const validation = validateProductForCart(product);
         if (!validation.ok) return { ok: false, reason: validation.reason };
         const totalQty = sumSizeMatrix(sizes);
@@ -69,7 +70,8 @@ export const useCartStore = create<CartState>()(
         const embroideryPrice = calculateEmbroideryPricing({
           totalQty,
           selectedZones: uniform3DConfig?.placements.map((placement) => placement.zone) ?? [],
-          embroideryPricing: product.embroideryPricing,
+          productSupportedZones: product.embroidery_zones,
+          globalEmbroideryPricing: globalEmbroideryPricing ?? EMPTY_EMBROIDERY_PRICING,
         });
 
         const existing = get().items;
@@ -93,7 +95,8 @@ export const useCartStore = create<CartState>()(
           const mergedEmbroideryPrice = calculateEmbroideryPricing({
             totalQty: mergedQty,
             selectedZones: effective3DConfig?.placements.map((placement) => placement.zone) ?? cur.selectedEmbroideryZones ?? [],
-            embroideryPricing: product.embroideryPricing ?? cur.embroideryPricingSnapshot,
+            productSupportedZones: product.embroidery_zones,
+            globalEmbroideryPricing: globalEmbroideryPricing ?? cur.embroideryPricingSnapshot ?? EMPTY_EMBROIDERY_PRICING,
           });
           next[idx] = {
             ...cur,
@@ -110,11 +113,12 @@ export const useCartStore = create<CartState>()(
             subtotal: mergedPrice.subtotal,
             productSubtotal: mergedPrice.subtotal,
             quantityPricing: product.quantityPricing ?? cur.quantityPricing,
-            selectedEmbroideryZones: mergedEmbroideryPrice.lines.map((line) => line.zoneId).concat(mergedEmbroideryPrice.missingPricingZones),
-            embroideryPricingSnapshot: product.embroideryPricing ?? cur.embroideryPricingSnapshot,
+            selectedEmbroideryZones: mergedEmbroideryPrice.lines.map((line) => line.zoneId).concat(mergedEmbroideryPrice.missingPricingZones, mergedEmbroideryPrice.unsupportedZones),
+            embroideryPricingSnapshot: globalEmbroideryPricing ?? cur.embroideryPricingSnapshot ?? EMPTY_EMBROIDERY_PRICING,
+            productSupportedEmbroideryZones: normalizeZones(product.embroidery_zones),
             embroideryLines: mergedEmbroideryPrice.lines,
             embroideryTotal: mergedEmbroideryPrice.total,
-            missingEmbroideryPricingZones: mergedEmbroideryPrice.missingPricingZones,
+            missingEmbroideryPricingZones: mergedEmbroideryPrice.missingPricingZones.concat(mergedEmbroideryPrice.unsupportedZones),
             customizationTotal: mergedEmbroideryPrice.total,
             finalEstimatedTotal: mergedPrice.subtotal + mergedEmbroideryPrice.total,
             customization: customization ?? cur.customization,
@@ -147,11 +151,12 @@ export const useCartStore = create<CartState>()(
           subtotal: calculatedPrice.subtotal,
           productSubtotal: calculatedPrice.subtotal,
           quantityPricing: product.quantityPricing,
-          selectedEmbroideryZones: embroideryPrice.lines.map((line) => line.zoneId).concat(embroideryPrice.missingPricingZones),
-          embroideryPricingSnapshot: product.embroideryPricing,
+          selectedEmbroideryZones: embroideryPrice.lines.map((line) => line.zoneId).concat(embroideryPrice.missingPricingZones, embroideryPrice.unsupportedZones),
+          embroideryPricingSnapshot: globalEmbroideryPricing ?? EMPTY_EMBROIDERY_PRICING,
+          productSupportedEmbroideryZones: normalizeZones(product.embroidery_zones),
           embroideryLines: embroideryPrice.lines,
           embroideryTotal: embroideryPrice.total,
-          missingEmbroideryPricingZones: embroideryPrice.missingPricingZones,
+          missingEmbroideryPricingZones: embroideryPrice.missingPricingZones.concat(embroideryPrice.unsupportedZones),
           customizationTotal: embroideryPrice.total,
           finalEstimatedTotal: calculatedPrice.subtotal + embroideryPrice.total,
           customization,
@@ -175,7 +180,8 @@ export const useCartStore = create<CartState>()(
             const embroideryPrice = calculateEmbroideryPricing({
               totalQty,
               selectedZones: it.embroideryPlacements?.map((placement) => placement.zone) ?? it.selectedEmbroideryZones ?? [],
-              embroideryPricing: it.embroideryPricingSnapshot,
+              productSupportedZones: it.productSupportedEmbroideryZones ?? it.selectedEmbroideryZones,
+              globalEmbroideryPricing: it.embroideryPricingSnapshot,
             });
             return {
               ...it,
@@ -190,10 +196,10 @@ export const useCartStore = create<CartState>()(
               quantityPricingMode: it.quantityPricing?.mode ?? it.quantityPricingMode ?? "fixed_unit_price",
               subtotal: calculatedPrice.subtotal,
               productSubtotal: calculatedPrice.subtotal,
-              selectedEmbroideryZones: embroideryPrice.lines.map((line) => line.zoneId).concat(embroideryPrice.missingPricingZones),
+              selectedEmbroideryZones: embroideryPrice.lines.map((line) => line.zoneId).concat(embroideryPrice.missingPricingZones, embroideryPrice.unsupportedZones),
               embroideryLines: embroideryPrice.lines,
               embroideryTotal: embroideryPrice.total,
-              missingEmbroideryPricingZones: embroideryPrice.missingPricingZones,
+              missingEmbroideryPricingZones: embroideryPrice.missingPricingZones.concat(embroideryPrice.unsupportedZones),
               customizationTotal: embroideryPrice.total,
               finalEstimatedTotal: calculatedPrice.subtotal + embroideryPrice.total,
             };
@@ -222,3 +228,9 @@ export const useCartStore = create<CartState>()(
     },
   ),
 );
+
+function normalizeZones(zones: readonly unknown[]): EmbroideryPricingZoneId[] {
+  return zones.map(normalizeEmbroideryZoneId).filter((zone): zone is EmbroideryPricingZoneId => zone != null);
+}
+
+const EMPTY_EMBROIDERY_PRICING: EmbroideryPricing = { enabled: false, mode: "flat_per_piece", zones: [] };

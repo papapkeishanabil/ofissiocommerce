@@ -17,6 +17,6 @@ Lihat [quantity-pricing.md](quantity-pricing.md) untuk format tier dan fallback.
 
 ## Breakdown bordir Task A4
 
-Quotation item menyimpan selected zones, pricing snapshot, calculated embroidery lines, embroidery total, missing pricing zones, customization total, dan final estimated total. Admin pricing editor dapat override unit price serta setup fee per zona. Original calculated embroidery price disertakan pada event/audit pricing; WooCommerce order sync menerima final line total dan meta breakdown dari Ofissio.
+Quotation item mengambil ulang master harga bordir global di server, memfilternya dengan zona yang didukung produk, lalu menyimpan selected zones, pricing snapshot, calculated embroidery lines, embroidery total, missing pricing zones, customization total, dan final estimated total. Admin pricing editor dapat override unit price serta setup fee per zona. Original calculated embroidery price disertakan pada event/audit pricing; WooCommerce order sync menerima final line total dan meta breakdown dari Ofissio.
 
 Lihat [embroidery-pricing.md](embroidery-pricing.md) untuk format zona, setup fee, dan fallback konfirmasi admin.

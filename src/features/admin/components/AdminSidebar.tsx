@@ -6,6 +6,7 @@ import {
   Activity,
   Boxes,
   Building2,
+  CircleDollarSign,
   FileArchive,
   Home,
   ListChecks,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 const ICONS = {
   "/admin": Home,
   "/admin/products": PackageSearch,
+  "/admin/pricing/embroidery": CircleDollarSign,
   "/admin/quotations": ListChecks,
   "/admin/orders": PackageCheck,
   "/admin/process-orders": Workflow,

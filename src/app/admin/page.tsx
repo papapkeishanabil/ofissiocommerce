@@ -12,12 +12,14 @@ import { AdminPanel, AdminPageHeader } from "@/features/admin/components/AdminSu
 import { AdminSummaryCards } from "@/features/admin/components/AdminSummaryCards";
 import { getAdminSummary, listAdminOrders, listAdminQuotations } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
+import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global-embroidery-pricing.service";
 
 export default async function AdminDashboardPage() {
-  const [summary, quotations, orders] = await Promise.all([
+  const [summary, quotations, orders, embroideryPricing] = await Promise.all([
     getAdminSummary(),
     listAdminQuotations(),
     listAdminOrders(),
+    getGlobalEmbroideryPricing(),
   ]);
 
   return (
@@ -33,6 +35,13 @@ export default async function AdminDashboardPage() {
           <AdminBadge tone="warning">WooCommerce staging optional</AdminBadge>
         </div>
       </AdminPageHeader>
+
+      {!embroideryPricing.schemaReady || embroideryPricing.zones.length < 6 ? (
+        <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+          <span>Master Harga Bordir belum siap di Supabase. Transaksi tidak akan mengarang harga zona yang hilang.</span>
+          <Link href="/admin/pricing/embroidery" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-900 px-4 font-black text-white">Periksa master</Link>
+        </div>
+      ) : null}
 
       <AdminSummaryCards
         cards={[

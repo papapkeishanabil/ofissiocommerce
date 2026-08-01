@@ -11,10 +11,8 @@ import {
   WOO_TRANSACTION_MODES,
   WOO_QUANTITY_BASES,
   WOO_QUANTITY_PRICING_MODES,
-  WOO_EMBROIDERY_PRICING_MODES,
 } from "./woocommerce-product-management.types";
 import { validateQuantityPricing } from "../quantity-pricing";
-import { validateEmbroideryPricing } from "../embroidery-pricing";
 
 const shortText = z.string().trim().max(180);
 const stringList = z.array(z.string().trim().min(1).max(100)).max(60);
@@ -26,18 +24,6 @@ const quantityPricingTierSchema = z.object({
   ),
   unitPrice: z.coerce.number(),
   label: z.string().trim().max(100).default(""),
-});
-const embroideryPricingZoneSchema = z.object({
-  zoneId: z.enum(WOO_EMBROIDERY_ZONES),
-  label: z.string().trim().min(1).max(100),
-  enabled: z.boolean(),
-  maxWidthCm: z.coerce.number(),
-  maxHeightCm: z.coerce.number(),
-  unitPrice: z.coerce.number(),
-  setupFee: z.coerce.number(),
-  pricingMode: z.enum(WOO_EMBROIDERY_PRICING_MODES),
-  showSetupFee: z.boolean().default(false),
-  notes: z.string().trim().max(500).optional(),
 });
 
 export const adminWooProductPayloadSchema = z.object({
@@ -68,9 +54,6 @@ export const adminWooProductPayloadSchema = z.object({
   supportsScreenPrinting: z.boolean(),
   supportsDtf: z.boolean(),
   embroideryZones: z.array(z.enum(WOO_EMBROIDERY_ZONES)).max(WOO_EMBROIDERY_ZONES.length),
-  embroideryPricingEnabled: z.boolean().default(true),
-  embroideryPricingMode: z.enum(WOO_EMBROIDERY_PRICING_MODES).default("flat_per_piece"),
-  embroideryPricingZones: z.array(embroideryPricingZoneSchema).max(WOO_EMBROIDERY_ZONES.length).default([]),
   quantityPricingEnabled: z.boolean().default(true),
   quantityPricingMode: z.enum(WOO_QUANTITY_PRICING_MODES).default("fixed_unit_price"),
   quantityBasis: z.enum(WOO_QUANTITY_BASES).default("total_order_qty"),
@@ -83,18 +66,6 @@ export const adminWooProductPayloadSchema = z.object({
       message: "Pilih minimal satu zona bordir.",
     });
   }
-  const embroideryPricing = validateEmbroideryPricing({
-    enabled: value.embroideryPricingEnabled,
-    zones: value.embroideryPricingZones,
-    supportsEmbroidery: value.supportsEmbroidery,
-  });
-  for (const issue of embroideryPricing.errors) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["embroideryPricingZones", ...(issue.zoneIndex == null ? [] : [issue.zoneIndex])],
-      message: issue.message,
-    });
-  }
   const pricing = validateQuantityPricing({
     enabled: value.quantityPricingEnabled,
     tiers: value.quantityPricingTiers,
@@ -104,26 +75,6 @@ export const adminWooProductPayloadSchema = z.object({
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["quantityPricingTiers", ...(issue.tierIndex == null ? [] : [issue.tierIndex])],
-      message: issue.message,
-    });
-  }
-});
-
-export const adminWooEmbroideryPricingPayloadSchema = z.object({
-  embroideryPricingEnabled: z.boolean(),
-  embroideryPricingMode: z.enum(WOO_EMBROIDERY_PRICING_MODES),
-  supportsEmbroidery: z.boolean(),
-  zones: z.array(embroideryPricingZoneSchema).max(WOO_EMBROIDERY_ZONES.length),
-}).superRefine((value, context) => {
-  const pricing = validateEmbroideryPricing({
-    enabled: value.embroideryPricingEnabled,
-    zones: value.zones,
-    supportsEmbroidery: value.supportsEmbroidery,
-  });
-  for (const issue of pricing.errors) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["zones", ...(issue.zoneIndex == null ? [] : [issue.zoneIndex])],
       message: issue.message,
     });
   }
@@ -158,4 +109,3 @@ export const adminProductGlbVersionSchema = z.object({
 
 export type AdminWooProductPayload = z.infer<typeof adminWooProductPayloadSchema>;
 export type AdminWooQuantityPricingPayload = z.infer<typeof adminWooQuantityPricingPayloadSchema>;
-export type AdminWooEmbroideryPricingPayload = z.infer<typeof adminWooEmbroideryPricingPayloadSchema>;

@@ -48,6 +48,7 @@ export interface CartLineItem {
   quantityPricing?: QuantityPricing;
   selectedEmbroideryZones: EmbroideryPricingZoneId[];
   embroideryPricingSnapshot?: EmbroideryPricing;
+  productSupportedEmbroideryZones?: EmbroideryPricingZoneId[];
   embroideryLines: EmbroideryPricingLine[];
   embroideryTotal: number;
   missingEmbroideryPricingZones: EmbroideryPricingZoneId[];

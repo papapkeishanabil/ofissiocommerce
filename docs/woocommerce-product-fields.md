@@ -197,18 +197,18 @@ Ofissio hanya menampilkan produk WooCommerce jika semua ini valid:
 - `moq`, `lead_time`, `fulfillment_type`, `transaction_mode`, dan `industries` terisi valid;
 - minimal satu industri dipilih.
 
-Field berikut hanya warning dan tidak memblokir produk: deskripsi panjang, foto tambahan, atribut warna/bahan/ukuran, quantity pricing tiers, embroidery pricing, dukungan bordir, dan zona bordir.
+Field berikut hanya warning dan tidak memblokir produk: deskripsi panjang, foto tambahan, atribut warna/bahan/ukuran, quantity pricing tiers, metadata embroidery pricing lama, dukungan bordir, dan zona bordir.
 
 Admin dapat melihat semua produk—termasuk yang belum valid—di `/admin/products`. Customer catalog dan Ofistant hanya menerima produk yang lolos seluruh field blocking.
 
 Jalankan `npm run check:woocommerce` untuk memeriksa koneksi, jumlah produk valid, dan ringkasan field blocking maksimal lima produk invalid.
 
-## Embroidery pricing Task A4
+## Legacy embroidery pricing metadata
 
 | Meta key | Format | Keterangan |
 | --- | --- | --- |
-| `embroidery_pricing_enabled` | boolean | Mengaktifkan calculator harga bordir Ofissio |
-| `embroidery_pricing_mode` | `flat_per_piece` | Mode harga yang didukung Task A4 |
-| `embroidery_pricing` | JSON array | Harga, batas ukuran, setup fee, dan catatan per zona |
+| `embroidery_pricing_enabled` | boolean | Legacy; dipertahankan dan diabaikan calculator baru |
+| `embroidery_pricing_mode` | `flat_per_piece` | Legacy; dipertahankan untuk kompatibilitas |
+| `embroidery_pricing` | JSON array | Legacy; bukan source of truth |
 
-Meta pricing bordir merupakan warning/readiness data dan bukan blocking catalog field. Order sync membawa `ofissio_embroidery_total`, `ofissio_embroidery_zones`, `ofissio_customization_total`, dan `ofissio_pricing_source=ofissio` agar WooCommerce tidak menghitung ulang customization.
+Harga aktif dibaca dari master Supabase `embroidery_pricing_zones`. Meta lama hanya menghasilkan warning deprecation dan bukan blocking catalog field. Order sync membawa `ofissio_embroidery_total`, `ofissio_embroidery_zones`, `ofissio_customization_total`, dan `ofissio_pricing_source=ofissio` agar WooCommerce tidak menghitung ulang customization.

@@ -20,7 +20,6 @@ export const WOO_EMBROIDERY_ZONES = [
 ] as const;
 export const WOO_QUANTITY_PRICING_MODES = ["fixed_unit_price"] as const;
 export const WOO_QUANTITY_BASES = ["total_order_qty"] as const;
-export const WOO_EMBROIDERY_PRICING_MODES = ["flat_per_piece"] as const;
 
 export interface AdminQuantityPricingTierInput {
   minQty: number;
@@ -57,9 +56,6 @@ export interface AdminWooProductInput {
   supportsScreenPrinting: boolean;
   supportsDtf: boolean;
   embroideryZones: string[];
-  embroideryPricingEnabled: boolean;
-  embroideryPricingMode: (typeof WOO_EMBROIDERY_PRICING_MODES)[number];
-  embroideryPricingZones: EmbroideryPricingZone[];
   quantityPricingEnabled: boolean;
   quantityPricingMode: (typeof WOO_QUANTITY_PRICING_MODES)[number];
   quantityBasis: (typeof WOO_QUANTITY_BASES)[number];
@@ -73,4 +69,3 @@ export interface ProductGlbUploadResult {
   sizeBytes: number;
   uploadedAt: string;
 }
-import type { EmbroideryPricingZone } from "../embroidery-pricing";

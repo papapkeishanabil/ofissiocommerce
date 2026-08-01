@@ -36,4 +36,4 @@ Form create/edit sekarang memiliki section **Harga & Diskon Quantity**. Admin da
 
 ## Harga bordir Task A4
 
-Jika produk mendukung bordir, admin mengatur enam zona melalui section **Harga Bordir per Zona**. Harga, batas ukuran, setup fee opsional, dan catatan disimpan ke meta `embroidery_pricing`. Endpoint edit khusus adalah `PATCH /api/admin/products/woocommerce/[id]/embroidery-pricing`; detail formula dan validasi tersedia di [embroidery-pricing.md](embroidery-pricing.md).
+Jika produk mendukung bordir, admin hanya memilih zona yang didukung pada section **Customization**. Harga, batas ukuran, setup fee, dan catatan dikelola satu kali melalui `/admin/pricing/embroidery`; detail formula dan validasi tersedia di [embroidery-pricing.md](embroidery-pricing.md). Metadata `embroidery_pricing*` lama di WooCommerce dipertahankan untuk kompatibilitas, tetapi tidak digunakan sebagai sumber hitung.

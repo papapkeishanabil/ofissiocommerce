@@ -45,11 +45,11 @@ Field ini sebaiknya dilengkapi tetapi tidak memblokir katalog pada A2.6:
 - atribut bahan;
 - atribut ukuran;
 - quantity pricing tiers;
-- embroidery pricing;
+- metadata embroidery pricing lama (warning deprecation; bukan sumber harga);
 - `supports_embroidery=false`;
 - zona bordir kosong.
 
-Jika `supports_embroidery=true` namun zona kosong, admin melihat warning kuat **Zona bordir belum dipilih.** Pricing bordir dan quantity tiers tetap menunggu Task A4 dan A5.
+Jika `supports_embroidery=true` namun zona kosong, admin melihat warning kuat **Zona bordir belum dipilih.** Kesiapan master global diperiksa terpisah pada dashboard dan `/admin/pricing/embroidery`; kondisi ini tidak memblokir katalog.
 
 ## Contoh JAKET TEST
 

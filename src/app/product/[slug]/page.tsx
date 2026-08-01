@@ -5,16 +5,15 @@ import { notFound } from "next/navigation";
 
 import { productServerService } from "@/features/products/product.server-service";
 import { ProductDetail } from "@/components/product/ProductDetail";
+import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global-embroidery-pricing.service";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateStaticParams() {
-  return (await productServerService.getPublishedProducts()).map((p) => ({
-    slug: p.slug,
-  }));
-}
+// Global embroidery pricing is live Supabase data and must not be frozen into
+// a build-time product page snapshot.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -32,5 +31,6 @@ export default async function Page({ params }: PageProps) {
   const { slug } = await params;
   const product = await productServerService.getProductBySlug(slug);
   if (!product) notFound();
-  return <ProductDetail product={product} />;
+  const { pricing } = await getGlobalEmbroideryPricing();
+  return <ProductDetail product={product} globalEmbroideryPricing={pricing} />;
 }

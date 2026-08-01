@@ -193,4 +193,4 @@ Product admin mengatur harga bertingkat dari `/admin/products/new` atau `/admin/
 
 ## Task A4 embroidery pricing
 
-Product admin mengatur harga bordir per zona dari form create/edit yang sama. Setup fee bernilai nol tidak ditampilkan ke customer. Endpoint khusus memakai permission `admin:catalog:update` dan mencatat audit `product_embroidery_pricing_updated` atau `product_embroidery_pricing_update_failed`. Admin quotation dapat melihat original breakdown dan override unit price/setup fee per zona sebelum mengirim penawaran.
+Product admin mengatur satu master harga bordir melalui menu **Harga Bordir** (`/admin/pricing/embroidery`). Form produk hanya menentukan dukungan teknik dan zona. Endpoint global memakai permission `admin:catalog:update` dan mencatat audit `embroidery_pricing_updated` atau `embroidery_pricing_update_failed`. Cart/quotation menyimpan snapshot, dan admin quotation tetap dapat override unit price/setup fee sebelum mengirim penawaran.

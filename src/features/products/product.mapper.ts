@@ -110,7 +110,7 @@ export function mapWooCommerceProductToOfissioProduct(
     tiers: getMetaValue(meta, "quantity_pricing_tiers"),
     moq,
   }).quantityPricing;
-  const embroideryPricing = normalizeEmbroideryPricing({
+  const legacyEmbroideryPricing = normalizeEmbroideryPricing({
     enabled: getMetaBoolean(meta, "embroidery_pricing_enabled", true),
     mode: getMetaString(meta, "embroidery_pricing_mode"),
     zones: getMetaValue(meta, "embroidery_pricing"),
@@ -189,12 +189,12 @@ export function mapWooCommerceProductToOfissioProduct(
       ]),
       ]),
     quantityPricing,
-    embroideryPricing,
+    legacyEmbroideryPricing,
   };
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
   if (!product.model_3d) throw new Error("Produk tanpa GLB tidak dapat dipetakan ke cart.");
-  return { source: product.source, sourceId: product.source_id, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing, embroideryPricing: product.embroideryPricing };
+  return { source: product.source, sourceId: product.source_id, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing };
 }
 
 function stripHtml(value = "") {

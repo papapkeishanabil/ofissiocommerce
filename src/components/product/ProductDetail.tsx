@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatIDR } from "@/types/product";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
-import { calculateEmbroideryPricing } from "@/features/products/embroidery-pricing";
+import { calculateEmbroideryPricing, normalizeEmbroideryZoneId, type EmbroideryPricing } from "@/features/products/embroidery-pricing";
 import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
@@ -61,6 +61,7 @@ const Uniform3DConfigurator = dynamic(
 
 interface ProductDetailProps {
   product: OfissioProduct;
+  globalEmbroideryPricing: EmbroideryPricing;
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -86,7 +87,7 @@ const COLOR_SWATCHES: Record<string, string> = {
   Burgundy: "#7f1d1d",
 };
 
-export function ProductDetail({ product }: ProductDetailProps) {
+export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetailProps) {
   const [color, setColor] = useState<string>(product.colors[0] ?? "Default");
   const [sizes, setSizes] = useState<SizeMatrix>(() => emptySizeMatrix());
   const [customization, setCustomization] = useState<string>("");
@@ -215,9 +216,10 @@ export function ProductDetail({ product }: ProductDetailProps) {
     () => calculateEmbroideryPricing({
       totalQty,
       selectedZones: uniform3DConfig?.placements.map((placement) => placement.zone) ?? [],
-      embroideryPricing: product.embroideryPricing,
+      productSupportedZones: product.embroidery_zones,
+      globalEmbroideryPricing,
     }),
-    [product.embroideryPricing, totalQty, uniform3DConfig?.placements],
+    [globalEmbroideryPricing, product.embroidery_zones, totalQty, uniform3DConfig?.placements],
   );
   const estimatedPrice = quantityPrice.subtotal + embroideryPrice.total;
   const lowestTierPrice = useMemo(
@@ -258,6 +260,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
       sizes,
       customization: customization.trim() || null,
       uniform3DConfig: uniform3DConfig ?? null,
+      globalEmbroideryPricing,
     });
     if (!result.ok) {
       setError(result.reason ?? "Gagal menambahkan ke keranjang.");
@@ -419,20 +422,20 @@ export function ProductDetail({ product }: ProductDetailProps) {
             ) : null}
 
             {product.supports_embroidery ? (
-              product.embroideryPricing?.enabled && product.embroideryPricing.zones.some((zone) => zone.enabled) ? (
+              globalEmbroideryPricing.enabled && globalEmbroideryPricing.zones.some((zone) => zone.enabled && product.embroidery_zones.some((supported) => normalizeEmbroideryZoneId(supported) === zone.zoneId)) ? (
                 <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-bold text-amber-950">Harga Bordir Estimasi</p>
                     <span className="text-[10px] font-semibold text-amber-800">Per zona / pcs</span>
                   </div>
                   <dl className="mt-2 grid gap-1 sm:grid-cols-2">
-                    {product.embroideryPricing.zones.filter((zone) => zone.enabled).map((zone) => (
+                    {globalEmbroideryPricing.zones.filter((zone) => zone.enabled && product.embroidery_zones.some((supported) => normalizeEmbroideryZoneId(supported) === zone.zoneId)).map((zone) => (
                       <div key={zone.zoneId} className="rounded-lg bg-white/85 px-2.5 py-2 text-[11px]">
                         <div className="flex items-center justify-between gap-3">
                           <dt className="font-semibold text-ink-muted">{zone.label}</dt>
                           <dd className="font-bold text-ink">{formatIDR(zone.unitPrice)} / pcs</dd>
                         </div>
-                        {zone.setupFee > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Biaya setup opsional: {formatIDR(zone.setupFee)}</p> : null}
+                        {zone.showSetupFee && zone.setupFee > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Biaya setup: {formatIDR(zone.setupFee)}</p> : null}
                       </div>
                     ))}
                   </dl>

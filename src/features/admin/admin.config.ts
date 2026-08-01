@@ -5,6 +5,7 @@ import type { AdminPermission } from "./admin.types";
 export const ADMIN_NAV_ITEMS = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/products", label: "Produk" },
+  { href: "/admin/pricing/embroidery", label: "Harga Bordir" },
   { href: "/admin/quotations", label: "Quotations" },
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/process-orders", label: "Process Orders" },

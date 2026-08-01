@@ -25,6 +25,7 @@ export interface EmbroideryPricingZone {
   pricingMode: EmbroideryPricingMode;
   showSetupFee: boolean;
   notes?: string;
+  sortOrder?: number;
 }
 
 export interface EmbroideryPricing {
@@ -47,6 +48,7 @@ export interface EmbroideryPricingResult {
   total: number;
   lines: EmbroideryPricingLine[];
   missingPricingZones: EmbroideryPricingZoneId[];
+  unsupportedZones: EmbroideryPricingZoneId[];
 }
 
 export interface EmbroideryPricingIssue {
@@ -159,6 +161,7 @@ export function normalizeEmbroideryPricing(input: {
       setupFee,
       pricingMode: "flat_per_piece",
       showSetupFee: setupFee > 0,
+      sortOrder: finiteNumber(raw.sortOrder, zoneIndex * 10 + 10),
       ...(stringValue(raw.notes) ? { notes: stringValue(raw.notes) } : {}),
     });
     if (raw.pricingMode != null && raw.pricingMode !== "flat_per_piece") {
@@ -234,7 +237,8 @@ export function validateEmbroideryPricing(input: {
 export function calculateEmbroideryPricing(input: {
   totalQty: number;
   selectedZones: readonly unknown[];
-  embroideryPricing?: EmbroideryPricing | null;
+  productSupportedZones: readonly unknown[];
+  globalEmbroideryPricing?: EmbroideryPricing | null;
 }): EmbroideryPricingResult {
   const totalQty = Math.max(0, Math.floor(Number(input.totalQty) || 0));
   const selectedZones = [...new Set(
@@ -244,9 +248,19 @@ export function calculateEmbroideryPricing(input: {
   )];
   const lines: EmbroideryPricingLine[] = [];
   const missingPricingZones: EmbroideryPricingZoneId[] = [];
+  const supportedZones = new Set(
+    input.productSupportedZones
+      .map(normalizeEmbroideryZoneId)
+      .filter((zone): zone is EmbroideryPricingZoneId => zone != null),
+  );
+  const unsupportedZones: EmbroideryPricingZoneId[] = [];
   for (const zoneId of selectedZones) {
-    const zone = input.embroideryPricing?.enabled
-      ? input.embroideryPricing.zones.find(
+    if (!supportedZones.has(zoneId)) {
+      unsupportedZones.push(zoneId);
+      continue;
+    }
+    const zone = input.globalEmbroideryPricing?.enabled
+      ? input.globalEmbroideryPricing.zones.find(
           (candidate) => candidate.zoneId === zoneId && candidate.enabled,
         )
       : undefined;
@@ -254,7 +268,7 @@ export function calculateEmbroideryPricing(input: {
       missingPricingZones.push(zoneId);
       continue;
     }
-    const setupFeeApplied = zone.setupFee > 0;
+    const setupFeeApplied = zone.showSetupFee && zone.setupFee > 0;
     const subtotal = totalQty * zone.unitPrice + (setupFeeApplied ? zone.setupFee : 0);
     lines.push({
       zoneId,
@@ -270,6 +284,7 @@ export function calculateEmbroideryPricing(input: {
     total: lines.reduce((total, line) => total + line.subtotal, 0),
     lines,
     missingPricingZones,
+    unsupportedZones,
   };
 }
 
@@ -285,6 +300,7 @@ function defaultZone(
   unitPrice: number,
   notes: string,
 ): EmbroideryPricingZone {
+  const sortOrder = EMBROIDERY_PRICING_ZONE_IDS.indexOf(zoneId) * 10 + 10;
   return {
     zoneId,
     label,
@@ -296,6 +312,7 @@ function defaultZone(
     pricingMode: "flat_per_piece",
     showSetupFee: false,
     notes,
+    sortOrder,
   };
 }
 

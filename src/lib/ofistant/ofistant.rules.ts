@@ -203,7 +203,7 @@ const embroideryPricing: Rule = ({
     products.find((item) => item.slug === ctx.selectedProductSlug) ?? products[0];
   if (!product) {
     return {
-      message: "Sebutkan produk yang ingin dihitung. Harga bordir hanya akan saya ambil dari produk aktif di katalog Ofissio.",
+      message: "Sebutkan produk yang ingin dihitung. Harga bordir hanya akan saya ambil dari master global Ofissio dan zona yang didukung produk.",
       quickReplies: ["Lihat katalog", "Hubungi sales"],
     };
   }
@@ -217,8 +217,16 @@ const embroideryPricing: Rule = ({
   const embroidery = calculateEmbroideryPricing({
     totalQty: detected.requestedQty,
     selectedZones,
-    embroideryPricing: product.embroideryPricing,
+    productSupportedZones: product.supportedEmbroideryZones,
+    globalEmbroideryPricing: product.globalEmbroideryPricing,
   });
+  if (embroidery.unsupportedZones.length > 0) {
+    return {
+      message: `Zona ${embroidery.unsupportedZones.map(embroideryZoneLabel).join(" dan ")} tidak tersedia untuk ${product.name}. Silakan pilih zona bordir yang didukung pada halaman produk atau hubungi sales untuk kebutuhan khusus.`,
+      action: { type: "OPEN_PRODUCT_DETAIL", payload: { slug: product.slug, reason: "Zona bordir tidak didukung" } },
+      quickReplies: ["Lihat produk", "Hubungi sales"],
+    };
+  }
   if (embroidery.missingPricingZones.length > 0 || embroidery.lines.length === 0) {
     return {
       message: `Harga bordir untuk zona ${selectedZones.map(embroideryZoneLabel).join(" dan ")} pada ${product.name} perlu dikonfirmasi admin karena bergantung detail logo. Saya tidak akan mengarang harga bordir. Harga final mengikuti quotation admin.`,

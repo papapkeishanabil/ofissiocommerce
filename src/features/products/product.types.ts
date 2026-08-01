@@ -41,6 +41,6 @@ export interface OfissioProduct extends Product {
   searchableTerms?: string[];
   /** Optional for legacy mock products; WooCommerce products always map this field. */
   quantityPricing?: QuantityPricing;
-  /** Optional for legacy mock products; WooCommerce products map pricing from product meta. */
-  embroideryPricing?: EmbroideryPricing;
+  /** Deprecated WooCommerce metadata retained for migration visibility only. */
+  legacyEmbroideryPricing?: EmbroideryPricing;
 }

@@ -21,7 +21,8 @@ const pricing: EmbroideryPricing = {
 const selected = calculateEmbroideryPricing({
   totalQty: 100,
   selectedZones: ["left_chest", "middle_back"],
-  embroideryPricing: pricing,
+  productSupportedZones: ["left_chest", "center_back"],
+  globalEmbroideryPricing: pricing,
 });
 assert.equal(selected.lines.length, 2);
 assert.equal(selected.lines[0]?.subtotal, 500_000);
@@ -42,16 +43,52 @@ const setupPricing: EmbroideryPricing = {
 const withSetup = calculateEmbroideryPricing({
   totalQty: 100,
   selectedZones: ["left_chest"],
-  embroideryPricing: setupPricing,
+  productSupportedZones: ["left_chest"],
+  globalEmbroideryPricing: setupPricing,
 });
 assert.equal(withSetup.lines[0]?.subtotal, 550_000);
 assert.equal(withSetup.lines[0]?.setupFeeApplied, true);
 assert.equal(withSetup.total, 550_000);
 
+const hiddenSetup = calculateEmbroideryPricing({
+  totalQty: 100,
+  selectedZones: ["left_chest"],
+  productSupportedZones: ["left_chest"],
+  globalEmbroideryPricing: {
+    ...setupPricing,
+    zones: setupPricing.zones.map((zone) => ({ ...zone, showSetupFee: false })),
+  },
+});
+assert.equal(hiddenSetup.total, 500_000);
+assert.equal(hiddenSetup.lines[0]?.setupFeeApplied, false);
+
+const unsupported = calculateEmbroideryPricing({
+  totalQty: 100,
+  selectedZones: ["upper_back"],
+  productSupportedZones: ["left_chest"],
+  globalEmbroideryPricing: pricing,
+});
+assert.equal(unsupported.total, 0);
+assert.deepEqual(unsupported.unsupportedZones, ["upper_back"]);
+
+const disabled = calculateEmbroideryPricing({
+  totalQty: 100,
+  selectedZones: ["left_sleeve"],
+  productSupportedZones: ["left_sleeve"],
+  globalEmbroideryPricing: {
+    ...pricing,
+    zones: pricing.zones.map((zone) => zone.zoneId === "left_sleeve" ? { ...zone, enabled: false } : zone),
+  },
+});
+assert.equal(disabled.total, 0);
+assert.deepEqual(disabled.missingPricingZones, ["left_sleeve"]);
+assert.equal(13_800_000 + selected.total, 15_800_000);
+
 const missing = calculateEmbroideryPricing({
   totalQty: 100,
   selectedZones: ["right_sleeve"],
-  embroideryPricing: { enabled: true, mode: "flat_per_piece", zones: [] },
+  productSupportedZones: ["right_sleeve"],
+  globalEmbroideryPricing: { enabled: true, mode: "flat_per_piece", zones: [] },
 });
 assert.equal(missing.total, 0);
 assert.deepEqual(missing.lines, []);
@@ -128,8 +165,8 @@ const baseWooProduct: WooCommerceProduct = {
   ],
 };
 const mappedString = mapWooCommerceProductToOfissioProduct(baseWooProduct);
-assert.equal(mappedString.embroideryPricing?.zones[0]?.unitPrice, 5_000);
-assert.equal(mappedString.embroideryPricing?.zones[5]?.zoneId, "center_back");
+assert.equal(mappedString.legacyEmbroideryPricing?.zones[0]?.unitPrice, 5_000);
+assert.equal(mappedString.legacyEmbroideryPricing?.zones[5]?.zoneId, "center_back");
 
 const mappedArray = mapWooCommerceProductToOfissioProduct({
   ...baseWooProduct,
@@ -139,7 +176,7 @@ const mappedArray = mapWooCommerceProductToOfissioProduct({
     { key: "embroidery_pricing", value: pricing.zones },
   ],
 });
-assert.equal(mappedArray.embroideryPricing?.zones[4]?.unitPrice, 10_000);
+assert.equal(mappedArray.legacyEmbroideryPricing?.zones[4]?.unitPrice, 10_000);
 
 const missingPricingProduct: WooCommerceProduct = {
   ...baseWooProduct,
@@ -151,8 +188,8 @@ const missingPricingProduct: WooCommerceProduct = {
 const missingPricingReadiness = getProductReadiness(missingPricingProduct);
 assert.equal(missingPricingReadiness.isVisibleInOfissio, true);
 assert.equal(
-  missingPricingReadiness.warnings.some((issue) => issue.label === "Harga bordir belum diatur"),
-  true,
+  missingPricingReadiness.warnings.some((issue) => issue.field === "embroidery_pricing"),
+  false,
 );
 assert.equal(
   missingPricingReadiness.blockingIssues.some((issue) => issue.field === "embroidery_pricing"),
@@ -160,5 +197,5 @@ assert.equal(
 );
 
 console.log(
-  "PASS: embroidery pricing per zone, setup fee, fallback, legacy zone, validation, parser, dan Woo mapper.",
+  "PASS: global embroidery pricing, supported zones, setup fee, missing price, legacy metadata, dan non-blocking readiness.",
 );

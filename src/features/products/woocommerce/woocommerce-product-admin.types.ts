@@ -4,10 +4,6 @@ import type {
   QuantityPricingMode,
   QuantityPricingTier,
 } from "../quantity-pricing";
-import type {
-  EmbroideryPricingMode,
-  EmbroideryPricingZone,
-} from "../embroidery-pricing";
 
 export interface AdminWooCommerceProduct {
   id: number;
@@ -45,9 +41,7 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
     supportsScreenPrinting: boolean;
     supportsDtf: boolean;
     embroideryZones: string[];
-    embroideryPricingEnabled: boolean;
-    embroideryPricingMode: EmbroideryPricingMode;
-    embroideryPricingZones: EmbroideryPricingZone[];
+    hasLegacyEmbroideryPricing: boolean;
     alwaysOrderable: boolean;
     replenishmentPolicy: string;
     processRoute: string;

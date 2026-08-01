@@ -8,6 +8,7 @@ import type { SizeMatrix } from "@/types/industry";
 import type { LogoPlacement } from "@/types/uniform-3d";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 import { calculateEmbroideryPricing } from "@/features/products/embroidery-pricing";
+import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global-embroidery-pricing.service";
 
 import type {
   CheckoutCartRecord,
@@ -55,15 +56,12 @@ async function validateAndPriceItem(
     totalQty,
     quantityPricing: product.quantityPricing,
   });
-  const embroideryPricingSnapshot = product.embroideryPricing ?? {
-    enabled: false,
-    mode: "flat_per_piece" as const,
-    zones: [],
-  };
+  const embroideryPricingSnapshot = (await getGlobalEmbroideryPricing()).pricing;
   const embroideryPrice = calculateEmbroideryPricing({
     totalQty,
     selectedZones: input.embroideryPlacements.map((placement) => placement.zone),
-    embroideryPricing: embroideryPricingSnapshot,
+    productSupportedZones: product.embroidery_zones,
+    globalEmbroideryPricing: embroideryPricingSnapshot,
   });
 
   return {
@@ -85,11 +83,11 @@ async function validateAndPriceItem(
     quantityTierApplied: calculatedPrice.tierApplied,
     subtotal: calculatedPrice.subtotal,
     productSubtotal: calculatedPrice.subtotal,
-    selectedEmbroideryZones: embroideryPrice.lines.map((line) => line.zoneId).concat(embroideryPrice.missingPricingZones),
+    selectedEmbroideryZones: embroideryPrice.lines.map((line) => line.zoneId).concat(embroideryPrice.missingPricingZones, embroideryPrice.unsupportedZones),
     embroideryPricingSnapshot,
     embroideryLines: embroideryPrice.lines,
     embroideryTotal: embroideryPrice.total,
-    missingEmbroideryPricingZones: embroideryPrice.missingPricingZones,
+    missingEmbroideryPricingZones: embroideryPrice.missingPricingZones.concat(embroideryPrice.unsupportedZones),
     customizationTotal: embroideryPrice.total,
     finalEstimatedTotal: calculatedPrice.subtotal + embroideryPrice.total,
     moq: product.moq,

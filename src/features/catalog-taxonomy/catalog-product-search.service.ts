@@ -1,6 +1,8 @@
 import "server-only";
 
 import { productServerService } from "@/features/products/product.server-service";
+import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global-embroidery-pricing.service";
+import { normalizeEmbroideryZoneId, type EmbroideryPricingZoneId } from "@/features/products/embroidery-pricing";
 
 import {
   normalizeIndustrySlug,
@@ -14,9 +16,10 @@ import type { CatalogSearchResult } from "./catalog-taxonomy.types";
 export async function searchCatalogProducts(
   query: string,
 ): Promise<CatalogSearchResult> {
-  const [products, publicTaxonomy] = await Promise.all([
+  const [products, publicTaxonomy, globalPricingState] = await Promise.all([
     productServerService.getPublishedProducts(),
     getPublicCatalogTaxonomy(),
+    getGlobalEmbroideryPricing(),
   ]);
   const searchTaxonomy = withCatalogSearchVocabulary(publicTaxonomy);
   const normalization = normalizeCatalogSearch(query, searchTaxonomy);
@@ -81,7 +84,10 @@ export async function searchCatalogProducts(
       industries: product.industries,
       regularPrice: product.priceFrom,
       quantityPricing: product.quantityPricing,
-      embroideryPricing: product.embroideryPricing,
+      globalEmbroideryPricing: globalPricingState.pricing,
+      supportedEmbroideryZones: product.embroidery_zones
+        .map(normalizeEmbroideryZoneId)
+        .filter((zone): zone is EmbroideryPricingZoneId => zone != null),
     })),
     alternatives: {
       categories: publicTaxonomy.categories

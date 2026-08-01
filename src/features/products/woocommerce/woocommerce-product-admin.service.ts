@@ -16,7 +16,6 @@ import {
   normalizeQuantityPricing,
   sortQuantityPricingTiers,
 } from "../quantity-pricing";
-import { normalizeEmbroideryPricing } from "../embroidery-pricing";
 import { getProductReadiness } from "./woocommerce-product-readiness";
 import type {
   AdminWooCommerceProduct,
@@ -26,7 +25,6 @@ import type { WooCommerceProduct } from "./woocommerce.types";
 import type { WooCommerceMetaData, WooCommerceProductWritePayload } from "./woocommerce.types";
 import type { AdminWooProductPayload } from "./woocommerce-product-management.validation";
 import type { AdminWooQuantityPricingPayload } from "./woocommerce-product-management.validation";
-import type { AdminWooEmbroideryPricingPayload } from "./woocommerce-product-management.validation";
 
 const ADMIN_PAGE_SIZE = 100;
 const MAX_ADMIN_PAGES = 100;
@@ -63,12 +61,6 @@ export async function getAdminWooCommerceProduct(
     moq: getMetaNumber(meta, "moq", 0),
   }).quantityPricing;
   const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
-  const embroideryPricing = normalizeEmbroideryPricing({
-    enabled: getMetaBoolean(meta, "embroidery_pricing_enabled", true),
-    mode: getMetaString(meta, "embroidery_pricing_mode"),
-    zones: getMetaValue(meta, "embroidery_pricing"),
-    supportsEmbroidery,
-  }).embroideryPricing;
   return {
     ...summary,
     description: product.description ?? "",
@@ -101,9 +93,7 @@ export async function getAdminWooCommerceProduct(
       ),
       supportsDtf: getMetaBoolean(meta, "supports_dtf", false),
       embroideryZones: getMetaStringArray(meta, "embroidery_zones"),
-      embroideryPricingEnabled: embroideryPricing.enabled,
-      embroideryPricingMode: embroideryPricing.mode,
-      embroideryPricingZones: embroideryPricing.zones,
+      hasLegacyEmbroideryPricing: getMetaValue(meta, "embroidery_pricing") != null,
       alwaysOrderable: getMetaBoolean(meta, "always_orderable", true),
       replenishmentPolicy: getMetaString(meta, "replenishment_policy") || "internal_warning_only",
       processRoute: getMetaString(meta, "process_route") || "fulfillment",
@@ -137,10 +127,6 @@ export async function createAdminWooCommerceProduct(input: {
       tierCount: input.payload.quantityPricingTiers.length,
       enabled: input.payload.quantityPricingEnabled,
     });
-    logProductAudit("product_embroidery_pricing_updated", created.id, input, {
-      zoneCount: input.payload.embroideryPricingZones.length,
-      enabled: input.payload.embroideryPricingEnabled,
-    });
     return getAdminWooCommerceProduct(created.id);
   } catch (error) {
     logProductAudit("product_create_failed", null, input, {
@@ -172,10 +158,6 @@ export async function updateAdminWooCommerceProduct(input: {
       tierCount: input.payload.quantityPricingTiers.length,
       enabled: input.payload.quantityPricingEnabled,
     });
-    logProductAudit("product_embroidery_pricing_updated", updated.id, input, {
-      zoneCount: input.payload.embroideryPricingZones.length,
-      enabled: input.payload.embroideryPricingEnabled,
-    });
     return getAdminWooCommerceProduct(updated.id);
   } catch (error) {
     logProductAudit("product_update_failed", input.id, input, {
@@ -185,46 +167,6 @@ export async function updateAdminWooCommerceProduct(input: {
       reason: "provider_or_validation_error",
     });
     logProductAudit("product_quantity_pricing_update_failed", input.id, input, {
-      reason: "provider_or_validation_error",
-    });
-    logProductAudit("product_embroidery_pricing_update_failed", input.id, input, {
-      reason: "provider_or_validation_error",
-    });
-    throw error;
-  }
-}
-
-export async function updateAdminWooCommerceEmbroideryPricing(input: {
-  id: number;
-  payload: AdminWooEmbroideryPricingPayload;
-  actorId: string;
-  request?: Request;
-}) {
-  try {
-    const current = await woocommerceClient.getProductById(input.id);
-    const zones = input.payload.zones.map((zone) => ({
-      ...zone,
-      setupFee: Math.max(0, zone.setupFee),
-      showSetupFee: zone.setupFee > 0,
-      pricingMode: "flat_per_piece" as const,
-    }));
-    const entries: Array<[string, unknown]> = [
-      ["embroidery_pricing_enabled", input.payload.embroideryPricingEnabled],
-      ["embroidery_pricing_mode", input.payload.embroideryPricingMode],
-      ["embroidery_pricing", JSON.stringify(zones)],
-    ];
-    await woocommerceClient.updateProduct(input.id, {
-      meta_data: entries.map(([key, value]) =>
-        metaEntry(current.meta_data ?? [], key, value),
-      ),
-    });
-    logProductAudit("product_embroidery_pricing_updated", input.id, input, {
-      zoneCount: zones.length,
-      enabled: input.payload.embroideryPricingEnabled,
-    });
-    return getAdminWooCommerceProduct(input.id);
-  } catch (error) {
-    logProductAudit("product_embroidery_pricing_update_failed", input.id, input, {
       reason: "provider_or_validation_error",
     });
     throw error;
@@ -311,16 +253,6 @@ function buildWritePayload(
     ["supports_screen_printing", payload.supportsScreenPrinting],
     ["supports_dtf", payload.supportsDtf],
     ["embroidery_zones", JSON.stringify(unique(payload.embroideryZones))],
-    ["embroidery_pricing_enabled", payload.embroideryPricingEnabled],
-    ["embroidery_pricing_mode", payload.embroideryPricingMode],
-    [
-      "embroidery_pricing",
-      JSON.stringify(payload.embroideryPricingZones.map((zone) => ({
-        ...zone,
-        showSetupFee: zone.setupFee > 0,
-        pricingMode: "flat_per_piece",
-      }))),
-    ],
     ["available_colors", JSON.stringify(unique(payload.colors))],
     ["available_sizes", JSON.stringify(unique(payload.sizes))],
     ["material", payload.materials[0] ?? ""],

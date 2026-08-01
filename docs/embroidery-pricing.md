@@ -1,68 +1,42 @@
-# Embroidery Pricing per Zone
+# Global Embroidery Pricing Master
 
-Task A4 menempatkan pengaturan harga bordir di Ofissio Admin dan menyimpan sumber datanya pada WooCommerce product meta. WooCommerce tetap menjadi product source, sedangkan kalkulasi B2B dilakukan Ofissio agar cart, quotation, Ofistant, dan order sync memakai hasil yang sama.
+Harga bordir Ofissio adalah master global, bukan harga per produk. Supabase table `embroidery_pricing_zones` menjadi source of truth untuk enam zona: `left_chest`, `right_chest`, `left_sleeve`, `right_sleeve`, `upper_back`, dan `center_back`.
 
-## Zona yang tersedia
+## Operasional admin
 
-| Zone ID | Label | Harga default |
-| --- | --- | ---: |
-| `left_chest` | Dada Kiri | Rp5.000/pcs |
-| `right_chest` | Dada Kanan | Rp5.000/pcs |
-| `left_sleeve` | Lengan Kiri | Rp6.000/pcs |
-| `right_sleeve` | Lengan Kanan | Rp6.000/pcs |
-| `upper_back` | Punggung Atas | Rp10.000/pcs |
-| `center_back` | Punggung Tengah | Rp15.000/pcs |
+1. Jalankan migration `database/migrations/011_global_embroidery_pricing.sql` satu kali melalui Supabase SQL Editor.
+2. Buka `/admin/pricing/embroidery` atau menu **Harga Bordir**.
+3. Atur status aktif, batas ukuran, harga per pcs, setup fee, serta catatan.
+4. Aktifkan **Terapkan setup fee** hanya bila setup fee memang harus masuk kalkulasi.
+5. Simpan master. Perubahan berlaku untuk transaksi baru; cart dan quotation menyimpan snapshot agar histori tidak berubah.
 
-Nilai legacy `back` dan `middle_back` dinormalisasi ke `center_back`. Viewer 3D lama tetap memakai kontraknya sendiri dan tidak perlu diubah.
+Role `super_admin` dan `product_admin` dapat mengubah master. Role internal lain yang memiliki `admin:catalog:view` hanya dapat melihat. Endpoint mutasi dilindungi RBAC, rate limit, Zod validation, safe error response, dan audit `embroidery_pricing_updated`/`embroidery_pricing_update_failed`.
 
-## Product meta
+## Kontrak produk
 
-- `embroidery_pricing_enabled`: boolean.
-- `embroidery_pricing_mode`: `flat_per_piece`.
-- `embroidery_pricing`: JSON array zona.
+Produk hanya menyimpan `supports_embroidery` dan `embroidery_zones`. Form produk tidak menyimpan harga per zona. Metadata WooCommerce lama `embroidery_pricing*` tidak dihapus, tetapi hanya ditampilkan sebagai peringatan kompatibilitas dan tidak pernah digunakan sebagai sumber hitung.
 
-Setiap zona menyimpan `zoneId`, `label`, `enabled`, `maxWidthCm`, `maxHeightCm`, `unitPrice`, `setupFee`, `pricingMode`, `showSetupFee`, dan `notes`.
+## Rumus
 
-## Formula
+Untuk setiap zona aktif yang didukung produk:
 
 ```text
-zone subtotal = total quantity × unitPrice + setupFee
+zone subtotal = total qty × unit price + setup fee (hanya jika show_setup_fee=true)
 embroidery total = jumlah seluruh zone subtotal
-estimated total = product subtotal A5 + embroidery total
+estimated total = product subtotal + embroidery total
 ```
 
-Total quantity berasal dari seluruh size matrix. Setup fee default `0`; jika `0`, fee tidak ditampilkan dan tidak dibuat sebagai line terpisah. Jika lebih dari `0`, fee ditambahkan satu kali untuk zona tersebut dan ditampilkan eksplisit.
+Zona tidak didukung, nonaktif, atau tidak ditemukan tidak diberi harga rekaan. UI/Ofistant menjelaskan bahwa zona tidak tersedia atau memerlukan konfirmasi.
 
-## Cara admin mengatur
+## Integrasi
 
-1. Buka `/admin/products/new` atau `/admin/products/woocommerce/[id]`.
-2. Aktifkan dukungan Bordir dan pilih zona pada section Customization.
-3. Buka **Harga Bordir per Zona**.
-4. Aktif/nonaktifkan zona, isi batas ukuran, harga per pcs, setup fee opsional, dan catatan.
-5. Klik **Validasi Harga Bordir**.
-6. Pada edit product, klik **Simpan Harga Bordir**. Create/update utama juga menyimpan field yang sama.
+- Public safe read: `GET /api/customization/embroidery-pricing` (hanya zona aktif, tanpa informasi storage/secret).
+- Admin read/write: `GET|PATCH /api/admin/pricing/embroidery`.
+- Product detail memfilter master berdasarkan zona produk.
+- Cart dan checkout menghitung ulang dari master lalu menyimpan snapshot.
+- Quotation menyimpan snapshot dan tetap mendukung admin override.
+- Ofistant memakai master yang sama dan menolak zona yang tidak didukung produk.
 
-Unit price, lebar, dan tinggi zona aktif wajib lebih dari nol. Setup fee tidak boleh negatif. Pricing invalid ditolak client dan server.
+## Test
 
-## Customer, cart, dan quotation
-
-Product detail menampilkan harga zona sebagai estimasi. Setelah customer menyimpan placement dari configurator 3D, calculator membaca zona unik dan quantity size matrix. Cart menyimpan pricing snapshot, lines, missing zones, customization total, dan final estimated total.
-
-Quotation menyimpan original embroidery breakdown. Admin dapat override unit price dan setup fee per zona; server menghitung ulang total dan mencatat audit pricing. Zona tanpa pricing tetap boleh diajukan, tetapi ditandai perlu konfirmasi admin.
-
-## Ofistant
-
-Ofistant hanya menjawab dari `embroideryPricing` produk valid. Pertanyaan seperti `100 pcs jaket tambang bordir dada kiri dan punggung tengah` menghitung product tier A5 serta dua zona A4. Jika zona tidak punya harga, Ofistant menyatakan perlu konfirmasi admin dan tidak mengarang angka.
-
-## Troubleshooting
-
-- **Harga tidak muncul:** pastikan `supports_embroidery=true`, pricing enabled, dan meta `embroidery_pricing` berisi zona.
-- **Zona tidak aktif:** aktifkan zona pada pricing dan pada field zona bordir produk.
-- **Unit price kosong/0:** zona enabled harus memiliki harga lebih dari nol.
-- **Pricing invalid:** gunakan tombol validasi; periksa ukuran maksimum dan setup fee negatif.
-- **Harga perlu konfirmasi admin:** placement dipilih tetapi tidak memiliki zona pricing enabled.
-- **Harga quotation berbeda:** admin dapat melakukan override sebelum quotation dikirim; original calculation tetap tersimpan.
-
-## Security
-
-Endpoint khusus `PATCH /api/admin/products/woocommerce/[id]/embroidery-pricing` memakai internal guard, RBAC `admin:catalog:update`, rate limit, validasi Zod, safe error, dan audit log. Customer tidak dapat menulis product meta.
+Jalankan `npm run test:embroidery-pricing`. Test mencakup multi-zona, setup fee aktif/nonaktif, zona tidak didukung, harga hilang, parsing metadata legacy, dan readiness non-blocking.
