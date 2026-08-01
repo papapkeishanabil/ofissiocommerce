@@ -57,6 +57,7 @@
 - [ ] `woo_sync_logs` terisi saat order sync staging diuji.
 - [ ] WooCommerce order sync idempotent dan retry admin diverifikasi.
 - [ ] Woo order meta menyimpan `source=ofissio` dan `ofissio_order_id`.
+- [x] Local/staging A7 write smoke: Woo order #28, total Rp15.850.000, metadata dan retry idempotent tervalidasi.
 - [ ] Order routing diverifikasi: fulfillment/customization/production.
 - [ ] Admin order tidak otomatis membuat Production Order untuk semua Sales Order.
 - [ ] Produk standar tidak menampilkan `out of stock` / `stok habis` ke customer.

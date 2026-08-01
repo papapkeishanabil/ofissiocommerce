@@ -235,9 +235,9 @@ Jalankan checklist ini setiap deploy staging.
 - [ ] Buka detail produk WooCommerce valid dan buka 3D configurator.
 - [ ] Cart menyimpan `source=woocommerce`, `source_id`, `sku`, `model3dId`, `model3dUrl`, fulfillment type, transaction mode, dan size matrix.
 - [ ] Jangan tampilkan `out of stock` / `stok habis` ke customer untuk produk standar.
-- [ ] Setelah product source pass, aktifkan `WOOCOMMERCE_SYNC_ORDERS=true` jika ingin test sync order.
-- [ ] Jalankan write smoke hanya jika staging sandbox siap: `WOOCOMMERCE_TEST_WRITE=true npm run check:woocommerce`.
-- [ ] Admin sync order menyimpan `woo_order_id` di Supabase dan `ofissio_order_id` di Woo order meta.
-- [ ] Retry sync tidak membuat Woo order duplikat.
-- [ ] Customer tidak bisa trigger endpoint admin sync WooCommerce.
+- [x] Setelah product source pass, aktifkan `WOOCOMMERCE_SYNC_ORDERS=true` jika ingin test sync order.
+- [x] Jalankan write smoke hanya jika staging sandbox siap: `WOOCOMMERCE_TEST_WRITE=true npm run check:woocommerce`.
+- [x] Admin sync order menyimpan `woo_order_id` di Supabase dan `ofissio_order_id` di Woo order meta.
+- [x] Retry sync tidak membuat Woo order duplikat.
+- [x] Customer tidak bisa trigger endpoint admin sync WooCommerce.
 - [ ] `WOOCOMMERCE_CONSUMER_SECRET` tidak muncul di `.next/static`.

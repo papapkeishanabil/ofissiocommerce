@@ -126,3 +126,20 @@ Jalankan write smoke hanya di WooCommerce staging sandbox, bukan production.
 - Write test tetap opt-in eksplisit via `WOOCOMMERCE_TEST_WRITE=true`.
 - WooCommerce order number berasal dari response Woo; jika response tidak memberi `number`, Ofissio menyimpan `id`.
 - `woo_sync_logs` baru aktif setelah migration 004 dijalankan manual.
+
+## Task A7 write smoke — 1 Agustus 2026
+
+Write smoke local/staging menggunakan Ofissio order `OF-QUO-96202DA4-DD33FA` (`ord_3bbdfcdf-ce92-4a08-943d-c7ff589f1ff3`) hasil convert quotation A6.
+
+- Order masih `waiting_payment`, sehingga WooCommerce order `#28` dibuat dengan status `pending`.
+- Total Ofissio dan WooCommerce sama: Rp15.850.000.
+- Woo meta menyimpan `source=ofissio`, `ofissio_order_id`, `ofissio_order_number`, dan `quotation_id`.
+- Order dan line meta menyimpan tier `100-299 pcs`, final unit price Rp138.000, embroidery total Rp2.050.000, zona `left_chest`/`center_back`, serta line breakdown bordir.
+- Supabase order menyimpan `woo_order_id=28`, status `synced`, timestamp sync, dan tidak memiliki sync error.
+- `woo_sync_logs` memiliki satu record `ofissio_to_woocommerce/create_order/synced`.
+- Retry API dan retry melalui admin UI memakai Woo order `#28`; hanya satu order memiliki `ofissio_order_id` tersebut.
+- Anonymous, customer, dan internal role tanpa `admin:order:update` menerima 403.
+
+Regression status payment tersedia melalui `npm run test:woocommerce-order-sync`: unpaid/waiting payment dipetakan ke `pending`, sedangkan paid dipetakan ke `processing`.
+
+Flag `WOOCOMMERCE_TEST_WRITE=true` hanya untuk local/staging smoke. Kembalikan ke `false` sebelum konfigurasi production.
