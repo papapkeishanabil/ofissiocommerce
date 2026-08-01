@@ -31,6 +31,7 @@ Dokumen ini memisahkan **staging foundation complete** dari **production launch 
    - Uji order sync idempotent.
    - Pastikan `woo_order_id` tersimpan di Supabase dan `ofissio_order_id` masuk Woo order meta.
    - Pastikan secret WooCommerce tidak muncul di client bundle.
+   - Pastikan WordPress Media Application Password/token tersedia server-side, permission `upload_files` benar, serta upload/reorder diuji terhadap WooCommerce staging.
 
 5. Shipping provider
    - Pilih provider ekspedisi.
@@ -44,6 +45,7 @@ Dokumen ini memisahkan **staging foundation complete** dari **production launch 
    - Email delivery monitoring.
    - Upload/storage failure monitoring.
    - 3D model load monitoring.
+   - Monitor delivery email order baru dan pertimbangkan realtime notification setelah auth internal production aktif.
 
 7. Backup/restore
    - Jadwal backup Supabase.

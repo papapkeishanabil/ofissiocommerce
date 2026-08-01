@@ -178,6 +178,10 @@ Global product attributes tetap dikelola dari WooCommerce. Halaman `/admin/catal
 
 Task A3 mengunggah GLB dari Ofissio Admin ke bucket privat Supabase. WooCommerce menyimpan bucket/key dan URL resolver, bukan signed URL permanen. Format legacy `/3d/*.glb` tetap didukung agar KK-006 tidak berubah.
 
+## Foto produk Task A3.1
+
+Ofissio Admin mengunggah JPG/PNG/WEBP ke WordPress Media Library melalui REST API server-side, kemudian memperbarui array WooCommerce `images` dengan media ID (atau source URL sebagai fallback). Index pertama adalah foto utama katalog; item berikutnya adalah gallery. Reorder dan set primary mengubah urutan array tanpa mengubah metadata GLB atau meta Ofissio lainnya. Tidak memiliki foto hanya menghasilkan warning readiness non-blocking.
+
 ## Aturan stok standar
 
 `stock_status` WooCommerce tidak menjadi blocker customer-facing untuk produk standar. Produk standar tetap bisa tampil dan dipesan jika metadata Ofissio valid, termasuk saat stok fisik rendah/kosong di WooCommerce. Kekurangan stok ditangani sebagai warning internal `Replenishment needed` di Ofissio Admin, bukan pesan `stok habis` ke customer.

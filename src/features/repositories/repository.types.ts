@@ -36,6 +36,10 @@ import type {
   ShipmentListFilter,
   ShipmentRecord,
 } from "@/features/shipments/shipment.types";
+import type {
+  AdminNotification,
+  AdminNotificationType,
+} from "@/features/admin-notifications/admin-notification.types";
 
 export type RepositoryProvider = "mock" | "supabase" | "postgres";
 
@@ -280,6 +284,22 @@ export interface ShipmentRepository {
   }): Promise<ShipmentEventRecord[]>;
 }
 
+export interface AdminNotificationRepository {
+  create(notification: AdminNotification): Promise<AdminNotification>;
+  getById(id: string): Promise<AdminNotification | null>;
+  getByEntity(input: {
+    type: AdminNotificationType;
+    entityType: string;
+    entityId: string;
+  }): Promise<AdminNotification | null>;
+  listAll(): Promise<AdminNotification[]>;
+  update(
+    id: string,
+    patch: Partial<AdminNotification>,
+  ): Promise<AdminNotification | null>;
+  claimEmail(id: string, claimId: string): Promise<boolean>;
+}
+
 export interface RepositoryRegistry {
   provider: RepositoryProvider;
   company: CompanyRepository;
@@ -296,6 +316,7 @@ export interface RepositoryRegistry {
   processOrders: ProcessOrderRepository;
   documents: DocumentRepository;
   shipments: ShipmentRepository;
+  adminNotifications: AdminNotificationRepository;
 }
 
 export interface PersistedSizeMatrix {

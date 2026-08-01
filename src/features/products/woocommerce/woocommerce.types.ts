@@ -73,7 +73,12 @@ export interface WooCommerceProductWritePayload {
   short_description?: string;
   regular_price?: string;
   categories?: Array<{ id: number }>;
-  images?: Array<{ src: string }>;
+  images?: Array<{
+    id?: number;
+    src?: string;
+    name?: string;
+    alt?: string;
+  }>;
   attributes?: Array<{
     id?: number;
     name?: string;

@@ -26,6 +26,7 @@ npm run dev
 | Storage upload | Default mock; Supabase Storage nanti butuh env Supabase server-side | `STORAGE_PROVIDER`, bucket storage, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
 | Ofistant AI | Opsional/future real LLM | `OFISTANT_LLM_API_KEY`, `OFISTANT_LLM_MODEL` |
 | WooCommerce | Wajib jika memakai catalog/order sync WooCommerce | `PRODUCT_SOURCE`, `WOOCOMMERCE_ENABLED`, `WOOCOMMERCE_BASE_URL`, `WOOCOMMERCE_CONSUMER_KEY`, `WOOCOMMERCE_CONSUMER_SECRET`, `WOOCOMMERCE_SYNC_ORDERS` |
+| WordPress Media | Wajib untuk upload foto produk dari Ofissio Admin | `WORDPRESS_MEDIA_USERNAME` + `WORDPRESS_MEDIA_APP_PASSWORD`, atau `WORDPRESS_MEDIA_TOKEN`; `WORDPRESS_MEDIA_BASE_URL` opsional |
 
 ## 1. Payment iPaymu
 
@@ -127,6 +128,7 @@ STORAGE_SIGNED_URL_EXPIRES_SECONDS=3600
 MAX_LOGO_UPLOAD_MB=10
 MAX_DOCUMENT_UPLOAD_MB=20
 MAX_GLB_UPLOAD_MB=100
+PRODUCT_IMAGE_MAX_MB=10
 ```
 
 Jika nanti memakai Supabase Storage:
@@ -166,6 +168,10 @@ WOOCOMMERCE_BASE_URL=https://your-wordpress-site.com
 WOOCOMMERCE_CONSUMER_KEY=
 WOOCOMMERCE_CONSUMER_SECRET=
 WOOCOMMERCE_SYNC_ORDERS=false
+WORDPRESS_MEDIA_BASE_URL=
+WORDPRESS_MEDIA_USERNAME=
+WORDPRESS_MEDIA_APP_PASSWORD=
+WORDPRESS_MEDIA_TOKEN=
 ```
 
 Catatan:
@@ -173,6 +179,8 @@ Catatan:
 - Jika `PRODUCT_SOURCE=mock`, Ofissio tetap memakai mock catalog.
 - Jika WooCommerce env belum lengkap, sistem fallback aman ke mock.
 - Set `WOOCOMMERCE_SYNC_ORDERS=true` hanya jika order sync sudah siap dites.
+- Foto produk memakai WordPress Media Library, bukan bucket Supabase. User WordPress harus memiliki permission `upload_files`.
+- Jangan membuat varian `NEXT_PUBLIC_` untuk credential WordPress Media.
 
 ## Contoh `.env.local` minimum untuk fitur real penting
 

@@ -49,6 +49,7 @@ import type {
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
+import { resolveOrderCreatedNotifications } from "@/features/admin-notifications/admin-notification.service";
 import {
   INTERNAL_ROLES,
   type AuditEvent,
@@ -402,6 +403,10 @@ export async function startAdminOrderProcess(input: {
     actorType: "internal",
     request: input.request,
   });
+  await resolveOrderCreatedNotifications(detail.order.id, {
+    actorId: input.actor.id,
+    request: input.request,
+  }).catch(() => null);
   return result;
 }
 

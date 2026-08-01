@@ -10,8 +10,9 @@ import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payme
 import { createWooCommerceOrderFromQuotation } from "@/features/orders/woocommerce-order-sync.service";
 import { deriveOrderProcessRouting } from "@/features/orders/order-routing.service";
 import { mapPaymentOrderToTracking } from "@/features/tracking/tracking.service";
+import { createOrderCreatedNotification } from "@/features/admin-notifications/admin-notification.service";
 import { logAuditEvent } from "@/lib/security/audit-log";
-import { createApiError } from "@/lib/security/safe-error-response";
+import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
 import type { AuditActorType } from "@/lib/security/security.types";
 
 import { quotationRepository } from "./quotation.repository";
@@ -505,6 +506,14 @@ export async function convertQuotationToOrder(input: {
           orderId: existingOrder.id,
         })
       : null;
+    if (existingOrder) {
+      await notifyConvertedOrderSafely({
+        order: existingOrder,
+        quotation,
+        actorId: input.actorId,
+        request: input.request,
+      });
+    }
     return {
       quotation,
       order: existingOrder,
@@ -738,12 +747,52 @@ export async function convertQuotationToOrder(input: {
     entityId: quotation.id,
     metadata: { orderId, paymentId, referenceId },
   });
+  await notifyConvertedOrderSafely({
+    order,
+    quotation,
+    actorId: input.actorId,
+    request: input.request,
+  });
   return {
     quotation: normalizeQuotationRecord(updatedWithWoo ?? updated),
     order,
     tracking: preparedTracking,
     idempotent: false,
   };
+}
+
+async function notifyConvertedOrderSafely(input: {
+  order: PaymentOrderRecord;
+  quotation: QuotationRequestRecord;
+  actorId: string | null;
+  request?: Request;
+}) {
+  const productSummary = input.order.items
+    .slice(0, 3)
+    .map((item) => `${item.productName} — ${item.totalQty} pcs`)
+    .join(", ");
+  try {
+    await createOrderCreatedNotification(
+      {
+        orderId: input.order.id,
+        orderNumber: input.order.orderNumber ?? input.order.id,
+        quotationId: input.quotation.id,
+        customerName: input.quotation.picName,
+        companyName: input.quotation.companyName,
+        total: input.order.calculation.grandTotal,
+        currency: "IDR",
+        productSummary,
+        source: "quotation_convert",
+      },
+      { actorId: input.actorId, request: input.request },
+    );
+  } catch (error) {
+    logInternalError(error, {
+      area: "quotation_order_notification",
+      orderId: input.order.id,
+      quotationId: input.quotation.id,
+    });
+  }
 }
 
 function buildQuotationNumber(nowIso: string) {

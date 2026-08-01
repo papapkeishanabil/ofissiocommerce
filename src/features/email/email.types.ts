@@ -5,6 +5,7 @@ export const EMAIL_TYPES = [
   "payment_received_customer",
   "order_tracking_update_customer",
   "upload_notification_internal",
+  "order_created_internal",
   "test_email",
 ] as const;
 

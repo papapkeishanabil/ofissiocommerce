@@ -179,7 +179,9 @@ function getRawWooCommerceReadiness(
   if (!stripHtml(product.description).trim()) {
     warnings.push(warning("description", "Deskripsi panjang belum diisi", "Lengkapi deskripsi"));
   }
-  if ((product.images?.length ?? 0) <= 1) {
+  if ((product.images?.length ?? 0) === 0) {
+    warnings.push(warning("images", "Foto produk belum diupload.", "Upload foto produk"));
+  } else if ((product.images?.length ?? 0) === 1) {
     warnings.push(warning("gallery", "Foto tambahan belum diisi", "Lengkapi foto"));
   }
   pushAttributeWarning(warnings, product.attributes, ["warna", "color"], "colors", "Atribut warna belum lengkap");
@@ -251,6 +253,8 @@ function getMappedProductReadiness(product: OfissioProduct): ProductReadiness {
   if (!VALID_TRANSACTION_MODES.includes(product.transaction_mode)) blockingIssues.push(blocking("transaction_mode", "Transaction mode belum dipilih", "Isi Field Ofissio"));
 
   if (!product.description.trim()) warnings.push(warning("description", "Deskripsi panjang belum diisi", "Lengkapi deskripsi"));
+  if (!(product.images?.length ?? 0)) warnings.push(warning("images", "Foto produk belum diupload.", "Upload foto produk"));
+  else if ((product.images?.length ?? 0) === 1) warnings.push(warning("gallery", "Foto tambahan belum diisi", "Lengkapi foto"));
   if (!product.available_colors.length) warnings.push(warning("colors", "Atribut warna belum lengkap", "Lengkapi atribut"));
   if (!product.material.trim()) warnings.push(warning("material", "Atribut bahan belum lengkap", "Lengkapi atribut"));
   if (!product.available_sizes.length) warnings.push(warning("sizes", "Atribut ukuran belum lengkap", "Lengkapi atribut"));

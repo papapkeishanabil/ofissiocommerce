@@ -149,6 +149,22 @@ async function run() {
   }
   console.log("OK: Orders endpoint reachable untuk read permission.");
 
+  const wordpressMedia = await checkWordPressMediaAccess(baseUrl);
+  if (!wordpressMedia.configured) {
+    console.log(
+      "SKIP: WordPress Media upload credentials belum dikonfigurasi; read permission media tidak diuji.",
+    );
+  } else if (!wordpressMedia.reachable) {
+    console.log(
+      `ERROR: WordPress Media endpoint/auth belum siap (status ${wordpressMedia.status}).`,
+    );
+    process.exitCode = 1;
+  } else {
+    console.log(
+      `OK: WordPress Media endpoint reachable via ${wordpressMedia.authMode}.`,
+    );
+  }
+
   if (productSource === "woocommerce" && validProducts.length === 0) {
     console.log("ERROR: PRODUCT_SOURCE=woocommerce tetapi belum ada produk published dengan metadata GLB valid.");
     process.exitCode = 1;
@@ -167,6 +183,47 @@ async function run() {
     );
   } else {
     console.log("SKIP: WOOCOMMERCE_SYNC_ORDERS=false; order write sync tidak diuji.");
+  }
+}
+
+async function checkWordPressMediaAccess(woocommerceBaseUrl: string) {
+  const username = process.env.WORDPRESS_MEDIA_USERNAME?.trim() || "";
+  const appPassword = process.env.WORDPRESS_MEDIA_APP_PASSWORD?.trim() || "";
+  const token = process.env.WORDPRESS_MEDIA_TOKEN?.trim() || "";
+  const authMode = token
+    ? "bearer"
+    : username && appPassword
+      ? "application_password"
+      : "none";
+  if (authMode === "none") {
+    return { configured: false, reachable: false, authMode } as const;
+  }
+
+  const baseUrl = normalizeWordPressBaseUrl(
+    process.env.WORDPRESS_MEDIA_BASE_URL?.trim() || woocommerceBaseUrl,
+  );
+  if (!baseUrl) {
+    return { configured: true, reachable: false, authMode, status: 0 } as const;
+  }
+  const url = new URL(`${baseUrl}/wp-json/wp/v2/media`);
+  url.searchParams.set("per_page", "1");
+  url.searchParams.set("context", "edit");
+  const authorization = token
+    ? `Bearer ${token}`
+    : `Basic ${Buffer.from(`${username}:${appPassword}`).toString("base64")}`;
+  try {
+    const response = await requestWooCommerceJson<unknown[]>(url, {
+      headers: { Authorization: authorization, Accept: "application/json" },
+      allowSelfSignedTls: allowSelfSignedTlsForWooUrl(url),
+    });
+    return {
+      configured: true,
+      reachable: response.ok && Array.isArray(response.data),
+      authMode,
+      status: response.status,
+    } as const;
+  } catch {
+    return { configured: true, reachable: false, authMode, status: 0 } as const;
   }
 }
 
@@ -348,12 +405,33 @@ function normalizeBaseUrl(value: string) {
   return `${trimmed}/wp-json/wc/v3`;
 }
 
+function normalizeWordPressBaseUrl(value: string) {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  if (!trimmed) return "";
+  try {
+    const parsed = new URL(trimmed);
+    if (!["http:", "https:"].includes(parsed.protocol)) return "";
+    parsed.pathname = parsed.pathname
+      .replace(/\/wp-json\/wc\/v3\/?$/, "")
+      .replace(/\/wp-json\/wp\/v2\/?$/, "")
+      .replace(/\/+$/, "");
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
 function assertNoForbiddenPublicSecrets() {
   for (const name of [
     "NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_KEY",
     "NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET",
     "NEXT_PUBLIC_WOO_CONSUMER_KEY",
     "NEXT_PUBLIC_WOO_CONSUMER_SECRET",
+    "NEXT_PUBLIC_WORDPRESS_MEDIA_USERNAME",
+    "NEXT_PUBLIC_WORDPRESS_MEDIA_APP_PASSWORD",
+    "NEXT_PUBLIC_WORDPRESS_MEDIA_TOKEN",
   ]) {
     if (process.env[name]?.trim()) {
       throw new Error("auth_failed");

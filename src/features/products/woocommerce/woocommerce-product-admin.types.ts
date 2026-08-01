@@ -23,6 +23,7 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
   shortDescription: string;
   imageCount: number;
   imageUrls: string[];
+  images: AdminProductImage[];
   attributes: Array<{ name: string; slug: string; options: string[] }>;
   ofissioMeta: {
     has3DModel: boolean;
@@ -53,4 +54,11 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
     quantityBasis: QuantityPricingBasis;
     quantityPricingTiers: QuantityPricingTier[];
   };
+}
+
+export interface AdminProductImage {
+  id: number | null;
+  src: string;
+  name: string;
+  alt: string;
 }

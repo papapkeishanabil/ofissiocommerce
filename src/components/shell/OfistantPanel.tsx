@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Headset, RotateCcw, Sparkles, X } from "lucide-react";
+import { GitCompare, Headset, RotateCcw, Search, ShoppingBag, Sparkles, X, type LucideIcon } from "lucide-react";
 
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { useOfistantAction } from "@/hooks/use-ofistant-action";
@@ -118,19 +118,8 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-muted">
-      {/* Atmospheric navy gradient at the top of the panel */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-44"
-        style={{
-          background:
-            "radial-gradient(400px 200px at 20% 0%, rgba(74,107,216,0.18), transparent 70%)," +
-            "linear-gradient(180deg, #eff4ff 0%, transparent 100%)",
-        }}
-      />
-
       {/* Header — AI identity card */}
-      <header className="relative flex items-center justify-between border-b border-line bg-surface/80 px-4 py-3.5 backdrop-blur">
+      <header className="relative flex items-center justify-between border-b border-line bg-surface px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="relative">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-600 via-brand-700 to-brand-900 text-white shadow-soft-sm">
@@ -182,20 +171,24 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
         className="relative flex-1 space-y-4 overflow-y-auto px-4 py-4"
         aria-live="polite"
       >
-        {messages.map((m) => (
-          <ChatMessageView
-            key={m.id}
-            message={m}
-            isPendingConfirm={
-              !!pendingAction &&
-              lastPendingMsgId === m.id &&
-              !!m.requiresConfirm
-            }
-            onConfirm={handleConfirm}
-            onCancel={handleCancel}
-            busy={busy}
-          />
-        ))}
+        {showIndustryPicker ? (
+          <WelcomeCard />
+        ) : (
+          messages.map((m) => (
+            <ChatMessageView
+              key={m.id}
+              message={m}
+              isPendingConfirm={
+                !!pendingAction &&
+                lastPendingMsgId === m.id &&
+                !!m.requiresConfirm
+              }
+              onConfirm={handleConfirm}
+              onCancel={handleCancel}
+              busy={busy}
+            />
+          ))
+        )}
 
         {showIndustryPicker && (
           <IndustryQuickPicker onPick={handleQuickReply} />
@@ -242,3 +235,39 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
 // Unused export kept to satisfy callers that imported the old shape (Phase 2).
 // Remove once ProductCard/CartPage stop referencing it.
 export const _legacyButtonLinkCompat = Button;
+
+function WelcomeCard() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-soft-sm">
+      <div className="bg-gradient-to-br from-brand-700 to-brand-900 px-4 py-3.5 text-white">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/15">
+            <Sparkles className="h-5 w-5 text-ochre-300" strokeWidth={2.4} />
+          </span>
+          <div>
+            <p className="text-sm font-bold leading-tight">Halo! Saya Ofistant</p>
+            <p className="text-[11px] text-white/70">Asisten pengadaan seragam</p>
+          </div>
+        </div>
+        <p className="mt-2.5 text-[12.5px] leading-relaxed text-white/85">
+          Saya bantu cari, bandingkan, &amp; pesan seragam kerja. Pilih industri di
+          bawah atau tanyakan langsung.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-1.5 px-4 py-3">
+        <CapabilityChip icon={Search} label="Cari produk" />
+        <CapabilityChip icon={GitCompare} label="Bandingkan" />
+        <CapabilityChip icon={ShoppingBag} label="Pesan" />
+      </div>
+    </div>
+  );
+}
+
+function CapabilityChip({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-brand-100 bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700">
+      <Icon className="h-3 w-3" aria-hidden="true" />
+      {label}
+    </span>
+  );
+}

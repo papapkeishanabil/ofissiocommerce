@@ -15,11 +15,12 @@ Role `super_admin` dan `product_admin` memiliki `admin:catalog:update`. Role vie
 1. Isi informasi produk, SKU, harga, kategori, dan industri.
 2. Isi atribut produk serta aturan B2B/routing.
 3. Pilih teknik customization dan zona bordir.
-4. Pilih GLB dan versi model.
-5. Simpan. Ofissio menulis data ke WooCommerce lalu mengunggah GLB ke Supabase Storage.
-6. Periksa readiness. Produk customer hanya muncul jika semua blocking issue selesai.
+4. Upload foto utama dan gallery, lalu atur urutannya.
+5. Pilih GLB dan versi model.
+6. Simpan. Ofissio menulis data ke WooCommerce, mengunggah foto ke WordPress Media Library, dan mengunggah GLB ke Supabase Storage.
+7. Periksa readiness. Produk customer hanya muncul jika semua blocking issue selesai.
 
-Gambar produk pada Task A3 menggunakan input URL, satu URL per baris. Upload media WordPress langsung belum diaktifkan.
+Task A3.1 mengganti URL manual dengan **Foto Produk** sebagai workflow utama. URL manual tetap tersedia dalam panel Advanced untuk debugging. Detail ada di [product-image-upload.md](product-image-upload.md).
 
 ## API internal
 
@@ -27,6 +28,7 @@ Gambar produk pada Task A3 menggunakan input URL, satu URL per baris. Upload med
 - `GET|PATCH /api/admin/products/woocommerce/[id]`
 - `POST /api/admin/products/woocommerce/[id]/3d-model`
 - `GET /api/admin/products/woocommerce/[id]/3d-model/status`
+- `GET|POST|PATCH /api/admin/products/woocommerce/[id]/images`
 
 Semua route memakai internal guard, permission catalog, rate limit, validasi Zod, safe error, dan audit log. WooCommerce consumer secret serta Supabase service-role key hanya digunakan server-side.
 

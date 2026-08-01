@@ -6,8 +6,9 @@ const REQUEST_TIMEOUT_MS = 30_000;
 interface WooJsonRequestInit {
   method?: string;
   headers?: Record<string, string>;
-  body?: string;
+  body?: string | Uint8Array;
   allowSelfSignedTls?: boolean;
+  timeoutMs?: number;
 }
 
 export interface WooJsonResponse<T> {
@@ -69,7 +70,7 @@ export function requestWooCommerceJson<T>(
       },
     );
 
-    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+    req.setTimeout(init.timeoutMs ?? REQUEST_TIMEOUT_MS, () => {
       req.destroy(new Error("network_error"));
     });
     req.on("error", reject);

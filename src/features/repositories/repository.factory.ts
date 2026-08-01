@@ -15,6 +15,7 @@ import { mockShipmentRepository } from "./mock/mock-shipment.repository";
 import { mockTrackingRepository } from "./mock/mock-tracking.repository";
 import { mockUploadedFileRepository } from "./mock/mock-uploaded-file.repository";
 import { mockUserRepository } from "./mock/mock-user.repository";
+import { mockAdminNotificationRepository } from "./mock/mock-admin-notification.repository";
 import { supabaseAuditRepository } from "./supabase/supabase-audit.repository";
 import { supabaseCompanyRepository } from "./supabase/supabase-company.repository";
 import { supabaseCompanyLogoRepository } from "./supabase/supabase-company-logo.repository";
@@ -28,6 +29,7 @@ import { supabaseShipmentRepository } from "./supabase/supabase-shipment.reposit
 import { supabaseTrackingRepository } from "./supabase/supabase-tracking.repository";
 import { supabaseUploadedFileRepository } from "./supabase/supabase-uploaded-file.repository";
 import { supabaseUserRepository } from "./supabase/supabase-user.repository";
+import { supabaseAdminNotificationRepository } from "./supabase/supabase-admin-notification.repository";
 
 export function createRepositoryRegistry(): RepositoryRegistry {
   const provider = getRepositoryProvider();
@@ -55,6 +57,9 @@ export function createRepositoryRegistry(): RepositoryRegistry {
     processOrders: isSupabase ? supabaseProcessOrderRepository : mockProcessOrderRepository,
     documents: isSupabase ? supabaseDocumentRepository : mockDocumentRepository,
     shipments: isSupabase ? supabaseShipmentRepository : mockShipmentRepository,
+    adminNotifications: isSupabase
+      ? supabaseAdminNotificationRepository
+      : mockAdminNotificationRepository,
   };
 }
 

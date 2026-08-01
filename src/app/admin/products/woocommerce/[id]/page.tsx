@@ -7,14 +7,19 @@ import { getProductEditorTaxonomyOptions } from "@/features/catalog-taxonomy/cat
 import { AdminProductForm } from "@/features/products/components/AdminProductForm";
 import { ProductReadinessPanel } from "@/features/products/components/ProductReadinessStatus";
 import { getAdminWooCommerceProduct } from "@/features/products/woocommerce/woocommerce-product-admin.service";
+import { getWordPressMediaRuntimeConfig } from "@/features/products/woocommerce/wordpress-media-upload.service";
 
 export const dynamic = "force-dynamic";
 
-interface PageProps { params: Promise<{ id: string }> }
+interface PageProps {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ uploadWarning?: string }>;
+}
 
-export default async function AdminWooProductDetailPage({ params }: PageProps) {
+export default async function AdminWooProductDetailPage({ params, searchParams }: PageProps) {
   requireInternalAdmin(undefined, "admin:catalog:view");
   const { id } = await params;
+  const { uploadWarning } = await searchParams;
   if (!/^\d+$/.test(id)) notFound();
   try {
     const [product, options] = await Promise.all([
@@ -35,7 +40,17 @@ export default async function AdminWooProductDetailPage({ params }: PageProps) {
           ) : null}
         />
         <ProductReadinessPanel readiness={product.readiness} />
-        <AdminProductForm mode="edit" product={product} options={options} />
+        {uploadWarning ? (
+          <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+            Produk berhasil dibuat, tetapi {uploadWarning === "image" ? "foto gagal diupload" : "GLB gagal diupload"}. Silakan retry dari halaman ini.
+          </div>
+        ) : null}
+        <AdminProductForm
+          mode="edit"
+          product={product}
+          options={options}
+          productImageMaxMb={getWordPressMediaRuntimeConfig().maxUploadMb}
+        />
       </div>
     );
   } catch {

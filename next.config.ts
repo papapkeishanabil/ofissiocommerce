@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Keep development chunks isolated from `next build`. Running validation
+  // while the dev server is active must not replace its webpack manifests.
+  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   reactStrictMode: true,
   async headers() {
     const isDev = process.env.NODE_ENV !== "production";

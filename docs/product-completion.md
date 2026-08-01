@@ -16,7 +16,9 @@ Setelah save, form menampilkan salah satu hasil:
 - **tersimpan tetapi belum tampil**: produk tetap ada di WooCommerce/Admin dan pesan menyebutkan field blocking;
 - **data tersimpan, GLB gagal**: data produk tidak hilang dan admin dapat mengulang upload GLB pada produk yang sama.
 
-Warning foto tambahan, pricing tier, dan kelengkapan atribut tidak memblokir katalog pada Task A3.
+Foto tidak menjadi blocking field. Produk tanpa foto mendapat warning **Foto produk belum diupload.**; produk dengan satu foto mendapat warning **Foto tambahan belum diisi**. Keduanya tetap dapat tampil jika field blocking lain valid.
+
+Jika upload foto gagal pada create flow, produk WooCommerce tetap dibuat dan halaman edit menampilkan warning agar admin dapat retry tanpa input ulang data produk.
 
 Task A5 memvalidasi isi quantity pricing secara lebih rinci. Tier kosong, JSON invalid, overlap, harga per pcs tidak valid, dan ketidaksesuaian tier pertama dengan MOQ tetap berstatus **warning**, bukan blocking. Produk valid tetap tampil dan fallback ke `regular_price` bila tier tidak dapat diterapkan.
 

@@ -4,16 +4,17 @@ Ofissio Admin adalah workspace internal untuk operasional B2B Ofissio. Ini bukan
 
 ## Pembagian interface
 
-WP Admin / WooCommerce tetap menjadi tempat utama untuk:
+WooCommerce tetap menjadi source of truth untuk:
 
 - Product catalog.
 - SKU.
 - Harga dasar.
-- Foto produk.
 - Kategori.
 - WooCommerce Orders dasar.
 
 Ofissio Admin dipakai untuk:
+
+- Create/edit produk harian, upload foto utama/gallery, dan upload GLB.
 
 - Request quotation.
 - Detail quotation B2B.
@@ -30,6 +31,7 @@ Ofissio Admin dipakai untuk:
 - Process routing: fulfillment/customization/production.
 - Tracking produksi.
 - Audit/activity view foundation.
+- Notification center, badge Orders, dan sticky order alert.
 
 ## Route admin
 
@@ -38,6 +40,7 @@ Ofissio Admin dipakai untuk:
 - `/admin/quotations/[id]`
 - `/admin/orders`
 - `/admin/orders/[id]`
+- `/admin/notifications`
 - `/admin/process-orders`
 - `/admin/process-orders/[id]`
 - `/admin/customers`
@@ -74,6 +77,8 @@ Task A2.6 menambahkan `/admin/products` sebagai daftar lengkap produk WooCommerc
 
 Customer catalog dan Ofistant tetap membaca produk yang lolos readiness saja. Task A3 mengaktifkan create/edit produk WooCommerce dan upload GLB privat langsung dari Ofissio Admin.
 
+Task A3.1 menambahkan gallery manager pada create/edit produk. Foto diupload server-side ke WordPress Media Library, lalu urutan gambar disinkronkan ke WooCommerce. Product admin dapat set primary, reorder, dan remove dari product image list tanpa membuka WP Admin.
+
 ## Internal auth status
 
 Phase 16 masih memakai mock internal admin guard untuk development. Di production, Ofissio Admin wajib memakai real internal auth dan role mapping yang sudah diverifikasi.
@@ -98,8 +103,9 @@ Internal admin role `super_admin`, `sales`, dan `support` dapat melihat semua up
 - PDF document persistence membutuhkan migration 007 di Supabase sebelum live generate.
 - Monitoring provider belum aktif.
 - Persistence taxonomy lintas restart membutuhkan migration 010. Sebelum migration diterapkan, development memakai fallback in-memory.
-- Upload gambar WordPress langsung belum tersedia; Task A3 memakai input URL gambar.
+- Penghapusan dari gallery belum menghapus media fisik WordPress; cleanup media orphan masih manual.
 - GLB version history dan cleanup object lama belum memiliki UI lifecycle khusus.
+- Notifikasi admin masih memakai polling 15 detik; realtime Supabase belum diaktifkan.
 
 ## Phase 17 quotation management
 

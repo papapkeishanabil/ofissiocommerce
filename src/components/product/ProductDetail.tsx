@@ -34,13 +34,13 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { ProductImagePlaceholder } from "@/components/catalog/ProductImagePlaceholder";
 import { SmartFloatingPreview } from "@/features/product-preview/components/SmartFloatingPreview";
 import { ProductPreviewModal } from "@/features/product-preview/components/ProductPreviewModal";
 
 import { useFloatingPreviewState } from "@/features/product-preview/hooks/useFloatingPreviewState";
 import { useProductHeroVisibility } from "@/features/product-preview/hooks/useProductHeroVisibility";
 import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
+import { ProductGallery } from "./ProductGallery";
 
 // Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
 // when the customer actually opens the 3D tab on a supported product.
@@ -305,26 +305,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
         {/* Left: gallery + info */}
         <div className="space-y-4">
           <div ref={heroRef} className="space-y-4">
-            <ProductImagePlaceholder
-              name={product.name}
-              accentColor={product.accentColor}
-              category={product.category}
-              variant="detail"
-              className="aspect-[4/3] w-full rounded-2xl border border-line"
-            />
-
-            {/* Thumbnails (dummy) */}
-            <div className="grid grid-cols-4 gap-2">
-              {[0, 1, 2, 3].map((i) => (
-                <ProductImagePlaceholder
-                  key={i}
-                  name={product.name}
-                  accentColor={product.accentColor}
-                  category={product.category}
-                  className="aspect-square w-full rounded-lg border border-line opacity-70"
-                />
-              ))}
-            </div>
+            <ProductGallery product={product} />
           </div>
 
           <section className="rounded-2xl border border-line bg-surface p-5">

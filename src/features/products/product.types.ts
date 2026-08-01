@@ -22,6 +22,13 @@ export interface Product3DModel {
   source: ProductModelSource; file_type: "glb"; uploaded_at: string; is_required: true;
 }
 
+export interface ProductImageReference {
+  id: number | null;
+  src: string;
+  name: string;
+  alt: string;
+}
+
 /** Canonical product contract. UI-compatible fields remain from Product. */
 export interface OfissioProduct extends Product {
   source: "mock" | "woocommerce"; source_id: string; short_description: string;
@@ -43,4 +50,7 @@ export interface OfissioProduct extends Product {
   quantityPricing?: QuantityPricing;
   /** Deprecated WooCommerce metadata retained for migration visibility only. */
   legacyEmbroideryPricing?: EmbroideryPricing;
+  /** WooCommerce image order: index 0 is the catalog/main image. */
+  mainImage?: string | null;
+  images?: ProductImageReference[];
 }

@@ -116,6 +116,14 @@ export function mapWooCommerceProductToOfissioProduct(
     zones: getMetaValue(meta, "embroidery_pricing"),
     supportsEmbroidery: getMetaBoolean(meta, "supports_embroidery", false),
   }).embroideryPricing;
+  const images = (raw.images ?? [])
+    .filter((image) => Boolean(image.src))
+    .map((image) => ({
+      id: Number.isInteger(image.id) && image.id > 0 ? image.id : null,
+      src: image.src,
+      name: image.name?.trim() || stripHtml(raw.name).trim(),
+      alt: image.alt?.trim() || stripHtml(raw.name).trim(),
+    }));
 
   return {
     id: `wc-${raw.id}`,
@@ -190,6 +198,8 @@ export function mapWooCommerceProductToOfissioProduct(
       ]),
     quantityPricing,
     legacyEmbroideryPricing,
+    mainImage: images[0]?.src ?? null,
+    images,
   };
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {

@@ -53,6 +53,8 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 `SUPABASE_SERVICE_ROLE_KEY` hanya boleh server-side. Jangan pernah membuat `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`.
 
+Foto katalog produk tidak memakai Supabase Storage. Foto diupload ke WordPress Media Library melalui service server-side; tidak perlu membuat bucket `ofissio-product-images`.
+
 ## Validation
 
 ```bash

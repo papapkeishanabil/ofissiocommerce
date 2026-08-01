@@ -1,7 +1,7 @@
-import type { Product } from "@/types/product";
+import type { OfissioProduct } from "@/features/products/product.types";
 
 export interface FloatingProductPreviewData {
-  product: Product;
+  product: OfissioProduct;
   color: string;
   totalQty: number;
   embroideryCount: number;

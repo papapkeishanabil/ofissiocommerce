@@ -22,30 +22,22 @@ export function AdminPageHeader({
   return (
     <section
       className={cn(
-        "relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/[0.85] p-5 shadow-soft-md ring-1 ring-slate-950/[0.03] backdrop-blur md:p-7",
+        "rounded-xl border border-line bg-white p-5 shadow-soft-sm md:p-6",
         className,
       )}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-brand-100/70 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-28 left-10 h-52 w-52 rounded-full bg-ochre-100/60 blur-3xl"
-      />
-      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl">
           <p className="type-eyebrow text-brand-700">{eyebrow}</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-ink md:text-4xl">
+          <h2 className="mt-2 text-xl font-bold tracking-tight text-ink md:text-2xl">
             {title}
           </h2>
           {description ? (
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-ink-muted md:text-base">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
               {description}
             </p>
           ) : null}
-          {children ? <div className="mt-5">{children}</div> : null}
+          {children ? <div className="mt-4">{children}</div> : null}
         </div>
         {actions ? <div className="shrink-0">{actions}</div> : null}
       </div>
@@ -63,7 +55,7 @@ export function AdminCard({
   return (
     <section
       className={cn(
-        "rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-sm ring-1 ring-slate-950/[0.03] backdrop-blur",
+        "rounded-xl border border-line bg-white p-5 shadow-soft-sm",
         className,
       )}
     >
@@ -87,9 +79,9 @@ export function AdminPanel({
 }) {
   return (
     <AdminCard className={className}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-black tracking-tight text-ink">{title}</h3>
+          <h3 className="text-base font-semibold tracking-tight text-ink">{title}</h3>
           {description ? (
             <p className="mt-1 text-sm leading-6 text-ink-muted">{description}</p>
           ) : null}
@@ -111,7 +103,7 @@ export function AdminTableShell({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[1.75rem] border border-white/75 bg-white/90 shadow-soft-md ring-1 ring-slate-950/[0.03]",
+        "overflow-hidden rounded-xl border border-line bg-white shadow-soft-sm",
         className,
       )}
     >
@@ -130,7 +122,7 @@ export function AdminBackLink({
   return (
     <Link
       href={href}
-      className="inline-flex min-h-10 items-center gap-2 rounded-full border border-line bg-white/90 px-4 py-2 text-sm font-black text-brand-700 shadow-soft-xs transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+      className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-line bg-white px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:border-brand-200 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
       {children}
@@ -139,4 +131,4 @@ export function AdminBackLink({
 }
 
 export const ADMIN_TABLE_CLASS =
-  "w-full text-left text-sm [&_tbody]:divide-y [&_tbody]:divide-line/80 [&_tbody_tr]:transition [&_tbody_tr:hover]:bg-brand-50/40 [&_th]:whitespace-nowrap [&_th]:px-4 [&_th]:py-4 [&_th]:text-left [&_th]:text-[11px] [&_th]:font-black [&_th]:uppercase [&_th]:tracking-[0.18em] [&_th]:text-ink-subtle [&_td]:px-4 [&_td]:py-4";
+  "w-full text-left text-sm [&_thead]:bg-slate-50 [&_tbody]:divide-y [&_tbody]:divide-line [&_tbody_tr]:transition [&_tbody_tr:hover]:bg-brand-50/50 [&_th]:whitespace-nowrap [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-ink [&_td]:px-4 [&_td]:py-3";

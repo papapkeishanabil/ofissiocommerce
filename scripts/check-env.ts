@@ -33,12 +33,17 @@ const rules: EnvRule[] = [
   { name: "MAX_LOGO_UPLOAD_MB" },
   { name: "MAX_DOCUMENT_UPLOAD_MB" },
   { name: "MAX_GLB_UPLOAD_MB" },
+  { name: "PRODUCT_IMAGE_MAX_MB" },
   { name: "WOOCOMMERCE_ENABLED" },
   { name: "WOOCOMMERCE_BASE_URL" },
   { name: "WOOCOMMERCE_CONSUMER_KEY", secret: true },
   { name: "WOOCOMMERCE_CONSUMER_SECRET", secret: true },
   { name: "WOOCOMMERCE_SYNC_ORDERS" },
   { name: "WOOCOMMERCE_TEST_WRITE" },
+  { name: "WORDPRESS_MEDIA_BASE_URL" },
+  { name: "WORDPRESS_MEDIA_USERNAME" },
+  { name: "WORDPRESS_MEDIA_APP_PASSWORD", secret: true },
+  { name: "WORDPRESS_MEDIA_TOKEN", secret: true },
   { name: "PAYMENT_PROVIDER" },
   { name: "IPAYMU_ENABLED" },
   { name: "IPAYMU_MODE" },
@@ -69,6 +74,9 @@ const forbiddenPublicSecrets = [
   "NEXT_PUBLIC_IPAYMU_API_KEY",
   "NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET",
   "NEXT_PUBLIC_WOO_CONSUMER_SECRET",
+  "NEXT_PUBLIC_WORDPRESS_MEDIA_USERNAME",
+  "NEXT_PUBLIC_WORDPRESS_MEDIA_APP_PASSWORD",
+  "NEXT_PUBLIC_WORDPRESS_MEDIA_TOKEN",
   "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
   "NEXT_PUBLIC_STORAGE_SECRET",
   "NEXT_PUBLIC_S3_SECRET_ACCESS_KEY",
@@ -115,6 +123,19 @@ if (process.env.PRODUCT_SOURCE === "woocommerce") {
         message: `${name} wajib untuk PRODUCT_SOURCE=woocommerce.`,
       });
     }
+  }
+}
+
+if (process.env.WOOCOMMERCE_ENABLED === "true") {
+  const mediaToken = process.env.WORDPRESS_MEDIA_TOKEN?.trim();
+  const mediaUsername = process.env.WORDPRESS_MEDIA_USERNAME?.trim();
+  const mediaPassword = process.env.WORDPRESS_MEDIA_APP_PASSWORD?.trim();
+  if (!mediaToken && !(mediaUsername && mediaPassword)) {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message:
+        "Upload foto produk membutuhkan WORDPRESS_MEDIA_TOKEN atau pasangan WORDPRESS_MEDIA_USERNAME + WORDPRESS_MEDIA_APP_PASSWORD.",
+    });
   }
 }
 

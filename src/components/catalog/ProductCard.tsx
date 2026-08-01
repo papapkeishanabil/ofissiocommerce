@@ -31,6 +31,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
   const addToCart = useCartStore((s) => s.add);
   const [error, setError] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
 
   // Notify Ofistant via its store (rule-based era: just push a message).
   function notifyOfistantPostAdd(name: string) {
@@ -83,12 +84,25 @@ export function ProductCard({ product }: ProductCardProps) {
         className="relative block aspect-[4/3] w-full overflow-hidden"
         aria-label={`Lihat detail ${product.name}`}
       >
-        <ProductImagePlaceholder
-          name={product.name}
-          accentColor={product.accentColor}
-          category={product.category}
-          className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]"
-        />
+        {product.mainImage && !imageFailed ? (
+          // Dynamic WooCommerce/Supabase image host.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.mainImage}
+            alt={product.images?.[0]?.alt || product.name}
+            className="h-full w-full bg-slate-50 object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+            loading="lazy"
+            decoding="async"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <ProductImagePlaceholder
+            name={product.name}
+            accentColor={product.accentColor}
+            category={product.category}
+            className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        )}
         <div className="absolute left-2 top-2 flex flex-wrap gap-1">
           <Badge tone={product.fulfillment === "READY_STOCK" ? "success" : "amber"}>
             {fulfillmentLabel(product.fulfillment)}

@@ -25,12 +25,12 @@ export function AdminBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] ring-1",
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] ring-1",
         TONES[tone],
         className,
       )}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden="true" />
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" aria-hidden="true" />
       {children}
     </span>
   );

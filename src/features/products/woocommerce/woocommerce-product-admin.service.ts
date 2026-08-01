@@ -67,6 +67,14 @@ export async function getAdminWooCommerceProduct(
     shortDescription: product.short_description ?? "",
     imageCount: product.images?.length ?? 0,
     imageUrls: (product.images ?? []).map((image) => image.src).filter(Boolean),
+    images: (product.images ?? [])
+      .filter((image) => Boolean(image.src))
+      .map((image) => ({
+        id: Number.isInteger(image.id) && image.id > 0 ? image.id : null,
+        src: image.src,
+        name: image.name?.trim() || stripHtml(product.name),
+        alt: image.alt?.trim() || stripHtml(product.name),
+      })),
     attributes: (product.attributes ?? []).map((attribute) => ({
       name: attribute.name,
       slug: attribute.slug?.replace(/^pa_/, "") ?? "",
@@ -277,7 +285,10 @@ function buildWritePayload(
     description: payload.description,
     short_description: payload.shortDescription,
     categories: payload.categoryIds.map((id) => ({ id })),
-    images: payload.imageUrls.map((src) => ({ src })),
+    images: payload.imageUrls.map((src) => {
+      const existing = current?.images?.find((image) => image.src === src);
+      return existing?.id ? { id: existing.id } : { src };
+    }),
     attributes: mergeManagedAttributes(current?.attributes ?? [], [
       managedAttribute("Color", "color", payload.colors),
       managedAttribute("Size", "size", payload.sizes),
