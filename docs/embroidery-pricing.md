@@ -40,3 +40,7 @@ Zona tidak didukung, nonaktif, atau tidak ditemukan tidak diberi harga rekaan. U
 ## Test
 
 Jalankan `npm run test:embroidery-pricing`. Test mencakup multi-zona, setup fee aktif/nonaktif, zona tidak didukung, harga hilang, parsing metadata legacy, dan readiness non-blocking.
+
+## Checkpoint A6
+
+Master staging yang digunakan adalah Dada Kiri Rp5.000/pcs dan Punggung Tengah Rp15.000/pcs, keduanya setup fee Rp0. Pada 100 pcs total bordir Rp2.000.000. Override quotation Dada Kiri Rp5.500 hanya mengubah final quotation, tidak master global. Smoke perubahan master ke Rp6.000 membuktikan quotation lama tetap memakai snapshot, lalu master dikembalikan ke Rp5.000.

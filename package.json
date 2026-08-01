@@ -20,9 +20,10 @@
     "test:quantity-pricing": "tsx scripts/test-quantity-pricing.ts",
     "test:embroidery-pricing": "tsx scripts/test-embroidery-pricing.ts",
     "test:admin-notifications": "tsx scripts/test-admin-notifications.ts",
+    "test:commercial-flow": "tsx scripts/test-commercial-flow.ts",
     "test:company-isolation": "tsx scripts/test-company-isolation.ts",
     "verify:supabase-persistence": "tsx scripts/verify-supabase-persistence.ts",
-    "check:all": "npm run check:env && npm run check:email && npm run check:documents && npm run check:payment && npm run check:shipping && npm run test:quantity-pricing && npm run test:embroidery-pricing && npm run test:admin-notifications && npm run typecheck && npm run lint && npm run build"
+    "check:all": "npm run check:env && npm run check:email && npm run check:documents && npm run check:payment && npm run check:shipping && npm run test:quantity-pricing && npm run test:embroidery-pricing && npm run test:admin-notifications && npm run test:commercial-flow && npm run typecheck && npm run lint && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

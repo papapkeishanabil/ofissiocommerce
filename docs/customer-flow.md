@@ -70,3 +70,7 @@ Customer route utama harus tetap responsif tanpa horizontal overflow:
 - `/orders/[id]`
 
 Pada produk yang mendukung bordir, customer melihat **Harga Bordir Estimasi** dari master global yang difilter berdasarkan zona produk. Setelah memilih placement pada configurator 3D, product detail dan cart menampilkan subtotal produk A5, line bordir per zona, setup fee hanya bila diaktifkan, serta total estimasi. Zona nonaktif, hilang, atau tidak didukung tidak diberi harga rekaan dan dijelaskan dengan aman.
+
+## Checkpoint commercial A6
+
+Flow staging tervalidasi dengan JAKET TEST A3: customer mencari produk Mining, membuka gallery dan canvas 3D, mengisi S 20 + M 30 + L 50, memilih Dada Kiri serta Punggung Tengah, lalu menambahkan estimasi Rp15.800.000 ke cart. Request quotation menghitung ulang harga server-side. Detail hasil lengkap tersedia di [final-commercial-flow-e2e.md](final-commercial-flow-e2e.md).

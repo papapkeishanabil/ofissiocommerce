@@ -63,3 +63,7 @@ Ofistant hanya menjawab harga dari hasil catalog API server. Pertanyaan seperti 
 - **Harga quotation berbeda:** admin dapat melakukan override; original calculated price dan tier tetap tersimpan untuk audit.
 
 Validasi murni dapat dijalankan dengan `npm run test:quantity-pricing`.
+
+## Checkpoint A6
+
+Untuk JAKET TEST A3, S 20 + M 30 + L 50 memilih tier 100–299 sebesar Rp138.000/pcs dan menghasilkan subtotal Rp13.800.000. Smoke fallback memastikan quantity di luar rentang memakai regular price, bukan error atau harga rekaan. Regression lintas pricing tersedia melalui `npm run test:commercial-flow`.

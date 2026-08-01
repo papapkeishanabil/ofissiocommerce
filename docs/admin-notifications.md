@@ -51,3 +51,7 @@ Permission `admin:notification:view` serta `admin:notification:update` diberikan
 - Role 403: role harus memiliki permission notification pada konfigurasi admin.
 
 Browser Notification API tidak diaktifkan pada task ini. Sticky in-app popup adalah source utama karena notifikasi browser/OS tidak menjamin persistensi sampai diklik.
+
+## Checkpoint A6
+
+Konversi order `OF-QUO-96202DA4-DD33FA` membuat tepat satu `order_created` dan satu email mock. Popup dan badge muncul saat status `unread`. Action **Saya Proses** mengubahnya menjadi `acknowledged`, menghilangkan popup, dan menurunkan counter menjadi nol. Retry convert tetap idempotent.
