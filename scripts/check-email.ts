@@ -45,9 +45,18 @@ async function run() {
     return;
   }
 
-  const sent = await sendResendTestEmail(config);
+  const testRecipient = resolveTestRecipient(config);
+  if (!testRecipient) {
+    console.log(
+      "ERROR: Isi EMAIL_TEST_TO, ORDER_NOTIFICATION_EMAILS, atau SALES_QUOTATION_EMAIL untuk real send.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const sent = await sendResendTestEmail(config, testRecipient);
   const logId = await persistEmailLog({
     config,
+    recipient: testRecipient,
     status: sent.providerMessageId ? "sent" : "sent",
     providerMessageId: sent.providerMessageId,
     errorMessage: null,
@@ -72,6 +81,9 @@ function getConfig() {
     from: process.env.EMAIL_FROM?.trim() || "Ofissio <quotation@ofissio.com>",
     replyTo: process.env.EMAIL_REPLY_TO?.trim() || "",
     salesEmail: process.env.SALES_QUOTATION_EMAIL?.trim() || "",
+    orderNotificationEnabled: envFlag("ORDER_NOTIFICATION_EMAIL_ENABLED", false),
+    orderNotificationEmails: parseEmailList(process.env.ORDER_NOTIFICATION_EMAILS),
+    testEmailTo: process.env.EMAIL_TEST_TO?.trim() || "",
   };
 }
 
@@ -80,6 +92,24 @@ function validateConfigForCheck(config: ReturnType<typeof getConfig>) {
   if (!isValidMailbox(config.from)) issues.push("EMAIL_FROM tidak valid.");
   if (config.replyTo && !isValidEmail(config.replyTo)) {
     issues.push("EMAIL_REPLY_TO tidak valid.");
+  }
+  if (config.testEmailTo && !isValidEmail(config.testEmailTo)) {
+    issues.push("EMAIL_TEST_TO tidak valid.");
+  }
+  if (
+    config.orderNotificationEnabled &&
+    config.orderNotificationEmails.length === 0
+  ) {
+    issues.push(
+      "ORDER_NOTIFICATION_EMAILS wajib berisi minimal satu alamat valid saat notifikasi order aktif.",
+    );
+  }
+  const rawOrderRecipients = (process.env.ORDER_NOTIFICATION_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean);
+  if (rawOrderRecipients.some((email) => !isValidEmail(email))) {
+    issues.push("ORDER_NOTIFICATION_EMAILS mengandung alamat yang tidak valid.");
   }
   if (config.provider !== "resend") return issues;
   if (!config.enabled) return issues;
@@ -94,25 +124,32 @@ function validateConfigForCheck(config: ReturnType<typeof getConfig>) {
   return issues;
 }
 
-async function sendResendTestEmail(config: ReturnType<typeof getConfig>) {
+async function sendResendTestEmail(
+  config: ReturnType<typeof getConfig>,
+  recipient: string,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
+    signal: controller.signal,
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
       from: config.from,
-      to: [config.salesEmail],
+      to: [recipient],
       reply_to: config.replyTo || undefined,
       subject: "[Ofissio Staging] Test Email",
       html: "<p>Ini adalah test email staging Ofissio via Resend.</p>",
       text: "Ini adalah test email staging Ofissio via Resend.",
     }),
-  });
+  }).finally(() => clearTimeout(timeout));
   if (!response.ok) {
     await persistEmailLog({
       config,
+      recipient,
       status: "failed",
       providerMessageId: null,
       errorMessage: `resend_http_${response.status}`,
@@ -125,6 +162,7 @@ async function sendResendTestEmail(config: ReturnType<typeof getConfig>) {
 
 async function persistEmailLog(input: {
   config: ReturnType<typeof getConfig>;
+  recipient: string;
   status: "sent" | "failed";
   providerMessageId: string | null;
   errorMessage: string | null;
@@ -149,7 +187,7 @@ async function persistEmailLog(input: {
       provider: "resend",
       status: input.status,
       type: "test_email",
-      recipient_emails_json: [input.config.salesEmail],
+      recipient_emails_json: [input.recipient],
       from_email: input.config.from,
       reply_to_email: input.config.replyTo || null,
       subject: "[Ofissio Staging] Test Email",
@@ -162,6 +200,24 @@ async function persistEmailLog(input: {
   });
   if (!response.ok) throw new Error(`email_log_insert_${response.status}`);
   return id;
+}
+
+function resolveTestRecipient(config: ReturnType<typeof getConfig>) {
+  return (
+    config.testEmailTo ||
+    config.orderNotificationEmails[0] ||
+    config.salesEmail ||
+    ""
+  );
+}
+
+function parseEmailList(value?: string) {
+  return (value ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter((email, index, values) =>
+      Boolean(email) && isValidEmail(email) && values.indexOf(email) === index,
+    );
 }
 
 function assertNoPublicResendKey() {

@@ -30,6 +30,9 @@ export interface EmailRuntimeConfig {
   from: string;
   replyTo: string | null;
   salesQuotationEmail: string | null;
+  orderNotificationEmailEnabled: boolean;
+  orderNotificationEmails: string[];
+  testEmailTo: string | null;
   resendConfigured: boolean;
 }
 

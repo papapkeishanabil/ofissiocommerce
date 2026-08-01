@@ -19,15 +19,20 @@ export async function POST(request: Request) {
     ) {
       throw createApiError("FORBIDDEN", "Test email dinonaktifkan di production.", 403);
     }
+    const actor = requireInternalAdmin(request, "admin:email:test");
     rateLimitOrThrow({
-      key: createRateLimitKey(request, "email.test"),
-      limit: 10,
-      windowMs: 60_000,
+      key: `${createRateLimitKey(request, "email.test")}:${actor.id}`,
+      limit: 3,
+      windowMs: 10 * 60_000,
     });
-    const actor = requireInternalAdmin(request, "admin:view");
     const payload = validateInput(testEmailSchema, await request.json());
     const config = getEmailRuntimeConfig();
-    const to = payload.to ?? config.salesQuotationEmail ?? "sales-placeholder@ofissio.local";
+    const to =
+      payload.to ??
+      config.testEmailTo ??
+      config.orderNotificationEmails[0] ??
+      config.salesQuotationEmail ??
+      "sales-placeholder@ofissio.local";
     const template = renderTestEmail();
     const result = await emailService.sendEmail({
       type: "test_email",
@@ -45,7 +50,21 @@ export async function POST(request: Request) {
         requestedProvider: config.requestedProvider,
       },
     });
-    return NextResponse.json({ ok: true, email: result });
+    const ok = result.status === "sent" || result.status === "mocked";
+    return NextResponse.json(
+      {
+        ok,
+        provider: result.provider,
+        status: result.status,
+        emailLogId: result.id,
+        message: ok
+          ? result.status === "sent"
+            ? "Test email berhasil dikirim."
+            : "Test email tercatat menggunakan provider mock."
+          : "Test email belum dapat dikirim. Periksa konfigurasi provider.",
+      },
+      { status: ok ? 200 : 503 },
+    );
   } catch (error) {
     return safeErrorResponse(error, "Test email belum dapat diproses.", 400);
   }

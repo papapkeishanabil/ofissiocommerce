@@ -32,6 +32,7 @@ Ofissio Admin dipakai untuk:
 - Tracking produksi.
 - Audit/activity view foundation.
 - Notification center, badge Orders, dan sticky order alert.
+- Status Resend, test email internal, dan recent email logs.
 
 ## Route admin
 
@@ -41,6 +42,7 @@ Ofissio Admin dipakai untuk:
 - `/admin/orders`
 - `/admin/orders/[id]`
 - `/admin/notifications`
+- `/admin/settings/email`
 - `/admin/process-orders`
 - `/admin/process-orders/[id]`
 - `/admin/customers`
@@ -54,6 +56,10 @@ Ofissio Admin dipakai untuk:
 - `/admin/uploads`
 - `/admin/tracking`
 - `/admin/audit`
+
+Halaman `/admin/settings/email` hanya tersedia untuk `super_admin` dan `sales`.
+Halaman menampilkan status provider serta alamat operasional, tetapi tidak pernah
+menampilkan `RESEND_API_KEY`.
 
 ## Data source
 

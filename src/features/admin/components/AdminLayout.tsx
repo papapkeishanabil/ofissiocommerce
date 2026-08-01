@@ -28,7 +28,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       </a>
       <AdminNotificationProvider role={user.role} userId={user.id}>
         <div className="relative flex min-h-screen flex-col lg:items-start lg:flex-row">
-          <AdminSidebar />
+          <AdminSidebar user={user} />
           <div className="min-w-0 flex-1">
             <AdminHeader user={user} />
             <main

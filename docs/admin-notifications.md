@@ -36,6 +36,10 @@ ORDER_NOTIFICATION_EMAILS=sales@example.com,admin@example.com
 
 `ORDER_NOTIFICATION_EMAILS` menerima daftar email dipisahkan koma. Dengan `EMAIL_PROVIDER=mock`, pengiriman membuat email log berstatus `mocked`. Default fitur ini nonaktif. Jika penerima kosong, order tetap sukses dan notification menyimpan error aman.
 
+Saat Resend aktif, delivery dapat dipantau di `/admin/settings/email`. Claim email
+dan key `order_created_email:{orderId}` tetap menjadi boundary idempotensi, jadi
+retry convert tidak melakukan pengiriman ulang.
+
 Subject: `Order Baru Masuk - {orderNumber}`. Body memuat order, customer, company, total, product summary, timestamp, dan link admin. Key idempotensi: `order_created_email:{orderId}`.
 
 ## Permission dan keamanan

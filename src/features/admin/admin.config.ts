@@ -9,6 +9,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/quotations", label: "Quotations" },
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/notifications", label: "Notifikasi" },
+  { href: "/admin/settings/email", label: "Email" },
   { href: "/admin/process-orders", label: "Process Orders" },
   { href: "/admin/shipments", label: "Shipments" },
   { href: "/admin/customers", label: "Customers" },
@@ -37,6 +38,8 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:catalog:update",
     "admin:notification:view",
     "admin:notification:update",
+    "admin:email:view",
+    "admin:email:test",
     "admin:audit:view",
   ],
   sales: [
@@ -54,6 +57,8 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:catalog:view",
     "admin:notification:view",
     "admin:notification:update",
+    "admin:email:view",
+    "admin:email:test",
   ],
   finance_internal: ["admin:view", "admin:quotation:view", "admin:order:view", "admin:order:update", "admin:process-order:view", "admin:shipment:view"],
   product_admin: [

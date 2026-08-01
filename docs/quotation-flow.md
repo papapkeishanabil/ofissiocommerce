@@ -13,6 +13,14 @@ Quotation request tidak mempercayai harga dari browser. Server mengambil ulang p
 
 Admin melihat original calculated price dan dapat mengisi override/final unit price. Event `pricing_updated` dan audit log mencatat jumlah item yang di-override. Setelah quotation disetujui dan dikonversi, order serta WooCommerce sync memakai harga final admin, bukan menghitung tier ulang.
 
+## Email quotation Task B
+
+Saat admin mengirim quotation berstatus quoted, email
+`quotation_ready_customer` memakai total final/snapshot quotation dan link portal
+`/quotes/[id]`. Dengan `EMAIL_PROVIDER=resend` serta `EMAIL_ENABLED=true`, status
+delivery dicatat `sent` atau `failed` secara aman di `email_logs`. Provider mock
+tetap dapat dipakai untuk regression tanpa mengirim email real.
+
 Lihat [quantity-pricing.md](quantity-pricing.md) untuk format tier dan fallback.
 
 ## Breakdown bordir Task A4

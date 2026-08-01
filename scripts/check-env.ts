@@ -64,6 +64,10 @@ const rules: EnvRule[] = [
   { name: "EMAIL_FROM" },
   { name: "EMAIL_REPLY_TO" },
   { name: "SALES_QUOTATION_EMAIL" },
+  { name: "ORDER_NOTIFICATION_EMAIL_ENABLED" },
+  { name: "ORDER_NOTIFICATION_EMAILS" },
+  { name: "EMAIL_TEST_SEND" },
+  { name: "EMAIL_TEST_TO" },
   { name: "RESEND_API_KEY", secret: true },
   { name: "AUTH_SECRET", requiredIn: ["production"], secret: true },
   { name: "NEXTAUTH_SECRET", requiredIn: ["production"], secret: true },
@@ -207,6 +211,27 @@ if (process.env.SALES_QUOTATION_EMAIL && !isValidEmail(process.env.SALES_QUOTATI
     level: appEnv === "production" ? "error" : "warning",
     message: "SALES_QUOTATION_EMAIL tidak valid.",
   });
+}
+
+if (process.env.EMAIL_TEST_TO && !isValidEmail(process.env.EMAIL_TEST_TO)) {
+  problems.push({
+    level: appEnv === "production" ? "error" : "warning",
+    message: "EMAIL_TEST_TO tidak valid.",
+  });
+}
+
+if (process.env.ORDER_NOTIFICATION_EMAIL_ENABLED === "true") {
+  const recipients = (process.env.ORDER_NOTIFICATION_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean);
+  if (recipients.length === 0 || recipients.some((email) => !isValidEmail(email))) {
+    problems.push({
+      level: appEnv === "production" ? "error" : "warning",
+      message:
+        "ORDER_NOTIFICATION_EMAILS wajib berisi alamat valid saat notifikasi order aktif.",
+    });
+  }
 }
 
 if (process.env.EMAIL_PROVIDER === "mock" && process.env.EMAIL_ENABLED === "true") {

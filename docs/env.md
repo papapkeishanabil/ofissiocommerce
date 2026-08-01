@@ -77,6 +77,8 @@ EMAIL_REPLY_TO=
 SALES_QUOTATION_EMAIL=
 ORDER_NOTIFICATION_EMAIL_ENABLED=false
 ORDER_NOTIFICATION_EMAILS=
+EMAIL_TEST_SEND=false
+EMAIL_TEST_TO=
 
 AUTH_SECRET=
 NEXTAUTH_SECRET=
@@ -200,11 +202,18 @@ EMAIL_REPLY_TO=
 SALES_QUOTATION_EMAIL=
 ORDER_NOTIFICATION_EMAIL_ENABLED=false
 ORDER_NOTIFICATION_EMAILS=
+EMAIL_TEST_SEND=false
+EMAIL_TEST_TO=
 ```
 
 Email internal order baru bersifat opt-in. Aktifkan
 `ORDER_NOTIFICATION_EMAIL_ENABLED=true` dan isi penerima yang dipisahkan koma.
 Pada `EMAIL_PROVIDER=mock`, hanya email log mock yang dibuat; tidak ada email real.
+
+`EMAIL_TEST_TO` adalah recipient eksplisit untuk smoke Resend. Jika kosong,
+`check:email` memakai penerima notifikasi order pertama, lalu
+`SALES_QUOTATION_EMAIL`. `EMAIL_TEST_SEND` harus tetap `false` kecuali saat satu
+pengiriman test eksplisit.
 
 Default `mock` hanya mencatat email ke log foundation. Untuk email real, ubah `EMAIL_PROVIDER=resend`, set `EMAIL_ENABLED=true`, isi `RESEND_API_KEY`, dan pakai `EMAIL_FROM` dari domain yang sudah diverifikasi. `SALES_QUOTATION_EMAIL` adalah alamat internal sales penerima notifikasi quotation.
 

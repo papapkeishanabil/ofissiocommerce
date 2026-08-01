@@ -47,6 +47,8 @@ export type AdminPermission =
   | "admin:catalog:update"
   | "admin:notification:view"
   | "admin:notification:update"
+  | "admin:email:view"
+  | "admin:email:test"
   | "admin:audit:view";
 
 export interface InternalAdminUser {

@@ -11,6 +11,7 @@ import {
   FileArchive,
   Home,
   ListChecks,
+  Mail,
   PackageCheck,
   PackageSearch,
   Tags,
@@ -21,6 +22,7 @@ import {
 import { ADMIN_NAV_ITEMS } from "../admin.config";
 import { cn } from "@/lib/utils";
 import { useAdminNotifications } from "@/features/admin-notifications/components/AdminNotificationProvider";
+import type { InternalAdminUser } from "../admin.types";
 
 const ICONS = {
   "/admin": Home,
@@ -29,6 +31,7 @@ const ICONS = {
   "/admin/quotations": ListChecks,
   "/admin/orders": PackageCheck,
   "/admin/notifications": Bell,
+  "/admin/settings/email": Mail,
   "/admin/process-orders": Workflow,
   "/admin/shipments": Truck,
   "/admin/customers": Building2,
@@ -38,7 +41,7 @@ const ICONS = {
   "/admin/audit": Activity,
 };
 
-export function AdminSidebar() {
+export function AdminSidebar({ user }: { user: InternalAdminUser }) {
   const pathname = usePathname();
   const { summary } = useAdminNotifications();
   return (
@@ -72,6 +75,12 @@ export function AdminSidebar() {
         className="relative flex gap-1.5 overflow-x-auto px-3 pb-4 lg:block lg:min-h-0 lg:flex-1 lg:space-y-0.5 lg:overflow-y-auto lg:overflow-x-hidden lg:px-3 lg:pr-4"
       >
         {ADMIN_NAV_ITEMS.map((item) => {
+          if (
+            item.href === "/admin/settings/email" &&
+            !["super_admin", "sales"].includes(user.role)
+          ) {
+            return null;
+          }
           const Icon = ICONS[item.href] ?? Home;
           const active =
             item.href === "/admin"

@@ -25,6 +25,9 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
    - Aktifkan `EMAIL_PROVIDER=resend` dan `EMAIL_ENABLED=true` di staging dulu.
    - Jalankan real test send eksplisit.
    - Monitor bounce/failure/reply path.
+   - Gunakan `/admin/settings/email` untuk status, test internal, dan recent logs.
+   - Pastikan invoice/payment-ready email diaktifkan setelah Task C/iPaymu; flow
+     pengiriman invoice belum aktif pada Task B.
 
 4. WooCommerce staging/live integration
    - Isi WooCommerce URL/key/secret di server secret manager.
