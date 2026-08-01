@@ -4,6 +4,7 @@ import { AdminBackLink, AdminPageHeader } from "@/features/admin/components/Admi
 import { getProductEditorTaxonomyOptions } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { AdminProductForm } from "@/features/products/components/AdminProductForm";
 import { getWordPressMediaRuntimeConfig } from "@/features/products/woocommerce/wordpress-media-upload.service";
+import { getStorageRuntimeConfig } from "@/features/storage/storage.config";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function AdminNewProductPage() {
           mode="create"
           options={options}
           productImageMaxMb={getWordPressMediaRuntimeConfig().maxUploadMb}
+          glbMaxMb={getStorageRuntimeConfig().maxUploadMb.glb}
         />
       </div>
     );

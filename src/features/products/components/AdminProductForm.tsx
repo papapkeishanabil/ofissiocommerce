@@ -35,12 +35,26 @@ interface AdminProductFormProps {
     attributes: CatalogAttribute[];
   };
   productImageMaxMb?: number;
+  glbMaxMb?: number;
 }
 
 interface ApiProductResponse {
   ok?: boolean;
   message?: string;
   product?: AdminWooCommerceProductDetail;
+}
+
+interface ApiGlbUploadResponse {
+  ok?: boolean;
+  message?: string;
+  detail?: AdminWooCommerceProductDetail;
+  upload?: {
+    filename: string;
+    version: string;
+    modelId: string;
+    sizeBytes: number;
+    uploadedAt: string;
+  };
 }
 
 const ZONE_LABELS: Record<string, string> = {
@@ -57,13 +71,20 @@ const MOCK_INTERNAL_HEADERS = {
   "x-ofissio-internal-user-id": "internal-dev",
 };
 
-export function AdminProductForm({ mode, product, options, productImageMaxMb = 10 }: AdminProductFormProps) {
+export function AdminProductForm({ mode, product, options, productImageMaxMb = 10, glbMaxMb = 50 }: AdminProductFormProps) {
   const router = useRouter();
   const imageManagerRef = useRef<ProductImageManagerHandle>(null);
   const initial = useMemo(() => initialForm(product), [product]);
   const [form, setForm] = useState<AdminWooProductInput>(initial);
   const [glbFile, setGlbFile] = useState<File | null>(null);
   const [glbVersion, setGlbVersion] = useState(product?.ofissioMeta.model3DVersion || "v1");
+  const [activeGlb, setActiveGlb] = useState(() => ({
+    filename: product?.ofissioMeta.model3DFilename ?? "",
+    version: product?.ofissioMeta.model3DVersion ?? "",
+    updatedAt: product?.ofissioMeta.model3DUpdatedAt ?? "",
+  }));
+  const [glbInputKey, setGlbInputKey] = useState(0);
+  const [glbUploadError, setGlbUploadError] = useState<string | null>(null);
   const [workingProductId, setWorkingProductId] = useState<number | null>(product?.id ?? null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
@@ -80,6 +101,24 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
 
   const set = <K extends keyof AdminWooProductInput>(key: K, value: AdminWooProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+
+  function selectGlbFile(file: File | null) {
+    setGlbUploadError(null);
+    if (!file) {
+      setGlbFile(null);
+      return;
+    }
+    const sizeMb = file.size / 1024 / 1024;
+    if (sizeMb > glbMaxMb) {
+      setGlbFile(null);
+      setGlbInputKey((current) => current + 1);
+      setGlbUploadError(
+        `File ${file.name} berukuran ${sizeMb.toFixed(2).replace(".", ",")} MB. Batas Storage saat ini ${glbMaxMb} MB. Kompres GLB terlebih dahulu atau naikkan batas Supabase Storage.`,
+      );
+      return;
+    }
+    setGlbFile(file);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -112,6 +151,8 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       const saved = payload.product;
       setWorkingProductId(saved.id);
       const uploadWarnings: string[] = [];
+      let uploadedGlbLabel = "";
+      let uploadedGlb: ApiGlbUploadResponse["upload"];
 
       try {
         const savedImages = await imageManagerRef.current?.save(saved.id);
@@ -123,6 +164,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       }
 
       if (glbFile) {
+        setGlbUploadError(null);
         const data = new FormData();
         data.set("file", glbFile);
         data.set("version", glbVersion || "v1");
@@ -134,13 +176,26 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
             headers: { Accept: "application/json", ...MOCK_INTERNAL_HEADERS },
           },
         );
-        const uploadPayload = (await uploadResponse.json().catch(() => null)) as ApiProductResponse | null;
-        if (!uploadResponse.ok) {
+        const uploadPayload = (await uploadResponse.json().catch(() => null)) as ApiGlbUploadResponse | null;
+        if (!uploadResponse.ok || !uploadPayload?.upload) {
+          const uploadError = uploadPayload?.message || "File GLB belum dapat diunggah.";
+          setGlbUploadError(uploadError);
           uploadWarnings.push(
-            `GLB gagal: ${uploadPayload?.message || "coba unggah ulang"}`,
+            `GLB gagal: ${uploadError}`,
           );
         } else {
+          const uploaded = uploadPayload.upload;
+          setActiveGlb({
+            filename: uploaded.filename,
+            version: uploaded.version,
+            updatedAt: uploaded.uploadedAt,
+          });
+          setGlbVersion(uploaded.version);
           setGlbFile(null);
+          setGlbInputKey((current) => current + 1);
+          setGlbUploadError(null);
+          uploadedGlbLabel = `${uploaded.filename} (${uploaded.version})`;
+          uploadedGlb = uploaded;
         }
       }
 
@@ -149,14 +204,33 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         headers: { Accept: "application/json", ...MOCK_INTERNAL_HEADERS },
       });
       const refreshedPayload = (await refreshed.json().catch(() => null)) as ApiProductResponse | null;
-      const readiness = refreshedPayload?.product?.readiness ?? saved.readiness;
+      const refreshedProduct = refreshedPayload?.product;
+      const readiness = refreshedProduct?.readiness ?? saved.readiness;
+      if (refreshedProduct) {
+        setForm(initialForm(refreshedProduct));
+        // Prefer the upload response for this submit. It is authoritative and
+        // prevents a briefly stale WooCommerce read from restoring the old
+        // filename/version in the form immediately after a replacement.
+        if (!uploadedGlb) {
+          setActiveGlb({
+            filename: refreshedProduct.ofissioMeta.model3DFilename,
+            version: refreshedProduct.ofissioMeta.model3DVersion,
+            updatedAt: refreshedProduct.ofissioMeta.model3DUpdatedAt,
+          });
+        }
+      }
       if (uploadWarnings.length > 0) {
         setMessage({
           tone: "warning",
           text: `Produk berhasil disimpan, tetapi ${uploadWarnings.join(" dan ")}. Anda dapat retry dari halaman edit.`,
         });
       } else if (readiness.isVisibleInOfissio) {
-        setMessage({ tone: "success", text: "Produk tersimpan dan valid untuk tampil di Ofissio." });
+        setMessage({
+          tone: "success",
+          text: uploadedGlbLabel
+            ? `Produk tersimpan. Model 3D aktif sekarang: ${uploadedGlbLabel}.`
+            : "Produk tersimpan dan valid untuk tampil di Ofissio.",
+        });
       } else {
         setMessage({
           tone: "warning",
@@ -478,18 +552,28 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       <div id="model-3d" className="scroll-mt-28">
       <FormSection icon={FileBox} title="Model 3D GLB" description="File disimpan privat di Supabase Storage. Viewer meminta signed URL baru saat diperlukan.">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
-          <Field label={product?.ofissioMeta.model3DFilename ? "Ganti file GLB" : "Upload file GLB"} hint="Hanya .glb, maksimal sesuai MAX_GLB_UPLOAD_MB (default 100 MB).">
-            <input className={`${INPUT} file:mr-4 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-700`} type="file" accept=".glb,model/gltf-binary,application/octet-stream" onChange={(e) => setGlbFile(e.target.files?.[0] ?? null)} />
+          <Field label={activeGlb.filename ? "Ganti file GLB" : "Upload file GLB"} hint={`Hanya .glb, maksimal ${glbMaxMb} MB sesuai batas Storage aktif.`}>
+            <input key={glbInputKey} className={`${INPUT} file:mr-4 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-700`} type="file" accept=".glb,model/gltf-binary,application/octet-stream" onChange={(e) => selectGlbFile(e.target.files?.[0] ?? null)} />
           </Field>
           <Field label="Versi model">
             <input className={INPUT} value={glbVersion} onChange={(e) => setGlbVersion(e.target.value.replace(/[^A-Za-z0-9._-]/g, ""))} required={Boolean(glbFile)} maxLength={40} />
           </Field>
         </div>
-        {product?.ofissioMeta.model3DFilename ? (
+        {glbUploadError ? (
+          <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold leading-6 text-red-800">
+            {glbUploadError}
+          </div>
+        ) : null}
+        {activeGlb.filename ? (
           <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             <span className="font-semibold">GLB aktif:</span>
-            <span>{product.ofissioMeta.model3DFilename} · {product.ofissioMeta.model3DVersion}</span>
+            <span>{activeGlb.filename} · {activeGlb.version}</span>
+            {activeGlb.updatedAt ? (
+              <span className="text-xs font-normal text-emerald-700">
+                diperbarui {formatGlbUpdatedAt(activeGlb.updatedAt)}
+              </span>
+            ) : null}
           </div>
         ) : null}
       </FormSection>
@@ -551,6 +635,15 @@ function initialForm(product?: AdminWooCommerceProductDetail): AdminWooProductIn
       ? product.ofissioMeta.quantityPricingTiers
       : [createDefaultQuantityPricingTier(product?.price || 0, product?.ofissioMeta.moq || 20)],
   };
+}
+
+function formatGlbUpdatedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function normalizeFulfillment(value?: string): AdminWooProductInput["fulfillmentType"] {

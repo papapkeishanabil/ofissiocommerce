@@ -33,10 +33,15 @@ export function mapWooCommerceProductToOfissioProduct(
   raw: WooCommerceProduct,
 ): OfissioProduct {
   const meta = raw.meta_data ?? [];
-  const modelUrl =
+  const rawModelUrl =
     getMetaString(meta, "model_3d_url") || resolveStorageModelUrl(raw.id, meta);
   const modelId = getMetaString(meta, "model_3d_id");
   const modelVersion = getMetaString(meta, "model_3d_version");
+  const modelUpdatedAt = getMetaString(meta, "model_3d_updated_at");
+  const modelUrl = withModelRevision(
+    rawModelUrl,
+    modelUpdatedAt || modelVersion || modelId,
+  );
   const modelFilename =
     getMetaString(meta, "model_3d_filename") || filenameFromUrl(modelUrl);
   const modelSource = normalizeModelSource(getMetaString(meta, "model_3d_source"));
@@ -50,7 +55,7 @@ export function mapWooCommerceProductToOfissioProduct(
           version: modelVersion,
           source: modelSource,
           file_type: "glb",
-          uploaded_at: new Date().toISOString(),
+          uploaded_at: modelUpdatedAt,
           is_required: true,
         }
       : null;
@@ -169,7 +174,10 @@ export function mapWooCommerceProductToOfissioProduct(
     model_3d_url: modelUrl || null,
     model_3d_id: modelId || null,
     model_3d_version: modelVersion || null,
-    camera_presets: cameraPresets.length ? cameraPresets : ["front", "back"],
+    // A GLB can always be orbited from every supported camera preset. Products
+    // created before camera_presets metadata existed must not be reduced to
+    // front/back only.
+    camera_presets: cameraPresets.length ? cameraPresets : [...CAMERA_PRESETS],
     specs: buildSpecs(raw, material, leadTime),
     sizeChart: (availableSizes.length ? availableSizes : DEFAULT_SIZES).map((size) => ({
       size,
@@ -240,6 +248,22 @@ function resolveStorageModelUrl(
   const key = getMetaString(meta, "model_3d_storage_key");
   if (!bucket || !key) return "";
   return `/api/products/woocommerce/${productId}/3d-model/signed-url`;
+}
+
+function withModelRevision(value: string, revision: string) {
+  if (!value || !revision) return value;
+  try {
+    const parsed = new URL(value, "https://ofissio.local");
+    if (!/^\/api\/products\/woocommerce\/\d+\/3d-model\/signed-url\/?$/.test(parsed.pathname)) {
+      return value;
+    }
+    parsed.searchParams.set("rev", revision);
+    return /^https?:\/\//i.test(value)
+      ? parsed.toString()
+      : `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return value;
+  }
 }
 
 function normalizeModelSource(value: string): ProductModelSource {

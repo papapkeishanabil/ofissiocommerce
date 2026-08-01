@@ -89,6 +89,7 @@ export async function getAdminWooCommerceProduct(
       model3DVersion: getMetaString(meta, "model_3d_version"),
       model3DSource: getMetaString(meta, "model_3d_source"),
       model3DFilename: getMetaString(meta, "model_3d_filename"),
+      model3DUpdatedAt: getMetaString(meta, "model_3d_updated_at"),
       moq: getMetaNumber(meta, "moq", 0),
       leadTime: getMetaString(meta, "lead_time"),
       fulfillmentType: getMetaString(meta, "fulfillment_type"),
@@ -359,9 +360,11 @@ function logProductAudit(
 }
 
 function toAdminSummary(product: WooCommerceProduct): AdminWooCommerceProduct {
+  const productName = stripHtml(product.name) || `Produk #${product.id}`;
+  const primaryImage = (product.images ?? []).find((image) => Boolean(image.src));
   return {
     id: product.id,
-    name: stripHtml(product.name) || `Produk #${product.id}`,
+    name: productName,
     slug: product.slug,
     sku: product.sku?.trim() ?? "",
     price: parseMoney(product.regular_price || product.price || product.sale_price),
@@ -372,6 +375,16 @@ function toAdminSummary(product: WooCommerceProduct): AdminWooCommerceProduct {
       slug: category.slug,
     })),
     industries: getMetaStringArray(product.meta_data ?? [], "industries"),
+    primaryImage: primaryImage
+      ? {
+          id: Number.isInteger(primaryImage.id) && primaryImage.id > 0
+            ? primaryImage.id
+            : null,
+          src: primaryImage.src,
+          name: primaryImage.name?.trim() || productName,
+          alt: `Foto utama ${productName}`,
+        }
+      : null,
     readiness: getProductReadiness(product),
     wooEditUrl: buildWooEditUrl(product.id),
   };

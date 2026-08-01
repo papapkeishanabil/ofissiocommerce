@@ -58,7 +58,7 @@ export async function uploadAdminProductImages(
   }
 
   const mediaConfig = getWordPressMediaRuntimeConfig();
-  const validatedFiles: Array<{ file: File; bytes: Uint8Array; safeFilename: string }> = [];
+  const validatedFiles: Array<{ file: File; safeFilename: string }> = [];
   for (const file of input.files) {
     const validation = validateUploadFile({
       fileName: file.name,
@@ -82,8 +82,11 @@ export async function uploadAdminProductImages(
         400,
       );
     }
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    if (!hasValidImageSignature(bytes, file.type)) {
+    // Only the first 12 bytes are required for format validation. Reading the
+    // complete file here used to create another large in-memory copy before
+    // the WordPress upload started.
+    const signature = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    if (!hasValidImageSignature(signature, file.type)) {
       logImageAudit("product_image_upload_failed", input, {
         filename: sanitizeFilename(file.name),
         reason: "invalid_file_signature",
@@ -96,7 +99,6 @@ export async function uploadAdminProductImages(
     }
     validatedFiles.push({
       file,
-      bytes,
       safeFilename: validation.sanitizedFilename,
     });
   }
@@ -110,34 +112,50 @@ export async function uploadAdminProductImages(
 
   const uploadedImages: AdminProductImage[] = [];
   try {
-    for (const [index, validated] of validatedFiles.entries()) {
-      const position = current.length + index;
-      const title = `${sku} ${position === 0 ? "main image" : `gallery image ${position}`}`;
-      const alt =
-        position === 0
-          ? stripHtml(product.name)
-          : `${stripHtml(product.name)} foto ${position + 1}`;
-      const media = await uploadProductImageToWordPress({
-        data: validated.bytes,
-        filename: validated.safeFilename,
-        mimeType: validated.file.type,
-        title,
-        alt,
-      });
-      const image: AdminProductImage = {
-        id: media.id,
-        src: media.sourceUrl,
-        name: media.title || title,
-        alt: media.alt || alt,
-      };
-      uploadedImages.push(image);
-      logImageAudit("product_image_uploaded", input, {
-        filename: validated.safeFilename,
-        mimeType: validated.file.type,
-        sizeBytes: validated.file.size,
-        wordpressMediaId: media.id,
-      });
-    }
+    const uploadResults = new Array<AdminProductImage>(validatedFiles.length);
+    let nextUploadIndex = 0;
+    const uploadWorker = async () => {
+      while (nextUploadIndex < validatedFiles.length) {
+        const index = nextUploadIndex;
+        nextUploadIndex += 1;
+        const validated = validatedFiles[index];
+        if (!validated) return;
+        const position = current.length + index;
+        const title = `${sku} ${
+          position === 0 ? "main image" : `gallery image ${position}`
+        }`;
+        const alt =
+          position === 0
+            ? stripHtml(product.name)
+            : `${stripHtml(product.name)} foto ${position + 1}`;
+        const media = await uploadProductImageToWordPress({
+          file: validated.file,
+          filename: validated.safeFilename,
+          mimeType: validated.file.type,
+          title,
+          alt,
+        });
+        const image: AdminProductImage = {
+          id: media.id,
+          src: media.sourceUrl,
+          name: media.title || title,
+          alt: media.alt || alt,
+        };
+        uploadResults[index] = image;
+        logImageAudit("product_image_uploaded", input, {
+          filename: validated.safeFilename,
+          mimeType: validated.file.type,
+          sizeBytes: validated.file.size,
+          wordpressMediaId: media.id,
+        });
+      }
+    };
+
+    // WordPress has no batch media endpoint. Two workers shorten multi-image
+    // uploads substantially without overwhelming PHP image processing.
+    const workerCount = Math.min(2, validatedFiles.length);
+    await Promise.all(Array.from({ length: workerCount }, () => uploadWorker()));
+    uploadedImages.push(...uploadResults);
 
     const nextImages = [...current, ...uploadedImages];
     const fallbackUsed = await updateWooProductImagesWithFallback(

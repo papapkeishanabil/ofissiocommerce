@@ -112,6 +112,7 @@ export const ProductImageManager = forwardRef<
       const pending = items.filter(
         (item): item is GalleryItem & { file: File } => Boolean(item.file),
       );
+      let persistedImages: AdminProductImage[] | null = null;
       if (pending.length > 0) {
         setMessage({
           tone: "warning",
@@ -135,7 +136,11 @@ export const ProductImageManager = forwardRef<
             uploadPayload?.message || "Foto belum berhasil diunggah.",
           );
         }
-        const persistedUploads = uploadPayload.images.slice(-pending.length);
+        persistedImages = uploadPayload.images;
+        const persistedUploads =
+          uploadPayload.uploadedImages?.length === pending.length
+            ? uploadPayload.uploadedImages
+            : uploadPayload.images.slice(-pending.length);
         pending.forEach((item, index) => {
           const persisted = persistedUploads[index];
           if (persisted) uploadedLookup.set(item.key, persisted);
@@ -158,6 +163,23 @@ export const ProductImageManager = forwardRef<
         releaseObjectUrls(items);
         setItems(finalImages.map(remoteItem));
       }
+
+      // The upload endpoint already appends new gallery images to
+      // WooCommerce. Avoid a second WooCommerce write when the resulting
+      // order is already identical (the common gallery-upload path).
+      if (persistedImages && sameImageSequence(finalImages, persistedImages)) {
+        releaseObjectUrls(items);
+        setItems(persistedImages.map(remoteItem));
+        setDirty(false);
+        setFileErrors([]);
+        setMessage({
+          tone: "success",
+          text: "Foto produk berhasil disimpan ke WooCommerce.",
+        });
+        onImagesChange?.(persistedImages);
+        return persistedImages;
+      }
+
       setBusyLabel("Menyimpan urutan...");
       setMessage({
         tone: "warning",
@@ -242,15 +264,10 @@ export const ProductImageManager = forwardRef<
           continue;
         }
         try {
-          const stableSource = new File(
-            [await file.arrayBuffer()],
-            file.name,
-            {
-              type: file.type,
-              lastModified: file.lastModified,
-            },
-          );
-          const optimization = await optimizeProductImage(stableSource);
+          // File objects selected by the browser are already stable blobs.
+          // Copying the complete file through arrayBuffer() doubled peak
+          // memory usage before image decoding even started.
+          const optimization = await optimizeProductImage(file);
           const stableFile = optimization.file;
           originalBytes += optimization.originalBytes;
           uploadBytes += optimization.uploadBytes;
@@ -599,6 +616,19 @@ function remoteItem(image: AdminProductImage): GalleryItem {
 
 function currentRemoteImages(items: GalleryItem[]) {
   return items.flatMap((item) => (item.image ? [item.image] : []));
+}
+
+function sameImageSequence(
+  first: AdminProductImage[],
+  second: AdminProductImage[],
+) {
+  if (first.length !== second.length) return false;
+  return first.every((image, index) => {
+    const other = second[index];
+    if (!other) return false;
+    if (image.id && other.id) return image.id === other.id;
+    return image.src === other.src;
+  });
 }
 
 function formatMegabytes(bytes: number) {

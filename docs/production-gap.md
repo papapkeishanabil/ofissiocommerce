@@ -2,6 +2,10 @@
 
 Dokumen ini memisahkan **staging foundation complete** dari **production launch ready**.
 
+## Status checkpoint A6
+
+Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing tier/global embroidery, cart, quotation snapshot/override, accept, convert idempotent, order notification, email mock, dan Ofistant. Gap di bawah tetap menjadi blocker production; kelulusan A6 tidak mengaktifkan provider live.
+
 ## Gap kritikal sebelum production
 
 1. Real auth dan session production

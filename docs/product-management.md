@@ -39,3 +39,7 @@ Form create/edit sekarang memiliki section **Harga & Diskon Quantity**. Admin da
 ## Harga bordir Task A4
 
 Jika produk mendukung bordir, admin hanya memilih zona yang didukung pada section **Customization**. Harga, batas ukuran, setup fee, dan catatan dikelola satu kali melalui `/admin/pricing/embroidery`; detail formula dan validasi tersedia di [embroidery-pricing.md](embroidery-pricing.md). Metadata `embroidery_pricing*` lama di WooCommerce dipertahankan untuk kompatibilitas, tetapi tidak digunakan sebagai sumber hitung.
+
+## Produk referensi A6
+
+`JAKET TEST A3` (`JAK-A3-001`, WooCommerce `#18`) menjadi produk smoke komersial: published, valid, kategori Jaket, industri Mining/Corporate, foto utama dan gallery WordPress, GLB Supabase, quantity tier, serta zona Dada Kiri/Punggung Tengah. Readiness tidak memiliki blocking issue. Data ini sebaiknya dipertahankan selama regression A6 masih digunakan.

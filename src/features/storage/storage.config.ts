@@ -20,6 +20,8 @@ const DEFAULTS = {
   },
 };
 
+const DEFAULT_SUPABASE_STORAGE_MAX_FILE_MB = 50;
+
 function normalizeProvider(value?: string): StorageProvider {
   if (value === "supabase" || value === "s3" || value === "mock") return value;
   return "mock";
@@ -44,6 +46,17 @@ export function getStorageRuntimeConfig(): StorageRuntimeConfig {
     requestedProvider === "supabase" && !supabaseConfigured
       ? "mock"
       : requestedProvider;
+  const configuredGlbMaxMb = envNumber(
+    "MAX_GLB_UPLOAD_MB",
+    DEFAULTS.maxUploadMb.glb,
+  );
+  const providerGlbMaxMb =
+    provider === "supabase"
+      ? envNumber(
+          "SUPABASE_STORAGE_MAX_FILE_MB",
+          DEFAULT_SUPABASE_STORAGE_MAX_FILE_MB,
+        )
+      : configuredGlbMaxMb;
 
   return {
     requestedProvider,
@@ -67,7 +80,10 @@ export function getStorageRuntimeConfig(): StorageRuntimeConfig {
         "MAX_DOCUMENT_UPLOAD_MB",
         DEFAULTS.maxUploadMb.document,
       ),
-      glb: envNumber("MAX_GLB_UPLOAD_MB", DEFAULTS.maxUploadMb.glb),
+      // The application limit must never advertise more than the active
+      // provider accepts. Supabase Free projects cap a single file at 50 MB;
+      // paid projects can override SUPABASE_STORAGE_MAX_FILE_MB.
+      glb: Math.min(configuredGlbMaxMb, providerGlbMaxMb),
     },
     supabaseConfigured,
   };

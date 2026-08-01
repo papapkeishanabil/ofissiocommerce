@@ -13,6 +13,10 @@ import {
 } from "@/features/admin/components/AdminSurface";
 import { formatRupiah } from "@/features/admin/admin.utils";
 import {
+  AdminClickableProductRow,
+  AdminProductThumbnail,
+} from "@/features/products/components/AdminProductListInteractions";
+import {
   Product3DStatusBadge,
   ProductIssueSummary,
   ProductReadinessBadge,
@@ -73,6 +77,7 @@ export default async function AdminProductsPage() {
               <table className={`${ADMIN_TABLE_CLASS} min-w-[1480px]`}>
                 <thead>
                   <tr>
+                    <th className="w-24">Foto</th>
                     <th>Woo Product ID</th>
                     <th>Produk</th>
                     <th>SKU</th>
@@ -122,7 +127,16 @@ export default async function AdminProductsPage() {
 
 function ProductTableRow({ product }: { product: AdminWooCommerceProduct }) {
   return (
-    <tr>
+    <AdminClickableProductRow
+      href={`/admin/products/woocommerce/${product.id}`}
+      label={`Buka detail ${product.name}`}
+    >
+      <td>
+        <AdminProductThumbnail
+          productName={product.name}
+          image={product.primaryImage}
+        />
+      </td>
       <td className="font-mono text-xs font-semibold text-ink">#{product.id}</td>
       <td>
         <p className="max-w-52 font-semibold text-ink">{product.name}</p>
@@ -145,24 +159,33 @@ function ProductTableRow({ product }: { product: AdminWooCommerceProduct }) {
         <ProductIssueSummary issues={product.readiness.blockingIssues} />
       </td>
       <td><ProductActions product={product} compact /></td>
-    </tr>
+    </AdminClickableProductRow>
   );
 }
 
 function ProductMobileCard({ product }: { product: AdminWooCommerceProduct }) {
   return (
     <AdminCard>
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.08em] text-brand-700">Woo #{product.id}</p>
-          <h2 className="mt-1 break-words text-lg font-semibold text-ink">{product.name}</h2>
-          <p className="mt-0.5 font-mono text-xs text-ink-muted">{product.sku || "SKU belum diisi"}</p>
+      <div className="flex min-w-0 items-start gap-4">
+        <AdminProductThumbnail
+          productName={product.name}
+          image={product.primaryImage}
+          size="mobile"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-brand-700">Woo #{product.id}</p>
+              <h2 className="mt-1 break-words text-lg font-semibold text-ink">{product.name}</h2>
+              <p className="mt-0.5 break-all font-mono text-xs text-ink-muted">{product.sku || "SKU belum diisi"}</p>
+            </div>
+            <WooStatusBadge status={product.status} />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <ProductReadinessBadge readiness={product.readiness} />
+            <Product3DStatusBadge readiness={product.readiness} />
+          </div>
         </div>
-        <WooStatusBadge status={product.status} />
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <ProductReadinessBadge readiness={product.readiness} />
-        <Product3DStatusBadge readiness={product.readiness} />
       </div>
       <dl className="mt-4 grid gap-3 sm:grid-cols-3">
         <MobileInfo label="Harga" value={product.price > 0 ? formatRupiah(product.price) : "-"} />

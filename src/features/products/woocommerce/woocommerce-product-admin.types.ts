@@ -14,6 +14,7 @@ export interface AdminWooCommerceProduct {
   status: string;
   categories: Array<{ id: number; name: string; slug: string }>;
   industries: string[];
+  primaryImage: AdminProductImage | null;
   readiness: ProductReadiness;
   wooEditUrl: string | null;
 }
@@ -34,6 +35,7 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
     model3DVersion: string;
     model3DSource: string;
     model3DFilename: string;
+    model3DUpdatedAt: string;
     moq: number;
     leadTime: string;
     fulfillmentType: string;

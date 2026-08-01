@@ -1,5 +1,7 @@
-const MAX_PRODUCT_IMAGE_DIMENSION = 2_400;
-const PRODUCT_IMAGE_WEBP_QUALITY = 0.9;
+// 1600 px is sufficient for the catalog lightbox while keeping WordPress
+// upload and thumbnail generation fast on staging infrastructure.
+const MAX_PRODUCT_IMAGE_DIMENSION = 1_600;
+const PRODUCT_IMAGE_WEBP_QUALITY = 0.84;
 const MIN_SAVINGS_RATIO = 0.92;
 
 export interface ProductImageOptimizationResult {

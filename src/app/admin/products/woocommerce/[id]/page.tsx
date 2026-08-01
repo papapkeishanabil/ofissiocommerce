@@ -8,6 +8,7 @@ import { AdminProductForm } from "@/features/products/components/AdminProductFor
 import { ProductReadinessPanel } from "@/features/products/components/ProductReadinessStatus";
 import { getAdminWooCommerceProduct } from "@/features/products/woocommerce/woocommerce-product-admin.service";
 import { getWordPressMediaRuntimeConfig } from "@/features/products/woocommerce/wordpress-media-upload.service";
+import { getStorageRuntimeConfig } from "@/features/storage/storage.config";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export default async function AdminWooProductDetailPage({ params, searchParams }
           product={product}
           options={options}
           productImageMaxMb={getWordPressMediaRuntimeConfig().maxUploadMb}
+          glbMaxMb={getStorageRuntimeConfig().maxUploadMb.glb}
         />
       </div>
     );

@@ -33,6 +33,7 @@ const rules: EnvRule[] = [
   { name: "MAX_LOGO_UPLOAD_MB" },
   { name: "MAX_DOCUMENT_UPLOAD_MB" },
   { name: "MAX_GLB_UPLOAD_MB" },
+  { name: "SUPABASE_STORAGE_MAX_FILE_MB" },
   { name: "PRODUCT_IMAGE_MAX_MB" },
   { name: "WOOCOMMERCE_ENABLED" },
   { name: "WOOCOMMERCE_BASE_URL" },

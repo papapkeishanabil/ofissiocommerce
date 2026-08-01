@@ -200,3 +200,7 @@ Product admin mengatur harga bertingkat dari `/admin/products/new` atau `/admin/
 ## Task A4 embroidery pricing
 
 Product admin mengatur satu master harga bordir melalui menu **Harga Bordir** (`/admin/pricing/embroidery`). Form produk hanya menentukan dukungan teknik dan zona. Endpoint global memakai permission `admin:catalog:update` dan mencatat audit `embroidery_pricing_updated` atau `embroidery_pricing_update_failed`. Cart/quotation menyimpan snapshot, dan admin quotation tetap dapat override unit price/setup fee sebelum mengirim penawaran.
+
+## Checkpoint alur komersial A6
+
+Workbench admin telah diuji untuk product readiness, quotation `under_review`, internal note, pricing override, mark quoted, customer accept, convert to order, dan acknowledge order notification. Master harga bordir tidak berubah akibat override quotation, sementara WooCommerce order write tetap disabled sesuai batas staging.

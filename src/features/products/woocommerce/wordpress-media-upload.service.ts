@@ -13,6 +13,7 @@ import {
   allowSelfSignedTlsForWooUrl,
   requestWooCommerceJson,
 } from "./woocommerce-http";
+import { normalizeWooCommerceMediaUrl } from "./woocommerce-media-url";
 
 const DEFAULT_PRODUCT_IMAGE_MAX_MB = 10;
 // WordPress generates attachment metadata and several thumbnails before the
@@ -66,7 +67,7 @@ export function getWordPressMediaRuntimeConfig() {
 }
 
 export async function uploadProductImageToWordPress(input: {
-  data: Uint8Array;
+  file: File;
   filename: string;
   mimeType: string;
   title: string;
@@ -87,7 +88,8 @@ export async function uploadProductImageToWordPress(input: {
         "Content-Type": input.mimeType,
         "Content-Disposition": `attachment; filename="${escapeHeaderFilename(input.filename)}"`,
       },
-      body: input.data,
+      body: input.file.stream(),
+      bodyLength: input.file.size,
       allowSelfSignedTls: allowSelfSignedTlsForWooUrl(url),
       timeoutMs: WORDPRESS_MEDIA_UPLOAD_TIMEOUT_MS,
     });
@@ -95,7 +97,7 @@ export async function uploadProductImageToWordPress(input: {
       throw new Error(`wordpress_media_upload_${classifyStatus(response.status)}`);
     }
 
-    const uploaded = normalizeMediaResponse(response.data);
+    const uploaded = normalizeMediaResponse(response.data, config.baseUrl);
     await updateWordPressMediaMetadata({
       mediaId: uploaded.id,
       title: input.title,
@@ -111,7 +113,7 @@ export async function uploadProductImageToWordPress(input: {
       area: "wordpress_media",
       action: "upload_failed",
       mimeType: input.mimeType,
-      sizeBytes: input.data.byteLength,
+      sizeBytes: input.file.size,
     });
     if (error instanceof Error && error.message === "network_error") {
       throw new Error("wordpress_media_timeout");
@@ -200,9 +202,15 @@ function authorizationHeader(
   return `Basic ${Buffer.from(`${config.username}:${config.appPassword}`).toString("base64")}`;
 }
 
-function normalizeMediaResponse(payload: WordPressMediaResponse) {
+function normalizeMediaResponse(
+  payload: WordPressMediaResponse,
+  configuredBaseUrl: string,
+) {
   const id = Number(payload.id);
-  const sourceUrl = typeof payload.source_url === "string" ? payload.source_url.trim() : "";
+  const sourceUrl =
+    typeof payload.source_url === "string"
+      ? normalizeWooCommerceMediaUrl(payload.source_url, configuredBaseUrl)
+      : "";
   if (!Number.isInteger(id) || id <= 0 || !isSafeHttpUrl(sourceUrl)) {
     throw new Error("wordpress_media_invalid_response");
   }

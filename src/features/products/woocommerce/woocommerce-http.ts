@@ -1,3 +1,5 @@
+import { once } from "node:events";
+import type { ClientRequest } from "node:http";
 import { request as httpRequest } from "node:http";
 import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
 
@@ -6,7 +8,8 @@ const REQUEST_TIMEOUT_MS = 30_000;
 interface WooJsonRequestInit {
   method?: string;
   headers?: Record<string, string>;
-  body?: string | Uint8Array;
+  body?: string | Uint8Array | ReadableStream<Uint8Array>;
+  bodyLength?: number;
   allowSelfSignedTls?: boolean;
   timeoutMs?: number;
 }
@@ -33,9 +36,14 @@ export function requestWooCommerceJson<T>(
 ): Promise<WooJsonResponse<T>> {
   return new Promise((resolve, reject) => {
     const body = init.body;
+    const bodyLength =
+      init.bodyLength ??
+      (typeof body === "string" || body instanceof Uint8Array
+        ? Buffer.byteLength(body)
+        : undefined);
     const headers = {
       ...init.headers,
-      ...(body ? { "Content-Length": String(Buffer.byteLength(body)) } : {}),
+      ...(bodyLength != null ? { "Content-Length": String(bodyLength) } : {}),
     };
     const requestImpl = url.protocol === "http:" ? httpRequest : httpsRequest;
     const agent =
@@ -74,7 +82,34 @@ export function requestWooCommerceJson<T>(
       req.destroy(new Error("network_error"));
     });
     req.on("error", reject);
-    if (body) req.write(body);
-    req.end();
+    void writeRequestBody(req, body).catch((error) => {
+      req.destroy(error instanceof Error ? error : new Error("network_error"));
+    });
   });
+}
+
+async function writeRequestBody(
+  request: ClientRequest,
+  body: WooJsonRequestInit["body"],
+) {
+  if (!body) {
+    request.end();
+    return;
+  }
+  if (typeof body === "string" || body instanceof Uint8Array) {
+    request.end(body);
+    return;
+  }
+
+  const reader = body.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!request.write(value)) await once(request, "drain");
+    }
+    request.end();
+  } finally {
+    reader.releaseLock();
+  }
 }
