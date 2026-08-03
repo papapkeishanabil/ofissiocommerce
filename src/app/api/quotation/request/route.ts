@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createQuotationRequest } from "@/features/quotation/quotation.service";
 import { quotationRequestBodySchema } from "@/features/quotation/quotation.validation";
+import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { requireAuth } from "@/lib/security/auth-guard";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
@@ -72,7 +73,11 @@ export async function POST(request: Request) {
       },
     });
     return NextResponse.json(
-      { ok: true, quotation: result.quotation, emails: result.emails },
+      {
+        ok: true,
+        quotation: sanitizeQuotationForCustomer(result.quotation),
+        emails: result.emails,
+      },
       { status: 201 },
     );
   } catch (error) {

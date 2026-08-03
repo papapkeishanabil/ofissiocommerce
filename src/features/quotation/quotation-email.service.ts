@@ -1,6 +1,14 @@
 import "server-only";
 
 import { getEmailRuntimeConfig } from "@/features/email/email.config";
+import {
+  renderEmailItemCard,
+  renderEmailMetaTable,
+  renderEmailNotice,
+  renderEmailSectionHeading,
+  renderEmailSummary,
+  renderOfissioEmail,
+} from "@/features/email/email-brand.template";
 import { sendEmail } from "@/features/email/email.service";
 import type { EmailProvider } from "@/features/email/email.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
@@ -26,7 +34,7 @@ export async function sendQuotationEmail(
 ): Promise<QuotationEmailResult> {
   const config = getEmailRuntimeConfig();
   const recipientEmail = input.picEmail;
-  const subject = `[Ofissio] Request quotation ${input.quotation.code}`;
+  const subject = `Permintaan quotation diterima - ${input.quotation.code}`;
   const text = buildText(input);
   const html = buildHtml(input);
 
@@ -90,9 +98,12 @@ function buildText(input: QuotationEmailInput) {
     0,
   );
   const lines = input.quotation.items
-    .map(
-      (item) =>
+    .map((item) =>
+      [
         `- ${item.productName} (${item.sku}), ${item.color}, ${item.totalQty} pcs, estimasi ${formatIDR(item.estimatedPrice)}`,
+        `  Ukuran: ${sizeSummary(item.sizes)}`,
+        `  Kustomisasi: ${item.customization || "Tidak ada"}`,
+      ].join("\n"),
     )
     .join("\n");
 
@@ -118,45 +129,64 @@ function buildHtml(input: QuotationEmailInput) {
     (total, item) => total + item.estimatedPrice,
     0,
   );
-  const rows = input.quotation.items
+  const items = input.quotation.items
     .map(
-      (item) => `
-        <tr>
-          <td>${escapeHtml(item.productName)}</td>
-          <td>${escapeHtml(item.sku)}</td>
-          <td>${escapeHtml(item.color)}</td>
-          <td style="text-align:right">${item.totalQty} pcs</td>
-          <td style="text-align:right">${formatIDR(item.estimatedPrice)}</td>
-        </tr>
-      `,
+      (item) =>
+        renderEmailItemCard({
+          title: item.productName,
+          subtitle: `SKU ${item.sku} | Warna ${item.color}`,
+          quantity: `${item.totalQty} pcs`,
+          size: sizeSummary(item.sizes),
+          customization: item.customization || "Tidak ada",
+          amount: formatIDR(item.estimatedPrice),
+        }),
     )
     .join("");
 
-  return `
-    <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
-      <h2>Request quotation ${escapeHtml(input.quotation.code)}</h2>
-      <p>Halo ${escapeHtml(input.picName)}, request quotation dari <strong>${escapeHtml(input.companyName)}</strong> sudah diterima Ofissio.</p>
-      <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;border-color:#e5e7eb;width:100%;font-size:13px">
-        <thead>
-          <tr>
-            <th align="left">Produk</th>
-            <th align="left">SKU</th>
-            <th align="left">Warna</th>
-            <th align="right">Qty</th>
-            <th align="right">Estimasi</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <p><strong>Estimasi subtotal:</strong> ${formatIDR(subtotal)}</p>
+  return renderOfissioEmail({
+    preheader: `Permintaan quotation ${input.quotation.code} telah diterima tim Ofissio.`,
+    statusLabel: "Request diterima",
+    statusTone: "success",
+    title: "Permintaan Anda sudah kami terima",
+    lead: `Halo ${input.picName}, tim Ofissio akan meninjau kebutuhan ${input.companyName} dan menyiapkan penawaran resmi.`,
+    bodyHtml: `
+      ${renderEmailMetaTable([
+        { label: "Nomor quotation", value: input.quotation.code },
+        { label: "Perusahaan", value: input.companyName },
+        { label: "PIC", value: input.picName },
+        { label: "Status", value: "Sedang ditinjau" },
+      ])}
+      ${renderEmailSectionHeading("Ringkasan permintaan", "Rincian berikut menjadi dasar peninjauan dan penyusunan penawaran final.")}
+      ${items}
+      ${renderEmailSummary({
+        rows: [{ label: "Status harga", value: "Estimasi awal" }],
+        totalLabel: "Estimasi subtotal",
+        totalValue: formatIDR(subtotal),
+      })}
       ${
         input.quotation.notes
-          ? `<p><strong>Catatan:</strong> ${escapeHtml(input.quotation.notes)}</p>`
+          ? renderEmailNotice({
+              title: "Catatan Anda",
+              text: input.quotation.notes,
+            })
           : ""
       }
-      <p>Tim Ofissio akan meninjau kebutuhan ini dan menyiapkan penawaran resmi.</p>
-    </div>
-  `;
+      ${renderEmailNotice({
+        title: "Tahap berikutnya",
+        text: "Tim Ofissio akan memeriksa spesifikasi dan mengirim penawaran harga final melalui email berikutnya.",
+        tone: "brand",
+      })}
+    `,
+    footerNote: "Email ini merupakan konfirmasi penerimaan, bukan invoice atau penawaran harga final.",
+  });
+}
+
+function sizeSummary(sizes: Record<string, number>) {
+  const summary = Object.entries(sizes)
+    .filter(([, quantity]) => quantity > 0)
+    .map(([size, quantity]) => `${size}: ${quantity} pcs`)
+    .join(", ");
+  return summary || "Tidak ada";
 }
 
 function uniqueEmails(values: string[]) {
@@ -167,13 +197,4 @@ function uniqueEmails(values: string[]) {
         .filter((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)),
     ),
   );
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }

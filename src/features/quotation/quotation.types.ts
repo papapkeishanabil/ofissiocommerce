@@ -69,6 +69,10 @@ export interface QuotationPricingInputItem {
 export interface QuotationPricingInput {
   items: QuotationPricingInputItem[];
   discountTotal?: number;
+  taxEnabled?: boolean;
+  taxRate?: number;
+  taxLabel?: string;
+  /** Legacy manual amount. New admin flows send taxEnabled + taxRate. */
   taxTotal?: number;
   shippingEstimate?: number;
   customerMessage?: string | null;
@@ -110,6 +114,9 @@ export interface QuotationRequestRecord {
   customerMessage: string | null;
   subtotal: number | null;
   discountTotal: number;
+  taxEnabled: boolean;
+  taxRate: number;
+  taxLabel: string;
   taxTotal: number;
   shippingEstimate: number;
   grandTotal: number | null;

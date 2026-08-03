@@ -32,6 +32,30 @@ export function quotationStatusLabel(status: QuotationStatus) {
   }
 }
 
+export function customerQuotationStatusMessage(status: QuotationStatus) {
+  switch (status) {
+    case "quoted":
+      return "Penawaran resmi sudah dikirim oleh tim Ofissio. Silakan accept, reject, atau request revision.";
+    case "accepted":
+      return "Penawaran sudah diterima. Tim Ofissio akan memproses order, invoice, atau instruksi pembayaran berikutnya.";
+    case "rejected":
+      return "Penawaran sudah ditolak. Hubungi tim Ofissio jika masih memerlukan bantuan.";
+    case "revision_requested":
+      return "Permintaan revisi sudah dikirim. Tim Ofissio sedang menyiapkan pembaruan penawaran.";
+    case "expired":
+      return "Masa berlaku penawaran sudah berakhir. Silakan hubungi tim Ofissio.";
+    case "cancelled":
+      return "Quotation ini sudah dibatalkan.";
+    case "converted_to_order":
+      return "Penawaran sudah dikonversi menjadi order.";
+    case "draft":
+    case "submitted":
+    case "emailed":
+    case "under_review":
+      return "Quotation sedang direview tim Ofissio. Harga final akan tampil setelah sales mengirim penawaran resmi.";
+  }
+}
+
 export function mapQuotationToTracking(
   quotation: QuotationRequestRecord,
 ): CustomerQuotationTracking {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { listQuotationRequests } from "@/features/quotation/quotation.service";
 import { quotationListQuerySchema } from "@/features/quotation/quotation.validation";
+import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
 import { requireAuth } from "@/lib/security/auth-guard";
 import { requireCompanyAccess } from "@/lib/security/company-access";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
@@ -26,20 +27,10 @@ export async function GET(request: Request) {
     requireRole(session, "order:view");
     requireCompanyAccess(session, session.companyId, request, "quotation", "list");
     const quotations = (await listQuotationRequests(session.companyId)).map(
-      toCustomerQuotation,
+      sanitizeQuotationForCustomer,
     );
     return NextResponse.json({ ok: true, quotations });
   } catch (error) {
     return safeErrorResponse(error, "Quotation belum dapat dimuat.", 400);
   }
-}
-
-function toCustomerQuotation<T extends { internalNotes?: unknown; salesNotes?: unknown }>(
-  quotation: T,
-) {
-  return {
-    ...quotation,
-    internalNotes: [],
-    salesNotes: null,
-  };
 }

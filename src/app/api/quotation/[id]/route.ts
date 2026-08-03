@@ -5,6 +5,7 @@ import {
   getQuotationRequestById,
 } from "@/features/quotation/quotation.service";
 import { quotationListQuerySchema } from "@/features/quotation/quotation.validation";
+import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
 import { requireAuth } from "@/lib/security/auth-guard";
 import { requireCompanyAccess } from "@/lib/security/company-access";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
@@ -57,20 +58,10 @@ export async function GET(request: Request, context: RouteContext) {
     }));
     return NextResponse.json({
       ok: true,
-      quotation: toCustomerQuotation(quotation),
+      quotation: sanitizeQuotationForCustomer(quotation),
       events,
     });
   } catch (error) {
     return safeErrorResponse(error, "Quotation tidak ditemukan.", 404);
   }
-}
-
-function toCustomerQuotation<T extends { internalNotes?: unknown; salesNotes?: unknown }>(
-  quotation: T,
-) {
-  return {
-    ...quotation,
-    internalNotes: [],
-    salesNotes: null,
-  };
 }

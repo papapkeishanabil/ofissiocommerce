@@ -4,12 +4,20 @@ import { notFound } from "next/navigation";
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentActions";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
-import { AdminQuotationStatusActions } from "@/features/admin/components/AdminQuotationStatusActions";
+import { AdminQuotationProgress } from "@/features/admin/components/AdminQuotationProgress";
+import {
+  AdminQuotationProcessControl,
+  AdminQuotationStatusActions,
+} from "@/features/admin/components/AdminQuotationStatusActions";
+import { AdminQuotationNotificationRead } from "@/features/admin-notifications/components/AdminQuotationNotificationRead";
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
 import { getAdminQuotationDetail } from "@/features/admin/admin.service";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
 import { getEmailRuntimeConfig } from "@/features/email/email.config";
 import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
+import { getGlobalTaxSettings } from "@/features/tax/tax.service";
+import { quotationTaxLabel } from "@/features/quotation/quotation.utils";
+import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,9 +25,19 @@ interface PageProps {
 
 export default async function AdminQuotationDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const detail = await getAdminQuotationDetail(id);
+  const [detail, taxState] = await Promise.all([
+    getAdminQuotationDetail(id),
+    getGlobalTaxSettings(),
+  ]);
   if (!detail) notFound();
-  const { quotation, logoPreviews, events, emailLogs, documents } = detail;
+  const {
+    quotation,
+    logoPreviews,
+    events,
+    emailLogs,
+    documents,
+    acceptedNotification,
+  } = detail;
   const emailConfig = getEmailRuntimeConfig();
   const latestEmailLog = emailLogs[0] ?? null;
   const quotationPdf = documents.find(
@@ -31,9 +49,14 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-5">
+      <AdminQuotationNotificationRead notification={acceptedNotification} />
       <Link href="/admin/quotations" className="text-sm font-bold text-brand-700">
         ← Back to quotations
       </Link>
+
+      <AdminQuotationProgress status={quotation.status} />
+
+      <AdminQuotationProcessControl quotation={quotation} />
 
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -78,21 +101,10 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         ) : null}
       </section>
 
-      <AdminWooSyncPanel
-        entityType="quotation"
-        entityId={quotation.id}
-        wooOrderId={quotation.wooOrderId}
-        wooOrderNumber={quotation.wooOrderNumber ?? null}
-        wooSyncStatus={quotation.wooSyncStatus ?? (quotation.wooOrderId ? "synced" : "disabled")}
-        wooSyncError={quotation.wooSyncError ?? null}
-        wooSyncedAt={quotation.wooSyncedAt ?? null}
-        wooAdminUrl={getWooCommerceOrderAdminUrl(quotation.wooOrderId)}
-        canRetry={Boolean(quotation.convertedOrderId)}
-        note={
-          quotation.convertedOrderId
-            ? "Quotation converted dapat membuat/menghubungkan order WooCommerce staging."
-            : "Sync WooCommerce aktif setelah quotation dikonversi menjadi order Ofissio."
-        }
+      <AdminQuotationStatusActions
+        quotation={quotation}
+        defaultTaxRate={taxState.settings.rate}
+        showProcessControl={false}
       />
 
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
@@ -184,7 +196,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <section id="final-pricing-summary" className="grid scroll-mt-28 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
           <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ink">
             Final pricing
@@ -193,7 +205,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             <dl className="mt-4 space-y-2 text-sm">
               <PriceRow label="Subtotal final" value={quotation.subtotal} />
               <PriceRow label="Discount" value={quotation.discountTotal} />
-              <PriceRow label="Tax" value={quotation.taxTotal} />
+              <PriceRow label={quotationTaxLabel(quotation)} value={quotation.taxTotal} />
               <PriceRow label="Shipping estimate" value={quotation.shippingEstimate} />
               <PriceRow label="Grand total" value={quotation.grandTotal} strong />
               <InfoRow label="Valid until" value={quotation.validUntil ? formatAdminDate(quotation.validUntil) : "-"} />
@@ -238,10 +250,25 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         </div>
       </section>
 
-      <AdminQuotationStatusActions quotation={quotation} />
+      <AdminWooSyncPanel
+        entityType="quotation"
+        entityId={quotation.id}
+        wooOrderId={quotation.wooOrderId}
+        wooOrderNumber={quotation.wooOrderNumber ?? null}
+        wooSyncStatus={quotation.wooSyncStatus ?? (quotation.wooOrderId ? "synced" : "disabled")}
+        wooSyncError={quotation.wooSyncError ?? null}
+        wooSyncedAt={quotation.wooSyncedAt ?? null}
+        wooAdminUrl={getWooCommerceOrderAdminUrl(quotation.wooOrderId)}
+        canRetry={Boolean(quotation.convertedOrderId)}
+        note={
+          quotation.convertedOrderId
+            ? "Quotation converted dapat membuat/menghubungkan order WooCommerce staging."
+            : "Sync WooCommerce aktif setelah quotation dikonversi menjadi order Ofissio."
+        }
+      />
 
       <section className="space-y-4">
-        <h3 className="text-lg font-black text-ink">Items, size matrix, 3D, dan bordir</h3>
+        <h3 className="text-lg font-black text-ink">Items, size matrix, dan bordir</h3>
         {quotation.items.length === 0 ? (
           <AdminEmptyState title="Item quotation belum tersedia" />
         ) : (
@@ -257,8 +284,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                 <AdminBadge tone="brand">{item.fulfillmentType}</AdminBadge>
               </div>
 
-              <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr]">
-                <div className="rounded-2xl bg-slate-50 p-4">
+              <div className="mt-4 rounded-2xl bg-slate-50 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">Size matrix</p>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
                     {Object.entries(item.sizeMatrix).map(([size, qty]) => (
@@ -268,21 +294,6 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                       </div>
                     ))}
                   </div>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">3D model</p>
-                  <dl className="mt-3 space-y-2 text-sm">
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-ink-muted">model3dId</dt>
-                      <dd className="font-mono text-xs font-bold text-ink">{item.model3dId}</dd>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-ink-muted">model3dUrl</dt>
-                      <dd className="font-mono text-xs font-bold text-ink">{item.model3dUrl}</dd>
-                    </div>
-                  </dl>
-                </div>
               </div>
 
               <div className="mt-4 rounded-2xl border border-line bg-white p-4">
@@ -305,10 +316,12 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-ink">{placement.zone}</p>
-                              <p className="break-all font-mono text-xs text-ink-muted">logoFileId: {placement.logoFileId}</p>
+                              <p className="font-bold text-ink">{zoneLabel(placement.zone)}</p>
+                              <p className="truncate text-xs font-semibold text-ink-muted" title={placement.logoFileName}>
+                                {placement.logoFileName}
+                              </p>
                               <p className="text-xs text-ink-muted">
-                                {placement.widthCm}×{placement.heightCm} cm · {placement.rotation}° · {placement.technique}
+                                {embroideryTechniqueLabel(placement.technique)} · {placement.widthCm}×{placement.heightCm} cm · Rotasi {placement.rotation}°
                               </p>
                             </div>
                           </div>

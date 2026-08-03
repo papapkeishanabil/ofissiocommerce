@@ -30,6 +30,17 @@ export function normalizeQuotationRecord(
       : safeMoney(quotation.subtotal);
   const discountTotal = safeMoney(quotation.discountTotal);
   const taxTotal = safeMoney(quotation.taxTotal);
+  const taxableBase = Math.max(0, (pricingSubtotal ?? 0) - discountTotal);
+  const taxEnabled =
+    typeof quotation.taxEnabled === "boolean"
+      ? quotation.taxEnabled
+      : taxTotal > 0;
+  const inferredTaxRate =
+    taxTotal > 0 && taxableBase > 0 ? (taxTotal / taxableBase) * 100 : 0;
+  const taxRate = normalizeTaxRate(
+    quotation.taxRate == null ? inferredTaxRate : quotation.taxRate,
+  );
+  const taxLabel = cleanTaxLabel(quotation.taxLabel);
   const shippingEstimate = safeMoney(quotation.shippingEstimate);
   const computedGrandTotal =
     pricingSubtotal == null
@@ -47,6 +58,9 @@ export function normalizeQuotationRecord(
     customerMessage: quotation.customerMessage ?? null,
     subtotal: pricingSubtotal,
     discountTotal,
+    taxEnabled,
+    taxRate,
+    taxLabel,
     taxTotal,
     shippingEstimate,
     grandTotal:
@@ -224,7 +238,21 @@ export function calculateQuotationPricing(
     0,
   );
   const discountTotal = safeMoney(input.discountTotal);
-  const taxTotal = safeMoney(input.taxTotal);
+  const taxableBase = Math.max(0, subtotal - discountTotal);
+  const taxEnabled = input.taxEnabled ?? quotation.taxEnabled ?? false;
+  const taxRate = normalizeTaxRate(input.taxRate ?? quotation.taxRate ?? 0);
+  const taxLabel = cleanTaxLabel(input.taxLabel ?? quotation.taxLabel);
+  const usesRateCalculation =
+    input.taxEnabled !== undefined || input.taxRate !== undefined;
+  const taxTotal = usesRateCalculation
+    ? taxEnabled
+      ? calculateTaxAmount(taxableBase, taxRate)
+      : 0
+    : input.taxTotal !== undefined
+      ? safeMoney(input.taxTotal)
+      : taxEnabled
+        ? calculateTaxAmount(taxableBase, taxRate)
+        : 0;
   const shippingEstimate = safeMoney(input.shippingEstimate);
   const grandTotal = Math.max(0, subtotal - discountTotal) + taxTotal + shippingEstimate;
 
@@ -232,6 +260,9 @@ export function calculateQuotationPricing(
     items,
     subtotal,
     discountTotal,
+    taxEnabled,
+    taxRate,
+    taxLabel,
     taxTotal,
     shippingEstimate,
     grandTotal,
@@ -265,7 +296,8 @@ export function isQuotationExpired(
   now = Date.now(),
 ) {
   if (!quotation.validUntil) return false;
-  return Date.parse(quotation.validUntil) < now;
+  const validUntil = Date.parse(quotation.validUntil);
+  return !Number.isFinite(validUntil) || validUntil <= now;
 }
 
 export function canCustomerAcceptQuotation(
@@ -276,9 +308,25 @@ export function canCustomerAcceptQuotation(
 }
 
 export function hasFinalQuotationPricing(quotation: QuotationRequestRecord) {
+  const subtotal = Number(quotation.subtotal);
   const grandTotal = Number(quotation.grandTotal);
   return (
+    quotation.items.length > 0 &&
+    quotation.items.every((item) => {
+      const finalUnitPrice = Number(item.finalUnitPrice);
+      const finalLineTotal = Number(item.finalLineTotal);
+      return (
+        item.finalUnitPrice != null &&
+        Number.isFinite(finalUnitPrice) &&
+        finalUnitPrice >= 0 &&
+        item.finalLineTotal != null &&
+        Number.isFinite(finalLineTotal) &&
+        finalLineTotal >= 0
+      );
+    }) &&
     quotation.subtotal != null &&
+    Number.isFinite(subtotal) &&
+    subtotal >= 0 &&
     Number.isFinite(grandTotal) &&
     grandTotal > 0
   );
@@ -306,17 +354,87 @@ export function getQuotationAcceptDisabledReason(
   if (quotation.status !== "quoted") {
     return "Penawaran resmi belum dikirim oleh tim Ofissio.";
   }
+  if (!quotation.validUntil) {
+    return "Masa berlaku penawaran belum tersedia.";
+  }
   return null;
 }
 
 export function isConvertableQuotationStatus(status: QuotationStatus) {
-  return status === "accepted" || status === "quoted";
+  return status === "accepted";
+}
+
+export function isFinalQuotationStatus(status: QuotationStatus | string) {
+  return ["quoted", "accepted", "converted_to_order"].includes(status);
+}
+
+export function isQuotationPricingEditable(status: QuotationStatus) {
+  return ["submitted", "emailed", "under_review", "revision_requested"].includes(
+    status,
+  );
+}
+
+export function isQuotationSendable(status: QuotationStatus) {
+  return ["submitted", "emailed", "under_review", "revision_requested", "quoted"].includes(
+    status,
+  );
+}
+
+export function canAdminTransitionQuotationStatus(
+  current: QuotationStatus,
+  next: QuotationStatus,
+) {
+  const transitions: Partial<Record<QuotationStatus, QuotationStatus[]>> = {
+    draft: ["submitted", "cancelled"],
+    submitted: ["under_review", "expired", "cancelled"],
+    emailed: ["under_review", "expired", "cancelled"],
+    under_review: ["expired", "cancelled"],
+    revision_requested: ["under_review", "expired", "cancelled"],
+    quoted: ["expired", "cancelled"],
+  };
+  return transitions[current]?.includes(next) ?? false;
+}
+
+export function isSuccessfulQuotationEmailStatus(status: string) {
+  return status === "sent" || status === "mocked";
+}
+
+export function sanitizeQuotationForCustomer(
+  quotation: QuotationRequestRecord,
+): QuotationRequestRecord {
+  return {
+    ...quotation,
+    internalNotes: [],
+    salesNotes: null,
+    salesEmail: null,
+    emailLogIds: [],
+    emailResults: [],
+    wooSyncError: null,
+  };
 }
 
 export function safeMoney(value: unknown) {
   const amount = Number(value ?? 0);
   if (!Number.isFinite(amount) || amount < 0) return 0;
   return Math.round(amount);
+}
+
+export function normalizeTaxRate(value: unknown) {
+  const rate = Number(value ?? 0);
+  if (!Number.isFinite(rate)) return 0;
+  return Math.min(100, Math.max(0, Math.round(rate * 100) / 100));
+}
+
+export function calculateTaxAmount(taxableBase: number, rate: number) {
+  return Math.round(safeMoney(taxableBase) * normalizeTaxRate(rate) / 100);
+}
+
+export function quotationTaxLabel(
+  quotation: Pick<QuotationRequestRecord, "taxEnabled" | "taxRate" | "taxLabel">,
+) {
+  return quotation.taxEnabled
+    ? `${cleanTaxLabel(quotation.taxLabel)} ${normalizeTaxRate(quotation.taxRate)}%`
+    : `${cleanTaxLabel(quotation.taxLabel)} tidak dikenakan`;
 }
 
 function normalizeDate(value?: string | null) {
@@ -328,4 +446,9 @@ function normalizeDate(value?: string | null) {
 function cleanOptionalText(value?: string | null) {
   const text = value?.trim();
   return text ? text : null;
+}
+
+function cleanTaxLabel(value?: string | null) {
+  const label = value?.trim();
+  return label ? label.slice(0, 30) : "PPN";
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
@@ -58,6 +59,17 @@ export default async function AdminQuotationsPage({ searchParams }: PageProps) {
         <AdminEmptyState title="Quotation belum ada" />
       ) : (
         <AdminTableShell>
+          {quotations.some((quotation) => quotation.status === "accepted") ? (
+            <div className="flex flex-col gap-2 border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <p className="flex items-center gap-2 font-semibold text-emerald-900">
+                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                Quotation yang diterima customer diprioritaskan di urutan teratas.
+              </p>
+              <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200">
+                {quotations.filter((quotation) => quotation.status === "accepted").length} perlu diproses
+              </span>
+            </div>
+          ) : null}
           <table className={`${ADMIN_TABLE_CLASS} min-w-[920px]`}>
             <thead className="bg-slate-50/80">
               <tr>
@@ -72,9 +84,23 @@ export default async function AdminQuotationsPage({ searchParams }: PageProps) {
               </tr>
             </thead>
             <tbody>
-              {quotations.map((quotation) => (
-                <tr key={quotation.id} className="align-top">
-                  <td className="px-4 py-3 font-bold text-ink">{quotation.quotationNumber}</td>
+              {quotations.map((quotation) => {
+                const isAccepted = quotation.status === "accepted";
+                return (
+                <tr
+                  key={quotation.id}
+                  className={isAccepted ? "align-top bg-emerald-50/70" : "align-top"}
+                  aria-label={isAccepted ? `${quotation.quotationNumber}, diterima customer dan siap diproses` : undefined}
+                >
+                  <td className={`px-4 py-3 font-bold text-ink ${isAccepted ? "border-l-4 border-l-emerald-500" : ""}`}>
+                    {quotation.quotationNumber}
+                    {isAccepted ? (
+                      <span className="mt-1.5 flex w-fit items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-800 ring-1 ring-emerald-200">
+                        <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                        Siap dikonversi
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="font-semibold text-ink">{quotation.companyName}</div>
                     <div className="text-xs text-ink-muted">{quotation.picName} · {quotation.picEmail ?? "-"}</div>
@@ -87,14 +113,24 @@ export default async function AdminQuotationsPage({ searchParams }: PageProps) {
                   </td>
                   <td className="px-4 py-3">{quotation.itemCount}</td>
                   <td className="px-4 py-3">{quotation.totalQty} pcs</td>
-                  <td className="px-4 py-3">{formatAdminDate(quotation.createdAt)}</td>
+                  <td className="px-4 py-3">
+                    {isAccepted && quotation.acceptedAt ? (
+                      <>
+                        <span className="block text-xs font-bold text-emerald-800">Diterima</span>
+                        {formatAdminDate(quotation.acceptedAt)}
+                      </>
+                    ) : (
+                      formatAdminDate(quotation.createdAt)
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <Link href={`/admin/quotations/${quotation.id}`} className="font-bold text-brand-700">
                       View Detail
                     </Link>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </AdminTableShell>

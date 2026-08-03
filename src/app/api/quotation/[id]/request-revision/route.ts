@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requestQuotationRevisionByCustomer } from "@/features/quotation/quotation.service";
 import { quotationRevisionBodySchema } from "@/features/quotation/quotation.validation";
+import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
 import { requireAuth } from "@/lib/security/auth-guard";
 import { requireCompanyAccess } from "@/lib/security/company-access";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
@@ -37,14 +38,11 @@ export async function POST(request: Request, context: RouteContext) {
       note: payload.note,
       request,
     });
-    return NextResponse.json({ ok: true, quotation: toCustomerQuotation(quotation) });
+    return NextResponse.json({
+      ok: true,
+      quotation: sanitizeQuotationForCustomer(quotation),
+    });
   } catch (error) {
     return safeErrorResponse(error, "Request revision belum dapat diproses.", 400);
   }
-}
-
-function toCustomerQuotation<T extends { internalNotes?: unknown; salesNotes?: unknown }>(
-  quotation: T,
-) {
-  return { ...quotation, internalNotes: [], salesNotes: null };
 }

@@ -11,14 +11,20 @@ import type {
   QuotationEventRecord,
   QuotationRequestRecord,
 } from "@/features/quotation/quotation.types";
-import { quotationStatusLabel } from "@/features/quotation/quotation.mapper";
+import {
+  customerQuotationStatusMessage,
+  quotationStatusLabel,
+} from "@/features/quotation/quotation.mapper";
 import {
   getQuotationAcceptDisabledReason,
   hasFinalQuotationPricing,
+  isQuotationExpired,
+  quotationTaxLabel,
 } from "@/features/quotation/quotation.utils";
 import { useAuth } from "@/hooks/use-auth";
 import { formatIDR } from "@/types/product";
 import type { AuthSession } from "@/types/account";
+import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
 
 interface QuotationConfirmationProps {
   quotation: QuotationRequestRecord;
@@ -59,14 +65,10 @@ export function QuotationConfirmation({
   const canShowFinalPrice =
     ["quoted", "accepted", "converted_to_order"].includes(quotation.status) &&
     hasFinalPricing;
-  const isExpired = quotation.validUntil
-    ? Date.parse(quotation.validUntil) < Date.now()
-    : false;
+  const isExpired = isQuotationExpired(quotation);
   const acceptDisabledReason = getQuotationAcceptDisabledReason(quotation);
   const canAccept = acceptDisabledReason === null;
-  const canReject = ["quoted", "under_review", "submitted", "emailed"].includes(
-    quotation.status,
-  ) && !isExpired;
+  const canReject = quotation.status === "quoted" && !isExpired;
   const canRequestRevision =
     quotation.status === "quoted" && !isExpired && hasFinalPricing;
   const reviewCopy = customerQuotationStatusMessage(quotation.status);
@@ -170,12 +172,12 @@ export function QuotationConfirmation({
 
         <div className="mt-5 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900">
           <p className="font-bold">{reviewCopy}</p>
-          {quotation.customerMessage && quotation.status === "quoted" ? (
+          {quotation.customerMessage && canShowFinalPrice ? (
             <p className="mt-2 border-t border-brand-200 pt-2 text-brand-800">
               {quotation.customerMessage}
             </p>
           ) : null}
-          {quotation.validUntil ? (
+          {canShowFinalPrice && quotation.validUntil ? (
             <p className="mt-1 text-brand-800">
               Berlaku sampai {formatDate(quotation.validUntil)}
               {isExpired ? " - sudah kedaluwarsa" : ""}.
@@ -187,7 +189,7 @@ export function QuotationConfirmation({
           <dl className="mt-5 grid gap-3 text-sm md:grid-cols-5">
             <PriceCard label="Subtotal" value={quotation.subtotal ?? 0} />
             <PriceCard label="Discount" value={quotation.discountTotal} />
-            <PriceCard label="Tax" value={quotation.taxTotal} />
+            <PriceCard label={quotationTaxLabel(quotation)} value={quotation.taxTotal} />
             <PriceCard label="Ongkir estimasi" value={quotation.shippingEstimate} />
             <PriceCard label="Grand total" value={quotation.grandTotal ?? 0} strong />
           </dl>
@@ -278,63 +280,125 @@ export function QuotationConfirmation({
         ) : null}
       </section>
 
-      <section className="mt-5 space-y-4">
-        <h2 className="text-lg font-black text-ink">Item, size matrix, dan bordir</h2>
+      <section className="mt-6 space-y-4">
+        <div>
+          <h2 className="text-xl font-black text-ink">Rincian produk dan bordir</h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Periksa kembali jumlah per ukuran serta detail bordir yang diajukan.
+          </p>
+        </div>
         {quotation.items.map((item) => (
           <article
             key={item.id}
             className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-lg font-black text-ink">{item.productName}</h3>
-                <p className="text-sm text-ink-muted">
-                  SKU {item.sku} - {item.selectedColor} - {item.totalQty} pcs
+                <p className="mt-0.5 text-sm text-ink-muted">
+                  SKU {item.sku} · {item.selectedColor}
                 </p>
               </div>
-              <p className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-ink">
-                model3dUrl: {item.model3dUrl}
-              </p>
+              <span className="rounded-full bg-brand-50 px-3 py-1.5 text-sm font-black text-brand-800 ring-1 ring-brand-100">
+                {item.totalQty} pcs
+              </span>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_280px]">
-              <div className="grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
-                {Object.entries(item.sizeMatrix).map(([size, qty]) => (
-                  <div key={size} className="rounded-xl bg-slate-50 p-3 text-center ring-1 ring-line">
-                    <p className="font-black text-ink">{size}</p>
-                    <p className="text-ink-muted">{qty} pcs</p>
-                  </div>
-                ))}
+
+            <div className="mt-5 grid items-start overflow-hidden rounded-2xl border border-line lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.78fr)]">
+              <div className="p-4 sm:p-5 lg:border-r lg:border-line">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-black text-ink">Distribusi ukuran</p>
+                  <p className="text-xs font-semibold text-ink-muted">
+                    Total {item.totalQty} pcs
+                  </p>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
+                  {orderedSizeEntries(item.sizeMatrix).map(([size, qty]) => {
+                    const hasQuantity = qty > 0;
+                    return (
+                      <div
+                        key={size}
+                        className={
+                          hasQuantity
+                            ? "flex min-h-20 flex-col justify-center rounded-xl bg-brand-50 px-2 py-3 text-center ring-1 ring-brand-200"
+                            : "flex min-h-20 flex-col justify-center rounded-xl bg-slate-50 px-2 py-3 text-center ring-1 ring-line"
+                        }
+                      >
+                        <p className={hasQuantity ? "font-black text-brand-900" : "font-black text-ink"}>
+                          {size}
+                        </p>
+                        <p className={hasQuantity ? "mt-1 font-bold text-brand-700" : "mt-1 text-ink-muted"}>
+                          {qty} pcs
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-xs leading-5 text-ink-muted">
+                  Kotak berwarna menandai ukuran yang masuk dalam pesanan ini.
+                </p>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4 text-sm">
-                <p className="font-black text-ink">Bordir</p>
+
+              <div className="border-t border-line bg-slate-50 p-4 text-sm sm:p-5 lg:border-t-0">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-black text-ink">Detail bordir</p>
+                  <span className="text-xs font-semibold text-ink-muted">
+                    {item.embroideryPlacements.length} titik
+                  </span>
+                </div>
                 {item.embroideryPlacements.length === 0 ? (
-                  <p className="mt-1 text-ink-muted">Tidak ada titik bordir.</p>
+                  <p className="mt-3 rounded-xl border border-dashed border-line bg-white px-3 py-4 text-center text-ink-muted">
+                    Tidak ada titik bordir pada item ini.
+                  </p>
                 ) : (
-                  <ul className="mt-2 space-y-1 text-ink-muted">
+                  <ul className="mt-3 divide-y divide-line border-y border-line">
                     {item.embroideryPlacements.map((placement) => (
-                      <li key={`${placement.zone}-${placement.logoFileId}`}>
-                        {placement.zone} - {placement.widthCm}x{placement.heightCm} cm
+                      <li
+                        key={`${placement.zone}-${placement.logoFileId}`}
+                        className="py-3 first:pt-0 last:pb-0"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-bold text-ink">{zoneLabel(placement.zone)}</p>
+                            <p className="mt-0.5 truncate text-xs font-semibold text-ink-muted" title={placement.logoFileName}>
+                              {placement.logoFileName}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-800 ring-1 ring-line">
+                            {placement.widthCm}×{placement.heightCm} cm
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-xs leading-5 text-ink-muted">
+                          {embroideryTechniqueLabel(placement.technique)} · Rotasi {placement.rotation}°
+                        </p>
+                        {placement.notes ? (
+                          <p className="mt-1 text-xs leading-5 text-ink-muted">Catatan: {placement.notes}</p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
                 )}
                 {item.embroideryLines.length > 0 ? (
-                  <div className="mt-3 border-t border-line pt-3">
-                    <p className="font-black text-ink">Estimasi harga bordir</p>
-                    <ul className="mt-2 space-y-1 text-ink-muted">
+                  <div className="mt-4">
+                    <p className="font-black text-ink">
+                      {hasFinalPricing ? "Rincian biaya bordir" : "Estimasi biaya bordir"}
+                    </p>
+                    <ul className="mt-2 space-y-2 text-ink-muted">
                       {item.embroideryLines.map((line) => (
-                        <li key={line.zoneId} className="flex justify-between gap-3">
-                          <span>{line.label} · {line.quantity} pcs × {formatIDR(line.unitPrice)}</span>
-                          <strong className="text-ink">{formatIDR(line.subtotal)}</strong>
+                        <li key={line.zoneId} className="flex items-start justify-between gap-4">
+                          <span className="leading-5">{line.label} · {line.quantity} pcs × {formatIDR(line.unitPrice)}</span>
+                          <strong className="shrink-0 text-ink">{formatIDR(line.subtotal)}</strong>
                         </li>
                       ))}
                     </ul>
-                    <div className="mt-3 flex justify-between gap-3 border-t border-line pt-3 text-sm">
-                      <span className="font-black text-ink">Total estimasi bordir</span>
+                    <div className="mt-4 flex justify-between gap-3 border-t border-line pt-3 text-sm">
+                      <span className="font-black text-ink">
+                        {hasFinalPricing ? "Total biaya bordir" : "Total estimasi bordir"}
+                      </span>
                       <strong className="text-brand-800">{formatIDR(item.embroideryTotal)}</strong>
                     </div>
-                    <div className="mt-2 flex justify-between gap-3 text-xs text-ink-muted">
-                      <span>Estimasi produk + bordir</span>
+                    <div className="mt-2 flex justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-xs text-ink-muted ring-1 ring-line">
+                      <span>{hasFinalPricing ? "Total item" : "Estimasi produk + bordir"}</span>
                       <strong className="text-ink">{formatIDR(item.finalEstimatedTotal)}</strong>
                     </div>
                   </div>
@@ -394,34 +458,22 @@ type CustomerQuotationEvent = Pick<
   "id" | "eventType" | "oldStatus" | "newStatus" | "createdAt" | "note"
 >;
 
-function customerQuotationStatusMessage(
-  status: QuotationRequestRecord["status"],
-) {
-  switch (status) {
-    case "quoted":
-      return "Penawaran resmi sudah dikirim oleh tim Ofissio. Silakan accept, reject, atau request revision.";
-    case "accepted":
-      return "Penawaran sudah diterima. Tim Ofissio akan melanjutkan proses order.";
-    case "rejected":
-      return "Penawaran sudah ditolak. Hubungi tim Ofissio jika masih memerlukan bantuan.";
-    case "revision_requested":
-      return "Permintaan revisi sudah dikirim. Tim Ofissio sedang menyiapkan penawaran berikutnya.";
-    case "expired":
-      return "Masa berlaku penawaran sudah berakhir. Silakan hubungi tim Ofissio.";
-    case "cancelled":
-      return "Quotation ini sudah dibatalkan.";
-    case "converted_to_order":
-      return "Penawaran sudah dikonversi menjadi order.";
-    case "draft":
-    case "submitted":
-    case "emailed":
-    case "under_review":
-      return "Sedang direview tim Ofissio. Harga final akan tampil setelah sales mengirim penawaran.";
-  }
-}
-
 function quoteNotificationKey(quotationId: string) {
   return `ofissio-quote-notification:${quotationId}`;
+}
+
+const QUOTATION_SIZE_ORDER = ["S", "M", "L", "XL", "2XL", "3XL"] as const;
+
+function orderedSizeEntries(sizeMatrix: Record<string, number>) {
+  const rank = new Map<string, number>(
+    QUOTATION_SIZE_ORDER.map((size, index) => [size, index]),
+  );
+
+  return Object.entries(sizeMatrix).sort(([left], [right]) => {
+    const leftRank = rank.get(left) ?? Number.MAX_SAFE_INTEGER;
+    const rightRank = rank.get(right) ?? Number.MAX_SAFE_INTEGER;
+    return leftRank - rightRank || left.localeCompare(right);
+  });
 }
 
 function PriceCard({
