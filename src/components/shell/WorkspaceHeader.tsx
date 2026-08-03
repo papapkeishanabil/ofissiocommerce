@@ -18,7 +18,7 @@ export function WorkspaceHeader() {
   const openAuth = useUIStore((s) => s.openAuth);
 
   return (
-    <header className="glass-light sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-line px-4 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-line bg-white px-4 lg:px-6">
       <Link
         href="/"
         className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80"
@@ -37,7 +37,7 @@ export function WorkspaceHeader() {
           <div className="flex items-center gap-1">
             <Link
               href="/dashboard"
-              className="hidden items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-ink hover:bg-slate-100 sm:flex"
+              className="hidden items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface-muted sm:flex"
               title={roleLabel(session.user.role)}
             >
               <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700">
@@ -51,7 +51,7 @@ export function WorkspaceHeader() {
               type="button"
               onClick={logout}
               aria-label="Logout"
-              className="grid h-9 w-9 place-items-center rounded-lg text-ink-muted hover:bg-slate-100"
+              className="grid h-9 w-9 place-items-center rounded-lg text-ink-muted hover:bg-surface-muted"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -60,7 +60,7 @@ export function WorkspaceHeader() {
           <button
             type="button"
             onClick={() => openAuth({ kind: "none" }, "login")}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink hover:bg-slate-100"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink hover:bg-surface-muted"
           >
             <LogIn className="h-4 w-4" />
             <span className="hidden sm:inline">Masuk</span>
@@ -70,7 +70,7 @@ export function WorkspaceHeader() {
         {/* Cart */}
         <Link
           href="/cart"
-          className="relative inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-ink hover:bg-slate-100"
+          className="relative inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-ink hover:bg-surface-muted"
           aria-label="Lihat keranjang"
         >
           <UserRound className="hidden" />

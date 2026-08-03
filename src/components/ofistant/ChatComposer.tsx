@@ -1,7 +1,3 @@
-// src/components/ofistant/ChatComposer.tsx
-// Prominent AI input with affordance that this is an AI assistant, not a
-// generic text field. Sparkles prefix + gradient send button + capability hint.
-
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -27,19 +23,13 @@ export function ChatComposer({ disabled, onSubmit }: ChatComposerProps) {
     <div className="space-y-1.5">
       <form
         onSubmit={handle}
-        className="group relative flex items-end gap-2 rounded-2xl border border-line bg-surface p-1.5 shadow-soft-sm transition-all focus-within:border-brand-400 focus-within:shadow-soft-md"
+        className="group relative flex items-end gap-2 rounded-2xl border border-line bg-surface-muted p-1.5 transition-all focus-within:border-brand-400 focus-within:bg-white focus-within:shadow-soft-sm"
       >
-        {/* AI affordance icon */}
-        <span
-          aria-hidden
-          className="ml-1 mb-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-soft-sm"
-        >
-          <Sparkles className="h-3.5 w-3.5" strokeWidth={2.4} />
+        <span aria-hidden className="ml-1 mb-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-700 text-white shadow-soft-xs">
+          <Sparkles className="h-3.5 w-3.5" strokeWidth={2.2} />
         </span>
 
-        <label htmlFor="ofistant-input" className="sr-only">
-          Ketik pesan ke Ofistant
-        </label>
+        <label htmlFor="ofistant-input" className="sr-only">Ketik pesan ke Ofistant</label>
         <input
           id="ofistant-input"
           type="text"
@@ -55,9 +45,9 @@ export function ChatComposer({ disabled, onSubmit }: ChatComposerProps) {
           type="submit"
           disabled={disabled || !value.trim()}
           aria-label="Kirim pesan"
-          className="mb-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-sm transition-all hover:bg-brand-800 active:scale-95 disabled:bg-slate-300 disabled:shadow-none"
+          className="mb-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-xs transition-all hover:bg-brand-800 active:scale-95 disabled:bg-slate-300 disabled:shadow-none"
         >
-          <ArrowUp className="h-4 w-4" strokeWidth={2.4} />
+          <ArrowUp className="h-4 w-4" strokeWidth={2.2} />
         </button>
       </form>
       <p className="px-2 text-[9px] text-ink-subtle">

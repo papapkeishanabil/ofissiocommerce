@@ -18,12 +18,9 @@ export function QuickReplies({ options, onPick, disabled }: QuickRepliesProps) {
           type="button"
           disabled={disabled}
           onClick={() => onPick(opt)}
-          className="group inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50/60 px-3 py-1.5 text-[11px] font-semibold text-brand-700 transition-all hover:border-brand-400 hover:bg-brand-50 hover:shadow-soft-xs disabled:opacity-50"
+          className="group inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-[11px] font-semibold text-brand-700 transition-all hover:border-brand-400 hover:bg-brand-100 disabled:opacity-50"
         >
-          <span
-            aria-hidden
-            className="h-1 w-1 rounded-full bg-ochre-500 transition-transform group-hover:scale-125"
-          />
+          <span aria-hidden className="h-1 w-1 rounded-full bg-ochre-500 transition-transform group-hover:scale-125" />
           {opt}
         </button>
       ))}

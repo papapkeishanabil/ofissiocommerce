@@ -1,8 +1,3 @@
-// src/components/shell/OfistantPanel.tsx
-// Ofistant live chat panel (Phase 3): rule-based agent with structured actions.
-// AI real (LLM tool-calling) is wired in Phase 7 by swapping the brain in
-// lib/ofistant/ofistant.service.ts — the UI here stays unchanged.
-
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -10,7 +5,6 @@ import { GitCompare, Headset, RotateCcw, Search, ShoppingBag, Sparkles, X, type 
 
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { useOfistantAction } from "@/hooks/use-ofistant-action";
-
 import { Button } from "@/components/ui/Button";
 import { ChatComposer } from "@/components/ofistant/ChatComposer";
 import { ChatMessageView } from "@/components/ofistant/ChatMessageView";
@@ -18,10 +12,7 @@ import { IndustryQuickPicker } from "@/components/ofistant/IndustryQuickPicker";
 import { QuickReplies } from "@/components/ofistant/QuickReplies";
 import { TypingIndicator } from "@/components/ofistant/TypingIndicator";
 
-interface OfistantPanelProps {
-  /** when provided, render a close button (used in mobile bottom sheet) */
-  onClose?: () => void;
-}
+interface OfistantPanelProps { onClose?: () => void; }
 
 export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const messages = useOfistantStore((s) => s.messages);
@@ -36,129 +27,60 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const hydrated = useOfistantStore((s) => s.hydrated);
   const journeyStage = useOfistantStore((s) => s.context.journeyStage);
   const messagesCount = useOfistantStore((s) => s.messages.length);
-
   const { dispatch } = useOfistantAction();
   const [busy, setBusy] = useState(false);
-
-  // Show the prominent industry quick picker only on first welcome state
-  // (before the user has interacted). After interaction, regular quick replies
-  // chips take over so the picker doesn't get in the way.
-  const showIndustryPicker =
-    journeyStage === "NEW_VISITOR" && messagesCount <= 1 && !typing;
-
+  const showIndustryPicker = journeyStage === "NEW_VISITOR" && messagesCount <= 1 && !typing;
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Bootstrap welcome message on mount.
-  useEffect(() => {
-    init();
-  }, [init]);
+  useEffect(() => { init(); }, [init]);
+  useLayoutEffect(() => { const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight; }, [messages, typing, pendingAction]);
 
-  // Auto-scroll to bottom on new messages / typing.
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, typing, pendingAction]);
-
-  function handleSend(text: string) {
-    sendUserTurn(text);
-  }
-
-  function handleQuickReply(text: string) {
-    sendUserTurn(text, { viaQuickReply: true });
-  }
-
+  function handleSend(text: string) { sendUserTurn(text); }
+  function handleQuickReply(text: string) { sendUserTurn(text, { viaQuickReply: true }); }
   async function handleConfirm() {
     const action = confirmPendingAction();
     if (!action) return;
     setBusy(true);
     dispatch(action);
-    // Small delay for UX feedback before clearing busy.
     setTimeout(() => setBusy(false), 350);
-    // Push a soft confirmation message from the assistant.
-    useOfistantStore.setState((s) => ({
-      messages: [
-        ...s.messages,
-        {
-          id: `assistant-confirm-${Date.now()}`,
-          role: "assistant",
-          text:
-            action.type === "ADD_TO_CART"
-              ? "Berhasil ditambahkan ke keranjang. Mau lanjut mencari produk pelengkap, atau langsung ke keranjang?"
-              : "Selesai.",
-          ts: Date.now(),
-        },
-      ],
-      quickReplies:
-        action.type === "ADD_TO_CART"
-          ? ["Lanjut eksplor produk", "Lihat keranjang", "Checkout"]
-          : [],
-    }));
+    useOfistantStore.setState((s) => ({ messages: [...s.messages, { id: `assistant-confirm-${Date.now()}`, role: "assistant" as const, text: action.type === "ADD_TO_CART" ? "Berhasil ditambahkan ke keranjang. Mau lanjut mencari produk pelengkap, atau langsung ke keranjang?" : "Selesai.", ts: Date.now() }], quickReplies: action.type === "ADD_TO_CART" ? ["Lanjut eksplor produk", "Lihat keranjang", "Checkout"] : [] }));
   }
-
   function handleCancel() {
     dismissPendingAction();
-    useOfistantStore.setState((s) => ({
-      messages: [
-        ...s.messages,
-        {
-          id: `assistant-cancel-${Date.now()}`,
-          role: "assistant",
-          text: "Baik, saya batalkan. Beri tahu saya jika ada yang ingin disesuaikan.",
-          ts: Date.now(),
-        },
-      ],
-    }));
+    useOfistantStore.setState((s) => ({ messages: [...s.messages, { id: `assistant-cancel-${Date.now()}`, role: "assistant" as const, text: "Baik, saya batalkan. Beri tahu saya jika ada yang ingin disesuaikan.", ts: Date.now() }] }));
   }
-
-  function handleHumanHandoff() {
-    sendUserTurn("Hubungi sales");
-  }
+  function handleHumanHandoff() { sendUserTurn("Hubungi sales"); }
 
   const lastPendingMsgId = pendingAction?.messageId ?? null;
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-muted">
-      {/* Header — AI identity card */}
-      <header className="relative flex items-center justify-between border-b border-line bg-surface px-4 py-3">
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-muted text-ink">
+      {/* Header — light corporate */}
+      <header className="relative flex items-center justify-between border-b border-line bg-white px-4 py-3.5">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-600 via-brand-700 to-brand-900 text-white shadow-soft-sm">
-              <Sparkles className="h-5 w-5 text-ochre-300" strokeWidth={2.4} />
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-sm">
+              <Sparkles className="h-5 w-5 text-ochre-300" strokeWidth={2.2} />
             </span>
-            {/* live dot */}
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface bg-emerald-500" />
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
           </div>
           <div>
-            <p className="type-display flex items-center gap-1.5 text-[15px] font-bold leading-tight text-ink">
+            <p className="flex items-center gap-1.5 text-[15px] font-bold leading-tight text-ink-strong">
               Ofistant
-              <span className="rounded bg-brand-50 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-brand-700">
-                AI
-              </span>
+              <span className="rounded bg-brand-50 px-1.5 py-px text-[8px] font-bold uppercase tracking-wide text-brand-700">AI</span>
             </p>
-            <p className="flex items-center gap-1 text-[10px] text-ink-muted">
+            <p className="flex items-center gap-1 text-[10px] text-ink-subtle">
               <span className="inline-block h-1 w-1 rounded-full bg-emerald-500" />
-              Asisten Pengadaan · siap membantu
+              Online · Asisten pengadaan
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={reset}
-            disabled={!hydrated || messages.length <= 1}
-            aria-label="Mulai percakapan baru"
-            title="Mulai percakapan baru"
-            className="grid h-8 w-8 place-items-center rounded-lg text-ink-muted hover:bg-slate-100 disabled:opacity-40"
-          >
+          <button type="button" onClick={reset} disabled={!hydrated || messages.length <= 1} aria-label="Mulai percakapan baru" title="Mulai percakapan baru" className="grid h-8 w-8 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-muted disabled:opacity-30">
             <RotateCcw className="h-4 w-4" />
           </button>
           {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Tutup Ofistant"
-              className="grid h-8 w-8 place-items-center rounded-lg text-ink-muted hover:bg-slate-100 lg:hidden"
-            >
+            <button type="button" onClick={onClose} aria-label="Tutup Ofistant" className="grid h-8 w-8 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-muted lg:hidden">
               <X className="h-5 w-5" />
             </button>
           )}
@@ -166,65 +88,39 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
       </header>
 
       {/* Messages */}
-      <div
-        ref={scrollRef}
-        className="relative flex-1 space-y-4 overflow-y-auto px-4 py-4"
-        aria-live="polite"
-      >
+      <div ref={scrollRef} className="relative flex-1 space-y-4 overflow-y-auto bg-surface-muted px-4 py-4" aria-live="polite">
         {showIndustryPicker ? (
           <WelcomeCard />
         ) : (
           messages.map((m) => (
-            <ChatMessageView
-              key={m.id}
-              message={m}
-              isPendingConfirm={
-                !!pendingAction &&
-                lastPendingMsgId === m.id &&
-                !!m.requiresConfirm
-              }
-              onConfirm={handleConfirm}
-              onCancel={handleCancel}
-              busy={busy}
-            />
+            <ChatMessageView key={m.id} message={m} isPendingConfirm={!!pendingAction && lastPendingMsgId === m.id && !!m.requiresConfirm} onConfirm={handleConfirm} onCancel={handleCancel} busy={busy} />
           ))
         )}
-
-        {showIndustryPicker && (
-          <IndustryQuickPicker onPick={handleQuickReply} />
-        )}
-
+        {showIndustryPicker && <IndustryQuickPicker onPick={handleQuickReply} />}
         {typing && (
           <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white">
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-700 text-white">
               <Sparkles className="h-3.5 w-3.5" />
             </span>
-            <div className="rounded-2xl rounded-tl-md bg-surface px-3 py-2 shadow-sm ring-1 ring-line">
+            <div className="rounded-2xl rounded-tl-md border border-line bg-white px-3 py-2 shadow-soft-xs">
               <TypingIndicator />
             </div>
           </div>
         )}
-
         {!typing && quickReplies.length > 0 && !pendingAction && !showIndustryPicker && (
           <QuickReplies options={quickReplies} onPick={handleQuickReply} />
         )}
       </div>
 
       {/* Composer + handoff */}
-      <div className="relative space-y-2 border-t border-line bg-surface px-4 py-3.5">
+      <div className="relative space-y-2 border-t border-line bg-white px-4 py-3">
         <ChatComposer onSubmit={handleSend} disabled={typing} />
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleHumanHandoff}
-            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-[10px] font-semibold text-ink-muted transition-all hover:border-brand-300 hover:text-brand-700"
-          >
-            <Headset className="h-3 w-3" />
-            Hubungi Sales
+          <button type="button" onClick={handleHumanHandoff} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-muted px-2.5 py-1 text-[10px] font-medium text-ink-muted transition-all hover:border-brand-300 hover:text-brand-700">
+            <Headset className="h-3 w-3" /> Hubungi Sales
           </button>
           <span className="flex items-center gap-1 text-[9px] text-ink-subtle">
-            <Sparkles className="h-2.5 w-2.5 text-brand-400" />
-            Ofistant AI · B2B commerce
+            <Sparkles className="h-2.5 w-2.5 text-ochre-500/60" /> Ofistant AI · B2B commerce
           </span>
         </div>
       </div>
@@ -232,24 +128,22 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   );
 }
 
-// Unused export kept to satisfy callers that imported the old shape (Phase 2).
-// Remove once ProductCard/CartPage stop referencing it.
 export const _legacyButtonLinkCompat = Button;
 
 function WelcomeCard() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-soft-sm">
-      <div className="bg-gradient-to-br from-brand-700 to-brand-900 px-4 py-3.5 text-white">
+    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-soft-sm">
+      <div className="bg-brand-700 px-4 py-3.5 text-white">
         <div className="flex items-center gap-2.5">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/15">
-            <Sparkles className="h-5 w-5 text-ochre-300" strokeWidth={2.4} />
+            <Sparkles className="h-5 w-5 text-ochre-300" strokeWidth={2.2} />
           </span>
           <div>
             <p className="text-sm font-bold leading-tight">Halo! Saya Ofistant</p>
-            <p className="text-[11px] text-white/70">Asisten pengadaan seragam</p>
+            <p className="text-[11px] text-brand-100">Asisten pengadaan seragam</p>
           </div>
         </div>
-        <p className="mt-2.5 text-[12.5px] leading-relaxed text-white/85">
+        <p className="mt-2.5 text-[12.5px] leading-relaxed text-brand-50">
           Saya bantu cari, bandingkan, &amp; pesan seragam kerja. Pilih industri di
           bawah atau tanyakan langsung.
         </p>
@@ -265,7 +159,7 @@ function WelcomeCard() {
 
 function CapabilityChip({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-brand-100 bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700">
       <Icon className="h-3 w-3" aria-hidden="true" />
       {label}
     </span>
