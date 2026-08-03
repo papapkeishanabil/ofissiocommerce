@@ -14,6 +14,7 @@ import type {
   AdminNotificationScope,
   CreateAdminNotificationInput,
   OrderCreatedNotificationInput,
+  QuotationAcceptedNotificationInput,
 } from "./admin-notification.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { logInternalError } from "@/lib/security/safe-error-response";
@@ -116,6 +117,50 @@ export async function createOrderCreatedNotification(
   }
 
   return (await adminNotificationRepository.getById(notification.id)) ?? notification;
+}
+
+export async function createQuotationAcceptedNotification(
+  quotation: QuotationAcceptedNotificationInput,
+  context: AdminNotificationMutationContext = {},
+) {
+  const result = await manager.create({
+    type: "quotation_accepted",
+    title: "Quotation Diterima Customer",
+    message: `${quotation.customerName} dari ${quotation.companyName} menerima ${quotation.quotationNumber} senilai ${formatNotificationMoney(quotation.total, quotation.currency)}`,
+    entityType: "quotation",
+    entityId: quotation.quotationId,
+    entityNumber: quotation.quotationNumber,
+    severity: "success",
+    metadata: {
+      quotationId: quotation.quotationId,
+      quotationNumber: quotation.quotationNumber,
+      customerName: quotation.customerName,
+      companyName: quotation.companyName,
+      total: quotation.total,
+      currency: quotation.currency ?? "IDR",
+      productSummary: quotation.productSummary,
+      adminUrl: `/admin/quotations/${quotation.quotationId}`,
+      source: "customer_accept",
+    },
+    emailStatus: "not_required",
+  });
+
+  if (result.created) {
+    logAuditEvent({
+      request: context.request,
+      actorId: context.actorId ?? null,
+      actorType: "system",
+      action: "admin_notification_created",
+      entityType: "admin_notification",
+      entityId: result.notification.id,
+      metadata: {
+        type: "quotation_accepted",
+        quotationId: quotation.quotationId,
+      },
+    });
+  }
+
+  return result.notification;
 }
 
 export async function getUnreadNotificationCount(scope: AdminNotificationScope) {

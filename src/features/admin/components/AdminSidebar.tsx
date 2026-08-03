@@ -15,6 +15,7 @@ import {
   PackageCheck,
   PackageSearch,
   Tags,
+  Percent,
   Truck,
   Workflow,
 } from "lucide-react";
@@ -28,6 +29,7 @@ const ICONS = {
   "/admin": Home,
   "/admin/products": PackageSearch,
   "/admin/pricing/embroidery": CircleDollarSign,
+  "/admin/settings/tax": Percent,
   "/admin/quotations": ListChecks,
   "/admin/orders": PackageCheck,
   "/admin/notifications": Bell,
@@ -81,6 +83,12 @@ export function AdminSidebar({ user }: { user: InternalAdminUser }) {
           ) {
             return null;
           }
+          if (
+            item.href === "/admin/settings/tax" &&
+            !["super_admin", "sales", "finance_internal"].includes(user.role)
+          ) {
+            return null;
+          }
           const Icon = ICONS[item.href] ?? Home;
           const active =
             item.href === "/admin"
@@ -111,6 +119,11 @@ export function AdminSidebar({ user }: { user: InternalAdminUser }) {
               {item.href === "/admin/orders" && summary.ordersUnread > 0 ? (
                 <span className="ml-auto min-w-6 rounded-full bg-red-600 px-2 py-0.5 text-center text-[11px] font-bold text-white">
                   {summary.ordersUnread > 99 ? "99+" : summary.ordersUnread}
+                </span>
+              ) : null}
+              {item.href === "/admin/quotations" && summary.quotationsUnread > 0 ? (
+                <span className="ml-auto min-w-6 rounded-full bg-red-600 px-2 py-0.5 text-center text-[11px] font-bold text-white">
+                  {summary.quotationsUnread > 99 ? "99+" : summary.quotationsUnread}
                 </span>
               ) : null}
               {item.href === "/admin/notifications" && summary.totalUnread > 0 ? (

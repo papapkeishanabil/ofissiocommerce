@@ -21,6 +21,17 @@ export const adminQuotationStatusPatchSchema = z.object({
 });
 
 const moneySchema = z.coerce.number().min(0).max(10_000_000_000);
+const optionalTextSchema = (max: number) =>
+  z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? null : value,
+    z.string().trim().max(max).nullable().optional(),
+  );
+const optionalEmailSchema = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? null : value,
+  z.string().trim().email().max(160).nullable().optional(),
+);
 
 export const adminQuotationPatchSchema = z.union([
   z.object({
@@ -47,12 +58,14 @@ export const adminQuotationPatchSchema = z.union([
       .min(1)
       .max(50),
     discountTotal: moneySchema.optional(),
+    taxEnabled: z.boolean().optional(),
+    taxRate: z.coerce.number().min(0).max(100).optional(),
     taxTotal: moneySchema.optional(),
     shippingEstimate: moneySchema.optional(),
-    customerMessage: z.string().trim().max(1000).nullable().optional(),
-    salesNotes: z.string().trim().max(1000).nullable().optional(),
-    validUntil: z.string().trim().max(80).nullable().optional(),
-    salesEmail: z.string().trim().email().max(160).nullable().optional(),
+    customerMessage: optionalTextSchema(1000),
+    salesNotes: optionalTextSchema(1000),
+    validUntil: optionalTextSchema(80),
+    salesEmail: optionalEmailSchema,
   }),
   z.object({
     action: z.literal("add_internal_note"),

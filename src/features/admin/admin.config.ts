@@ -6,6 +6,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/products", label: "Produk" },
   { href: "/admin/pricing/embroidery", label: "Harga Bordir" },
+  { href: "/admin/settings/tax", label: "PPN" },
   { href: "/admin/quotations", label: "Quotations" },
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/notifications", label: "Notifikasi" },
@@ -40,6 +41,8 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:notification:update",
     "admin:email:view",
     "admin:email:test",
+    "admin:tax:view",
+    "admin:tax:update",
     "admin:audit:view",
   ],
   sales: [
@@ -59,8 +62,9 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:notification:update",
     "admin:email:view",
     "admin:email:test",
+    "admin:tax:view",
   ],
-  finance_internal: ["admin:view", "admin:quotation:view", "admin:order:view", "admin:order:update", "admin:process-order:view", "admin:shipment:view"],
+  finance_internal: ["admin:view", "admin:quotation:view", "admin:order:view", "admin:order:update", "admin:process-order:view", "admin:shipment:view", "admin:tax:view", "admin:tax:update"],
   product_admin: [
     "admin:view",
     "admin:upload:view",
@@ -103,10 +107,6 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
 export const ADMIN_QUOTATION_UPDATE_STATUSES = [
   "submitted",
   "under_review",
-  "quoted",
-  "revision_requested",
-  "accepted",
-  "rejected",
   "expired",
   "cancelled",
 ] as const;

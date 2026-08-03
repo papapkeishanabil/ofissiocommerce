@@ -9,18 +9,18 @@ import { useAdminNotifications } from "./AdminNotificationProvider";
 
 export function AdminStickyNotifications() {
   const { summary, mutate } = useAdminNotifications();
-  const notifications = summary.latestOrderNotifications.slice(0, 3);
+  const notifications = summary.latestNotifications.slice(0, 3);
   if (notifications.length === 0) return null;
-  const more = Math.max(0, summary.orderPopupUnread - notifications.length);
+  const more = Math.max(0, summary.popupUnread - notifications.length);
 
   return (
     <section
-      aria-label="Notifikasi order baru"
+      aria-label="Notifikasi operasional baru"
       aria-live="polite"
       className="fixed inset-x-3 bottom-3 z-50 max-h-[70vh] space-y-2 overflow-y-auto md:inset-x-auto md:bottom-5 md:right-5 md:w-[390px]"
     >
       {notifications.map((notification) => (
-        <OrderNotificationCard
+        <NotificationCard
           key={notification.id}
           notification={notification}
           onRead={() => mutate(notification.id, "read")}
@@ -39,7 +39,7 @@ export function AdminStickyNotifications() {
   );
 }
 
-function OrderNotificationCard({
+function NotificationCard({
   notification,
   onRead,
   onAcknowledge,
@@ -48,13 +48,14 @@ function OrderNotificationCard({
   onRead: () => Promise<boolean>;
   onAcknowledge: () => Promise<boolean>;
 }) {
-  const orderUrl = String(
+  const adminUrl = String(
     notification.metadata.adminUrl ?? `/admin/orders/${notification.entityId}`,
   );
   const companyName = String(notification.metadata.companyName ?? "Customer Ofissio");
   const productSummary = String(notification.metadata.productSummary ?? "Produk Ofissio");
   const total = Number(notification.metadata.total ?? 0);
   const currency = String(notification.metadata.currency ?? "IDR");
+  const isQuotation = notification.type === "quotation_accepted";
   return (
     <article className="overflow-hidden rounded-2xl border border-brand-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.18)]">
       <div className="flex gap-3 border-b border-line bg-gradient-to-r from-brand-50 to-white px-4 py-3.5">
@@ -63,7 +64,7 @@ function OrderNotificationCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <h2 className="font-bold text-ink">Order Baru Masuk</h2>
+            <h2 className="font-bold text-ink">{notification.title}</h2>
             <span className="shrink-0 rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-red-700">
               Baru
             </span>
@@ -86,11 +87,12 @@ function OrderNotificationCard({
       </div>
       <div className="grid grid-cols-2 gap-2 border-t border-line bg-slate-50 p-3">
         <Link
-          href={orderUrl}
+          href={adminUrl}
           onClick={() => void onRead()}
           className="col-span-2 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-3 text-sm font-semibold text-white transition hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
         >
-          Lihat Order <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+          {isQuotation ? "Lihat Quotation" : "Lihat Order"}{" "}
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
         <button
           type="button"

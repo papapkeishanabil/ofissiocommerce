@@ -9,6 +9,7 @@ import type { LogoPlacement } from "@/types/uniform-3d";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 import { calculateEmbroideryPricing } from "@/features/products/embroidery-pricing";
 import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global-embroidery-pricing.service";
+import { createApiError } from "@/lib/security/safe-error-response";
 
 import type {
   CheckoutCartRecord,
@@ -50,7 +51,10 @@ async function validateAndPriceItem(
   if (totalQty < product.moq) {
     throw new Error(`MOQ ${product.moq} pcs belum terpenuhi.`);
   }
-  await validateEmbroideryLogoFiles(companyId, input.embroideryPlacements);
+  const embroideryPlacements = await resolveEmbroideryLogoFiles(
+    companyId,
+    input.embroideryPlacements,
+  );
   const calculatedPrice = calculateQuantityTierPrice({
     regularPrice: product.priceFrom,
     totalQty,
@@ -59,7 +63,7 @@ async function validateAndPriceItem(
   const embroideryPricingSnapshot = (await getGlobalEmbroideryPricing()).pricing;
   const embroideryPrice = calculateEmbroideryPricing({
     totalQty,
-    selectedZones: input.embroideryPlacements.map((placement) => placement.zone),
+    selectedZones: embroideryPlacements.map((placement) => placement.zone),
     productSupportedZones: product.embroidery_zones,
     globalEmbroideryPricing: embroideryPricingSnapshot,
   });
@@ -96,28 +100,71 @@ async function validateAndPriceItem(
     model3dId: product.model_3d.id,
     model3dUrl: product.model_3d.url,
     customization: input.customization,
-    embroideryPlacements: input.embroideryPlacements,
+    embroideryPlacements,
   };
 }
 
-async function validateEmbroideryLogoFiles(
+async function resolveEmbroideryLogoFiles(
   companyId: string,
   placements: LogoPlacement[],
 ) {
+  let companyLogos: Awaited<ReturnType<typeof storageService.getFilesByCompany>> | null = null;
+  const resolved: LogoPlacement[] = [];
+
   for (const placement of placements) {
-    const file = await storageService.getFileById({
+    let file = await storageService.getFileById({
       companyId,
       fileId: placement.logoFileId,
     });
-    if (!file) throw new Error("Logo bordir tidak ditemukan untuk company ini.");
+
+    // Older carts could be saved while the asynchronous upload was still in
+    // progress, leaving the local `pending-*` id in localStorage. Resolve only
+    // against the newest same-name logo owned by this company. New saves are
+    // blocked in the configurator until the real storage id is available.
+    if (!file && placement.logoFileId.startsWith("pending-")) {
+      companyLogos ??= await storageService.getFilesByCompany(companyId, {
+        fileType: "embroidery_logo",
+      });
+      const normalizedName = placement.logoFileName.trim().toLowerCase();
+      file = companyLogos.find(
+        (candidate) =>
+          candidate.status !== "deleted" &&
+          candidate.status !== "rejected" &&
+          (candidate.originalFilename.trim().toLowerCase() === normalizedName ||
+            candidate.safeFilename.trim().toLowerCase() === normalizedName),
+      ) ?? null;
+    }
+
+    if (!file) {
+      throw createApiError(
+        "VALIDATION_ERROR",
+        "Logo bordir pada keranjang belum selesai tersimpan. Buka konfigurasi 3D, upload ulang logo, lalu simpan setelah proses upload selesai.",
+        400,
+      );
+    }
     if (file.status === "deleted" || file.status === "rejected") {
-      throw new Error("Logo bordir tidak dapat digunakan.");
+      throw createApiError(
+        "VALIDATION_ERROR",
+        "Logo bordir pada keranjang sudah tidak dapat digunakan.",
+        400,
+      );
     }
     if (file.fileType !== "company_logo" && file.fileType !== "embroidery_logo") {
-      throw new Error("File yang dipilih bukan logo bordir.");
+      throw createApiError(
+        "VALIDATION_ERROR",
+        "File yang dipilih bukan logo bordir.",
+        400,
+      );
     }
     await storageService.markFileAsUsed({ companyId, fileId: file.id });
+    resolved.push({
+      ...placement,
+      logoFileId: file.id,
+      logoFileName: file.originalFilename,
+    });
   }
+
+  return resolved;
 }
 
 export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<CheckoutCartRecord> {

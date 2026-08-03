@@ -49,6 +49,8 @@ export type AdminPermission =
   | "admin:notification:update"
   | "admin:email:view"
   | "admin:email:test"
+  | "admin:tax:view"
+  | "admin:tax:update"
   | "admin:audit:view";
 
 export interface InternalAdminUser {
@@ -83,6 +85,7 @@ export interface AdminQuotationRow {
   itemCount: number;
   totalQty: number;
   createdAt: string;
+  acceptedAt: string | null;
 }
 
 export interface AdminLogoPreview {
@@ -92,12 +95,16 @@ export interface AdminLogoPreview {
 }
 
 export interface AdminQuotationDetail {
-  quotation: QuotationRequestRecord;
-  logoPreviews: AdminLogoPreview[];
-  events: QuotationEventRecord[];
-  emailLogs: EmailLog[];
-  documents: DocumentRecord[];
-}
+    quotation: QuotationRequestRecord;
+    logoPreviews: AdminLogoPreview[];
+    events: QuotationEventRecord[];
+    emailLogs: EmailLog[];
+    documents: DocumentRecord[];
+    acceptedNotification: {
+      id: string;
+      status: "unread" | "read" | "acknowledged" | "resolved";
+    } | null;
+  }
 
 export interface AdminOrderRow {
   id: string;

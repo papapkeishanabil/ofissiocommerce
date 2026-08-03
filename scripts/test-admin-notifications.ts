@@ -70,6 +70,30 @@ async function main() {
   const scope = { role: "sales" as const, userId: "sales-test" };
   assert.equal((await manager.summary(scope)).ordersUnread, 1);
 
+  const acceptedQuotation = await manager.create({
+    type: "quotation_accepted",
+    title: "Quotation Diterima Customer",
+    message: "Quotation OF-QUO-001 telah diterima.",
+    entityType: "quotation",
+    entityId: "quo_test_001",
+    entityNumber: "OF-QUO-001",
+    metadata: { adminUrl: "/admin/quotations/quo_test_001" },
+  });
+  let quotationSummary = await manager.summary(scope);
+  assert.equal(quotationSummary.quotationsUnread, 1);
+  assert.equal(quotationSummary.popupUnread, 2);
+  assert.equal(
+    quotationSummary.latestNotifications.some(
+      (notification) => notification.id === acceptedQuotation.notification.id,
+    ),
+    true,
+    "quotation accepted harus tampil pada sticky popup",
+  );
+  await manager.transition(acceptedQuotation.notification.id, "read");
+  quotationSummary = await manager.summary(scope);
+  assert.equal(quotationSummary.quotationsUnread, 0);
+  assert.equal(quotationSummary.popupUnread, 1);
+
   await manager.transition(first.notification.id, "read");
   let summary = await manager.summary(scope);
   assert.equal(summary.ordersUnread, 1, "read tetap dihitung pada badge Orders");
@@ -119,6 +143,7 @@ async function main() {
   console.log("- create + duplicate idempotency: PASS");
   console.log("- unread/read/acknowledged/resolved badge rules: PASS");
   console.log("- sticky read behavior: PASS");
+  console.log("- quotation accepted badge + sticky popup: PASS");
   console.log("- email idempotency key + disabled fallback: PASS");
 }
 

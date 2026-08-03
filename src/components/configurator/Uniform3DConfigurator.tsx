@@ -26,6 +26,7 @@ import { LogoUploadPanel } from "./LogoUploadPanel";
 import { Photo360Viewer } from "./Photo360Viewer";
 import { PreviewSnapshotPanel } from "./PreviewSnapshotPanel";
 import { ModelViewerErrorBoundary } from "./ModelViewerErrorBoundary";
+import { hasPendingLogoUpload } from "@/schemas/uniform-3d";
 
 // Lazy-load the R3F canvases (three.js bundle). Photo360 is plain HTML so it
 // doesn't need to be lazy.
@@ -82,6 +83,7 @@ export function Uniform3DConfigurator({
   const [selectedZone, setSelectedZone] = useState<EmbroideryZone | null>("left_chest");
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
+  const [logoUploadPending, setLogoUploadPending] = useState(false);
 
   // Per-zone upload state (logo + size + rotation), kept locally so each zone
   // has its own working file before being committed as a placement.
@@ -133,6 +135,7 @@ export function Uniform3DConfigurator({
 
   function handleSave() {
     if (!config) return;
+    if (logoUploadPending || hasPendingLogoUpload(config.placements)) return;
     onSave(config);
   }
 
@@ -428,6 +431,7 @@ export function Uniform3DConfigurator({
                 setPendingLogo(null);
                 removePlacement(selectedZone);
               }}
+              onUploadStateChange={setLogoUploadPending}
             />
             <LogoPlacementControls
               zone={selectedZone}
@@ -499,14 +503,24 @@ export function Uniform3DConfigurator({
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={handleSave} className="flex-1">
+          <Button
+            onClick={handleSave}
+            className="flex-1"
+            disabled={logoUploadPending || hasPendingLogoUpload(config.placements)}
+            aria-busy={logoUploadPending}
+          >
             <Save className="h-4 w-4" />
-            Simpan Konfigurasi
+            {logoUploadPending ? "Menyimpan logo..." : "Simpan Konfigurasi"}
           </Button>
           <Button variant="outline" onClick={onCancel}>
             Batal
           </Button>
         </div>
+        {logoUploadPending || hasPendingLogoUpload(config.placements) ? (
+          <p className="text-[11px] text-amber-700" role="status">
+            Tunggu sampai logo selesai tersimpan sebelum menyimpan konfigurasi.
+          </p>
+        ) : null}
       </div>
     </div>
   );

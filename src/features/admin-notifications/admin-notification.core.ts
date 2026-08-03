@@ -11,6 +11,8 @@ import type {
 import {
   isNotificationVisibleToScope,
   isPendingOrderNotification,
+  isPendingQuotationNotification,
+  isPopupNotification,
   isPopupOrderNotification,
   safeNotificationMetadata,
   transitionNotification,
@@ -88,12 +90,19 @@ export function createAdminNotificationManager(
         isNotificationVisibleToScope(notification, scope),
       );
       const pendingOrders = rows.filter(isPendingOrderNotification);
+      const pendingQuotations = rows.filter(isPendingQuotationNotification);
       const popupOrders = rows
         .filter(isPopupOrderNotification)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      const popupNotifications = rows
+        .filter(isPopupNotification)
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
       return {
         totalUnread: rows.filter((notification) => notification.status === "unread").length,
         ordersUnread: pendingOrders.length,
+        quotationsUnread: pendingQuotations.length,
+        popupUnread: popupNotifications.length,
+        latestNotifications: popupNotifications.slice(0, 3),
         orderPopupUnread: popupOrders.length,
         latestOrderNotifications: popupOrders.slice(0, 3),
       };

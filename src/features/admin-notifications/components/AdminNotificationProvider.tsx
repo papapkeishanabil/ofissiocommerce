@@ -29,6 +29,9 @@ interface AdminNotificationContextValue {
 const EMPTY_SUMMARY: AdminNotificationSummary = {
   totalUnread: 0,
   ordersUnread: 0,
+  quotationsUnread: 0,
+  popupUnread: 0,
+  latestNotifications: [],
   orderPopupUnread: 0,
   latestOrderNotifications: [],
 };
@@ -69,6 +72,13 @@ export function AdminNotificationProvider({
       setSummary({
         totalUnread: Number(payload.totalUnread ?? 0),
         ordersUnread: Number(payload.ordersUnread ?? 0),
+        quotationsUnread: Number(payload.quotationsUnread ?? 0),
+        popupUnread: Number(payload.popupUnread ?? payload.orderPopupUnread ?? 0),
+        latestNotifications: Array.isArray(payload.latestNotifications)
+          ? (payload.latestNotifications as AdminNotification[])
+          : Array.isArray(payload.latestOrderNotifications)
+            ? (payload.latestOrderNotifications as AdminNotification[])
+            : [],
         orderPopupUnread: Number(payload.orderPopupUnread ?? 0),
         latestOrderNotifications: Array.isArray(payload.latestOrderNotifications)
           ? (payload.latestOrderNotifications as AdminNotification[])

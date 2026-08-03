@@ -74,6 +74,10 @@ export interface AdminNotificationListFilters {
 export interface AdminNotificationSummary {
   totalUnread: number;
   ordersUnread: number;
+  quotationsUnread: number;
+  popupUnread: number;
+  latestNotifications: AdminNotification[];
+  // Backward-compatible fields used by existing order notification clients.
   orderPopupUnread: number;
   latestOrderNotifications: AdminNotification[];
 }
@@ -102,6 +106,16 @@ export interface OrderCreatedNotificationInput {
   currency?: string;
   productSummary: string;
   source?: string;
+}
+
+export interface QuotationAcceptedNotificationInput {
+  quotationId: string;
+  quotationNumber: string;
+  customerName: string;
+  companyName: string;
+  total: number;
+  currency?: string;
+  productSummary: string;
 }
 
 export interface AdminNotificationMutationContext {

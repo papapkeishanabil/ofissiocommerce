@@ -207,22 +207,44 @@ export async function listAdminQuotations(input: { search?: string; status?: str
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(search));
     })
+    .sort((a, b) => {
+      const acceptedPriority = Number(b.status === "accepted") - Number(a.status === "accepted");
+      if (acceptedPriority !== 0) return acceptedPriority;
+      const aTime = Date.parse(a.acceptedAt ?? a.updatedAt ?? a.createdAt);
+      const bTime = Date.parse(b.acceptedAt ?? b.updatedAt ?? b.createdAt);
+      return bTime - aTime;
+    })
     .map(mapQuotationRow);
 }
 
 export async function getAdminQuotationDetail(id: string): Promise<AdminQuotationDetail | null> {
   const quotation = await repositoryRegistry.quotations.getById(id);
   if (!quotation) return null;
+  const [logoPreviews, events, emailLogs, documents, acceptedNotification] =
+    await Promise.all([
+      getLogoPreviews(quotation),
+      getQuotationEventsById(quotation.id, quotation.companyId),
+      getQuotationEmailLogs(quotation),
+      getDocumentsByEntity({
+        companyId: quotation.companyId,
+        entityType: "quotation",
+        entityId: quotation.id,
+      }),
+      repositoryRegistry.adminNotifications.getByEntity({
+        type: "quotation_accepted",
+        entityType: "quotation",
+        entityId: quotation.id,
+      }),
+    ]);
   return {
     quotation,
-    logoPreviews: await getLogoPreviews(quotation),
-    events: await getQuotationEventsById(quotation.id, quotation.companyId),
-    emailLogs: await getQuotationEmailLogs(quotation),
-    documents: await getDocumentsByEntity({
-      companyId: quotation.companyId,
-      entityType: "quotation",
-      entityId: quotation.id,
-    }),
+    logoPreviews,
+    events,
+    emailLogs,
+    documents,
+    acceptedNotification: acceptedNotification
+      ? { id: acceptedNotification.id, status: acceptedNotification.status }
+      : null,
   };
 }
 
@@ -821,6 +843,7 @@ function mapQuotationRow(quotation: QuotationRequestRecord): AdminQuotationRow {
     itemCount: quotation.items.length,
     totalQty: quotation.totalQty,
     createdAt: quotation.createdAt,
+    acceptedAt: quotation.acceptedAt,
   };
 }
 

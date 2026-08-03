@@ -28,6 +28,20 @@ export function isPopupOrderNotification(notification: AdminNotification) {
   return notification.type === "order_created" && notification.status === "unread";
 }
 
+export function isPendingQuotationNotification(notification: AdminNotification) {
+  return (
+    notification.type === "quotation_accepted" &&
+    notification.status === "unread"
+  );
+}
+
+export function isPopupNotification(notification: AdminNotification) {
+  return (
+    ["order_created", "quotation_accepted"].includes(notification.type) &&
+    notification.status === "unread"
+  );
+}
+
 export function transitionNotification(
   notification: AdminNotification,
   status: AdminNotificationStatus,

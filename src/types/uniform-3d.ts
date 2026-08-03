@@ -51,6 +51,17 @@ export function zoneShortCode(z: EmbroideryZone): string {
 
 export type EmbroideryTechnique = "embroidery" | "print" | "patch";
 
+export function embroideryTechniqueLabel(technique: EmbroideryTechnique): string {
+  switch (technique) {
+    case "embroidery":
+      return "Bordir";
+    case "print":
+      return "Cetak";
+    case "patch":
+      return "Patch";
+  }
+}
+
 /** A single logo placement on the uniform. */
 export interface LogoPlacement {
   zone: EmbroideryZone;

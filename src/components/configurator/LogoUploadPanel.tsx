@@ -23,6 +23,7 @@ interface LogoUploadPanelProps {
     aspectRatio: number;
   }) => void;
   onClear: () => void;
+  onUploadStateChange?: (uploading: boolean) => void;
 }
 
 export function LogoUploadPanel({
@@ -30,6 +31,7 @@ export function LogoUploadPanel({
   fileName,
   onUploaded,
   onClear,
+  onUploadStateChange,
 }: LogoUploadPanelProps) {
   const { session } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +57,7 @@ export function LogoUploadPanel({
     }
 
     setUploading(true);
+    onUploadStateChange?.(true);
     try {
       const formData = new FormData();
       formData.set("file", input.file);
@@ -86,6 +89,7 @@ export function LogoUploadPanel({
       setError(err instanceof Error ? err.message : "Logo belum berhasil disimpan.");
     } finally {
       setUploading(false);
+      onUploadStateChange?.(false);
     }
   }
 

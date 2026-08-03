@@ -71,3 +71,11 @@ export function validateLogoFile(file: File): { ok: boolean; reason?: string } {
   }
   return { ok: true };
 }
+
+export function hasPendingLogoUpload(
+  placements: ReadonlyArray<{ logoFileId: string }>,
+) {
+  return placements.some((placement) =>
+    placement.logoFileId.startsWith("pending-"),
+  );
+}
