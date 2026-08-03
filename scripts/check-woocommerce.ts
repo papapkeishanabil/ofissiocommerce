@@ -4,6 +4,7 @@ import { loadEnvConfig } from "@next/env";
 
 import { getProductReadiness } from "../src/features/products/woocommerce/woocommerce-product-readiness";
 import {
+  applyWooCommerceLoopbackAuth,
   allowSelfSignedTlsForWooUrl,
   requestWooCommerceJson,
 } from "../src/features/products/woocommerce/woocommerce-http";
@@ -330,6 +331,12 @@ async function wooFetch<T>(
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
   }
+  const usesLoopbackOAuth = applyWooCommerceLoopbackAuth(
+    url,
+    consumerKey,
+    consumerSecret,
+    init?.method,
+  );
   const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString("base64");
   let response: Awaited<ReturnType<typeof requestWooCommerceJson<T>>>;
 
@@ -337,7 +344,7 @@ async function wooFetch<T>(
     response = await requestWooCommerceJson<T>(url, {
       method: init?.method,
       headers: {
-        Authorization: `Basic ${auth}`,
+        ...(usesLoopbackOAuth ? {} : { Authorization: `Basic ${auth}` }),
         "Content-Type": "application/json",
         Accept: "application/json",
         ...(init?.headers as Record<string, string> | undefined),

@@ -17,9 +17,11 @@ import type {
   WooCommerceProductWritePayload,
 } from "./woocommerce.types";
 import {
+  applyWooCommerceLoopbackAuth,
   allowSelfSignedTlsForWooUrl,
   requestWooCommerceJson,
 } from "./woocommerce-http";
+import { normalizeWooCommerceMediaUrl } from "./woocommerce-media-url";
 
 export const woocommerceClient = {
   getProducts,
@@ -38,25 +40,27 @@ export const woocommerceClient = {
 };
 
 async function createProduct(payload: WooCommerceProductWritePayload) {
-  return wcFetch<WooCommerceProduct>("/products", undefined, {
+  const product = await wcFetch<WooCommerceProduct>("/products", undefined, {
     method: "POST",
     body: JSON.stringify(payload),
   });
+  return normalizeProductMedia(product);
 }
 
 async function updateProduct(
   id: string | number,
   payload: WooCommerceProductWritePayload,
 ) {
-  return wcFetch<WooCommerceProduct>(
+  const product = await wcFetch<WooCommerceProduct>(
     `/products/${encodeURIComponent(String(id))}`,
     undefined,
     { method: "PUT", body: JSON.stringify(payload) },
   );
+  return normalizeProductMedia(product);
 }
 
 async function getProducts(params: WooCommerceListParams = {}) {
-  return wcFetch<WooCommerceProduct[]>("/products", {
+  const products = await wcFetch<WooCommerceProduct[]>("/products", {
     status: params.status ?? "publish",
     per_page: String(params.per_page ?? 100),
     page: String(params.page ?? 1),
@@ -64,10 +68,14 @@ async function getProducts(params: WooCommerceListParams = {}) {
     ...(params.search ? { search: params.search } : {}),
     ...(params.category ? { category: params.category } : {}),
   });
+  return products.map(normalizeProductMedia);
 }
 
 async function getProductById(id: string | number) {
-  return wcFetch<WooCommerceProduct>(`/products/${encodeURIComponent(String(id))}`);
+  const product = await wcFetch<WooCommerceProduct>(
+    `/products/${encodeURIComponent(String(id))}`,
+  );
+  return normalizeProductMedia(product);
 }
 
 async function getProductBySlug(slug: string) {
@@ -167,6 +175,12 @@ async function wcFetch<T>(
   Object.entries(params ?? {}).forEach(([key, value]) => {
     if (value) url.searchParams.set(key, value);
   });
+  const usesLoopbackOAuth = applyWooCommerceLoopbackAuth(
+    url,
+    config.woocommerce.consumerKey,
+    config.woocommerce.consumerSecret,
+    init?.method,
+  );
   const auth = Buffer.from(
     `${config.woocommerce.consumerKey}:${config.woocommerce.consumerSecret}`,
   ).toString("base64");
@@ -175,7 +189,7 @@ async function wcFetch<T>(
     const response = await requestWooCommerceJson<T>(url, {
       method: init?.method,
       headers: {
-        Authorization: `Basic ${auth}`,
+        ...(usesLoopbackOAuth ? {} : { Authorization: `Basic ${auth}` }),
         "Content-Type": "application/json",
         Accept: "application/json",
         ...(init?.headers as Record<string, string> | undefined),
@@ -208,4 +222,19 @@ function normalizeBaseUrl(value: string) {
   const trimmed = value.replace(/\/$/, "");
   if (trimmed.endsWith("/wp-json/wc/v3")) return trimmed;
   return `${trimmed}/wp-json/wc/v3`;
+}
+
+function normalizeProductMedia(product: WooCommerceProduct): WooCommerceProduct {
+  const commerceConfig = getCommerceRuntimeConfig();
+  const mediaBaseUrl =
+    process.env.WORDPRESS_MEDIA_BASE_URL?.trim() ||
+    commerceConfig.woocommerce.baseUrl;
+
+  return {
+    ...product,
+    images: (product.images ?? []).map((image) => ({
+      ...image,
+      src: normalizeWooCommerceMediaUrl(image.src, mediaBaseUrl),
+    })),
+  };
 }

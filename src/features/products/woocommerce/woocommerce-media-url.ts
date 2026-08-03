@@ -26,11 +26,20 @@ export function normalizeWooCommerceMediaUrl(
 
 function isInternalLocalOrigin(source: URL, base: URL) {
   if (source.origin === base.origin) return false;
-  const hostname = source.hostname.toLowerCase();
-  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") {
-    return true;
-  }
-  return Boolean(source.port && hostname.endsWith(".local"));
+  const sourceHostname = normalizeHostname(source.hostname);
+  const baseHostname = normalizeHostname(base.hostname);
+  const baseIsLocal = isLoopbackHostname(baseHostname) || baseHostname.endsWith(".local");
+  if (!baseIsLocal) return false;
+
+  return isLoopbackHostname(sourceHostname) || sourceHostname.endsWith(".local");
+}
+
+function normalizeHostname(value: string) {
+  return value.toLowerCase().replace(/^\[|\]$/g, "");
+}
+
+function isLoopbackHostname(value: string) {
+  return value === "localhost" || value === "127.0.0.1" || value === "::1";
 }
 
 function stripApiPath(value: string) {
