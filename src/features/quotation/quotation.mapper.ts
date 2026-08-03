@@ -10,13 +10,13 @@ export function quotationStatusLabel(status: QuotationStatus) {
     case "draft":
       return "Draft";
     case "submitted":
-      return "Terkirim";
+      return "Diajukan";
     case "emailed":
       return "Notifikasi diproses";
     case "under_review":
       return "Sedang ditinjau";
     case "quoted":
-      return "Sudah dikirim penawaran";
+      return "Penawaran terkirim";
     case "revision_requested":
       return "Revisi diminta";
     case "accepted":

@@ -11,9 +11,14 @@ import {
   type QuantityPricing,
 } from "../src/features/products/quantity-pricing";
 import type { QuotationRequestRecord } from "../src/features/quotation/quotation.types";
+import { quotationStatusLabel } from "../src/features/quotation/quotation.mapper";
 import {
   buildQuotationItems,
   calculateQuotationPricing,
+  canCustomerAcceptQuotation,
+  finalizeQuotationForCustomer,
+  getQuotationAcceptDisabledReason,
+  hasFinalQuotationPricing,
 } from "../src/features/quotation/quotation.utils";
 
 const quantityPricing: QuantityPricing = {
@@ -240,9 +245,57 @@ const missingEmbroidery = calculateEmbroideryPricing({
 assert.deepEqual(missingEmbroidery.missingPricingZones, ["center_back"]);
 assert.equal(missingEmbroidery.total, 0);
 
+// Customer quotation readiness must follow the canonical `quoted` status and
+// valid final pricing. A submitted/under-review quotation is never accept-ready.
+assert.equal(hasFinalQuotationPricing(quotation), true);
+const quotationReadinessNow = Date.parse("2026-08-01T12:00:00.000Z");
+assert.equal(canCustomerAcceptQuotation(quotation, quotationReadinessNow), false);
+assert.equal(
+  getQuotationAcceptDisabledReason(quotation, quotationReadinessNow),
+  "Penawaran resmi belum dikirim oleh tim Ofissio.",
+);
+const quoted = { ...quotation, status: "quoted" as const };
+assert.equal(canCustomerAcceptQuotation(quoted, quotationReadinessNow), true);
+assert.equal(getQuotationAcceptDisabledReason(quoted, quotationReadinessNow), null);
+assert.equal(
+  canCustomerAcceptQuotation({ ...quoted, grandTotal: 0 }, quotationReadinessNow),
+  false,
+);
+const finalizedForCustomer = finalizeQuotationForCustomer(
+  { ...quotation, validUntil: null },
+  new Date("2026-08-01T12:00:00.000Z"),
+);
+assert.equal(finalizedForCustomer.status, "quoted");
+assert.equal(quotationStatusLabel("submitted"), "Diajukan");
+assert.equal(quotationStatusLabel(quotation.status), "Sedang ditinjau");
+assert.equal(quotationStatusLabel(finalizedForCustomer.status), "Penawaran terkirim");
+assert.equal(finalizedForCustomer.validUntil, "2026-08-15T12:00:00.000Z");
+assert.equal(
+  canCustomerAcceptQuotation(finalizedForCustomer, quotationReadinessNow),
+  true,
+);
+assert.equal(
+  getQuotationAcceptDisabledReason(
+    { ...quoted, grandTotal: 0 },
+    quotationReadinessNow,
+  ),
+  "Penawaran final belum tersedia.",
+);
+assert.equal(
+  canCustomerAcceptQuotation(
+    {
+      ...quoted,
+      validUntil: "2020-01-01T00:00:00.000Z",
+    },
+    quotationReadinessNow,
+  ),
+  false,
+);
+
 console.log("Commercial flow calculation tests: PASS");
 console.log("- quantity tier 100-299: Rp138.000/pcs");
 console.log("- cart + quotation snapshot total: Rp15.800.000");
 console.log("- admin left-chest override total: Rp15.850.000");
 console.log("- historical snapshot after master-price change: PASS");
 console.log("- safe pricing fallbacks: PASS");
+console.log("- canonical quoted customer acceptance readiness: PASS");

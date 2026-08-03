@@ -12,6 +12,10 @@ import type {
   QuotationRequestRecord,
 } from "@/features/quotation/quotation.types";
 import { quotationStatusLabel } from "@/features/quotation/quotation.mapper";
+import {
+  getQuotationAcceptDisabledReason,
+  hasFinalQuotationPricing,
+} from "@/features/quotation/quotation.utils";
 import { useAuth } from "@/hooks/use-auth";
 import { formatIDR } from "@/types/product";
 import type { AuthSession } from "@/types/account";
@@ -51,23 +55,21 @@ export function QuotationConfirmation({
     }
   }, [quotation.id]);
 
-  const canShowFinalPrice = ["quoted", "accepted", "converted_to_order"].includes(
-    quotation.status,
-  );
+  const hasFinalPricing = hasFinalQuotationPricing(quotation);
+  const canShowFinalPrice =
+    ["quoted", "accepted", "converted_to_order"].includes(quotation.status) &&
+    hasFinalPricing;
   const isExpired = quotation.validUntil
     ? Date.parse(quotation.validUntil) < Date.now()
     : false;
-  const canAccept = quotation.status === "quoted" && !isExpired && !!quotation.grandTotal;
+  const acceptDisabledReason = getQuotationAcceptDisabledReason(quotation);
+  const canAccept = acceptDisabledReason === null;
   const canReject = ["quoted", "under_review", "submitted", "emailed"].includes(
     quotation.status,
-  );
-  const reviewCopy =
-    quotation.status === "submitted" ||
-    quotation.status === "emailed" ||
-    quotation.status === "under_review"
-      ? "Sedang direview tim Ofissio. Harga final akan tampil setelah sales mengirim penawaran."
-      : quotation.customerMessage ||
-        "Silakan review penawaran ini. Jika sudah sesuai, Anda bisa accept quotation.";
+  ) && !isExpired;
+  const canRequestRevision =
+    quotation.status === "quoted" && !isExpired && hasFinalPricing;
+  const reviewCopy = customerQuotationStatusMessage(quotation.status);
   const isEmailIssue =
     notification?.status === "failed" || notification?.status === "skipped";
 
@@ -76,28 +78,37 @@ export function QuotationConfirmation({
     success: string,
     note?: string | null,
   ) {
-    if (!session) return;
+    if (!session) {
+      setActionMessage("Sesi customer tidak tersedia. Silakan masuk kembali.");
+      return;
+    }
     setActionMessage(null);
     startTransition(async () => {
-      const response = await fetch(`/api/quotation/${quotation.id}/${action}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(session),
-        },
-        body: JSON.stringify({ note: note ?? null }),
-      });
-      const result = (await response.json().catch(() => ({}))) as {
-        ok?: boolean;
-        message?: string;
-        quotation?: QuotationRequestRecord;
-      };
-      if (!response.ok || !result.ok || !result.quotation) {
-        setActionMessage(result.message ?? "Action quotation belum berhasil.");
-        return;
+      try {
+        const response = await fetch(`/api/quotation/${quotation.id}/${action}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeaders(session),
+          },
+          body: JSON.stringify({ note: note ?? null }),
+        });
+        const result = (await response.json().catch(() => ({}))) as {
+          ok?: boolean;
+          message?: string;
+          quotation?: QuotationRequestRecord;
+        };
+        if (!response.ok || !result.ok || !result.quotation) {
+          setActionMessage(result.message ?? "Action quotation belum berhasil.");
+          return;
+        }
+        setQuotation(result.quotation);
+        setActionMessage(success);
+      } catch {
+        setActionMessage(
+          "Koneksi terputus. Silakan coba kembali tanpa memuat ulang halaman.",
+        );
       }
-      setQuotation(result.quotation);
-      setActionMessage(success);
     });
   }
 
@@ -159,6 +170,11 @@ export function QuotationConfirmation({
 
         <div className="mt-5 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900">
           <p className="font-bold">{reviewCopy}</p>
+          {quotation.customerMessage && quotation.status === "quoted" ? (
+            <p className="mt-2 border-t border-brand-200 pt-2 text-brand-800">
+              {quotation.customerMessage}
+            </p>
+          ) : null}
           {quotation.validUntil ? (
             <p className="mt-1 text-brand-800">
               Berlaku sampai {formatDate(quotation.validUntil)}
@@ -234,7 +250,7 @@ export function QuotationConfirmation({
           <Button
             type="button"
             variant="ghost"
-            disabled={isPending}
+            disabled={!canRequestRevision || isPending}
             onClick={() => {
               const note = window.prompt("Catatan revisi yang ingin diminta");
               if (note) {
@@ -250,6 +266,11 @@ export function QuotationConfirmation({
             </ButtonLink>
           ) : null}
         </div>
+        {!canAccept && acceptDisabledReason ? (
+          <p className="mt-3 text-sm font-semibold text-amber-800" role="status">
+            Accept quotation belum tersedia: {acceptDisabledReason}
+          </p>
+        ) : null}
         {actionMessage ? (
           <p className="mt-3 text-sm font-semibold text-ink-muted" role="status">
             {actionMessage}
@@ -372,6 +393,32 @@ type CustomerQuotationEvent = Pick<
   QuotationEventRecord,
   "id" | "eventType" | "oldStatus" | "newStatus" | "createdAt" | "note"
 >;
+
+function customerQuotationStatusMessage(
+  status: QuotationRequestRecord["status"],
+) {
+  switch (status) {
+    case "quoted":
+      return "Penawaran resmi sudah dikirim oleh tim Ofissio. Silakan accept, reject, atau request revision.";
+    case "accepted":
+      return "Penawaran sudah diterima. Tim Ofissio akan melanjutkan proses order.";
+    case "rejected":
+      return "Penawaran sudah ditolak. Hubungi tim Ofissio jika masih memerlukan bantuan.";
+    case "revision_requested":
+      return "Permintaan revisi sudah dikirim. Tim Ofissio sedang menyiapkan penawaran berikutnya.";
+    case "expired":
+      return "Masa berlaku penawaran sudah berakhir. Silakan hubungi tim Ofissio.";
+    case "cancelled":
+      return "Quotation ini sudah dibatalkan.";
+    case "converted_to_order":
+      return "Penawaran sudah dikonversi menjadi order.";
+    case "draft":
+    case "submitted":
+    case "emailed":
+    case "under_review":
+      return "Sedang direview tim Ofissio. Harga final akan tampil setelah sales mengirim penawaran.";
+  }
+}
 
 function quoteNotificationKey(quotationId: string) {
   return `ofissio-quote-notification:${quotationId}`;

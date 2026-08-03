@@ -248,13 +248,65 @@ export function defaultValidUntil(now = new Date()) {
   ).toISOString();
 }
 
-export function isQuotationExpired(quotation: QuotationRequestRecord) {
-  if (!quotation.validUntil) return false;
-  return Date.parse(quotation.validUntil) < Date.now();
+export function finalizeQuotationForCustomer(
+  quotation: QuotationRequestRecord,
+  now = new Date(),
+) {
+  return normalizeQuotationRecord({
+    ...quotation,
+    status: "quoted",
+    validUntil: quotation.validUntil ?? defaultValidUntil(now),
+    updatedAt: now.toISOString(),
+  });
 }
 
-export function canCustomerAcceptQuotation(quotation: QuotationRequestRecord) {
-  return quotation.status === "quoted" && !isQuotationExpired(quotation);
+export function isQuotationExpired(
+  quotation: QuotationRequestRecord,
+  now = Date.now(),
+) {
+  if (!quotation.validUntil) return false;
+  return Date.parse(quotation.validUntil) < now;
+}
+
+export function canCustomerAcceptQuotation(
+  quotation: QuotationRequestRecord,
+  now = Date.now(),
+) {
+  return getQuotationAcceptDisabledReason(quotation, now) === null;
+}
+
+export function hasFinalQuotationPricing(quotation: QuotationRequestRecord) {
+  const grandTotal = Number(quotation.grandTotal);
+  return (
+    quotation.subtotal != null &&
+    Number.isFinite(grandTotal) &&
+    grandTotal > 0
+  );
+}
+
+export function getQuotationAcceptDisabledReason(
+  quotation: QuotationRequestRecord,
+  now = Date.now(),
+) {
+  if (quotation.status === "accepted") return "Penawaran sudah diterima.";
+  if (quotation.status === "converted_to_order") {
+    return "Penawaran sudah dikonversi menjadi order.";
+  }
+  if (quotation.status === "rejected") return "Penawaran sudah ditolak.";
+  if (quotation.status === "revision_requested") {
+    return "Perubahan penawaran sedang diminta.";
+  }
+  if (quotation.status === "expired" || isQuotationExpired(quotation, now)) {
+    return "Penawaran sudah kedaluwarsa.";
+  }
+  if (quotation.status === "cancelled") return "Penawaran sudah dibatalkan.";
+  if (!hasFinalQuotationPricing(quotation)) {
+    return "Penawaran final belum tersedia.";
+  }
+  if (quotation.status !== "quoted") {
+    return "Penawaran resmi belum dikirim oleh tim Ofissio.";
+  }
+  return null;
 }
 
 export function isConvertableQuotationStatus(status: QuotationStatus) {

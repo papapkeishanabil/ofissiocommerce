@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import { hasFinalQuotationPricing } from "@/features/quotation/quotation.utils";
 import { formatIDR } from "@/types/product";
 import { ADMIN_QUOTATION_UPDATE_STATUSES } from "../admin.config";
 import type { AdminQuotationUpdateStatus } from "../admin.validation";
@@ -120,6 +121,11 @@ export function AdminQuotationStatusActions({
   }
 
   const canConvert = quotation.status === "accepted" || quotation.status === "quoted";
+  const canSendQuote =
+    hasFinalQuotationPricing(quotation) &&
+    ["submitted", "emailed", "under_review", "revision_requested", "quoted"].includes(
+      quotation.status,
+    );
 
   return (
     <section className="space-y-4">
@@ -151,7 +157,7 @@ export function AdminQuotationStatusActions({
             type="button"
             size="sm"
             variant="secondary"
-            disabled={isPending || !quotation.grandTotal}
+            disabled={isPending || !canSendQuote}
             onClick={() =>
               patchQuotation(
                 { action: "send_quote_to_customer" },

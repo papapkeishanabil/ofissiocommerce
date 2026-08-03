@@ -29,6 +29,9 @@ import {
   buildQuotationItems,
   calculateQuotationPricing,
   canCustomerAcceptQuotation,
+  finalizeQuotationForCustomer,
+  getQuotationAcceptDisabledReason,
+  hasFinalQuotationPricing,
   isConvertableQuotationStatus,
   normalizeQuotationRecord,
   safeMoney,
@@ -343,28 +346,34 @@ export async function sendQuotationReadyToCustomer(input: {
   request?: Request;
 }) {
   const quotation = await requireQuotation(input.id);
-  if (!quotation.grandTotal) {
-    throw createApiError("BAD_REQUEST", "Harga final belum tersedia.", 400);
+  if (!hasFinalQuotationPricing(quotation)) {
+    throw createApiError("BAD_REQUEST", "Penawaran final belum tersedia.", 400);
   }
+  const finalizedQuotation = finalizeQuotationForCustomer(quotation);
   const recipient = quotation.customerEmail ?? quotation.picEmail ?? quotation.userEmail;
   const result = await emailService.sendQuotationReadyToCustomer({
-    quotation,
+    quotation: finalizedQuotation,
     customerEmail: recipient,
     request: input.request,
   });
   const nextEmailLogIds = [...quotation.emailLogIds, result.id];
   const updated = await quotationRepository.update(quotation.id, {
+    status: "quoted",
+    validUntil: finalizedQuotation.validUntil,
     emailStatus: result.status,
     emailLogIds: nextEmailLogIds,
     emailResults: [...quotation.emailResults, result],
   });
+  if (!updated) {
+    throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  }
   await addQuotationEvent({
-    quotation: updated ?? quotation,
+    quotation: updated,
     actorId: input.actorId,
     actorType: "internal",
     eventType: "emailed_to_customer",
     oldStatus: quotation.status,
-    newStatus: updated?.status ?? quotation.status,
+    newStatus: "quoted",
     note: result.status === "failed" ? "Email quote failed." : "Quotation sent to customer.",
     metadata: {
       emailStatus: result.status,
@@ -373,7 +382,7 @@ export async function sendQuotationReadyToCustomer(input: {
     },
   });
   return {
-    quotation: normalizeQuotationRecord(updated ?? quotation),
+    quotation: normalizeQuotationRecord(updated),
     email: result,
   };
 }
@@ -386,10 +395,14 @@ export async function acceptQuotationByCustomer(input: {
   request?: Request;
 }) {
   const current = await requireCompanyQuotation(input.id, input.companyId);
+  if (current.status === "accepted") {
+    return normalizeQuotationRecord(current);
+  }
   if (!canCustomerAcceptQuotation(current)) {
     throw createApiError(
       "BAD_REQUEST",
-      "Quotation belum bisa disetujui atau sudah kedaluwarsa.",
+      getQuotationAcceptDisabledReason(current) ??
+        "Quotation belum bisa disetujui.",
       400,
     );
   }
@@ -469,6 +482,17 @@ export async function requestQuotationRevisionByCustomer(input: {
   request?: Request;
 }) {
   const current = await requireCompanyQuotation(input.id, input.companyId);
+  if (current.status === "revision_requested") {
+    return normalizeQuotationRecord(current);
+  }
+  if (!canCustomerAcceptQuotation(current)) {
+    throw createApiError(
+      "BAD_REQUEST",
+      getQuotationAcceptDisabledReason(current) ??
+        "Quotation belum bisa direvisi.",
+      400,
+    );
+  }
   const updated = await quotationRepository.updateStatus?.(input.id, "revision_requested", {
     customerMessage: input.note,
   }) ?? await quotationRepository.update(input.id, {
