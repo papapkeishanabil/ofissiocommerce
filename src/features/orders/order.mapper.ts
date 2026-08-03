@@ -133,6 +133,7 @@ export function mapPaymentStatusToWooCommerceStatus(status: PaymentStatus) {
     case "waiting_payment":
     case "pending":
     case "expired":
+    case "manual_review":
       return "pending";
     case "paid":
       return "processing";

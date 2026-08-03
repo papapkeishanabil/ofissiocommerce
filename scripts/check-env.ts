@@ -46,15 +46,18 @@ const rules: EnvRule[] = [
   { name: "WORDPRESS_MEDIA_APP_PASSWORD", secret: true },
   { name: "WORDPRESS_MEDIA_TOKEN", secret: true },
   { name: "PAYMENT_PROVIDER" },
+  { name: "PAYMENT_MODE" },
   { name: "IPAYMU_ENABLED" },
   { name: "IPAYMU_MODE" },
   { name: "IPAYMU_VA", secret: true },
   { name: "IPAYMU_API_KEY", secret: true },
   { name: "IPAYMU_BASE_URL" },
   { name: "IPAYMU_CALLBACK_URL" },
+  { name: "IPAYMU_NOTIFY_URL" },
   { name: "IPAYMU_RETURN_URL" },
   { name: "IPAYMU_CANCEL_URL" },
   { name: "IPAYMU_EXPIRE_MINUTES" },
+  { name: "IPAYMU_TEST_CREATE_PAYMENT" },
   { name: "SHIPPING_PROVIDER" },
   { name: "DEFAULT_ORIGIN_CITY", requiredIn: ["staging", "production"] },
   { name: "DEFAULT_ORIGIN_POSTAL_CODE", requiredIn: ["production"] },
@@ -83,6 +86,7 @@ const forbiddenPublicSecrets = [
   "NEXT_PUBLIC_RESEND_API_KEY",
   "NEXT_PUBLIC_SMTP_PASSWORD",
   "NEXT_PUBLIC_IPAYMU_API_KEY",
+  "NEXT_PUBLIC_IPAYMU_VA",
   "NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET",
   "NEXT_PUBLIC_WOO_CONSUMER_SECRET",
   "NEXT_PUBLIC_WORDPRESS_MEDIA_USERNAME",
@@ -153,10 +157,12 @@ if (process.env.WOOCOMMERCE_ENABLED === "true") {
 if (process.env.PAYMENT_PROVIDER === "ipaymu") {
   for (const name of [
     "IPAYMU_ENABLED",
+    "PAYMENT_MODE",
+    "IPAYMU_MODE",
     "IPAYMU_VA",
     "IPAYMU_API_KEY",
     "IPAYMU_BASE_URL",
-    "IPAYMU_CALLBACK_URL",
+    "IPAYMU_NOTIFY_URL",
     "IPAYMU_RETURN_URL",
     "IPAYMU_CANCEL_URL",
   ]) {
@@ -171,6 +177,45 @@ if (process.env.PAYMENT_PROVIDER === "ipaymu") {
     problems.push({
       level: appEnv === "development" ? "warning" : "error",
       message: "PAYMENT_PROVIDER=ipaymu membutuhkan IPAYMU_ENABLED=true.",
+    });
+  }
+  const paymentMode = process.env.PAYMENT_MODE?.trim().toLowerCase();
+  const ipaymuMode = process.env.IPAYMU_MODE?.trim().toLowerCase();
+  if (!isPaymentMode(paymentMode)) {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message: "PAYMENT_MODE harus sandbox atau live.",
+    });
+  }
+  if (!isPaymentMode(ipaymuMode)) {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message: "IPAYMU_MODE harus sandbox atau live.",
+    });
+  }
+  if (
+    isPaymentMode(paymentMode) &&
+    isPaymentMode(ipaymuMode) &&
+    paymentMode !== ipaymuMode
+  ) {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message: "PAYMENT_MODE dan IPAYMU_MODE harus sama.",
+    });
+  }
+  if (!isPublicHttpsUrl(process.env.IPAYMU_NOTIFY_URL)) {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message:
+        "IPAYMU_NOTIFY_URL harus berupa HTTPS publik; localhost tidak dapat menerima callback iPaymu.",
+    });
+  }
+  const expectedIpaymuHost =
+    ipaymuMode === "live" ? "my.ipaymu.com" : "sandbox.ipaymu.com";
+  if (urlHost(process.env.IPAYMU_BASE_URL) !== expectedIpaymuHost) {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message: `IPAYMU_BASE_URL harus memakai ${expectedIpaymuHost} untuk mode ${ipaymuMode || "sandbox"}.`,
     });
   }
   problems.push({
@@ -400,4 +445,28 @@ function isValidEmail(value: string) {
 
 function isBooleanEnv(value: string | undefined) {
   return value === "true" || value === "false";
+}
+
+function isPaymentMode(value: string | undefined): value is "sandbox" | "live" {
+  return value === "sandbox" || value === "live";
+}
+
+function isPublicHttpsUrl(value: string | undefined) {
+  try {
+    const url = new URL(value ?? "");
+    return (
+      url.protocol === "https:" &&
+      !["localhost", "127.0.0.1", "::1"].includes(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function urlHost(value: string | undefined) {
+  try {
+    return new URL(value ?? "").hostname.toLowerCase();
+  } catch {
+    return "";
+  }
 }

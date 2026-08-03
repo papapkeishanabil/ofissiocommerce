@@ -22,7 +22,7 @@ import {
   findPaymentByOrderPersisted,
   findPaymentOrder,
   listPaymentEvents,
-  savePayment,
+  savePaymentPersisted,
   savePaymentEvent,
   updateOrderAfterPayment,
   updatePaymentOrderSync,
@@ -46,6 +46,14 @@ import { ipaymuProvider } from "./providers/ipaymu.provider";
 import { mockPaymentProvider } from "./providers/mock-payment.provider";
 
 const TAX_RATE = 0.11;
+
+type PaymentServiceGlobal = typeof globalThis & {
+  __ofissioPaymentCreationLocks?: Map<string, Promise<CreatePaymentResult>>;
+};
+
+const paymentCreationLocks =
+  (globalThis as PaymentServiceGlobal).__ofissioPaymentCreationLocks ??
+  ((globalThis as PaymentServiceGlobal).__ofissioPaymentCreationLocks = new Map());
 
 function activeProvider(): PaymentProviderAdapter {
   return getPaymentRuntimeConfig().provider === "ipaymu"
@@ -135,7 +143,9 @@ export async function createPaymentFromCart(input: {
     updatedAt: now,
   };
 
-  const result = await createPaymentForPreparedOrder(order, referenceId);
+  const result = await createPaymentForPreparedOrder(order, referenceId, {
+    persistOrder: true,
+  });
   const payment = await getPaymentRecordById({
     companyId: order.companyId,
     paymentId: result.paymentId,
@@ -161,6 +171,24 @@ export async function createPaymentForOrder(input: {
   companyId: string;
   userId: string;
 }): Promise<CreatePaymentResult> {
+  const lockKey = `${input.companyId}:${input.orderId}`;
+  const activeLock = paymentCreationLocks.get(lockKey);
+  if (activeLock) return activeLock;
+
+  const operation = createPaymentForOrderUnlocked(input).finally(() => {
+    if (paymentCreationLocks.get(lockKey) === operation) {
+      paymentCreationLocks.delete(lockKey);
+    }
+  });
+  paymentCreationLocks.set(lockKey, operation);
+  return operation;
+}
+
+async function createPaymentForOrderUnlocked(input: {
+  orderId: string;
+  companyId: string;
+  userId: string;
+}): Promise<CreatePaymentResult> {
   const order = await getPaymentOrderGlobal(input.orderId);
   if (!order || order.companyId !== input.companyId) {
     throw createApiError("NOT_FOUND", "Order tidak ditemukan.", 404);
@@ -170,28 +198,28 @@ export async function createPaymentForOrder(input: {
     companyId: order.companyId,
     orderId: order.id,
   });
-  if (existing && isReusablePayment(existing.status)) {
+  if (order.status === "payment_received" || existing?.status === "paid") {
+    if (!existing) {
+      throw createApiError("BAD_REQUEST", "Order sudah lunas.", 409);
+    }
+    return paymentResult(existing, true);
+  }
+  if (existing?.status === "manual_review") {
+    return paymentResult(existing, true);
+  }
+  if (existing && isReusablePayment(existing)) {
     await ensurePaymentCreatedEvent(existing);
     const activePayment =
       !existing.paymentUrl && existing.status !== "paid"
         ? await refreshPaymentLinkForExistingPayment(existing, order)
         : existing;
-    const qr = getPaymentQrForInvoice(activePayment);
-    return {
-      paymentId: activePayment.id,
-      orderId: activePayment.orderId,
-      paymentUrl: activePayment.paymentUrl,
-      expiredAt: activePayment.expiredAt,
-      amount: activePayment.amount,
-      status: activePayment.status,
-      provider: activePayment.provider,
-      idempotent: true,
-      qrAvailable: qr.kind !== "none",
-    };
+    return paymentResult(activePayment, true);
   }
 
-  const referenceId = order.orderNumber ?? `OF-ORDER-${order.id}`;
-  return createPaymentForPreparedOrder(order, referenceId);
+  const referenceId = buildOrderPaymentReference(order, existing);
+  return createPaymentForPreparedOrder(order, referenceId, {
+    persistOrder: false,
+  });
 }
 
 async function ensurePaymentCreatedEvent(payment: PaymentRecord) {
@@ -315,6 +343,7 @@ export function recordPaymentEvent(
 async function createPaymentForPreparedOrder(
   order: PaymentOrderRecord,
   referenceId: string,
+  options: { persistOrder: boolean },
 ): Promise<CreatePaymentResult> {
   const provider = activeProvider();
   const now = new Date().toISOString();
@@ -339,7 +368,7 @@ async function createPaymentForPreparedOrder(
     providerResult,
     now,
   });
-  savePayment(payment, order);
+  await savePaymentPersisted(payment, order, options);
   recordPaymentEvent(payment, "payment_created", {
     metadataJson: { provider: provider.name },
   });
@@ -483,6 +512,34 @@ function publicPaymentStatus(
   };
 }
 
-function isReusablePayment(status: PaymentStatus) {
-  return ["pending", "waiting_payment", "paid"].includes(status);
+function isReusablePayment(payment: PaymentRecord) {
+  if (!["pending", "waiting_payment"].includes(payment.status)) return false;
+  if (!payment.expiredAt) return true;
+  return Date.parse(payment.expiredAt) > Date.now();
+}
+
+function paymentResult(payment: PaymentRecord, idempotent: boolean): CreatePaymentResult {
+  return {
+    paymentId: payment.id,
+    orderId: payment.orderId,
+    paymentUrl: payment.paymentUrl,
+    expiredAt: payment.expiredAt,
+    amount: payment.amount,
+    status: payment.status,
+    provider: payment.provider,
+    idempotent,
+    qrAvailable: getPaymentQrForInvoice(payment).kind !== "none",
+  };
+}
+
+function buildOrderPaymentReference(
+  order: PaymentOrderRecord,
+  previous: PaymentRecord | null,
+) {
+  const base = (order.orderNumber || order.id)
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    .slice(0, 120);
+  const previousAttempt = previous?.referenceId.match(/-PAY-(\d+)$/)?.[1];
+  const attempt = previousAttempt ? Number(previousAttempt) + 1 : previous ? 2 : 1;
+  return `${base}-PAY-${attempt}`;
 }

@@ -1,31 +1,50 @@
 import "server-only";
 
-import { ipaymuProvider } from "./providers/ipaymu.provider";
+import { createHash } from "node:crypto";
+
 import { syncPaymentStatusToWooCommerce } from "@/features/commerce/commerce.service";
-import { upsertTrackingFromPaymentOrder } from "@/features/tracking/tracking-payment.integration";
+import { repositoryRegistry } from "@/features/repositories/repository.factory";
+import { upsertTrackingFromPaymentOrderPersisted } from "@/features/tracking/tracking-payment.integration";
+
+import { getPaymentRuntimeConfig } from "./payment.config";
 import {
+  cachePaymentOrder,
   findPaymentByReferencePersisted,
   findPaymentOrder,
-  hasProcessedPaymentEvent,
-  markPaymentEventProcessed,
-  savePaymentEvent,
-  updateOrderAfterPayment,
-  updatePaymentRecord,
-  updatePaymentStatus,
+  savePaymentEventOnce,
+  updateOrderAfterPaymentPersisted,
+  updatePaymentRecordPersisted,
+  updatePaymentStatusPersisted,
 } from "./payment.store";
-import { recordPaymentEvent } from "./payment.service";
+import type {
+  NormalizedPaymentCallback,
+  PaymentEventRecord,
+  PaymentEventType,
+  PaymentOrderRecord,
+  PaymentRecord,
+  PaymentStatus,
+} from "./payment.types";
 import { paymentCallbackSchema } from "./payment.validation";
-import type { PaymentEventType, PaymentRecord, PaymentStatus } from "./payment.types";
+import { ipaymuProvider } from "./providers/ipaymu.provider";
+
+export interface IpaymuCallbackResult {
+  paymentId: string;
+  idempotent: boolean;
+  status: PaymentStatus;
+  manualReview: boolean;
+}
 
 export async function processIpaymuCallback(
   payload: unknown,
   headers: Headers,
-) {
+): Promise<IpaymuCallbackResult> {
+  const config = getPaymentRuntimeConfig();
+  if (config.requestedProvider !== "ipaymu" || !config.ipaymu.isComplete) {
+    throw new Error("Callback iPaymu belum aktif.");
+  }
+
   const parsed = paymentCallbackSchema.parse(payload);
-  const signatureValid = await ipaymuProvider.verifyCallbackSignature(
-    parsed,
-    headers,
-  );
+  const signatureValid = await ipaymuProvider.verifyCallbackSignature(parsed, headers);
   if (!signatureValid) throw new Error("Callback tidak valid.");
 
   const callback = ipaymuProvider.normalizeCallback(parsed);
@@ -33,96 +52,229 @@ export async function processIpaymuCallback(
   if (!payment || payment.provider !== "ipaymu") {
     throw new Error("Reference pembayaran tidak ditemukan.");
   }
+
+  const order = await loadPaymentOrder(payment);
+  const eventKey = callbackEventKey(callback);
+  const targetStatus =
+    payment.amount === callback.amount
+      ? ipaymuProvider.mapProviderStatusToInternalStatus(callback.providerStatus)
+      : "manual_review";
+  const callbackEvent = buildPaymentEvent({
+    id: `${eventKey}:received`,
+    payment,
+    eventType: "payment_callback_received",
+    newStatus: targetStatus,
+    metadataJson: {
+      eventKey,
+      providerStatus: callback.providerStatus,
+      amountMatched: payment.amount === callback.amount,
+    },
+  });
+  const claimed = await savePaymentEventOnce(callbackEvent);
+  if (
+    payment.status === "paid" ||
+    (!claimed.inserted && callbackStateAlreadyApplied(payment, callback, targetStatus))
+  ) {
+    return {
+      paymentId: payment.id,
+      idempotent: true,
+      status: payment.status,
+      manualReview: payment.status === "manual_review",
+    };
+  }
+
   if (payment.amount !== callback.amount) {
-    throw new Error("Nominal callback tidak sesuai.");
+    const reviewed = await persistCallbackState({
+      payment,
+      callback,
+      status: "manual_review",
+    });
+    await savePaymentEventOnce(
+      buildPaymentEvent({
+        id: `${eventKey}:verification`,
+        payment: reviewed,
+        eventType: "payment_verification_failed",
+        oldStatus: payment.status,
+        newStatus: "manual_review",
+        metadataJson: { eventKey, reason: "amount_mismatch" },
+      }),
+    );
+    return {
+      paymentId: payment.id,
+      idempotent: false,
+      status: "manual_review",
+      manualReview: true,
+    };
   }
 
-  const eventId = `ipaymu:${callback.referenceId}:${callback.eventId}`;
-  if (hasProcessedPaymentEvent(eventId) || (payment.status === "paid" && callback.providerStatus)) {
-    return { paymentId: payment.id, idempotent: true };
+  if (targetStatus === "manual_review") {
+    const reviewed = await persistCallbackState({
+      payment,
+      callback,
+      status: "manual_review",
+    });
+    await savePaymentEventOnce(
+      buildPaymentEvent({
+        id: `${eventKey}:verification`,
+        payment: reviewed,
+        eventType: "payment_verification_failed",
+        oldStatus: payment.status,
+        newStatus: "manual_review",
+        metadataJson: { eventKey, reason: "unknown_status" },
+      }),
+    );
+    return {
+      paymentId: payment.id,
+      idempotent: false,
+      status: "manual_review",
+      manualReview: true,
+    };
   }
 
-  const status = ipaymuProvider.mapProviderStatusToInternalStatus(
-    callback.providerStatus,
+  const updatedPayment = await persistCallbackState({
+    payment,
+    callback,
+    status: targetStatus,
+  });
+  await savePaymentEventOnce(
+    buildPaymentEvent({
+      id: `${eventKey}:status`,
+      payment: updatedPayment,
+      eventType: eventTypeForStatus(targetStatus),
+      oldStatus: payment.status,
+      newStatus: targetStatus,
+      metadataJson: { eventKey, providerStatus: callback.providerStatus },
+    }),
   );
-  recordCallbackReceived(payment, status, callback.rawSafeJson);
-  const previousStatus = payment.status;
-  const updatedPayment = updatePaymentStatus(
-    payment.id,
-    status,
-    callback.rawSafeJson,
-  );
-  if (updatedPayment) {
-    updatePaymentRecord(updatedPayment.id, {
-      providerPaymentId: callback.providerPaymentId ?? updatedPayment.providerPaymentId,
-      providerTransactionId:
-        callback.providerTransactionId ?? updatedPayment.providerTransactionId,
-      paymentMethod: callback.paymentMethod ?? updatedPayment.paymentMethod,
-      paymentChannel: callback.paymentChannel ?? updatedPayment.paymentChannel,
-      callbackReceivedAt: new Date().toISOString(),
-      callbackStatus: callback.callbackStatus ?? callback.providerStatus,
-      callbackReference: callback.referenceId,
-      callbackAmount: callback.amount,
-      callbackRawSafeJson: callback.rawSafeJson,
-      paidAt: status === "paid" ? callback.paidAt ?? new Date().toISOString() : updatedPayment.paidAt,
-    });
-    recordPaymentEvent(updatedPayment, eventTypeForStatus(status), {
-      oldStatus: previousStatus,
-      metadataJson: {
-        providerStatus: callback.providerStatus,
-        eventId,
-      },
-    });
-  }
-  if (status === "paid") {
-    const updatedOrder = updateOrderAfterPayment(
+
+  if (targetStatus === "paid") {
+    const updatedOrder = await updateOrderAfterPaymentPersisted(
       payment.orderId,
       "payment_received",
     );
-    const order = updatedOrder ?? findPaymentOrder(payment.orderId);
-    if (updatedPayment && order) {
-      upsertTrackingFromPaymentOrder({ payment: updatedPayment, order });
+    if (updatedOrder) {
+      await upsertTrackingFromPaymentOrderPersisted({
+        payment: updatedPayment,
+        order: updatedOrder,
+      });
       void syncPaymentStatusToWooCommerce({
         payment: updatedPayment,
-        order,
+        order: updatedOrder,
       });
     }
-  } else if (status === "failed" || status === "expired") {
-    const order = updateOrderAfterPayment(payment.orderId, "payment_failed");
+  } else if (["failed", "expired", "cancelled"].includes(targetStatus)) {
+    const updatedOrder = await updateOrderAfterPaymentPersisted(
+      payment.orderId,
+      "payment_failed",
+    );
     void syncPaymentStatusToWooCommerce({
       payment: updatedPayment,
-      order,
+      order: updatedOrder,
     });
   }
-  markPaymentEventProcessed(eventId);
-  return { paymentId: payment.id, idempotent: false };
+
+  return {
+    paymentId: payment.id,
+    idempotent: false,
+    status: targetStatus,
+    manualReview: false,
+  };
 }
 
-function recordCallbackReceived(
+function callbackStateAlreadyApplied(
   payment: PaymentRecord,
-  status: PaymentStatus,
-  metadataJson: Record<string, unknown>,
+  callback: NormalizedPaymentCallback,
+  targetStatus: PaymentStatus,
 ) {
-  savePaymentEvent({
-    id: `pevt_ipaymu_${payment.id}_${Date.now()}`,
-    paymentId: payment.id,
-    orderId: payment.orderId,
+  return (
+    payment.status === targetStatus &&
+    payment.callbackReference === callback.referenceId &&
+    payment.callbackAmount === callback.amount
+  );
+}
+
+async function loadPaymentOrder(payment: PaymentRecord) {
+  const cached = findPaymentOrder(payment.orderId);
+  if (cached) return cached;
+  const persisted = await repositoryRegistry.orders.getOrderById({
     companyId: payment.companyId,
-    provider: payment.provider,
-    eventType: "payment_callback_received",
-    oldStatus: payment.status,
-    newStatus: status,
-    referenceId: payment.referenceId,
-    amount: payment.amount,
-    metadataJson,
-    createdAt: new Date().toISOString(),
+    orderId: payment.orderId,
   });
+  if (!persisted) throw new Error("Order pembayaran tidak ditemukan.");
+  return cachePaymentOrder(persisted);
+}
+
+async function persistCallbackState(input: {
+  payment: PaymentRecord;
+  callback: NormalizedPaymentCallback;
+  status: PaymentStatus;
+}) {
+  const statusUpdated = await updatePaymentStatusPersisted(
+    input.payment.id,
+    input.status,
+    input.callback.rawSafeJson,
+  );
+  if (!statusUpdated) throw new Error("Status pembayaran tidak dapat diperbarui.");
+  const now = new Date().toISOString();
+  const metadataUpdated = await updatePaymentRecordPersisted(statusUpdated.id, {
+    providerPaymentId:
+      input.callback.providerPaymentId ?? statusUpdated.providerPaymentId,
+    providerTransactionId:
+      input.callback.providerTransactionId ?? statusUpdated.providerTransactionId,
+    paymentMethod: input.callback.paymentMethod ?? statusUpdated.paymentMethod,
+    paymentChannel: input.callback.paymentChannel ?? statusUpdated.paymentChannel,
+    callbackReceivedAt: now,
+    callbackStatus:
+      input.callback.callbackStatus ?? input.callback.providerStatus,
+    callbackReference: input.callback.referenceId,
+    callbackAmount: input.callback.amount,
+    callbackRawSafeJson: input.callback.rawSafeJson,
+    paidAt:
+      input.status === "paid"
+        ? input.callback.paidAt ?? statusUpdated.paidAt ?? now
+        : statusUpdated.paidAt,
+  });
+  return metadataUpdated ?? statusUpdated;
+}
+
+function callbackEventKey(callback: NormalizedPaymentCallback) {
+  const identity = [
+    callback.referenceId,
+    callback.eventId,
+    callback.providerStatus,
+    callback.amount,
+  ].join(":");
+  return `pevt_ipaymu_${createHash("sha256").update(identity).digest("hex").slice(0, 32)}`;
+}
+
+function buildPaymentEvent(input: {
+  id: string;
+  payment: PaymentRecord;
+  eventType: PaymentEventType;
+  oldStatus?: PaymentStatus | null;
+  newStatus?: PaymentStatus | null;
+  metadataJson: Record<string, unknown>;
+}): PaymentEventRecord {
+  return {
+    id: input.id,
+    paymentId: input.payment.id,
+    orderId: input.payment.orderId,
+    companyId: input.payment.companyId,
+    provider: input.payment.provider,
+    eventType: input.eventType,
+    oldStatus: input.oldStatus ?? input.payment.status,
+    newStatus: input.newStatus ?? input.payment.status,
+    referenceId: input.payment.referenceId,
+    amount: input.payment.amount,
+    metadataJson: input.metadataJson,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 function eventTypeForStatus(status: PaymentStatus): PaymentEventType {
   if (status === "paid") return "payment_paid";
   if (status === "expired") return "payment_expired";
   if (status === "cancelled") return "payment_cancelled";
-  if (status === "waiting_payment" || status === "pending") return "payment_callback_received";
-  return "payment_failed";
+  if (status === "failed") return "payment_failed";
+  return "payment_callback_received";
 }

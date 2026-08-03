@@ -89,7 +89,7 @@ export function CustomerPaymentPanel({
           Lunas pada {new Date(payment.paidAt).toLocaleString("id-ID")}
         </p>
       ) : null}
-      {payment?.paymentUrl && payment.status !== "paid" ? (
+      {payment?.paymentUrl && ["pending", "waiting_payment"].includes(payment.status) ? (
         <a
           href={payment.paymentUrl}
           target="_blank"
@@ -109,5 +109,6 @@ function paymentLabel(status: string) {
   if (status === "failed") return "Pembayaran gagal";
   if (status === "expired") return "Payment link kedaluwarsa";
   if (status === "cancelled") return "Pembayaran dibatalkan";
+  if (status === "manual_review") return "Pembayaran sedang diverifikasi manual";
   return "Menunggu pembayaran";
 }

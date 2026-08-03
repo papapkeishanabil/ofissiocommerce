@@ -16,6 +16,7 @@ export type PaymentStatus =
   | "expired"
   | "failed"
   | "cancelled"
+  | "manual_review"
   | "refunded";
 
 export interface PaymentRecord {
@@ -164,6 +165,14 @@ export interface NormalizedPaymentCallback {
   callbackStatus?: string | null;
   rawSafeJson: Record<string, unknown>;
 }
+
+export type PaymentCallbackDisposition =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "expired"
+  | "cancelled"
+  | "manual_review";
 
 export type PaymentEventType =
   | "payment_created"

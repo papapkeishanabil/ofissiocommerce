@@ -14,11 +14,19 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
    - Terapkan role mapping customer/admin dari database, bukan header mock.
 
 2. iPaymu live/sandbox activation
-   - Isi `IPAYMU_API_KEY`, `IPAYMU_VA`, `IPAYMU_BASE_URL`, dan callback secret di secret manager.
-   - Uji create payment sandbox.
-   - Uji callback signature valid/invalid.
+   - Task C hardening code selesai: request memakai grand total backend,
+     callback signature/reference/amount/status diverifikasi, status asing dan
+     amount mismatch masuk manual review, serta event callback idempotent.
+   - Isi credential sandbox pada secret manager staging, bukan repo.
+   - Gunakan `PAYMENT_MODE=sandbox`, `IPAYMU_MODE=sandbox`, dan
+     `IPAYMU_NOTIFY_URL` HTTPS publik.
+   - Uji satu create payment sandbox dengan flag eksplisit
+     `IPAYMU_TEST_CREATE_PAYMENT=true`.
+   - Uji callback nyata valid/invalid melalui staging atau tunnel HTTPS.
    - Pastikan return URL tidak pernah menandai paid.
    - Pastikan QR payment invoice benar-benar scannable.
+   - Sebelum live, ganti credential melalui secret manager terpisah lalu set
+     `PAYMENT_MODE=live`, `IPAYMU_MODE=live`, dan base URL live secara eksplisit.
 
 3. Hostinger SMTP live email
    - Verify sender domain, SPF, DKIM, dan DMARC.

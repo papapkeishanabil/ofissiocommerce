@@ -23,7 +23,11 @@ export async function POST(request: Request) {
       request,
       action: "payment_callback_processed",
       entityId: result.paymentId,
-      metadata: { idempotent: result.idempotent },
+      metadata: {
+        idempotent: result.idempotent,
+        status: result.status,
+        manualReview: result.manualReview,
+      },
     });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {

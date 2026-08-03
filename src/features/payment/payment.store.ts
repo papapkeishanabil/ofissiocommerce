@@ -43,6 +43,19 @@ export function savePayment(
   });
 }
 
+export async function savePaymentPersisted(
+  payment: PaymentRecord,
+  order: PaymentOrderRecord,
+  options: { persistOrder?: boolean } = {},
+) {
+  if (options.persistOrder !== false) {
+    await repositoryRegistry.orders.saveOrder?.({ paymentOrder: order });
+  }
+  state.orders.set(order.id, order);
+  await repositoryRegistry.payments.savePayment?.({ payment, order });
+  state.payments.set(payment.id, payment);
+}
+
 export function findPaymentById(paymentId: string) {
   return state.payments.get(paymentId);
 }
@@ -129,6 +142,38 @@ export function updatePaymentStatus(
   return updated;
 }
 
+export async function updatePaymentStatusPersisted(
+  paymentId: string,
+  status: PaymentStatus,
+  rawProviderResponse?: unknown,
+) {
+  const payment = state.payments.get(paymentId);
+  if (!payment) return undefined;
+  const now = new Date().toISOString();
+  const updated: PaymentRecord = {
+    ...payment,
+    status,
+    paidAt: status === "paid" ? payment.paidAt ?? now : payment.paidAt,
+    failedAt: status === "failed" ? payment.failedAt ?? now : payment.failedAt,
+    cancelledAt:
+      status === "cancelled" ? payment.cancelledAt ?? now : payment.cancelledAt,
+    rawProviderResponse:
+      rawProviderResponse === undefined
+        ? payment.rawProviderResponse
+        : rawProviderResponse,
+    updatedAt: now,
+  };
+  const persisted = await repositoryRegistry.payments.updatePaymentStatus?.({
+    companyId: updated.companyId,
+    paymentId,
+    status,
+    rawProviderResponse,
+  });
+  const next = persisted ?? updated;
+  state.payments.set(paymentId, next);
+  return next;
+}
+
 export function updatePaymentRecord(
   paymentId: string,
   patch: Partial<PaymentRecord>,
@@ -151,6 +196,27 @@ export function updatePaymentRecord(
   return updated;
 }
 
+export async function updatePaymentRecordPersisted(
+  paymentId: string,
+  patch: Partial<PaymentRecord>,
+) {
+  const payment = state.payments.get(paymentId);
+  if (!payment) return undefined;
+  const updated: PaymentRecord = {
+    ...payment,
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  const persisted = await repositoryRegistry.payments.updatePayment?.({
+    companyId: updated.companyId,
+    paymentId,
+    patch: updated,
+  });
+  const next = persisted ?? updated;
+  state.payments.set(paymentId, next);
+  return next;
+}
+
 export function updateOrderAfterPayment(
   orderId: string,
   status: PaymentOrderRecord["status"],
@@ -167,6 +233,23 @@ export function updateOrderAfterPayment(
     // Persistence foundation must not break payment status update.
   });
   return updated;
+}
+
+export async function updateOrderAfterPaymentPersisted(
+  orderId: string,
+  status: PaymentOrderRecord["status"],
+) {
+  const order = state.orders.get(orderId);
+  if (!order) return undefined;
+  const updated = { ...order, status, updatedAt: new Date().toISOString() };
+  const persisted = await repositoryRegistry.orders.updateOrderAfterPayment?.({
+    companyId: updated.companyId,
+    orderId,
+    status,
+  });
+  const next = persisted ?? updated;
+  state.orders.set(orderId, next);
+  return next;
 }
 
 export function updatePaymentOrderSync(
@@ -210,6 +293,43 @@ export function savePaymentEvent(event: PaymentEventRecord) {
     // Event persistence must not break payment status changes.
   });
   return event;
+}
+
+export async function savePaymentEventOnce(event: PaymentEventRecord) {
+  if (state.events.has(event.id)) {
+    return { event: state.events.get(event.id)!, inserted: false };
+  }
+  const existing = await repositoryRegistry.payments
+    .listPaymentEvents?.({
+      companyId: event.companyId,
+      paymentId: event.paymentId,
+      orderId: event.orderId,
+    })
+    .then((events) => events.find((item) => item.id === event.id))
+    .catch(() => undefined);
+  if (existing) {
+    state.events.set(existing.id, existing);
+    return { event: existing, inserted: false };
+  }
+
+  try {
+    const persisted =
+      (await repositoryRegistry.payments.addPaymentEvent?.(event)) ?? event;
+    state.events.set(persisted.id, persisted);
+    return { event: persisted, inserted: true };
+  } catch (error) {
+    const duplicate = await repositoryRegistry.payments
+      .listPaymentEvents?.({
+        companyId: event.companyId,
+        paymentId: event.paymentId,
+        orderId: event.orderId,
+      })
+      .then((events) => events.find((item) => item.id === event.id))
+      .catch(() => undefined);
+    if (!duplicate) throw error;
+    state.events.set(duplicate.id, duplicate);
+    return { event: duplicate, inserted: false };
+  }
 }
 
 export async function listPaymentEvents(input: {

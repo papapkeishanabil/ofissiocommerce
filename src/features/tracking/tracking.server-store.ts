@@ -35,6 +35,21 @@ export function upsertTrackingOrder(order: CustomerTrackingOrder) {
   return { order: next, created: !existing };
 }
 
+export async function upsertTrackingOrderPersisted(order: CustomerTrackingOrder) {
+  const existing = state.orders.get(order.id);
+  const next: CustomerTrackingOrder = existing
+    ? {
+        ...existing,
+        ...order,
+        createdAt: existing.createdAt,
+        updatedAt: new Date().toISOString(),
+      }
+    : order;
+  state.orders.set(order.id, next);
+  await repositoryRegistry.tracking.upsertTrackingOrder?.(next);
+  return { order: next, created: !existing };
+}
+
 export function findTrackingOrder(orderId: string) {
   return state.orders.get(orderId) ?? null;
 }

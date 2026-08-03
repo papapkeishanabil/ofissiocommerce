@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAdminOrderDetail, requireInternalAdmin } from "@/features/admin/admin.service";
 import { createPaymentForOrder } from "@/features/payment/payment.service";
+import { logPaymentEvent } from "@/lib/security/audit-log";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
 import { safeErrorResponse } from "@/lib/security/safe-error-response";
 import { validateInput } from "@/lib/security/validate-input";
@@ -34,6 +35,19 @@ export async function POST(request: Request, context: RouteContext) {
       orderId: id,
       companyId: detail.order.companyId,
       userId: actor.id,
+    });
+    logPaymentEvent({
+      request,
+      actorId: actor.id,
+      actorType: "internal",
+      companyId: detail.order.companyId,
+      action: "payment_create",
+      entityId: result.paymentId,
+      metadata: {
+        orderId: result.orderId,
+        provider: result.provider,
+        idempotent: result.idempotent ?? false,
+      },
     });
     return NextResponse.json({ ok: true, ...result }, { status: 201 });
   } catch (error) {

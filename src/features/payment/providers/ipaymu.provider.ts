@@ -49,8 +49,8 @@ export async function createPaymentLink(
   input: ProviderCreatePaymentInput,
 ): Promise<ProviderCreatePaymentOutput> {
   const config = getPaymentRuntimeConfig();
-  if (!config.ipaymu.isComplete) {
-    throw new Error("Konfigurasi iPaymu belum lengkap.");
+  if (config.requestedProvider !== "ipaymu" || !config.ipaymu.isComplete) {
+    throw new Error("Konfigurasi iPaymu belum aman atau belum lengkap.");
   }
 
   const body = buildCreatePaymentBody(input, config.ipaymu.expireMinutes);
@@ -199,7 +199,10 @@ export function getPaymentStatusFromCallback(providerStatus: string): PaymentSta
     return "cancelled";
   }
   if (normalized === "0" || normalized === "pending") return "waiting_payment";
-  return "failed";
+  if (normalized === "-1" || normalized === "failed" || normalized === "gagal") {
+    return "failed";
+  }
+  return "manual_review";
 }
 
 export function getSafeProviderError(payload: IpaymuCreateResponse, status: number) {
@@ -214,23 +217,24 @@ export function getSafeProviderError(payload: IpaymuCreateResponse, status: numb
   return "Payment link iPaymu belum dapat dibuat.";
 }
 
-function buildCreatePaymentBody(
+export function buildCreatePaymentBody(
   input: ProviderCreatePaymentInput,
   expireMinutes: number,
 ) {
   const config = getPaymentRuntimeConfig().ipaymu;
   const items = input.order?.items ?? [];
-  const product =
-    items.length > 0 ? items.map((item) => item.productName) : ["Ofissio invoice"];
-  const qty = items.length > 0 ? items.map((item) => item.totalQty) : [1];
-  const price =
-    items.length > 0
-      ? items.map((item) => item.priceFrom)
-      : [input.amount];
-  const description =
-    items.length > 0
-      ? items.map((item) => `${item.sku} - ${item.selectedColor}`)
-      : [`Invoice ${input.referenceId}`];
+  const itemSummary = items
+    .map((item) => `${item.sku} (${item.totalQty} pcs)`)
+    .slice(0, 5)
+    .join(", ");
+
+  // iPaymu derives the payable amount from product × qty × price. Use one
+  // backend-authoritative invoice line so tax, shipping, discounts, and
+  // customization cannot be dropped or recalculated by a client payload.
+  const product = [`Invoice Ofissio ${input.referenceId}`];
+  const qty = [1];
+  const price = [input.amount];
+  const description = [itemSummary || `Pembayaran order ${input.orderId}`];
 
   return {
     product,
@@ -238,7 +242,7 @@ function buildCreatePaymentBody(
     price,
     description,
     returnUrl: config.returnUrl,
-    notifyUrl: config.callbackUrl,
+    notifyUrl: config.notifyUrl,
     cancelUrl: config.cancelUrl,
     referenceId: input.referenceId,
     expired: expireMinutes,

@@ -54,15 +54,19 @@ WORDPRESS_MEDIA_APP_PASSWORD=
 WORDPRESS_MEDIA_TOKEN=
 
 PAYMENT_PROVIDER=mock
+PAYMENT_MODE=sandbox
 IPAYMU_ENABLED=false
 IPAYMU_MODE=sandbox
 IPAYMU_VA=
 IPAYMU_API_KEY=
 IPAYMU_BASE_URL=https://sandbox.ipaymu.com
+IPAYMU_NOTIFY_URL=https://your-public-staging.example/api/payment/ipaymu/callback
+# Legacy alias only; prefer IPAYMU_NOTIFY_URL.
 IPAYMU_CALLBACK_URL=
 IPAYMU_RETURN_URL=
 IPAYMU_CANCEL_URL=
 IPAYMU_EXPIRE_MINUTES=1440
+IPAYMU_TEST_CREATE_PAYMENT=false
 
 SHIPPING_PROVIDER=mock
 DEFAULT_ORIGIN_CITY=Bandung
@@ -93,7 +97,7 @@ NEXTAUTH_SECRET=
 
 - Jangan pakai `NEXT_PUBLIC_` untuk API key atau secret.
 - Jangan buat `NEXT_PUBLIC_RESEND_API_KEY`.
-- Jangan buat `NEXT_PUBLIC_IPAYMU_API_KEY`.
+- Jangan buat `NEXT_PUBLIC_IPAYMU_API_KEY` atau `NEXT_PUBLIC_IPAYMU_VA`.
 - Jangan buat `NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET`.
 - Jangan buat `NEXT_PUBLIC_WORDPRESS_MEDIA_APP_PASSWORD` atau `NEXT_PUBLIC_WORDPRESS_MEDIA_TOKEN`.
 - Jangan buat `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`.
@@ -126,7 +130,11 @@ Staging dipakai untuk mengisi credential real secara bertahap:
 - Supabase staging project setelah schema review.
 - Resend API key dan domain sender yang sudah diverifikasi.
 - iPaymu sandbox setelah kontrak signature final.
-- iPaymu membutuhkan `IPAYMU_ENABLED=true`, callback URL, return URL, cancel URL, dan `npm run check:payment`.
+- iPaymu membutuhkan `PAYMENT_MODE=sandbox`, `IPAYMU_MODE=sandbox`,
+  `IPAYMU_ENABLED=true`, notify URL HTTPS publik, return URL, cancel URL, dan
+  `npm run check:payment`.
+- `IPAYMU_TEST_CREATE_PAYMENT=false` adalah default. Ubah menjadi `true` hanya
+  ketika memang hendak membuat satu transaksi sandbox nyata dari script check.
 - Shipping provider sandbox setelah provider dipilih.
 
 WooCommerce live test masih pending sampai env tersedia.
