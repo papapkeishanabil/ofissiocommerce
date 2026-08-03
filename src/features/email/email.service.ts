@@ -15,6 +15,7 @@ import {
   renderTestEmail,
 } from "./email.templates";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
 import type {
   EmailProviderAdapter,
   EmailSendInput,
@@ -364,7 +365,7 @@ export async function sendQuotationReadyToCustomer(input: {
   customerEmail: string | null;
   request?: Request;
 }) {
-  const quotation = input.quotation;
+  const quotation = sanitizeQuotationForCustomer(input.quotation);
   if (!input.customerEmail) {
     if (getEmailRuntimeConfig().provider !== "mock") {
       return skippedEmail({
@@ -402,6 +403,67 @@ export async function sendQuotationReadyToCustomer(input: {
   });
 }
 
+export async function sendQuotationReadyNotifications(input: {
+  quotation: QuotationRequestRecord;
+  customerEmail: string | null;
+  request?: Request;
+}) {
+  const quotation = sanitizeQuotationForCustomer(input.quotation);
+  const config = getEmailRuntimeConfig();
+  const salesEmail = input.quotation.salesEmail ?? config.salesQuotationEmail;
+  const customerResult = await sendQuotationReadyToCustomer({
+    quotation,
+    customerEmail: input.customerEmail,
+    request: input.request,
+  });
+  if (
+    salesEmail &&
+    input.customerEmail &&
+    salesEmail.trim().toLowerCase() === input.customerEmail.trim().toLowerCase()
+  ) {
+    return [customerResult];
+  }
+
+  if (!salesEmail && config.provider !== "mock") {
+    const salesResult = await skippedEmail({
+      type: "quotation_ready_customer",
+      companyId: quotation.companyId,
+      userId: quotation.userId,
+      to: [],
+      subject: "Quotation ready sales copy skipped",
+      reason: "Email sales belum tersedia.",
+      safeMetadata: {
+        quotationNumber: quotation.quotationNumber,
+        recipientRole: "sales",
+      },
+      request: input.request,
+    });
+    return [customerResult, salesResult];
+  }
+
+  const template = renderQuotationReadyToCustomer(quotation, {
+    customerUrl: buildPublicUrl(`/quotes/${quotation.id}`),
+    pdfAvailable: await hasQuotationPdf(quotation),
+  });
+  const salesResult = await sendEmail({
+    type: "quotation_ready_customer",
+    companyId: quotation.companyId,
+    userId: quotation.userId,
+    to: [salesEmail || "sales-placeholder@ofissio.local"],
+    subject: `[Sales copy] ${template.subject}`,
+    html: template.html,
+    text: template.text,
+    safeMetadata: {
+      quotationNumber: quotation.quotationNumber,
+      grandTotal: quotation.grandTotal,
+      validUntil: quotation.validUntil,
+      recipientRole: "sales",
+    },
+    request: input.request,
+  });
+  return [customerResult, salesResult];
+}
+
 export async function sendPaymentReceivedEmail() {
   return { status: "skipped" as const, reason: "Phase 13 skeleton." };
 }
@@ -415,6 +477,7 @@ export const emailService = {
   sendQuotationRequestToSales,
   sendQuotationConfirmationToCustomer,
   sendQuotationReadyToCustomer,
+  sendQuotationReadyNotifications,
   sendPaymentReceivedEmail,
   sendOrderTrackingUpdateEmail,
   getEmailProvider,
@@ -440,7 +503,10 @@ async function hasQuotationPdf(quotation: QuotationRequestRecord) {
       entityId: quotation.id,
       documentType: "quotation_pdf",
     });
-    return documents.some((document) => document.status === "generated");
+    return documents.some(
+      (document) =>
+        document.status === "generated" && document.metadata.final === true,
+    );
   } catch {
     return false;
   }

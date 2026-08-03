@@ -1,12 +1,15 @@
 import "server-only";
 
+import * as QRCode from "qrcode";
+
 import { formatInvoiceDate, formatRupiah } from "../../document.utils";
 import type { InvoicePdfData } from "../../document.types";
 import { SimplePdfDocument, wrapText } from "../pdf-renderer";
 import type { PdfTemplate, PdfTextOptions } from "../pdf.types";
 
-const PRIMARY = "#000314";
-const YELLOW = "#fcd400";
+const PRIMARY = "#061a56";
+const PRIMARY_DEEP = "#020d35";
+const YELLOW = "#f6c900";
 const INK = "#101828";
 const MUTED = "#667085";
 const SURFACE = "#f8f9fa";
@@ -187,41 +190,33 @@ function drawPaymentAndWords(doc: SimplePdfDocument, data: InvoicePdfData) {
     color: MUTED,
   });
 
-  doc.strokeRect(LEFT + 16, y + 20, 44, 44, OUTLINE, 0.8);
-  doc.line(LEFT + 24, y + 42, LEFT + 52, y + 42, OUTLINE);
-  doc.line(LEFT + 38, y + 28, LEFT + 38, y + 56, OUTLINE);
-  doc.text(data.paymentQr ? "QR" : "QR", LEFT + 38, y + 39, {
-    size: 8,
-    font: "bold",
-    color: MUTED,
-    align: "center",
-  });
-  doc.text(data.paymentQr ? "DATA" : "PENDING", LEFT + 38, y + 51, {
-    size: 5.2,
-    font: "mono",
-    color: data.paymentQr ? PRIMARY : MUTED,
-    align: "center",
-  });
+  const qrPayload = invoiceQrPayload(data);
+  const qrRendered = qrPayload
+    ? drawVectorQr(doc, qrPayload, LEFT + 12, y + 14, 56)
+    : false;
+  if (!qrRendered) {
+    drawQrPlaceholder(doc, LEFT + 12, y + 14, 56);
+  }
 
-  doc.text(paymentMethodLabel(data), LEFT + 74, y + 20, {
+  doc.text(paymentMethodLabel(data), LEFT + 82, y + 20, {
     size: 10.4,
     font: "bold",
     color: INK,
   });
-  doc.rect(LEFT + 74, y + 38, 108, 20, PRIMARY);
-  doc.text(data.isPaymentLive ? "Bayar via iPaymu" : "Payment Link", LEFT + 128, y + 44, {
+  doc.rect(LEFT + 82, y + 38, 118, 20, PRIMARY);
+  doc.text(data.isPaymentLive ? "Bayar via iPaymu" : "Payment Link", LEFT + 141, y + 44, {
     size: 7.2,
     font: "bold",
     color: "#ffffff",
     align: "center",
   });
   if (data.paymentReference) {
-    doc.text(`Ref: ${data.paymentReference}`, LEFT + 74, y + 63, {
+    doc.text(`Ref: ${data.paymentReference}`, LEFT + 82, y + 63, {
       size: 6.3,
       color: MUTED,
     });
   }
-  drawLimitedText(doc, data.paymentLink || "Payment link tersedia setelah payment aktif.", LEFT + 74, y + 73, 146, {
+  drawLimitedText(doc, data.paymentLink || "Payment link tersedia setelah payment aktif.", LEFT + 82, y + 73, 140, {
     size: 6.7,
     lineHeight: 8.2,
     color: MUTED,
@@ -247,6 +242,75 @@ function drawPaymentAndWords(doc: SimplePdfDocument, data: InvoicePdfData) {
   });
 
   doc.cursorY = y + 106;
+}
+
+function invoiceQrPayload(data: InvoicePdfData) {
+  if (data.paymentQrKind === "string" && data.paymentQr) {
+    return data.paymentQr;
+  }
+  return data.paymentLink;
+}
+
+function drawVectorQr(
+  doc: SimplePdfDocument,
+  value: string,
+  x: number,
+  y: number,
+  size: number,
+) {
+  try {
+    const qr = QRCode.create(value, { errorCorrectionLevel: "M" });
+    const quietZone = 4;
+    const moduleCount = qr.modules.size;
+    const moduleSize = size / (moduleCount + quietZone * 2);
+    doc.rect(x, y, size, size, "#ffffff");
+
+    for (let row = 0; row < moduleCount; row += 1) {
+      let runStart = -1;
+      for (let column = 0; column <= moduleCount; column += 1) {
+        const isDark =
+          column < moduleCount && qr.modules.get(row, column) === 1;
+        if (isDark && runStart === -1) runStart = column;
+        if (!isDark && runStart !== -1) {
+          doc.rect(
+            x + (runStart + quietZone) * moduleSize,
+            y + (row + quietZone) * moduleSize,
+            (column - runStart) * moduleSize + 0.01,
+            moduleSize + 0.01,
+            "#000000",
+          );
+          runStart = -1;
+        }
+      }
+    }
+    doc.strokeRect(x, y, size, size, SURFACE_HIGH, 0.5);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function drawQrPlaceholder(
+  doc: SimplePdfDocument,
+  x: number,
+  y: number,
+  size: number,
+) {
+  doc.strokeRect(x, y, size, size, OUTLINE, 0.8);
+  doc.line(x + 9, y + size / 2, x + size - 9, y + size / 2, OUTLINE);
+  doc.line(x + size / 2, y + 9, x + size / 2, y + size - 9, OUTLINE);
+  doc.text("QR", x + size / 2, y + 22, {
+    size: 8,
+    font: "bold",
+    color: MUTED,
+    align: "center",
+  });
+  doc.text("PENDING", x + size / 2, y + 35, {
+    size: 5.2,
+    font: "mono",
+    color: MUTED,
+    align: "center",
+  });
 }
 
 function drawItems(doc: SimplePdfDocument, data: InvoicePdfData) {
@@ -302,21 +366,21 @@ function drawTableHeader(
   });
 
   const headerY = y + 24;
+  doc.rect(LEFT, headerY, WIDTH, 30, PRIMARY);
   const labels = ["No", "Description", "Harga Satuan", "Qty", "Total"];
   let x = LEFT;
   labels.forEach((label, index) => {
     const width = widths[index] ?? 60;
     const align = aligns[index] ?? "left";
-    doc.text(label.toUpperCase(), columnTextX(x, width, align), headerY, {
+    doc.text(label.toUpperCase(), columnTextX(x, width, align), headerY + 10, {
       size: 6.8,
       font: "bold",
-      color: PRIMARY,
+      color: "#ffffff",
       align,
     });
     x += width;
   });
-  doc.line(LEFT, headerY + 15, RIGHT, headerY + 15, PRIMARY);
-  return headerY + 24;
+  return headerY + 30;
 }
 
 function drawItemRow(
@@ -353,12 +417,12 @@ function drawItemRow(
 }
 
 function drawTermsTotalsSignature(doc: SimplePdfDocument, data: InvoicePdfData) {
-  ensureSpace(doc, data, 196);
+  ensureSpace(doc, data, 256);
   const y = doc.cursorY;
   drawTerms(doc, data, LEFT, y);
   drawSummary(doc, data, RIGHT - 244, y);
-  drawSignature(doc, data, RIGHT - 218, y + 120);
-  doc.cursorY = y + 196;
+  drawSignature(doc, data, RIGHT - 218, y + 176);
+  doc.cursorY = y + 256;
 }
 
 function drawTerms(doc: SimplePdfDocument, data: InvoicePdfData, x: number, y: number) {
@@ -387,20 +451,29 @@ function drawTerms(doc: SimplePdfDocument, data: InvoicePdfData, x: number, y: n
 
 function drawSummary(doc: SimplePdfDocument, data: InvoicePdfData, x: number, y: number) {
   const rowRight = x + 244;
-  summaryRow(doc, "Sub-total", data.subtotal, x, y + 2, rowRight);
-  summaryRow(doc, "Kode Unik", data.uniqueCode, x, y + 22, rowRight);
-  summaryRow(doc, "DPP", data.dpp, x, y + 42, rowRight);
-  summaryRow(doc, `PPN ${data.taxRate}%`, data.taxTotal, x, y + 62, rowRight);
-  summaryRow(doc, "Shipping", data.shippingTotal, x, y + 82, rowRight);
+  summaryRow(doc, "Subtotal produk", data.subtotal, x, y + 2, rowRight);
+  summaryRow(doc, "Customization / bordir", data.customizationTotal, x, y + 20, rowRight);
+  summaryRow(doc, "Diskon", data.discountTotal, x, y + 38, rowRight);
+  summaryRow(doc, "Kode unik", data.uniqueCode, x, y + 56, rowRight);
+  summaryRow(doc, "DPP", data.dpp, x, y + 74, rowRight);
+  summaryRow(
+    doc,
+    data.taxEnabled ? `${data.taxLabel} ${data.taxRate}%` : `${data.taxLabel} tidak dikenakan`,
+    data.taxTotal,
+    x,
+    y + 92,
+    rowRight,
+  );
+  summaryRow(doc, "Shipping", data.shippingTotal, x, y + 110, rowRight);
 
-  doc.rect(x, y + 102, 82, 36, YELLOW);
-  doc.rect(x + 82, y + 102, 162, 36, PRIMARY);
-  doc.text("TOTAL", x + 18, y + 115, {
+  doc.rect(x, y + 130, 82, 36, YELLOW);
+  doc.rect(x + 82, y + 130, 162, 36, PRIMARY);
+  doc.text("TOTAL", x + 18, y + 143, {
     size: 9,
     font: "bold",
-    color: PRIMARY,
+    color: PRIMARY_DEEP,
   });
-  doc.text(formatRupiah(data.grandTotal), x + 232, y + 114, {
+  doc.text(formatRupiah(data.grandTotal), x + 232, y + 142, {
     size: 12.6,
     font: "bold",
     color: "#ffffff",
@@ -431,7 +504,7 @@ function summaryRow(
 }
 
 function drawSignature(doc: SimplePdfDocument, data: InvoicePdfData, x: number, y: number) {
-  doc.text("Authorized Signature", x + 109, y, {
+  doc.text("Disahkan oleh", x + 109, y, {
     size: 7.1,
     color: MUTED,
     align: "center",
@@ -466,13 +539,13 @@ function drawFooter(doc: SimplePdfDocument, data: InvoicePdfData) {
   doc.text("OFISSIO", LEFT + 31, FOOTER_TOP + 18, {
     size: 11,
     font: "bold",
-    color: PRIMARY,
+    color: PRIMARY_DEEP,
     align: "center",
   });
   doc.text("WORKWEAR", LEFT + 31, FOOTER_TOP + 32, {
     size: 5.8,
     font: "mono",
-    color: PRIMARY,
+    color: PRIMARY_DEEP,
     align: "center",
   });
 

@@ -8,8 +8,10 @@ import { recordPaymentEvent } from "@/features/payment/payment.service";
 import { SupabaseDatabaseError } from "@/features/database/database.errors";
 import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payment.types";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
+import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
 
 import { getDocumentRuntimeConfig } from "./document.config";
 import { documentRepository } from "./document.repository";
@@ -27,6 +29,7 @@ import type {
 import {
   amountToIndonesianWords,
   formatInvoiceDate,
+  formatRupiah,
   isInvoiceTemplate,
   isQuotationFinalForPdf,
   isQuotationTemplate,
@@ -94,10 +97,12 @@ export async function generateQuotationPdf(input: GenerateQuotationPdfInput) {
       entityId: quotation.id,
       documentType: "quotation_pdf",
     });
-    if (existing && !input.forceRegenerate) {
+    const existingMatchesFinalState =
+      Boolean(existing?.metadata.final) === isFinal;
+    if (existing && !input.forceRegenerate && existingMatchesFinalState) {
       return { document: existing, idempotent: true };
     }
-    if (existing && input.forceRegenerate) {
+    if (existing && (input.forceRegenerate || !existingMatchesFinalState)) {
       await documentRepository.update(existing.id, {
         status: "expired",
         deletedAt: new Date().toISOString(),
@@ -331,6 +336,16 @@ export async function getQuotationPdfSignedUrl(input: {
     documentType: "quotation_pdf",
   });
   if (!document) throw createApiError("NOT_FOUND", "PDF quotation belum tersedia.", 404);
+  if (
+    isQuotationFinalForPdf(quotation.status) &&
+    document.metadata.final !== true
+  ) {
+    throw createApiError(
+      "NOT_FOUND",
+      "PDF final quotation belum tersedia.",
+      404,
+    );
+  }
   return signedUrlForDocument({
     document,
     request: input.request,
@@ -387,45 +402,64 @@ export function mapQuotationToPdfData(input: {
   generatedAt: string;
   isFinal: boolean;
 }): QuotationPdfData {
+  const customerQuotation = sanitizeQuotationForCustomer(input.quotation);
+  const config = getDocumentRuntimeConfig();
   return {
-    quotation: input.quotation,
+    quotation: customerQuotation,
     documentNumber: input.documentNumber,
     generatedAt: input.generatedAt,
     isFinal: input.isFinal,
-    items: input.quotation.items.map((item) => ({
+    items: customerQuotation.items.map((item) => ({
       productName: item.productName,
       sku: item.sku,
       selectedColor: item.selectedColor,
       sizeSummary: sizeMatrixSummary(item.sizeMatrix),
       totalQty: item.totalQty,
       unitPrice: item.finalUnitPrice ?? item.unitPrice,
+      productSubtotal:
+        (item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom) * item.totalQty,
+      embroideryTotal: item.embroideryTotal,
       discountAmount: item.discountAmount,
       lineTotal: item.finalLineTotal ?? item.lineSubtotal,
-      customizationSummary:
-        item.embroideryPlacements.length === 0
-          ? item.customization ?? "-"
-          : item.embroideryPlacements
-              .map((placement) =>
-                [
-                  placement.zone,
-                  placement.logoFileName,
-                  `${placement.widthCm}x${placement.heightCm} cm`,
-                  placement.notes,
-                ]
-                  .filter(Boolean)
-                  .join(" / "),
-              )
-              .join("; "),
+      customizationSummary: quotationCustomizationSummary(item),
     })),
     terms: [
-      input.quotation.validUntil
-        ? `Harga berlaku sampai ${formatInvoiceDate(input.quotation.validUntil)}.`
+      customerQuotation.validUntil
+        ? `Harga berlaku sampai ${formatInvoiceDate(customerQuotation.validUntil)}.`
         : "Harga mengikuti valid until yang dikonfirmasi sales.",
       "Produksi/custom mengikuti approval final dari customer.",
       "Harga final tidak termasuk perubahan spesifikasi setelah approval.",
       "Pembayaran mengikuti invoice/payment instruction dari Ofissio.",
     ],
+    locationLabel: config.companyLocationLabel,
+    signerName: config.signerName,
+    signerTitle: config.signerTitle,
+    contactTel: config.contactTel,
+    contactWeb: config.contactWeb,
+    contactEmail: config.contactEmail,
   };
+}
+
+function quotationCustomizationSummary(
+  item: QuotationRequestRecord["items"][number],
+) {
+  if (item.embroideryPlacements.length === 0) return item.customization ?? "-";
+  const placements = item.embroideryPlacements.map((placement) =>
+    [
+      zoneLabel(placement.zone),
+      embroideryTechniqueLabel(placement.technique),
+      placement.logoFileName,
+      `${placement.widthCm}x${placement.heightCm} cm`,
+      `Rotasi ${placement.rotation} deg`,
+      placement.notes,
+    ]
+      .filter(Boolean)
+      .join(" / "),
+  );
+  if (item.embroideryTotal > 0) {
+    placements.push(`Biaya bordir ${formatRupiah(item.embroideryTotal)}`);
+  }
+  return placements.join("; ");
 }
 
 export function mapOrderToInvoicePdfData(input: {
@@ -436,13 +470,32 @@ export function mapOrderToInvoicePdfData(input: {
 }): InvoicePdfData {
   const config = getDocumentRuntimeConfig();
   const orderNumber = input.order.orderNumber ?? input.order.id;
-  const subtotal = input.order.calculation.itemSubtotal;
+  const subtotal = input.order.items.reduce(
+    (total, item) =>
+      total + (item.finalUnitPrice ?? item.priceFrom) * item.totalQty,
+    0,
+  );
+  const customizationTotal = input.order.items.reduce(
+    (total, item) =>
+      total + (item.customizationTotal ?? item.embroideryTotal ?? 0),
+    0,
+  );
   const shippingTotal = input.order.calculation.shippingFee;
   const taxTotal = input.order.calculation.tax;
-  const dpp = Math.max(0, subtotal + shippingTotal);
   const grandTotal = input.order.calculation.grandTotal;
+  const dpp = Math.max(0, grandTotal - shippingTotal - taxTotal);
+  const discountTotal = Math.max(0, subtotal + customizationTotal - dpp);
+  const taxEnabled = input.order.calculation.taxEnabled ?? taxTotal > 0;
+  const inferredTaxRate = taxTotal > 0 && dpp > 0
+    ? Math.round((taxTotal / dpp) * 10_000) / 100
+    : 0;
+  const taxRate = input.order.calculation.taxRate ?? inferredTaxRate;
+  const taxLabel = input.order.calculation.taxLabel?.trim() || "PPN";
   const paymentProvider = input.payment?.provider ?? "mock";
   const paymentQr = getPaymentQrForInvoice(input.payment);
+  const paymentLink = publicPaymentUrl(input.payment?.paymentUrl ?? null);
+  const paymentQrValue =
+    paymentQr.kind === "payment_url" ? paymentLink : paymentQr.value;
   const amountPaid = input.payment?.status === "paid" ? input.payment.amount : 0;
   return {
     invoiceNumber: input.invoiceNumber,
@@ -453,8 +506,8 @@ export function mapOrderToInvoicePdfData(input: {
     paymentStatus: input.payment?.status ?? invoiceStatusFromOrder(input.order.status),
     paymentProvider,
     paymentReference: input.payment?.referenceId ?? null,
-    paymentLink: input.payment?.paymentUrl ?? null,
-    paymentQr: paymentQr.value,
+    paymentLink,
+    paymentQr: paymentQrValue,
     paymentQrKind: paymentQr.kind,
     paymentExpiry: input.payment?.expiredAt ?? null,
     companyName: input.order.companyId,
@@ -463,26 +516,21 @@ export function mapOrderToInvoicePdfData(input: {
     picPhone: null,
     locationLabel: config.companyLocationLabel,
     items: input.order.items.map((item) => ({
-      description: [
-        item.productName,
-        item.sku,
-        item.selectedColor,
-        sizeMatrixSummary(item.sizeMatrix),
-        item.customization,
-        item.embroideryPlacements.length > 0
-          ? `Custom: ${item.embroideryPlacements.map((p) => p.zone).join(", ")}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(" / "),
-      unitPrice: item.priceFrom,
+      description: invoiceItemDescription(item),
+      unitPrice: item.finalUnitPrice ?? item.priceFrom,
       qty: item.totalQty,
-      total: item.priceFrom * item.totalQty,
+      total:
+        (item.finalUnitPrice ?? item.priceFrom) * item.totalQty +
+        (item.customizationTotal ?? item.embroideryTotal ?? 0),
     })),
     subtotal,
+    customizationTotal,
+    discountTotal,
     uniqueCode: input.payment?.uniqueCode ?? 0,
     dpp,
-    taxRate: 11,
+    taxEnabled,
+    taxLabel,
+    taxRate,
     taxTotal,
     shippingTotal,
     grandTotal,
@@ -502,6 +550,46 @@ export function mapOrderToInvoicePdfData(input: {
     isPaymentLive: paymentProvider === "ipaymu" && Boolean(input.payment?.paymentUrl),
     generatedAt: input.generatedAt,
   };
+}
+
+function publicPaymentUrl(value: string | null) {
+  if (!value) return null;
+  try {
+    return new URL(value).toString();
+  } catch {
+    const baseUrl = process.env.APP_URL?.trim() || "http://localhost:8000";
+    try {
+      return new URL(value, baseUrl).toString();
+    } catch {
+      return value;
+    }
+  }
+}
+
+function invoiceItemDescription(item: PaymentOrderRecord["items"][number]) {
+  const product = [
+    item.productName,
+    `SKU ${item.sku}`,
+    `Warna ${item.selectedColor}`,
+    `Ukuran ${sizeMatrixSummary(item.sizeMatrix)}`,
+  ];
+  const placements = item.embroideryPlacements.map((placement) =>
+    [
+      zoneLabel(placement.zone),
+      embroideryTechniqueLabel(placement.technique),
+      placement.logoFileName,
+      `${placement.widthCm}x${placement.heightCm} cm`,
+      `Rotasi ${placement.rotation} deg`,
+    ]
+      .filter(Boolean)
+      .join(" / "),
+  );
+  const customization = placements.length > 0
+    ? `Customization: ${placements.join("; ")}. Biaya bordir ${formatRupiah(
+        item.customizationTotal ?? item.embroideryTotal ?? 0,
+      )}`
+    : item.customization;
+  return [...product, customization].filter(Boolean).join(" | ");
 }
 
 async function saveDocumentRecord(input: {

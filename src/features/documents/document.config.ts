@@ -27,8 +27,10 @@ export function getDocumentRuntimeConfig() {
     companyLocationLabel:
       process.env.OFISSIO_INVOICE_LOCATION?.trim() ||
       "Kabupaten Bandung, Indonesia",
-    signerName: process.env.OFISSIO_INVOICE_SIGNER_NAME?.trim() || "Triyadi Yuwono",
-    signerTitle: process.env.OFISSIO_INVOICE_SIGNER_TITLE?.trim() || "Direktur",
+    signerName: process.env.OFISSIO_INVOICE_SIGNER_NAME?.trim() || "Manajemen Ofissio",
+    signerTitle:
+      process.env.OFISSIO_INVOICE_SIGNER_TITLE?.trim() ||
+      "Penandatangan Berwenang",
     contactTel: process.env.OFISSIO_CONTACT_TEL?.trim() || "-",
     contactWeb: process.env.OFISSIO_CONTACT_WEB?.trim() || "www.ofissio.com",
     contactEmail:

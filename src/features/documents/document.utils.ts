@@ -1,6 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
+import { isFinalQuotationStatus } from "@/features/quotation/quotation.utils";
 
 import type {
   DocumentTemplateId,
@@ -86,7 +87,7 @@ export function formatInvoiceDate(value: string | Date | null | undefined) {
   if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
-    month: "short",
+    month: "long",
     year: "numeric",
   }).format(date);
 }
@@ -159,7 +160,7 @@ export function publicDocument(record: DocumentRecord): PublicDocumentRecord {
 }
 
 export function isQuotationFinalForPdf(status: string) {
-  return ["quoted", "accepted", "converted_to_order"].includes(status);
+  return isFinalQuotationStatus(status);
 }
 
 export function isInvoiceTemplate(templateId: DocumentTemplateId) {

@@ -22,7 +22,7 @@ Elemen layout utama:
 - Total box navy.
 - Terms & Conditions.
 - Thank you section.
-- Signature block: Triyadi Yuwono, Direktur.
+- Signature block default: Manajemen Ofissio, Penandatangan Berwenang. Identitas dapat dioverride melalui environment variable untuk penandatangan resmi perusahaan.
 - Footer: TEL, WEB `www.ofissio.com`, EMAIL `halo@ofissio.com`.
 
 ## Payment status badge

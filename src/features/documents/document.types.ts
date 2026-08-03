@@ -105,6 +105,8 @@ export interface QuotationPdfItem {
   sizeSummary: string;
   totalQty: number;
   unitPrice: number | null;
+  productSubtotal: number;
+  embroideryTotal: number;
   discountAmount: number;
   lineTotal: number | null;
   customizationSummary: string;
@@ -117,6 +119,12 @@ export interface QuotationPdfData {
   isFinal: boolean;
   items: QuotationPdfItem[];
   terms: string[];
+  locationLabel: string;
+  signerName: string;
+  signerTitle: string;
+  contactTel: string;
+  contactWeb: string;
+  contactEmail: string;
 }
 
 export interface InvoicePdfItem {
@@ -148,8 +156,12 @@ export interface InvoicePdfData {
   locationLabel: string;
   items: InvoicePdfItem[];
   subtotal: number;
+  customizationTotal: number;
+  discountTotal: number;
   uniqueCode: number;
   dpp: number;
+  taxEnabled: boolean;
+  taxLabel: string;
   taxRate: number;
   taxTotal: number;
   shippingTotal: number;

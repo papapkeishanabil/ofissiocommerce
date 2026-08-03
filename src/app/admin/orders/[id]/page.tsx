@@ -62,7 +62,11 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
             <dd className="mt-1 font-semibold text-ink">{formatRupiah(order.calculation.shippingFee)}</dd>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4">
-            <dt className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">Tax</dt>
+            <dt className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">
+              {order.calculation.taxEnabled === false
+                ? `${order.calculation.taxLabel ?? "PPN"} tidak dikenakan`
+                : `${order.calculation.taxLabel ?? "PPN"} ${order.calculation.taxRate ?? ""}%`.replace(" %", "")}
+            </dt>
             <dd className="mt-1 font-semibold text-ink">{formatRupiah(order.calculation.tax)}</dd>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4">
@@ -122,7 +126,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
               Invoice PDF - invoice_ofissio_custom
             </h3>
             <p className="mt-1 text-sm text-ink-muted">
-              Payment masih mock/foundation. Link/QR pembayaran tidak akan dikarang.
+              QR dibuat dari payment link aktif. Jika link pembayaran berubah, regenerate PDF sebelum mengirim invoice.
             </p>
           </div>
           <AdminBadge tone={invoicePdf ? "success" : "warning"}>
@@ -149,6 +153,10 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
             regenerateLabel="Regenerate invoice"
             downloadLabel="Download invoice"
             templateId="invoice_ofissio_custom"
+            sendPath={`/api/admin/orders/${order.id}/send-invoice`}
+            sendLabel="Kirim Invoice ke Customer"
+            resendLabel="Kirim Ulang Invoice"
+            initialDocumentAvailable={Boolean(invoicePdf)}
           />
         </div>
       </section>

@@ -76,6 +76,9 @@ export interface PaymentCalculation {
   customizationFee: number;
   shippingFee: number;
   tax: number;
+  taxEnabled?: boolean;
+  taxRate?: number;
+  taxLabel?: string;
   grandTotal: number;
 }
 
