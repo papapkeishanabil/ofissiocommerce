@@ -39,7 +39,7 @@ export default async function AdminEmailSettingsPage() {
               Email Settings & Logs
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
-              Pantau kesiapan Resend, kirim email uji secara aman, dan periksa
+              Pantau kesiapan provider email, kirim email uji secara aman, dan periksa
               hasil pengiriman terbaru tanpa membuka credential provider.
             </p>
           </div>
@@ -62,7 +62,7 @@ export default async function AdminEmailSettingsPage() {
             Status konfigurasi email
           </h3>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatusCard
             label="Provider aktif"
             value={config.provider}
@@ -80,6 +80,12 @@ export default async function AdminEmailSettingsPage() {
             value={config.resendConfigured ? "Configured" : "Not configured"}
             detail="API key tidak pernah ditampilkan"
             ready={config.resendConfigured}
+          />
+          <StatusCard
+            label="SMTP credential"
+            value={config.smtp.configured ? "Configured" : "Not configured"}
+            detail="Password tidak pernah ditampilkan"
+            ready={config.smtp.configured}
           />
           <StatusCard
             label="Order notification"
@@ -103,7 +109,7 @@ export default async function AdminEmailSettingsPage() {
               <h3 className="font-bold text-ink">Konfigurasi aman</h3>
               <p className="mt-1 text-sm leading-6 text-ink-muted">
                 Informasi sender dan penerima dapat dilihat oleh admin berizin.
-                RESEND_API_KEY tetap hanya dibaca server.
+                RESEND_API_KEY dan SMTP_PASSWORD tetap hanya dibaca server.
               </p>
             </div>
           </div>
@@ -121,6 +127,17 @@ export default async function AdminEmailSettingsPage() {
                   ? config.orderNotificationEmails.join(", ")
                   : "Belum diisi"
               }
+            />
+            <ConfigRow label="SMTP_HOST" value={config.smtp.host ?? "Belum diisi"} />
+            <ConfigRow label="SMTP_PORT" value={String(config.smtp.port)} />
+            <ConfigRow
+              label="SMTP_SECURE"
+              value={config.smtp.secure ? "true" : "false"}
+            />
+            <ConfigRow label="SMTP_USER" value={config.smtp.user ?? "Belum diisi"} />
+            <ConfigRow
+              label="SMTP_PASSWORD"
+              value={config.smtp.passwordConfigured ? "Configured (masked)" : "Not configured"}
             />
           </dl>
 

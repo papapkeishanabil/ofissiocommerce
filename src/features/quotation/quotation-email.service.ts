@@ -1,7 +1,9 @@
 import "server-only";
 
+import { getEmailRuntimeConfig } from "@/features/email/email.config";
+import { sendEmail } from "@/features/email/email.service";
+import type { EmailProvider } from "@/features/email/email.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
-import { getOptionalServerEnv } from "@/lib/security/server-only-secret";
 import { formatIDR } from "@/types/product";
 
 import type { quotationEmailRequestSchema } from "./quotation-email.validation";
@@ -12,7 +14,7 @@ export type QuotationEmailStatus = "sent" | "mock" | "failed";
 export interface QuotationEmailResult {
   status: QuotationEmailStatus;
   recipientEmail: string;
-  provider: "mock" | "resend";
+  provider: EmailProvider;
   message: string;
 }
 
@@ -22,95 +24,44 @@ export async function sendQuotationEmail(
   input: QuotationEmailInput,
   request?: Request,
 ): Promise<QuotationEmailResult> {
-  const provider = getOptionalServerEnv("EMAIL_PROVIDER", "mock").toLowerCase();
+  const config = getEmailRuntimeConfig();
   const recipientEmail = input.picEmail;
   const subject = `[Ofissio] Request quotation ${input.quotation.code}`;
   const text = buildText(input);
   const html = buildHtml(input);
 
-  if (provider !== "resend") {
-    logAuditEvent({
-      request,
-      actorId: input.userId,
-      actorType: "customer",
-      companyId: input.companyId,
-      action: "quotation_email_mocked",
-      entityType: "quotation",
-      entityId: input.quotation.id,
-      metadata: { recipientEmail, reason: "email_provider_not_configured" },
-    });
-    return {
-      status: "mock",
-      recipientEmail,
-      provider: "mock",
-      message:
-        "Request quotation tercatat. Email real belum dikirim karena provider email belum dikonfigurasi.",
-    };
-  }
-
-  const apiKey = getOptionalServerEnv("RESEND_API_KEY");
-  const from = getOptionalServerEnv(
-    "EMAIL_FROM",
-    "Ofissio <no-reply@ofissio.local>",
-  );
-  const salesEmail = getOptionalServerEnv("SALES_QUOTATION_EMAIL");
-  const recipients = uniqueEmails([recipientEmail, salesEmail]);
-
-  if (!apiKey || recipients.length === 0) {
-    logAuditEvent({
-      request,
-      actorId: input.userId,
-      actorType: "customer",
-      companyId: input.companyId,
-      action: "quotation_email_mocked",
-      entityType: "quotation",
-      entityId: input.quotation.id,
-      metadata: { recipientEmail, reason: "resend_missing_config" },
-    });
-    return {
-      status: "mock",
-      recipientEmail,
-      provider: "mock",
-      message:
-        "Request quotation tercatat. Email real belum dikirim karena RESEND_API_KEY/EMAIL_FROM belum lengkap.",
-    };
-  }
+  const recipients = uniqueEmails([
+    recipientEmail,
+    config.salesQuotationEmail ?? "",
+  ]);
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: recipients,
-        subject,
-        text,
-        html,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Resend rejected email with ${response.status}`);
-    }
-
-    logAuditEvent({
-      request,
-      actorId: input.userId,
-      actorType: "customer",
+    const result = await sendEmail({
+      type: "quotation_confirmation_customer",
       companyId: input.companyId,
-      action: "quotation_email_sent",
-      entityType: "quotation",
-      entityId: input.quotation.id,
-      metadata: { provider: "resend", recipientCount: recipients.length },
+      userId: input.userId,
+      to: recipients,
+      subject,
+      text,
+      html,
+      safeMetadata: {
+        quotationId: input.quotation.id,
+        quotationNumber: input.quotation.code,
+        flow: "legacy_quotation_confirmation",
+      },
+      request,
     });
+    const sent = result.status === "sent";
+    const mocked = result.status === "mocked";
     return {
-      status: "sent",
+      status: sent ? "sent" : mocked ? "mock" : "failed",
       recipientEmail,
-      provider: "resend",
-      message: `Email quotation dikirim ke ${recipientEmail}.`,
+      provider: result.provider,
+      message: sent
+        ? `Email quotation dikirim ke ${recipientEmail}.`
+        : mocked
+          ? "Request quotation tercatat. Email masih menggunakan provider mock."
+          : "Request quotation tercatat, tetapi email belum berhasil dikirim. Tim perlu cek konfigurasi email.",
     };
   } catch {
     logAuditEvent({
@@ -121,12 +72,12 @@ export async function sendQuotationEmail(
       action: "quotation_email_failed",
       entityType: "quotation",
       entityId: input.quotation.id,
-      metadata: { provider: "resend", recipientEmail },
+      metadata: { provider: config.provider, recipientEmail },
     });
     return {
       status: "failed",
       recipientEmail,
-      provider: "resend",
+      provider: config.provider,
       message:
         "Request quotation tercatat, tetapi email belum berhasil dikirim. Tim perlu cek konfigurasi email.",
     };

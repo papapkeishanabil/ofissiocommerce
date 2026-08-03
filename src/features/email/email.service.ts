@@ -22,11 +22,13 @@ import type {
 } from "./email.types";
 import { mockEmailProvider } from "./providers/mock-email.provider";
 import { resendEmailProvider } from "./providers/resend-email.provider";
+import { smtpEmailProvider } from "./providers/smtp-email.provider";
 
 function activeProvider(): EmailProviderAdapter {
-  return getEmailRuntimeConfig().provider === "resend"
-    ? resendEmailProvider
-    : mockEmailProvider;
+  const provider = getEmailRuntimeConfig().provider;
+  if (provider === "resend") return resendEmailProvider;
+  if (provider === "smtp") return smtpEmailProvider;
+  return mockEmailProvider;
 }
 
 function sanitizeMetadata(metadata: Record<string, unknown>) {

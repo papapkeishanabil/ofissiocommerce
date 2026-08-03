@@ -20,9 +20,11 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
    - Pastikan return URL tidak pernah menandai paid.
    - Pastikan QR payment invoice benar-benar scannable.
 
-3. Resend live email
-   - Verify sender domain.
-   - Aktifkan `EMAIL_PROVIDER=resend` dan `EMAIL_ENABLED=true` di staging dulu.
+3. Hostinger SMTP live email
+   - Verify sender domain, SPF, DKIM, dan DMARC.
+   - Terapkan migration `013_smtp_email_provider.sql`.
+   - Aktifkan `EMAIL_PROVIDER=smtp` dan `EMAIL_ENABLED=true` di staging dulu.
+   - Simpan `SMTP_PASSWORD` hanya di secret manager.
    - Jalankan real test send eksplisit.
    - Monitor bounce/failure/reply path.
    - Gunakan `/admin/settings/email` untuk status, test internal, dan recent logs.

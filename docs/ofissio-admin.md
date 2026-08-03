@@ -32,7 +32,7 @@ Ofissio Admin dipakai untuk:
 - Tracking produksi.
 - Audit/activity view foundation.
 - Notification center, badge Orders, dan sticky order alert.
-- Status Resend, test email internal, dan recent email logs.
+- Status provider mock/Resend/SMTP, test email internal, dan recent email logs.
 
 ## Route admin
 
@@ -58,8 +58,9 @@ Ofissio Admin dipakai untuk:
 - `/admin/audit`
 
 Halaman `/admin/settings/email` hanya tersedia untuk `super_admin` dan `sales`.
-Halaman menampilkan status provider serta alamat operasional, tetapi tidak pernah
-menampilkan `RESEND_API_KEY`.
+Halaman menampilkan status provider, SMTP host/port/secure/user, serta alamat
+operasional. `RESEND_API_KEY` dan nilai `SMTP_PASSWORD` tidak pernah ditampilkan;
+UI hanya menyebut password configured atau not configured.
 
 ## Data source
 

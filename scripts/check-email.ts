@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { loadEnvConfig } from "@next/env";
+import nodemailer from "nodemailer";
 
 loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 
-type EmailProvider = "mock" | "resend";
+type EmailProvider = "mock" | "resend" | "smtp";
 
 run().catch((error: unknown) => {
   console.error("ERROR: Ofissio email check gagal.");
@@ -14,7 +15,7 @@ run().catch((error: unknown) => {
 
 async function run() {
   printHeader();
-  assertNoPublicResendKey();
+  assertNoPublicEmailSecrets();
 
   const config = getConfig();
   console.log(`requestedProvider=${config.provider}`);
@@ -34,49 +35,47 @@ async function run() {
   }
 
   if (!config.enabled) {
-    console.log("SKIP: EMAIL_PROVIDER=resend tetapi EMAIL_ENABLED=false; real email tidak dikirim.");
-    console.log("INFO: Set EMAIL_ENABLED=true hanya setelah domain sender siap untuk staging.");
+    console.log(`SKIP: EMAIL_PROVIDER=${config.provider} tetapi EMAIL_ENABLED=false; real email tidak dikirim.`);
     return;
   }
 
-  if (process.env.EMAIL_TEST_SEND !== "true") {
-    console.log("OK: Resend config siap untuk staging.");
+  if (!config.testSend) {
+    console.log(`OK: ${config.provider.toUpperCase()} config siap untuk staging.`);
     console.log("INFO: Real send skipped. Set EMAIL_TEST_SEND=true untuk kirim test email eksplisit.");
     return;
   }
 
-  const testRecipient = resolveTestRecipient(config);
-  if (!testRecipient) {
-    console.log(
-      "ERROR: Isi EMAIL_TEST_TO, ORDER_NOTIFICATION_EMAILS, atau SALES_QUOTATION_EMAIL untuk real send.",
-    );
+  if (!config.testEmailTo) {
+    console.log("ERROR: EMAIL_TEST_TO wajib saat EMAIL_TEST_SEND=true.");
     process.exitCode = 1;
     return;
   }
-  const sent = await sendResendTestEmail(config, testRecipient);
+
+  const sent = config.provider === "resend"
+    ? await sendResendTestEmail(config, config.testEmailTo)
+    : await sendSmtpTestEmail(config, config.testEmailTo);
   const logId = await persistEmailLog({
     config,
-    recipient: testRecipient,
-    status: sent.providerMessageId ? "sent" : "sent",
+    recipient: config.testEmailTo,
+    status: "sent",
     providerMessageId: sent.providerMessageId,
     errorMessage: null,
   });
-  console.log("OK: Test email sent via Resend.");
-  console.log(
-    sent.providerMessageId
-      ? "OK: providerMessageId received."
-      : "INFO: providerMessageId belum tersedia dari provider.",
-  );
+  console.log(`OK: Test email sent via ${config.provider.toUpperCase()}.`);
+  console.log(sent.providerMessageId ? "OK: providerMessageId received." : "INFO: providerMessageId belum tersedia dari provider.");
   console.log(logId ? "OK: email_logs persisted." : "INFO: email_logs persistence skipped.");
 }
 
 function getConfig() {
-  const provider: EmailProvider = process.env.EMAIL_PROVIDER?.trim() === "resend"
-    ? "resend"
+  const rawProvider = process.env.EMAIL_PROVIDER?.trim().toLowerCase();
+  const provider: EmailProvider = rawProvider === "resend" || rawProvider === "smtp"
+    ? rawProvider
     : "mock";
+  const smtpPort = Number(process.env.SMTP_PORT?.trim() || "465");
   return {
     provider,
     enabled: envFlag("EMAIL_ENABLED", false),
+    testSend: envFlag("EMAIL_TEST_SEND", false),
     apiKey: process.env.RESEND_API_KEY?.trim() || "",
     from: process.env.EMAIL_FROM?.trim() || "Ofissio <quotation@ofissio.com>",
     replyTo: process.env.EMAIL_REPLY_TO?.trim() || "",
@@ -84,59 +83,61 @@ function getConfig() {
     orderNotificationEnabled: envFlag("ORDER_NOTIFICATION_EMAIL_ENABLED", false),
     orderNotificationEmails: parseEmailList(process.env.ORDER_NOTIFICATION_EMAILS),
     testEmailTo: process.env.EMAIL_TEST_TO?.trim() || "",
+    smtpHost: process.env.SMTP_HOST?.trim() || "",
+    smtpPort,
+    smtpSecureRaw: process.env.SMTP_SECURE?.trim().toLowerCase() || "true",
+    smtpSecure: envFlag("SMTP_SECURE", true),
+    smtpUser: process.env.SMTP_USER?.trim() || "",
+    smtpPassword: process.env.SMTP_PASSWORD?.trim() || "",
   };
 }
 
 function validateConfigForCheck(config: ReturnType<typeof getConfig>) {
   const issues: string[] = [];
   if (!isValidMailbox(config.from)) issues.push("EMAIL_FROM tidak valid.");
-  if (config.replyTo && !isValidEmail(config.replyTo)) {
-    issues.push("EMAIL_REPLY_TO tidak valid.");
+  if (config.replyTo && !isValidEmail(config.replyTo)) issues.push("EMAIL_REPLY_TO tidak valid.");
+  if (config.testEmailTo && !isValidEmail(config.testEmailTo)) issues.push("EMAIL_TEST_TO tidak valid.");
+  if (config.testSend && !config.testEmailTo) issues.push("EMAIL_TEST_TO wajib saat EMAIL_TEST_SEND=true.");
+  if (config.orderNotificationEnabled && config.orderNotificationEmails.length === 0) {
+    issues.push("ORDER_NOTIFICATION_EMAILS wajib berisi minimal satu alamat valid saat notifikasi order aktif.");
   }
-  if (config.testEmailTo && !isValidEmail(config.testEmailTo)) {
-    issues.push("EMAIL_TEST_TO tidak valid.");
-  }
-  if (
-    config.orderNotificationEnabled &&
-    config.orderNotificationEmails.length === 0
-  ) {
-    issues.push(
-      "ORDER_NOTIFICATION_EMAILS wajib berisi minimal satu alamat valid saat notifikasi order aktif.",
-    );
-  }
-  const rawOrderRecipients = (process.env.ORDER_NOTIFICATION_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim())
-    .filter(Boolean);
+  const rawOrderRecipients = (process.env.ORDER_NOTIFICATION_EMAILS ?? "").split(",").map((email) => email.trim()).filter(Boolean);
   if (rawOrderRecipients.some((email) => !isValidEmail(email))) {
     issues.push("ORDER_NOTIFICATION_EMAILS mengandung alamat yang tidak valid.");
   }
-  if (config.provider !== "resend") return issues;
-  if (!config.enabled) return issues;
-  if (!config.apiKey) {
-    issues.push("RESEND_API_KEY wajib saat EMAIL_PROVIDER=resend dan EMAIL_ENABLED=true.");
+  if (config.provider === "resend") {
+    if (!config.apiKey) issues.push("RESEND_API_KEY wajib saat EMAIL_PROVIDER=resend.");
+    validateSharedLiveConfig(config, issues);
   }
-  if (!config.salesEmail) {
-    issues.push("SALES_QUOTATION_EMAIL wajib saat EMAIL_PROVIDER=resend dan EMAIL_ENABLED=true.");
-  } else if (!isValidEmail(config.salesEmail)) {
-    issues.push("SALES_QUOTATION_EMAIL tidak valid.");
+  if (config.provider === "smtp") {
+    if (!config.smtpHost) issues.push("SMTP_HOST wajib saat EMAIL_PROVIDER=smtp.");
+    if (!Number.isInteger(config.smtpPort) || config.smtpPort < 1 || config.smtpPort > 65535) {
+      issues.push("SMTP_PORT harus berupa port valid antara 1-65535.");
+    }
+    if (!["true", "false"].includes(config.smtpSecureRaw)) {
+      issues.push("SMTP_SECURE harus bernilai true atau false.");
+    }
+    if (!config.smtpUser || !isValidEmail(config.smtpUser)) {
+      issues.push("SMTP_USER wajib berupa alamat email valid saat EMAIL_PROVIDER=smtp.");
+    }
+    if (!config.smtpPassword) issues.push("SMTP_PASSWORD wajib saat EMAIL_PROVIDER=smtp.");
+    validateSharedLiveConfig(config, issues);
   }
   return issues;
 }
 
-async function sendResendTestEmail(
-  config: ReturnType<typeof getConfig>,
-  recipient: string,
-) {
+function validateSharedLiveConfig(config: ReturnType<typeof getConfig>, issues: string[]) {
+  if (!config.salesEmail) issues.push("SALES_QUOTATION_EMAIL wajib untuk provider email live.");
+  else if (!isValidEmail(config.salesEmail)) issues.push("SALES_QUOTATION_EMAIL tidak valid.");
+}
+
+async function sendResendTestEmail(config: ReturnType<typeof getConfig>, recipient: string) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     signal: controller.signal,
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: config.from,
       to: [recipient],
@@ -147,17 +148,44 @@ async function sendResendTestEmail(
     }),
   }).finally(() => clearTimeout(timeout));
   if (!response.ok) {
-    await persistEmailLog({
-      config,
-      recipient,
-      status: "failed",
-      providerMessageId: null,
-      errorMessage: `resend_http_${response.status}`,
-    }).catch(() => null);
+    await persistFailedEmail(config, recipient, `resend_http_${response.status}`);
     throw new Error(`resend_http_${response.status}`);
   }
   const payload = (await response.json().catch(() => null)) as { id?: string } | null;
   return { providerMessageId: typeof payload?.id === "string" ? payload.id : null };
+}
+
+async function sendSmtpTestEmail(config: ReturnType<typeof getConfig>, recipient: string) {
+  const transporter = nodemailer.createTransport({
+    host: config.smtpHost,
+    port: config.smtpPort,
+    secure: config.smtpSecure,
+    auth: { user: config.smtpUser, pass: config.smtpPassword },
+    connectionTimeout: 15_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+    tls: { minVersion: "TLSv1.2" },
+  });
+  try {
+    const result = await transporter.sendMail({
+      from: config.from,
+      to: recipient,
+      replyTo: config.replyTo || undefined,
+      subject: "[Ofissio Staging] Test Email",
+      html: "<p>Ini adalah test email staging Ofissio via SMTP Hostinger.</p>",
+      text: "Ini adalah test email staging Ofissio via SMTP Hostinger.",
+    });
+    return { providerMessageId: typeof result.messageId === "string" ? result.messageId : null };
+  } catch (error) {
+    await persistFailedEmail(config, recipient, smtpFailureCode(error));
+    throw new Error(smtpFailureCode(error));
+  } finally {
+    transporter.close();
+  }
+}
+
+async function persistFailedEmail(config: ReturnType<typeof getConfig>, recipient: string, errorMessage: string) {
+  await persistEmailLog({ config, recipient, status: "failed", providerMessageId: null, errorMessage }).catch(() => null);
 }
 
 async function persistEmailLog(input: {
@@ -174,17 +202,12 @@ async function persistEmailLog(input: {
   const id = `email_${randomUUID()}`;
   const response = await fetch(`${url.replace(/\/$/, "")}/rest/v1/email_logs`, {
     method: "POST",
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    },
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
     body: JSON.stringify({
       id,
       company_id: null,
       user_id: "check-email",
-      provider: "resend",
+      provider: input.config.provider,
       status: input.status,
       type: "test_email",
       recipient_emails_json: [input.recipient],
@@ -193,7 +216,7 @@ async function persistEmailLog(input: {
       subject: "[Ofissio Staging] Test Email",
       provider_message_id: input.providerMessageId,
       error_message: input.errorMessage,
-      safe_metadata_json: { script: "check-email", phase: "21_resend_email_live" },
+      safe_metadata_json: { script: "check-email", provider: input.config.provider },
       created_at: new Date().toISOString(),
       sent_at: input.status === "sent" ? new Date().toISOString() : null,
     }),
@@ -202,27 +225,13 @@ async function persistEmailLog(input: {
   return id;
 }
 
-function resolveTestRecipient(config: ReturnType<typeof getConfig>) {
-  return (
-    config.testEmailTo ||
-    config.orderNotificationEmails[0] ||
-    config.salesEmail ||
-    ""
-  );
-}
-
 function parseEmailList(value?: string) {
-  return (value ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter((email, index, values) =>
-      Boolean(email) && isValidEmail(email) && values.indexOf(email) === index,
-    );
+  return (value ?? "").split(",").map((email) => email.trim().toLowerCase()).filter((email, index, values) => Boolean(email) && isValidEmail(email) && values.indexOf(email) === index);
 }
 
-function assertNoPublicResendKey() {
-  if (process.env.NEXT_PUBLIC_RESEND_API_KEY) {
-    throw new Error("NEXT_PUBLIC_RESEND_API_KEY tidak boleh diset.");
+function assertNoPublicEmailSecrets() {
+  for (const name of ["NEXT_PUBLIC_RESEND_API_KEY", "NEXT_PUBLIC_SMTP_PASSWORD"]) {
+    if (process.env[name]) throw new Error(`${name} tidak boleh diset.`);
   }
 }
 
@@ -244,6 +253,16 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) && value.trim().length <= 254;
 }
 
+function smtpFailureCode(error: unknown) {
+  const code = error instanceof Error && "code" in error && typeof error.code === "string"
+    ? error.code.toUpperCase()
+    : "";
+  if (["EAUTH", "EENVELOPE"].includes(code)) return "smtp_auth_failed";
+  if (["ETIMEDOUT", "ESOCKET"].includes(code)) return "smtp_timeout";
+  if (["ECONNECTION", "ECONNREFUSED", "ENOTFOUND"].includes(code)) return "smtp_connection_failed";
+  return "smtp_send_failed";
+}
+
 function printHeader() {
   console.log("Ofissio email check");
   console.log("-------------------");
@@ -251,8 +270,5 @@ function printHeader() {
 
 function safeReason(error: unknown) {
   if (!(error instanceof Error)) return "unknown_error";
-  return error.message.replace(
-    /(api[_-]?key|secret|token|password|authorization)=?[^\s,]*/gi,
-    "$1=[redacted]",
-  );
+  return error.message.replace(/(api[_-]?key|secret|token|password|authorization)=?[^\s,]*/gi, "$1=[redacted]");
 }

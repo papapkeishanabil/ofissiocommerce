@@ -405,7 +405,7 @@ create table if not exists email_logs (
   id text primary key,
   company_id text,
   user_id text,
-  provider text not null check (provider in ('mock', 'resend')),
+  provider text not null check (provider in ('mock', 'resend', 'smtp')),
   status text not null check (status in ('queued', 'sent', 'failed', 'skipped', 'mocked')),
   type text not null check (
     type in (
@@ -415,6 +415,7 @@ create table if not exists email_logs (
       'payment_received_customer',
       'order_tracking_update_customer',
       'upload_notification_internal',
+      'order_created_internal',
       'test_email'
     )
   ),

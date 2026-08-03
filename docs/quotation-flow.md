@@ -17,9 +17,12 @@ Admin melihat original calculated price dan dapat mengisi override/final unit pr
 
 Saat admin mengirim quotation berstatus quoted, email
 `quotation_ready_customer` memakai total final/snapshot quotation dan link portal
-`/quotes/[id]`. Dengan `EMAIL_PROVIDER=resend` serta `EMAIL_ENABLED=true`, status
+`/quotes/[id]`. Dengan `EMAIL_PROVIDER=resend` atau `EMAIL_PROVIDER=smtp` serta `EMAIL_ENABLED=true`, status
 delivery dicatat `sent` atau `failed` secara aman di `email_logs`. Provider mock
 tetap dapat dipakai untuk regression tanpa mengirim email real.
+
+SMTP Hostinger memakai adapter email service yang sama dengan test email dan
+notifikasi order. Lihat [hostinger-smtp-email.md](hostinger-smtp-email.md).
 
 Lihat [quantity-pricing.md](quantity-pricing.md) untuk format tier dan fallback.
 

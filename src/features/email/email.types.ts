@@ -21,7 +21,7 @@ export const EMAIL_STATUSES = [
 
 export type EmailStatus = (typeof EMAIL_STATUSES)[number];
 
-export type EmailProvider = "mock" | "resend";
+export type EmailProvider = "mock" | "resend" | "smtp";
 
 export interface EmailRuntimeConfig {
   requestedProvider: EmailProvider;
@@ -34,6 +34,14 @@ export interface EmailRuntimeConfig {
   orderNotificationEmails: string[];
   testEmailTo: string | null;
   resendConfigured: boolean;
+  smtp: {
+    host: string | null;
+    port: number;
+    secure: boolean;
+    user: string | null;
+    passwordConfigured: boolean;
+    configured: boolean;
+  };
 }
 
 export interface EmailSendInput {

@@ -7,7 +7,10 @@ import {
 } from "./email.validation";
 
 function normalizeProvider(value?: string): EmailProvider {
-  return value === "resend" ? "resend" : "mock";
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "resend" || normalized === "smtp"
+    ? normalized
+    : "mock";
 }
 
 function envFlag(name: string, fallback: boolean) {
@@ -30,8 +33,26 @@ function emailList(value?: string) {
 export function getEmailRuntimeConfig(): EmailRuntimeConfig {
   const requestedProvider = normalizeProvider(process.env.EMAIL_PROVIDER);
   const resendConfigured = Boolean(process.env.RESEND_API_KEY?.trim());
-  const provider =
-    requestedProvider === "resend" && !resendConfigured ? "mock" : requestedProvider;
+  const smtpHost = process.env.SMTP_HOST?.trim() || null;
+  const rawSmtpPort = process.env.SMTP_PORT?.trim();
+  const parsedSmtpPort = Number(rawSmtpPort || "465");
+  const smtpPort = Number.isInteger(parsedSmtpPort) && parsedSmtpPort > 0 && parsedSmtpPort <= 65535
+    ? parsedSmtpPort
+    : 465;
+  const smtpUser = process.env.SMTP_USER?.trim() || null;
+  const smtpPasswordConfigured = Boolean(process.env.SMTP_PASSWORD?.trim());
+  const smtpPortValid = Number.isInteger(parsedSmtpPort) && parsedSmtpPort > 0 && parsedSmtpPort <= 65535;
+  const smtpConfigured = Boolean(
+    smtpHost &&
+    smtpUser &&
+    smtpPasswordConfigured &&
+    smtpPortValid,
+  );
+  const provider = requestedProvider === "resend" && !resendConfigured
+    ? "mock"
+    : requestedProvider === "smtp" && !smtpConfigured
+      ? "mock"
+      : requestedProvider;
   return {
     requestedProvider,
     provider,
@@ -48,6 +69,14 @@ export function getEmailRuntimeConfig(): EmailRuntimeConfig {
     orderNotificationEmails: emailList(process.env.ORDER_NOTIFICATION_EMAILS),
     testEmailTo: process.env.EMAIL_TEST_TO?.trim() || null,
     resendConfigured,
+    smtp: {
+      host: smtpHost,
+      port: smtpPort,
+      secure: envFlag("SMTP_SECURE", true),
+      user: smtpUser,
+      passwordConfigured: smtpPasswordConfigured,
+      configured: smtpConfigured,
+    },
   };
 }
 
@@ -93,6 +122,42 @@ export function validateEmailConfig() {
       );
     }
   }
+  if (config.requestedProvider === "smtp") {
+    const rawPort = process.env.SMTP_PORT?.trim() || "465";
+    const rawSecure = process.env.SMTP_SECURE?.trim().toLowerCase() || "true";
+    const port = Number(rawPort);
+    if (!config.smtp.host) issues.push("SMTP_HOST belum dikonfigurasi.");
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      issues.push("SMTP_PORT harus berupa port valid antara 1-65535.");
+    }
+    if (!["true", "false"].includes(rawSecure)) {
+      issues.push("SMTP_SECURE harus bernilai true atau false.");
+    }
+    if (!config.smtp.user) {
+      issues.push("SMTP_USER belum dikonfigurasi.");
+    } else if (!isValidEmailAddress(config.smtp.user)) {
+      issues.push("SMTP_USER harus berupa alamat email valid.");
+    }
+    if (!config.smtp.passwordConfigured) {
+      issues.push("SMTP_PASSWORD belum dikonfigurasi.");
+    }
+    if (!config.salesQuotationEmail) {
+      issues.push("SALES_QUOTATION_EMAIL belum dikonfigurasi.");
+    } else if (!isValidEmailAddress(config.salesQuotationEmail)) {
+      issues.push("SALES_QUOTATION_EMAIL tidak valid.");
+    }
+    if (!config.enabled) {
+      warnings.push(
+        "EMAIL_PROVIDER=smtp aktif, tetapi EMAIL_ENABLED=false sehingga email real diskip.",
+      );
+    }
+    if (config.smtp.port === 465 && !config.smtp.secure) {
+      warnings.push("SMTP_PORT=465 umumnya membutuhkan SMTP_SECURE=true.");
+    }
+    if (config.smtp.port === 587 && config.smtp.secure) {
+      warnings.push("SMTP_PORT=587 umumnya memakai SMTP_SECURE=false dengan STARTTLS.");
+    }
+  }
   if (config.requestedProvider === "mock" && config.enabled) {
     warnings.push(
       "EMAIL_ENABLED=true dengan EMAIL_PROVIDER=mock hanya membuat mocked log.",
@@ -107,8 +172,8 @@ export function validateEmailConfig() {
     warning:
       issues[0] ??
       warnings[0] ??
-      (config.requestedProvider === "resend" && !config.resendConfigured
-        ? "RESEND_API_KEY belum dikonfigurasi; email fallback ke mock."
+      (config.requestedProvider !== config.provider
+        ? `Konfigurasi ${config.requestedProvider} belum lengkap; email fallback ke mock.`
         : null),
   };
 }

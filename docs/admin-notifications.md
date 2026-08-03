@@ -36,7 +36,7 @@ ORDER_NOTIFICATION_EMAILS=sales@example.com,admin@example.com
 
 `ORDER_NOTIFICATION_EMAILS` menerima daftar email dipisahkan koma. Dengan `EMAIL_PROVIDER=mock`, pengiriman membuat email log berstatus `mocked`. Default fitur ini nonaktif. Jika penerima kosong, order tetap sukses dan notification menyimpan error aman.
 
-Saat Resend aktif, delivery dapat dipantau di `/admin/settings/email`. Claim email
+Saat Resend atau SMTP Hostinger aktif, delivery dapat dipantau di `/admin/settings/email`. Claim email
 dan key `order_created_email:{orderId}` tetap menjadi boundary idempotensi, jadi
 retry convert tidak melakukan pengiriman ulang.
 
@@ -50,7 +50,7 @@ Permission `admin:notification:view` serta `admin:notification:update` diberikan
 
 - Badge tidak hilang: status `read` memang tetap dihitung; pilih Saya Proses atau Resolve.
 - Popup tidak muncul: cek notification masih `unread`, permission role, serta response `/api/admin/notifications/summary`.
-- Email tidak terkirim: cek flag, daftar penerima, `EMAIL_PROVIDER`, `EMAIL_ENABLED`, dan `email_status` notification.
+- Email tidak terkirim: cek flag, daftar penerima, `EMAIL_PROVIDER`, `EMAIL_ENABLED`, konfigurasi SMTP/Resend, dan `email_status` notification.
 - Duplicate notification: pastikan migration 012 dan unique index sudah diterapkan.
 - Role 403: role harus memiliki permission notification pada konfigurasi admin.
 

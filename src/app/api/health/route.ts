@@ -35,6 +35,7 @@ export async function GET() {
       requestedEmailProvider: email.requestedProvider,
       emailEnabled: email.enabled,
       resendConfigured: email.resendConfigured,
+      smtpConfigured: email.smtp.configured,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

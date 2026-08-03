@@ -7,7 +7,7 @@ import { useAdminNotifications } from "@/features/admin-notifications/components
 
 interface TestEmailResponse {
   ok?: boolean;
-  provider?: "mock" | "resend";
+  provider?: "mock" | "resend" | "smtp";
   status?: "queued" | "sent" | "failed" | "skipped" | "mocked";
   emailLogId?: string;
   message?: string;

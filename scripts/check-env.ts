@@ -69,6 +69,11 @@ const rules: EnvRule[] = [
   { name: "EMAIL_TEST_SEND" },
   { name: "EMAIL_TEST_TO" },
   { name: "RESEND_API_KEY", secret: true },
+  { name: "SMTP_HOST" },
+  { name: "SMTP_PORT" },
+  { name: "SMTP_SECURE" },
+  { name: "SMTP_USER" },
+  { name: "SMTP_PASSWORD", secret: true },
   { name: "AUTH_SECRET", requiredIn: ["production"], secret: true },
   { name: "NEXTAUTH_SECRET", requiredIn: ["production"], secret: true },
   { name: "LOG_LEVEL" },
@@ -76,6 +81,7 @@ const rules: EnvRule[] = [
 
 const forbiddenPublicSecrets = [
   "NEXT_PUBLIC_RESEND_API_KEY",
+  "NEXT_PUBLIC_SMTP_PASSWORD",
   "NEXT_PUBLIC_IPAYMU_API_KEY",
   "NEXT_PUBLIC_WOOCOMMERCE_CONSUMER_SECRET",
   "NEXT_PUBLIC_WOO_CONSUMER_SECRET",
@@ -188,6 +194,51 @@ if (process.env.EMAIL_PROVIDER === "resend") {
       level: "warning",
       message:
         "EMAIL_PROVIDER=resend aktif, tetapi EMAIL_ENABLED belum true. Email production akan diskip.",
+    });
+  }
+}
+
+if (process.env.EMAIL_PROVIDER === "smtp") {
+  for (const name of [
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_SECURE",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+    "EMAIL_FROM",
+    "SALES_QUOTATION_EMAIL",
+  ]) {
+    if (!process.env[name]?.trim()) {
+      problems.push({
+        level: appEnv === "development" ? "warning" : "error",
+        message: `${name} wajib untuk EMAIL_PROVIDER=smtp.`,
+      });
+    }
+  }
+  const smtpPort = Number(process.env.SMTP_PORT);
+  if (!Number.isInteger(smtpPort) || smtpPort < 1 || smtpPort > 65535) {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message: "SMTP_PORT harus berupa port valid antara 1-65535.",
+    });
+  }
+  if (!isBooleanEnv(process.env.SMTP_SECURE)) {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message: "SMTP_SECURE harus bernilai true atau false.",
+    });
+  }
+  if (process.env.SMTP_USER && !isValidEmail(process.env.SMTP_USER)) {
+    problems.push({
+      level: appEnv === "development" ? "warning" : "error",
+      message: "SMTP_USER harus berupa alamat email valid.",
+    });
+  }
+  if (process.env.EMAIL_ENABLED !== "true") {
+    problems.push({
+      level: "warning",
+      message:
+        "EMAIL_PROVIDER=smtp aktif, tetapi EMAIL_ENABLED belum true. Email production akan diskip.",
     });
   }
 }
@@ -345,4 +396,8 @@ function isValidMailbox(value: string) {
 function isValidEmail(value: string) {
   if (/[\r\n]/.test(value)) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) && value.trim().length <= 254;
+}
+
+function isBooleanEnv(value: string | undefined) {
+  return value === "true" || value === "false";
 }
