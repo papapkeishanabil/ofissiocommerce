@@ -32,8 +32,9 @@ export function AdminPaymentPanel({
   const [isPending, startTransition] = useTransition();
   const providerWarning =
     requestedProvider === "ipaymu" && !ipaymuConfigured
-      ? "iPaymu diminta, tapi env belum lengkap. Sistem akan skip/fallback aman."
+      ? "iPaymu diminta, tetapi env belum aman atau belum lengkap. Create payment dinonaktifkan dan tidak akan fallback diam-diam ke mock."
       : null;
+  const providerUnavailable = requestedProvider === "ipaymu" && !ipaymuConfigured;
 
   function createPayment() {
     setMessage(null);
@@ -153,7 +154,12 @@ export function AdminPaymentPanel({
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={isPending}
+          disabled={
+            isPending ||
+            providerUnavailable ||
+            currentPayment?.status === "paid" ||
+            currentPayment?.status === "manual_review"
+          }
           onClick={createPayment}
           className="inline-flex items-center gap-2 rounded-2xl bg-brand-900 px-4 py-2 text-sm font-black text-white disabled:opacity-50"
         >

@@ -18,12 +18,16 @@ Env yang dibutuhkan nanti:
 
 ```bash
 PAYMENT_PROVIDER=ipaymu
+PAYMENT_MODE=sandbox
+IPAYMU_ENABLED=true
+IPAYMU_MODE=sandbox
 IPAYMU_VA=
 IPAYMU_API_KEY=
-IPAYMU_BASE_URL=
-IPAYMU_CALLBACK_URL=https://staging.ofissio.com/api/payment/ipaymu/callback
+IPAYMU_BASE_URL=https://sandbox.ipaymu.com
+IPAYMU_NOTIFY_URL=https://staging.ofissio.com/api/payment/ipaymu/callback
 IPAYMU_RETURN_URL=https://staging.ofissio.com/payment/return
 IPAYMU_CANCEL_URL=https://staging.ofissio.com/payment/cancel
+IPAYMU_TEST_CREATE_PAYMENT=false
 ```
 
 ## Checklist sebelum iPaymu live
