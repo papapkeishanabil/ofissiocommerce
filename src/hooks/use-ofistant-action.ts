@@ -140,6 +140,10 @@ export function useOfistantAction() {
           router.push("/quote");
           return { ok: true };
         }
+        case "OPEN_CUSTOM_REQUEST": {
+          router.push("/custom-request");
+          return { ok: true };
+        }
         case "OPEN_ORDER_TRACKING": {
           const requestedId =
             action.payload?.orderId ?? action.payload?.order_id ?? null;

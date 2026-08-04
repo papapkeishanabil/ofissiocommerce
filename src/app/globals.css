@@ -105,11 +105,15 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+/* Form controls inherit the app font. Scoped to the base layer so Tailwind's
+   font utilities (text-*, font-*) can still override size/weight on buttons. */
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 }
 
 /* Selection color (brand-aligned) */
@@ -284,6 +288,15 @@ body.chrome-open [data-workspace-scroll] { scrollbar-width: thin; scrollbar-colo
 body.chrome-open [data-workspace-scroll]::-webkit-scrollbar { width: 10px; height: 10px; }
 body.chrome-open [data-workspace-scroll]::-webkit-scrollbar-track { background: transparent; }
 body.chrome-open [data-workspace-scroll]::-webkit-scrollbar-thumb { background-color: rgba(20, 39, 102, 0.3); border-radius: 9999px; border: 2px solid transparent; background-clip: content-box; }
+
+/* On inner (chrome-locked) pages the desktop top bar is pinned open and fixed
+   over the workspace. Offset the scrolled content so it never hides behind
+   that bar. Beranda is not locked, so its hero stays flush to the top. */
+@media (min-width: 1024px) {
+  body.chrome-locked [data-workspace-scroll] > div {
+    padding-top: 3.5rem;
+  }
+}
 
 /* Scroll reveal */
 .scroll-reveal {

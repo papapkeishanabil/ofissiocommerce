@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, PackageCheck, Scissors, Truck, Users } from "lucide-react";
+import { ArrowRight, Factory, PackageCheck, Scissors, Truck, Users } from "lucide-react";
 import { Manrope } from "next/font/google";
 import { OfistantOpenButton } from "./OfistantOpenButton";
 
@@ -46,6 +46,13 @@ export function HeroIntro() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/catalog" className="inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-100 hover:shadow-lg">
               Jelajahi Koleksi <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/custom-request"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-brand-950/45 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:border-ochre-300 hover:bg-brand-900/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <Factory className="h-4 w-4 text-ochre-300" aria-hidden="true" />
+              Buat Seragam Full Custom
             </Link>
             <OfistantOpenButton />
           </div>

@@ -67,6 +67,12 @@ export const requestQuotationSchema = z.object({
 });
 export type RequestQuotationAction = z.infer<typeof requestQuotationSchema>;
 
+export const openCustomRequestSchema = z.object({
+  type: z.literal("OPEN_CUSTOM_REQUEST"),
+  payload: z.object({}).optional(),
+});
+export type OpenCustomRequestAction = z.infer<typeof openCustomRequestSchema>;
+
 export const openOrderTrackingSchema = z.object({
   type: z.literal("OPEN_ORDER_TRACKING"),
   payload: z
@@ -160,6 +166,7 @@ export const ofistantActionSchema = z.discriminatedUnion("type", [
   openCheckoutSchema,
   openRegisterSchema,
   requestQuotationSchema,
+  openCustomRequestSchema,
   openOrderTrackingSchema,
   addToCartSchema,
   setSelectedColorSchema,
@@ -186,6 +193,7 @@ export const NAVIGATING_ACTIONS: ReadonlySet<ActionType> = new Set([
   "OPEN_CHECKOUT",
   "OPEN_REGISTER",
   "REQUEST_QUOTATION",
+  "OPEN_CUSTOM_REQUEST",
   "OPEN_ORDER_TRACKING",
 ]);
 
@@ -213,6 +221,8 @@ export function describeActionType(t: ActionType): string {
       return "Daftar akun";
     case "REQUEST_QUOTATION":
       return "Request quotation";
+    case "OPEN_CUSTOM_REQUEST":
+      return "Buat brief Full Custom";
     case "OPEN_ORDER_TRACKING":
       return "Lacak order";
     case "REQUEST_HUMAN_HANDOFF":

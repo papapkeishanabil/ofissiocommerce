@@ -12,7 +12,7 @@ import { emptySizeMatrix } from "@/types/cart";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { afterConfirmItemAdded } from "@/lib/ofistant/ofistant.rules";
-import { Clock, Layers, Package } from "lucide-react";
+import { Clock, Layers, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -76,12 +76,17 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   }
 
+  const specs = [
+    { icon: Layers, label: "MOQ", value: `${product.moq} pcs` },
+    { icon: Clock, label: "Lead Time", value: `${product.leadTimeDays} hari` },
+  ];
+
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm transition-shadow hover:shadow-md">
+    <article className="hover-lift group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft-sm hover:border-brand-200 hover:shadow-soft-lg">
       <button
         type="button"
         onClick={() => router.push(`/product/${product.slug}`)}
-        className="relative block aspect-[4/3] w-full overflow-hidden"
+        className="relative block aspect-[4/3] w-full overflow-hidden bg-cool-50"
         aria-label={`Lihat detail ${product.name}`}
       >
         {product.mainImage && !imageFailed ? (
@@ -90,7 +95,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <img
             src={product.mainImage}
             alt={product.images?.[0]?.alt || product.name}
-            className="h-full w-full bg-slate-50 object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.04]"
             loading="lazy"
             decoding="async"
             onError={() => setImageFailed(true)}
@@ -100,92 +105,103 @@ export function ProductCard({ product }: ProductCardProps) {
             name={product.name}
             accentColor={product.accentColor}
             category={product.category}
-            className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]"
+            className="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
           />
         )}
-        <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+        <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1">
           <Badge tone={product.fulfillment === "READY_STOCK" ? "success" : "amber"}>
             {fulfillmentLabel(product.fulfillment)}
           </Badge>
-          <Badge tone="brand">3D tersedia</Badge>
+          <Badge tone="slate">3D tersedia</Badge>
         </div>
       </button>
 
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex-1">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-              {product.category}
-            </span>
-            <span className="text-[11px] font-mono text-ink-muted">
-              {product.sku}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push(`/product/${product.slug}`)}
-            className="text-left text-sm font-bold leading-snug text-ink hover:text-brand-700"
-          >
-            {product.name}
-          </button>
-
-          <div className="mt-2 flex flex-wrap gap-1">
-            {product.industries.slice(0, 3).map((ind) => (
-              <Badge key={ind} tone="neutral">
-                {ind}
-              </Badge>
-            ))}
-            {product.industries.length > 3 && (
-              <Badge tone="neutral">+{product.industries.length - 3}</Badge>
-            )}
-          </div>
-
-          <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-ink-muted">
-            <div className="flex items-center gap-1">
-              <Layers className="h-3 w-3" />
-              <dt>MOQ</dt>
-              <dd className="font-semibold text-ink">{product.moq} pcs</dd>
-            </div>
-            <div className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              <dt>Lead</dt>
-              <dd className="font-semibold text-ink">{product.leadTimeDays} hari</dd>
-            </div>
-            <div className="flex items-center gap-1">
-              <Package className="h-3 w-3" />
-              <dt>Fulfillment</dt>
-              <dd className="font-semibold text-ink">
-                {fulfillmentLabel(product.fulfillment)}
-              </dd>
-            </div>
-          </dl>
+      <div className="flex flex-1 flex-col p-4">
+        {/* Category eyebrow + SKU */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="type-eyebrow text-brand-700">{product.category}</span>
+          <span className="type-mono-label text-ink-subtle">{product.sku}</span>
         </div>
 
-        <div className="border-t border-line pt-3">
-          <p className="text-[11px] text-ink-muted">Harga mulai dari</p>
-          <p className="text-lg font-bold text-ink">
-            {formatIDR(product.priceFrom)}
-          </p>
-          <p className="text-[11px] text-ink-muted">/ pcs</p>
+        {/* Product name — the visual anchor */}
+        <button
+          type="button"
+          onClick={() => router.push(`/product/${product.slug}`)}
+          className="mt-1.5 line-clamp-2 text-left text-base font-extrabold leading-tight tracking-tight text-ink-strong transition-colors hover:text-brand-700"
+        >
+          {product.name}
+        </button>
+
+        {/* Industries */}
+        <div className="mt-2.5 flex flex-wrap gap-1">
+          {product.industries.slice(0, 3).map((ind) => (
+            <Badge key={ind} tone="neutral">
+              {ind}
+            </Badge>
+          ))}
+          {product.industries.length > 3 && (
+            <Badge tone="neutral">+{product.industries.length - 3}</Badge>
+          )}
         </div>
 
-        {error && (
-          <p role="alert" className="text-xs text-red-600">
-            {error}
-          </p>
-        )}
+        {/* Key specs */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {specs.map((spec) => {
+            const Icon = spec.icon;
+            return (
+              <div
+                key={spec.label}
+                className="flex items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5"
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0 text-brand-600" />
+                <div className="min-w-0 leading-tight">
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-ink-subtle">
+                    {spec.label}
+                  </div>
+                  <div className="truncate text-xs font-bold text-ink">
+                    {spec.value}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <ButtonLink
-            href={`/product/${product.slug}`}
-            variant="outline"
-            size="sm"
-          >
-            Lihat Detail
-          </ButtonLink>
-          <Button variant="primary" size="sm" onClick={handleQuickAdd}>
-            Tambah ke Cart
-          </Button>
+        {/* Price + actions pinned to the card bottom */}
+        <div className="mt-auto pt-4">
+          <div className="flex items-end justify-between gap-2 border-t border-line pt-3">
+            <span className="text-[11px] font-medium text-ink-subtle">
+              Mulai dari
+            </span>
+            <div className="text-right leading-none">
+              <span className="text-lg font-extrabold tracking-tight text-ink-strong">
+                {formatIDR(product.priceFrom)}
+              </span>
+              <span className="ml-1 text-[11px] font-medium text-ink-subtle">
+                /pcs
+              </span>
+            </div>
+          </div>
+
+          {error && (
+            <p role="alert" className="mt-2 text-xs text-red-600">
+              {error}
+            </p>
+          )}
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <ButtonLink
+              href={`/product/${product.slug}`}
+              variant="outline"
+              size="sm"
+            >
+              Lihat Detail
+            </ButtonLink>
+            <Button variant="primary" size="sm" onClick={handleQuickAdd}>
+              <Plus className="h-4 w-4" />
+              Tambah
+            </Button>
+          </div>
         </div>
       </div>
     </article>

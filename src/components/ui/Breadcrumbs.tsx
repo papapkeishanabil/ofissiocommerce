@@ -21,7 +21,7 @@ interface BreadcrumbsProps {
 export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   if (items.length === 0) return null;
   return (
-    <nav aria-label="Breadcrumb" className={cn("px-4 pt-4 lg:px-8", className)}>
+    <nav aria-label="Breadcrumb" className={cn(className)}>
       <ol className="flex flex-wrap items-center gap-1 text-xs text-ink-muted">
         {items.map((c, i) => {
           const isLast = i === items.length - 1;

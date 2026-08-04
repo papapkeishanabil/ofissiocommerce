@@ -8,8 +8,8 @@ import type { CartLineItem } from "@/types/cart";
 import { formatIDR } from "@/types/product";
 import { SIZES } from "@/types/industry";
 import { useCartStore } from "@/stores/cart-store";
-import { toNonNegInt } from "@/lib/utils";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { cn, toNonNegInt } from "@/lib/utils";
+import { Minus, Package, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -17,9 +17,10 @@ import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing
 
 interface CartLineItemViewProps {
   item: CartLineItem;
+  index?: number;
 }
 
-export function CartLineItemView({ item }: CartLineItemViewProps) {
+export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
   const router = useRouter();
   const updateLineSizes = useCartStore((s) => s.updateLineSizes);
   const removeLine = useCartStore((s) => s.removeLine);
@@ -41,20 +42,43 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
   }
 
   return (
-    <article className="rounded-2xl border border-line bg-surface p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={() => router.push(`/product/${item.productSlug}`)}
-            className="block text-left text-sm font-bold text-ink hover:text-brand-700"
-          >
-            {item.productName}
-          </button>
-          <p className="mt-0.5 font-mono text-[11px] text-ink-muted">
-            {item.sku}
-          </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+    <article
+      style={{ animationDelay: `${index * 60}ms` }}
+      className="hover-lift animate-fade-in-up rounded-2xl border border-line bg-surface p-4 shadow-soft-sm hover:border-brand-200 hover:shadow-soft-md"
+    >
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
+          <Package className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <button
+                type="button"
+                onClick={() => router.push(`/product/${item.productSlug}`)}
+                className="block text-left text-base font-bold leading-snug text-ink hover:text-brand-700"
+              >
+                {item.productName}
+              </button>
+              <p className="mt-0.5 font-mono text-[11px] text-ink-subtle">{item.sku}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-base font-extrabold tracking-tight text-ink">
+                {formatIDR(item.finalEstimatedTotal ?? item.estimatedPrice)}
+              </p>
+              <p className="text-[11px] text-ink-muted">
+                {formatIDR(item.finalUnitPrice ?? item.unitPrice)} / pcs
+              </p>
+              {(item.quantityTierApplied ?? pricing.tierApplied) &&
+              (item.quantityTierLabel ?? pricing.tierLabel) ? (
+                <p className="mt-1 text-[10px] font-bold text-brand-700">
+                  Tier: {item.quantityTierLabel ?? pricing.tierLabel}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <Badge tone="brand">Warna: {item.color}</Badge>
             <Badge tone="neutral">{item.totalQty} pcs</Badge>
             {item.customization && (
@@ -71,6 +95,7 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
               </Badge>
             )}
           </div>
+
           {item.uniform3DConfig &&
             item.uniform3DConfig.placements.length > 0 &&
             item.uniform3DConfig.snapshots.front && (
@@ -87,17 +112,6 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
                 </span>
               </div>
             )}
-        </div>
-        <div className="text-right">
-          <p className="text-sm font-bold text-ink">
-            {formatIDR(item.finalEstimatedTotal ?? item.estimatedPrice)}
-          </p>
-          <p className="text-[11px] text-ink-muted">
-            {formatIDR(item.finalUnitPrice ?? item.unitPrice)} / pcs
-          </p>
-          {(item.quantityTierApplied ?? pricing.tierApplied) && (item.quantityTierLabel ?? pricing.tierLabel) ? (
-            <p className="mt-1 text-[10px] font-bold text-brand-700">Tier: {item.quantityTierLabel ?? pricing.tierLabel}</p>
-          ) : null}
         </div>
       </div>
 
@@ -116,24 +130,33 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
       {(item.missingEmbroideryPricingZones?.length ?? 0) > 0 ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">Harga bordir untuk zona ini perlu dikonfirmasi admin.</p> : null}
 
       {/* Per-size editor (compact) */}
-      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
         {SIZES.map((s) => {
           const qty = item.sizes[s] ?? 0;
+          const active = qty > 0;
           return (
             <div
               key={s}
-              className="flex flex-col items-center rounded-lg border border-line py-1.5"
+              className={cn(
+                "flex flex-col items-center rounded-xl border py-2 transition-colors",
+                active ? "border-brand-300 bg-brand-50" : "border-line bg-surface",
+              )}
             >
-              <span className="text-[10px] font-semibold uppercase text-ink-muted">
+              <span
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-wide",
+                  active ? "text-brand-700" : "text-ink-subtle",
+                )}
+              >
                 {s}
               </span>
-              <div className="mt-1 flex items-center gap-0.5">
+              <div className="mt-1.5 flex items-center gap-1">
                 <button
                   type="button"
                   aria-label={`Kurangi ${s}`}
                   onClick={() => bump(s, -1)}
                   disabled={qty <= 0}
-                  className="grid h-5 w-5 place-items-center rounded border border-line text-ink hover:bg-slate-100 disabled:opacity-40"
+                  className="grid h-6 w-6 place-items-center rounded-md border border-line text-ink transition hover:bg-slate-100 active:scale-95 disabled:opacity-40"
                 >
                   <Minus className="h-3 w-3" />
                 </button>
@@ -144,13 +167,13 @@ export function CartLineItemView({ item }: CartLineItemViewProps) {
                   placeholder="0"
                   onChange={(e) => setSize(s, e.target.value)}
                   aria-label={`Qty ${s}`}
-                  className="h-5 w-8 rounded border border-line bg-surface text-center text-[11px] font-semibold focus:border-brand-500 focus:outline-none"
+                  className="h-6 w-9 rounded-md border border-line bg-surface text-center text-xs font-bold focus:border-brand-500 focus:outline-none"
                 />
                 <button
                   type="button"
                   aria-label={`Tambah ${s}`}
                   onClick={() => bump(s, 1)}
-                  className="grid h-5 w-5 place-items-center rounded border border-line text-ink hover:bg-slate-100"
+                  className="grid h-6 w-6 place-items-center rounded-md border border-line text-ink transition hover:bg-brand-50 hover:text-brand-700 active:scale-95"
                 >
                   <Plus className="h-3 w-3" />
                 </button>

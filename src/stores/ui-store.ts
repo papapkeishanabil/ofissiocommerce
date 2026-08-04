@@ -8,7 +8,7 @@ import { create } from "zustand";
 
 export type AuthIntent =
   | { kind: "checkout" }
-  | { kind: "request_quote" }
+  | { kind: "request_quote"; returnTo?: string }
   | { kind: "save_configuration" }
   | { kind: "repeat_order" }
   | { kind: "none" };

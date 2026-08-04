@@ -41,7 +41,7 @@ export const useChromeStore = create<ChromeState>((set, get) => ({
   openChrome: () => { clearTimers(); set({ pinned: true, railHovered: true, topHovered: true }); },
   setLocked: (value) => {
     if (value) { clearTimers(); set({ locked: true, railHovered: true, topHovered: true }); }
-    else { set({ locked: false }); }
+    else { clearTimers(); set({ locked: false, pinned: false, railHovered: false, topHovered: false }); }
   },
 }));
 

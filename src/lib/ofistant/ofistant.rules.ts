@@ -444,9 +444,8 @@ const quotation: Rule = ({ text, ctx, taxonomy }) => {
   if (!ctx.cartSummary || ctx.cartSummary.itemCount === 0) {
     return {
       message:
-        "Quotation bisa dibuat dari keranjang. Mau saya bantu pilih produk yang sesuai dulu?",
-      action: { type: "SHOW_PRODUCTS", payload: {} },
-      quickReplies: ["Pertambangan", "Konstruksi", "Lihat keranjang"],
+        "Ada dua jalur quotation: pilih produk katalog untuk pesanan standar atau bordir, dan gunakan brief Full Custom jika desain, model, bahan, pola, warna, atau ukurannya dibuat sendiri. Anda ingin jalur yang mana?",
+      quickReplies: ["Buat seragam Full Custom", "Lihat katalog", "Hubungi sales"],
     };
   }
   return {
@@ -455,6 +454,22 @@ const quotation: Rule = ({ text, ctx, taxonomy }) => {
     action: { type: "REQUEST_QUOTATION", payload: {} },
     quickReplies: ["Lihat keranjang", "Lanjut checkout"],
     contextPatch: { journeyStage: "QUOTATION_SUBMITTED" },
+  };
+};
+
+const fullCustomRequest: Rule = ({ text }) => {
+  if (
+    !/\b(full\s*custom|seragam\s*custom|buat\s*desain\s*sendiri|desain\s*sendiri|model\s*(sendiri|khusus)|bahan\s*(sendiri|khusus)|pola\s*(sendiri|khusus)|size\s*chart\s*sendiri|produksi\s*khusus)\b/i.test(
+      text,
+    )
+  ) {
+    return null;
+  }
+  return {
+    message:
+      "Baik, saya buka brief Seragam Full Custom. Anda tidak perlu memilih produk atau mengisi keranjang. Siapkan gambaran desain/model, bahan, warna, ukuran, jumlah, target waktu, dan file referensi bila ada.",
+    action: { type: "OPEN_CUSTOM_REQUEST", payload: {} },
+    quickReplies: ["Hubungi sales", "Lihat katalog"],
   };
 };
 
@@ -627,6 +642,7 @@ export const RULES: Rule[] = [
   searchCatalog,
   viewCart,
   checkout,
+  fullCustomRequest,
   quotation,
   register,
   tracking,

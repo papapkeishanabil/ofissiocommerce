@@ -12,8 +12,9 @@ interface RouteAwareShellProps {
 export function RouteAwareShell({ children }: RouteAwareShellProps) {
   const pathname = usePathname();
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isLoginRoute = pathname === "/login";
 
-  if (isAdminRoute) {
+  if (isAdminRoute || isLoginRoute) {
     return <>{children}</>;
   }
 

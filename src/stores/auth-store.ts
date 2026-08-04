@@ -19,12 +19,17 @@ interface AuthState {
   session: AuthSession | null;
   hydrated: boolean;
   hydrate: () => Promise<void>;
-  login: (email: string, password: string) => Promise<{ ok: boolean; reason?: string; internal?: boolean }>;
+  login: (
+    email: string,
+    password: string,
+    quotationId?: string,
+  ) => Promise<{ ok: boolean; reason?: string; internal?: boolean }>;
   register: (input: {
     fullName: string;
     email: string;
     whatsapp: string;
     password: string;
+    quotationId?: string;
   }) => Promise<{ ok: boolean; reason?: string; requiresEmailVerification?: boolean }>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -57,12 +62,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ session: null, hydrated: true });
   },
 
-  login: async (email, password) => {
+  login: async (email, password, quotationId) => {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, quotationId }),
       });
       const payload = (await response.json()) as {
         ok?: boolean;

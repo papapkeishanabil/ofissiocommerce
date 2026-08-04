@@ -290,6 +290,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
             : []),
           { label: product.name },
         ]}
+        className="px-4 pt-4 lg:px-8"
       />
       <ButtonLink
         href="/catalog"

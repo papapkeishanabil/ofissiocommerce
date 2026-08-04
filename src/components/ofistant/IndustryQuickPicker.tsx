@@ -23,7 +23,7 @@ export function IndustryQuickPicker({ onPick }: IndustryQuickPickerProps) {
             onClick={() => onPick(m.name)}
             className="group relative flex flex-col items-start gap-1 overflow-hidden rounded-xl border border-line bg-white p-2.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
           >
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-[13px] font-bold text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-700 text-[13px] font-bold text-white shadow-soft-xs transition-all duration-200 group-hover:scale-110 group-hover:bg-brand-800">
               {m.name.charAt(0)}
             </span>
             <span className="text-[11px] font-bold leading-tight text-ink-strong">
