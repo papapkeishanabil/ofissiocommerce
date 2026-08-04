@@ -15,6 +15,7 @@ import type {
   WooCommerceOrder,
   WooCommerceProduct,
   WooCommerceProductWritePayload,
+  WooCommerceUpdateOrderInput,
 } from "./woocommerce.types";
 import {
   applyWooCommerceLoopbackAuth,
@@ -35,6 +36,7 @@ export const woocommerceClient = {
   getAttributes,
   getAttributeTerms,
   createOrder,
+  updateOrder,
   updateOrderStatus,
   getOrderById,
 };
@@ -222,6 +224,16 @@ function normalizeBaseUrl(value: string) {
   const trimmed = value.replace(/\/$/, "");
   if (trimmed.endsWith("/wp-json/wc/v3")) return trimmed;
   return `${trimmed}/wp-json/wc/v3`;
+}
+
+async function updateOrder(
+  id: string | number,
+  payload: WooCommerceUpdateOrderInput,
+) {
+  return wcFetch<WooCommerceOrder>(`/orders/${encodeURIComponent(String(id))}`, undefined, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 }
 
 function normalizeProductMedia(product: WooCommerceProduct): WooCommerceProduct {

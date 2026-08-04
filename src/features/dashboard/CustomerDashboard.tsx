@@ -202,6 +202,12 @@ export function CustomerDashboard() {
             </Link>
           </div>
         </div>
+        <div className="relative grid grid-cols-2 gap-px border-t border-white/10 bg-white/10 sm:grid-cols-4">
+          <HeroStat label="Active orders" value={snapshot.activeOrders.length} />
+          <HeroStat label="Quotation" value={dashboardQuotations.length} />
+          <HeroStat label="Item di cart" value={cartHydrated ? cartCount : 0} />
+          <HeroStat label="Alamat" value={company.addresses.length} />
+        </div>
       </section>
 
       <DashboardSummaryCards
@@ -338,6 +344,17 @@ export function CustomerDashboard() {
 
 const asideCard =
   "rounded-2xl border border-line bg-surface p-5 shadow-soft-sm transition-shadow hover:shadow-soft-md";
+
+function HeroStat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="bg-brand-800/40 px-5 py-3.5 backdrop-blur-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-200">
+        {label}
+      </p>
+      <p className="mt-0.5 text-xl font-extrabold tabular-nums text-white">{value}</p>
+    </div>
+  );
+}
 
 function SectionHeader({
   title,

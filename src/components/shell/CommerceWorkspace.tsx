@@ -10,7 +10,7 @@ export function CommerceWorkspace({ children }: CommerceWorkspaceProps) {
     <main className="flex h-dvh min-w-0 flex-1 flex-col overflow-hidden">
       <div className="lg:hidden"><WorkspaceHeader /></div>
       <WorkspaceTopBar />
-      <div data-workspace-scroll className="flex-1 overflow-y-auto">
+      <div data-workspace-scroll className="relative flex-1 overflow-y-auto">
         <div>{children}</div>
       </div>
     </main>

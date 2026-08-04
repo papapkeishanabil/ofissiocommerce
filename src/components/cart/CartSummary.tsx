@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { formatIDR } from "@/types/product";
 import { useCartItems, useCartHydrated } from "@/hooks/use-cart";
 import { useGatedAction } from "@/hooks/use-gated-action";
-import { ArrowRight, FileText, Receipt, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, FileText, Receipt, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 
@@ -69,6 +69,17 @@ export function CartSummary({ showActions = false }: CartSummaryProps) {
             </span>
           </div>
         </div>
+
+        <ul className="mt-4 space-y-1.5 text-[11px] leading-5 text-ink-muted">
+          <li className="flex items-center gap-1.5">
+            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+            Harga volume otomatis sesuai jumlah pesanan
+          </li>
+          <li className="flex items-center gap-1.5">
+            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+            Produksi 100% in-house oleh Ofissio
+          </li>
+        </ul>
 
         {showActions && (
           <div className="mt-4 space-y-2">

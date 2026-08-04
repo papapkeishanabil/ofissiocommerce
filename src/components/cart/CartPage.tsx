@@ -33,13 +33,19 @@ export function CartPage() {
           <ShoppingCart className="h-8 w-8" />
         </span>
         <h1 className="mt-4 text-xl font-bold text-ink">Keranjang masih kosong</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Telusuri katalog dan tambahkan produk. Keranjang tersimpan otomatis di
-          browser ini.
+        <p className="mt-1 max-w-sm text-sm text-ink-muted">
+          Telusuri katalog dan tambahkan produk sesuai kebutuhan tim Anda.
         </p>
         <ButtonLink href="/catalog" className="mt-5" size="lg">
           Mulai belanja
         </ButtonLink>
+        <ButtonLink href="/custom-request" variant="outline" size="sm" className="mt-3">
+          <Sparkles className="h-4 w-4" />
+          Ajukan Seragam Full Custom
+        </ButtonLink>
+        <p className="mt-4 text-xs text-ink-subtle">
+          Keranjang tersimpan otomatis di browser ini.
+        </p>
       </div>
     );
   }

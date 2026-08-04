@@ -7,6 +7,7 @@ import type {
 } from "@/features/payment/payment.types";
 import { woocommerceClient } from "@/features/products/woocommerce/woocommerce.client";
 import type { WooCommerceCreateOrderInput } from "@/features/products/woocommerce/woocommerce.types";
+import type { WooCommerceOrder } from "@/features/products/woocommerce/woocommerce.types";
 
 export const woocommerceOrderRepository = {
   async createOrder(input: {
@@ -25,6 +26,13 @@ export const woocommerceOrderRepository = {
 
   async updateOrderStatus(orderId: string | number, status: string) {
     return woocommerceClient.updateOrderStatus(orderId, status);
+  },
+
+  async updateOrderMetadata(
+    orderId: string | number,
+    metaData: NonNullable<WooCommerceOrder["meta_data"]>,
+  ) {
+    return woocommerceClient.updateOrder(orderId, { meta_data: metaData });
   },
 
   async getOrderById(orderId: string | number) {

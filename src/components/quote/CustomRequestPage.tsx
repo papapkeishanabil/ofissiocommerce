@@ -20,6 +20,7 @@ import {
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useUIStore } from "@/stores/ui-store";
 import type { AuthSession } from "@/types/account";
@@ -65,6 +66,14 @@ const INITIAL_FORM: FormState = {
   customerNotes: "",
 };
 
+const REQUIRED_TOTAL = 4;
+const STEPS: Array<{ n: string; label: string }> = [
+  { n: "1", label: "Isi brief" },
+  { n: "2", label: "Review sales" },
+  { n: "3", label: "Penawaran & approval" },
+  { n: "4", label: "Production Order" },
+];
+
 export function CustomRequestPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,14 +86,16 @@ export function CustomRequestPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const readyToSubmit = useMemo(
-    () =>
-      form.projectName.trim().length >= 3 &&
-      form.garmentType.trim().length >= 2 &&
-      Number(form.estimatedQuantity) > 0 &&
-      form.designDescription.trim().length >= 10,
-    [form],
-  );
+  const requiredFilled = useMemo(() => {
+    let filled = 0;
+    if (form.projectName.trim().length >= 3) filled += 1;
+    if (form.garmentType.trim().length >= 2) filled += 1;
+    if (Number(form.estimatedQuantity) > 0) filled += 1;
+    if (form.designDescription.trim().length >= 10) filled += 1;
+    return filled;
+  }, [form]);
+
+  const readyToSubmit = requiredFilled === REQUIRED_TOTAL;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -280,22 +291,32 @@ export function CustomRequestPage() {
           Kembali ke katalog
         </Link>
 
-        <section className="mt-3 overflow-hidden rounded-3xl bg-brand-900 text-white shadow-soft-lg">
-          <div className="grid lg:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
+        {/* Hero */}
+        <section className="animate-fade-in-up relative mt-3 overflow-hidden rounded-3xl bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 text-white shadow-glow-brand">
+          <div className="bg-grid-faint pointer-events-none absolute inset-0 opacity-50" />
+          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-ochre-500/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-brand-400/20 blur-3xl" />
+          <div className="relative grid lg:grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)]">
             <div className="p-6 sm:p-8 lg:p-10">
               <div className="flex items-start gap-4">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-ochre-400 text-brand-950">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-ochre-400 text-brand-950 shadow-soft-sm">
                   <Factory className="h-6 w-6" aria-hidden="true" />
                 </span>
-                <div>
-                  <h1 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">
+                <div className="min-w-0">
+                  <p className="type-eyebrow text-ochre-300">Full Custom · Produksi khusus</p>
+                  <h1 className="mt-2 max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">
                     Mulai dari ide Anda, bukan dari produk katalog.
                   </h1>
                   <p className="mt-4 max-w-2xl text-base leading-7 text-brand-100 sm:text-lg">
                     Jika Anda menginginkan desain sendiri, jenis bahan sendiri,
                     model atau pola khusus, kombinasi warna tertentu, maupun size
-                    chart perusahaan, klik dan isi brief Full Custom di halaman ini.
+                    chart perusahaan, isi brief Full Custom di halaman ini.
                   </p>
+                  <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-brand-100">
+                    <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-ochre-300" aria-hidden="true" /> Konsultasi gratis</span>
+                    <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-ochre-300" aria-hidden="true" /> Review oleh tim production</span>
+                    <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-ochre-300" aria-hidden="true" /> Penawaran setelah brief lengkap</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -325,25 +346,44 @@ export function CustomRequestPage() {
           </div>
         </section>
 
-        <ol className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line text-sm sm:grid-cols-4">
-          {[
-            ["1", "Isi brief"],
-            ["2", "Review sales"],
-            ["3", "Penawaran & approval"],
-            ["4", "Production Order"],
-          ].map(([number, label], index) => (
-            <li key={number} className="flex items-center gap-3 bg-white px-4 py-3">
-              <span className={index === 0 ? "grid h-7 w-7 place-items-center rounded-full bg-brand-700 text-xs font-black text-white" : "grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-xs font-black text-ink-muted"}>
-                {number}
-              </span>
-              <span className={index === 0 ? "font-bold text-ink" : "font-semibold text-ink-muted"}>{label}</span>
-            </li>
-          ))}
+        {/* Stepper */}
+        <ol className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {STEPS.map((step, index) => {
+            const active = index === 0;
+            return (
+              <li
+                key={step.n}
+                className={cn(
+                  "relative flex items-center gap-3 overflow-hidden rounded-2xl border bg-white px-4 py-3 shadow-soft-xs",
+                  active ? "border-brand-200" : "border-line",
+                )}
+              >
+                {active ? <span className="absolute inset-y-0 left-0 w-1 bg-ochre-500" aria-hidden="true" /> : null}
+                <span
+                  className={cn(
+                    "grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-extrabold",
+                    active ? "bg-brand-700 text-white" : "bg-slate-100 text-ink-muted",
+                  )}
+                >
+                  {step.n}
+                </span>
+                <span className={cn("text-sm", active ? "font-bold text-ink" : "font-semibold text-ink-muted")}>
+                  {step.label}
+                </span>
+              </li>
+            );
+          })}
         </ol>
 
-        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        {/* Required-fields legend */}
+        <p className="mt-6 text-xs font-semibold leading-5 text-ink-muted">
+          Kolom bertanda <span className="text-brand-700">*</span> wajib diisi. Sisanya opsional — tim Ofissio akan membantu rekomendasi bahan, warna, dan ukuran.
+        </p>
+
+        <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
           <div className="space-y-5">
             <FormSection
+              index={1}
               icon={<FileText className="h-5 w-5" aria-hidden="true" />}
               title="Gambaran proyek"
               description="Ceritakan apa yang akan dibuat dan untuk siapa seragam ini digunakan."
@@ -368,6 +408,7 @@ export function CustomRequestPage() {
             </FormSection>
 
             <FormSection
+              index={2}
               icon={<Ruler className="h-5 w-5" aria-hidden="true" />}
               title="Bahan, warna, dan ukuran"
               description="Belum yakin bahan atau ukuran? Kosongkan bagian opsional; tim Ofissio akan memberi rekomendasi."
@@ -392,6 +433,7 @@ export function CustomRequestPage() {
             </FormSection>
 
             <FormSection
+              index={3}
               icon={<Paperclip className="h-5 w-5" aria-hidden="true" />}
               title="Target waktu dan referensi"
               description="Lampirkan contoh desain, foto, moodboard, atau size chart agar review lebih cepat."
@@ -435,40 +477,67 @@ export function CustomRequestPage() {
             </FormSection>
           </div>
 
+          {/* Sticky summary */}
           <aside className="lg:sticky lg:top-24">
-            <div className="rounded-2xl border border-line bg-white p-5 shadow-soft-md">
-              <h2 className="text-lg font-extrabold tracking-tight text-ink">Kirim brief Full Custom</h2>
-              <p className="mt-2 text-sm leading-6 text-ink-muted">
-                Request ini langsung masuk ke tim sales sebagai quotation dengan rute Production / SPK.
-              </p>
-              <dl className="mt-5 space-y-3 border-y border-line py-4 text-sm">
-                <SummaryRow label="Proyek" value={form.projectName || "Belum diisi"} />
-                <SummaryRow label="Jenis" value={form.garmentType || "Belum dipilih"} />
-                <SummaryRow label="Jumlah" value={form.estimatedQuantity ? `${form.estimatedQuantity} pcs` : "Belum diisi"} />
-                <SummaryRow label="Referensi" value={`${references.length} file`} />
-                <SummaryRow label="Rute" value="Production / SPK" strong />
-              </dl>
-
-              {!isAuthenticated && hydrated ? (
-                <div className="mt-4 rounded-xl bg-brand-50 p-3 text-sm leading-5 text-brand-900">
-                  <div className="flex items-start gap-2">
-                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                    <p>Masuk atau daftar akun perusahaan saat siap mengirim brief.</p>
+            <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-soft-md">
+              <div className="bg-gradient-to-br from-brand-700 to-brand-900 px-5 py-4 text-white">
+                <p className="type-eyebrow text-brand-200">Ringkasan</p>
+                <h2 className="mt-1 text-lg font-extrabold tracking-tight">Kirim brief Full Custom</h2>
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-brand-100">
+                    <span>Kelengkapan wajib</span>
+                    <span className="tabular-nums">{requiredFilled}/{REQUIRED_TOTAL}</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/20">
+                    <div
+                      className="h-full rounded-full bg-ochre-400 transition-[width] duration-300 ease-out"
+                      style={{ width: `${(requiredFilled / REQUIRED_TOTAL) * 100}%` }}
+                    />
                   </div>
                 </div>
-              ) : null}
+              </div>
 
-              <Button type="button" size="lg" className="mt-5 w-full" disabled={submitting || uploading || !hydrated} aria-busy={submitting} onClick={() => void submitRequest()}>
-                {submitting ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-                {submitting ? "Mengirim brief..." : isAuthenticated ? "Kirim permintaan Full Custom" : "Masuk dan lanjutkan"}
-                {!submitting ? <ArrowRight className="h-4 w-4" aria-hidden="true" /> : null}
-              </Button>
-              {!readyToSubmit ? <p className="mt-3 text-center text-xs leading-5 text-ink-muted">Lengkapi empat field wajib sebelum mengirim.</p> : null}
-              {message ? <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-semibold leading-5 text-amber-900" role="status">{message}</p> : null}
+              <div className="p-5">
+                <p className="text-sm leading-6 text-ink-muted">
+                  Request ini langsung masuk ke tim sales sebagai quotation dengan rute Production / SPK.
+                </p>
+                <dl className="mt-4 space-y-2.5 text-sm">
+                  <SummaryRow label="Proyek" value={form.projectName || "Belum diisi"} />
+                  <SummaryRow label="Jenis" value={form.garmentType || "Belum dipilih"} />
+                  <SummaryRow label="Jumlah" value={form.estimatedQuantity ? `${form.estimatedQuantity} pcs` : "Belum diisi"} />
+                  <SummaryRow label="Referensi" value={`${references.length} file`} />
+                  <SummaryRow label="Rute" value="Production / SPK" strong />
+                </dl>
 
-              <div className="mt-5 border-t border-line pt-4 text-xs leading-5 text-ink-muted">
-                <p className="font-bold text-ink">Setelah dikirim</p>
-                <p className="mt-1">Sales meninjau feasibility, bahan, pola, harga, dan jadwal. Customer baru menerima penawaran final setelah data lengkap.</p>
+                {!isAuthenticated && hydrated ? (
+                  <div className="mt-4 rounded-xl bg-brand-50 p-3 text-sm leading-5 text-brand-900">
+                    <div className="flex items-start gap-2">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                      <p>Masuk atau daftar akun perusahaan saat siap mengirim brief.</p>
+                    </div>
+                  </div>
+                ) : null}
+
+                <Button type="button" size="lg" className="mt-5 w-full" disabled={submitting || uploading || !hydrated} aria-busy={submitting} onClick={() => void submitRequest()}>
+                  {submitting ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                  {submitting ? "Mengirim brief..." : isAuthenticated ? "Kirim permintaan Full Custom" : "Masuk dan lanjutkan"}
+                  {!submitting ? <ArrowRight className="h-4 w-4" aria-hidden="true" /> : null}
+                </Button>
+                {!readyToSubmit ? (
+                  <p className="mt-3 text-center text-xs leading-5 text-ink-muted">
+                    Lengkapi {REQUIRED_TOTAL} kolom wajib (ditandai <span className="font-bold text-brand-700">*</span>) sebelum mengirim.
+                  </p>
+                ) : (
+                  <p className="mt-3 text-center text-xs leading-5 font-semibold text-emerald-700">
+                    Brief siap dikirim.
+                  </p>
+                )}
+                {message ? <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-semibold leading-5 text-amber-900" role="status">{message}</p> : null}
+
+                <div className="mt-5 border-t border-line pt-4 text-xs leading-5 text-ink-muted">
+                  <p className="font-bold text-ink">Setelah dikirim</p>
+                  <p className="mt-1">Sales meninjau feasibility, bahan, pola, harga, dan jadwal. Customer baru menerima penawaran final setelah data lengkap.</p>
+                </div>
               </div>
             </div>
           </aside>
@@ -478,12 +547,33 @@ export function CustomRequestPage() {
   );
 }
 
-function FormSection({ icon, title, description, children }: { icon: ReactNode; title: string; description: string; children: ReactNode }) {
+function FormSection({
+  index,
+  icon,
+  title,
+  description,
+  children,
+}: {
+  index: number;
+  icon: ReactNode;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
   return (
-    <section className="rounded-2xl border border-line bg-white p-5 shadow-soft-sm sm:p-6">
+    <section
+      style={{ animationDelay: `${index * 70}ms` }}
+      className="animate-fade-in-up rounded-2xl border border-line bg-white p-5 shadow-soft-sm sm:p-6"
+    >
       <div className="flex items-start gap-3 border-b border-line pb-4">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">{icon}</span>
+        <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
+          {icon}
+          <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-brand-700 text-[10px] font-extrabold text-white ring-2 ring-white">
+            {index}
+          </span>
+        </span>
         <div>
+          <p className="type-eyebrow text-ink-subtle">Langkah {index}</p>
           <h2 className="text-lg font-extrabold tracking-tight text-ink">{title}</h2>
           <p className="mt-1 text-sm leading-6 text-ink-muted">{description}</p>
         </div>
@@ -495,14 +585,14 @@ function FormSection({ icon, title, description, children }: { icon: ReactNode; 
 
 function SummaryRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex items-start justify-between gap-4 border-b border-line pb-2 last:border-0 last:pb-0">
       <dt className="text-ink-muted">{label}</dt>
       <dd className={strong ? "max-w-[11rem] text-right font-extrabold text-brand-800" : "max-w-[11rem] break-words text-right font-bold text-ink"}>{value}</dd>
     </div>
   );
 }
 
-const inputClass = "min-h-12 w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink shadow-soft-xs outline-none transition placeholder:text-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100";
+const inputClass = "min-h-12 w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink shadow-soft-xs outline-none transition hover:border-line-strong placeholder:text-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100";
 const textareaClass = `${inputClass} resize-y leading-6`;
 
 function formatFileSize(bytes: number) {

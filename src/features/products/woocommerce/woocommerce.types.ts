@@ -143,3 +143,7 @@ export interface WooCommerceOrder {
   number?: string;
   meta_data?: WooCommerceMetaData[];
 }
+
+export interface WooCommerceUpdateOrderInput {
+  meta_data?: WooCommerceMetaData[];
+}
