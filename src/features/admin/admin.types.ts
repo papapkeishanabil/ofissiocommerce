@@ -94,8 +94,15 @@ export interface AdminQuotationRow {
   emailStatus: string;
   itemCount: number;
   totalQty: number;
+  processRoute: OrderProcessRoute;
   createdAt: string;
+  updatedAt: string;
   acceptedAt: string | null;
+  /** unread quotation_requested notification (new submission to review) */
+  isRequestedNew: boolean;
+  /** unread quotation_accepted notification (customer just accepted) */
+  isAcceptedNew: boolean;
+  attentionType: "quotation_accepted" | "quotation_requested" | null;
 }
 
 export interface AdminLogoPreview {

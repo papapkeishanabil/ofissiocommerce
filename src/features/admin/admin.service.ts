@@ -16,6 +16,7 @@ import {
   updateQuotationStatus,
 } from "@/features/quotation/quotation.service";
 import type { PaymentOrderRecord } from "@/features/payment/payment.types";
+import type { OrderProcessRoute } from "@/features/orders/order.types";
 import {
   ensureOrderProcessRouting,
 } from "@/features/orders/order-routing.service";
@@ -51,7 +52,8 @@ import type {
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
-import { resolveOrderCreatedNotifications } from "@/features/admin-notifications/admin-notification.service";
+import { resolveOrderCreatedNotifications, resolveQuotationNotifications } from "@/features/admin-notifications/admin-notification.service";
+import type { AdminNotification } from "@/features/admin-notifications/admin-notification.types";
 import {
   INTERNAL_ROLES,
   type AuditEvent,
@@ -218,8 +220,27 @@ export async function getAdminSummary(): Promise<AdminSummary> {
 }
 
 export async function listAdminQuotations(input: { search?: string; status?: string } = {}) {
-  const rows = await repositoryRegistry.quotations.listAll();
+  const [rows, notifications] = await Promise.all([
+    repositoryRegistry.quotations.listAll(),
+    repositoryRegistry.adminNotifications.listAll(),
+  ]);
   const search = input.search?.toLowerCase();
+  const requestedByQuotation = new Map(
+    notifications
+      .filter(
+        (notification) =>
+          notification.type === "quotation_requested" && notification.entityType === "quotation",
+      )
+      .map((notification) => [notification.entityId, notification] as const),
+  );
+  const acceptedByQuotation = new Map(
+    notifications
+      .filter(
+        (notification) =>
+          notification.type === "quotation_accepted" && notification.entityType === "quotation",
+      )
+      .map((notification) => [notification.entityId, notification] as const),
+  );
   return rows
     .filter((quotation) => (input.status ? quotation.status === input.status : true))
     .filter((quotation) => {
@@ -234,14 +255,22 @@ export async function listAdminQuotations(input: { search?: string; status?: str
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(search));
     })
+    .map((quotation) =>
+      mapQuotationRow(quotation, {
+        requested: requestedByQuotation.get(quotation.id),
+        accepted: acceptedByQuotation.get(quotation.id),
+      }),
+    )
     .sort((a, b) => {
-      const acceptedPriority = Number(b.status === "accepted") - Number(a.status === "accepted");
-      if (acceptedPriority !== 0) return acceptedPriority;
-      const aTime = Date.parse(a.acceptedAt ?? a.updatedAt ?? a.createdAt);
-      const bTime = Date.parse(b.acceptedAt ?? b.updatedAt ?? b.createdAt);
-      return bTime - aTime;
-    })
-    .map(mapQuotationRow);
+      // Unread acceptance first, then unread new request, then newest status change.
+      const acceptedNewPriority = Number(b.isAcceptedNew) - Number(a.isAcceptedNew);
+      if (acceptedNewPriority !== 0) return acceptedNewPriority;
+      const requestedNewPriority = Number(b.isRequestedNew) - Number(a.isRequestedNew);
+      if (requestedNewPriority !== 0) return requestedNewPriority;
+      const acceptedStatusPriority = Number(b.status === "accepted") - Number(a.status === "accepted");
+      if (acceptedStatusPriority !== 0) return acceptedStatusPriority;
+      return Date.parse(b.updatedAt || b.createdAt) - Date.parse(a.updatedAt || a.createdAt);
+    });
 }
 
 export async function getAdminQuotationDetail(id: string): Promise<AdminQuotationDetail | null> {
@@ -321,6 +350,17 @@ export async function executeAdminQuotationAction(input: {
     throw createApiError("FORBIDDEN", "Role internal belum boleh mengubah quotation.", 403);
   }
   const payload = input.payload;
+  // Status-changing admin actions clear the "new submission / new acceptance"
+  // highlight so the quotation drops from the top of the queue.
+  if (
+    "action" in payload &&
+    ["update_status", "send_quote_to_customer", "convert_to_order"].includes(payload.action)
+  ) {
+    await resolveQuotationNotifications(input.id, {
+      request: input.request,
+      actorId: input.actor.id,
+    });
+  }
   if ("action" in payload) {
     switch (payload.action) {
       case "update_status":
@@ -917,7 +957,12 @@ async function getQuotationEmailLogs(quotation: QuotationRequestRecord) {
   });
 }
 
-function mapQuotationRow(quotation: QuotationRequestRecord): AdminQuotationRow {
+function mapQuotationRow(
+  quotation: QuotationRequestRecord,
+  notifications: { requested?: AdminNotification | null; accepted?: AdminNotification | null } = {},
+): AdminQuotationRow {
+  const isRequestedNew = notifications.requested?.status === "unread";
+  const isAcceptedNew = notifications.accepted?.status === "unread";
   return {
     id: quotation.id,
     quotationNumber: quotation.quotationNumber,
@@ -929,9 +974,31 @@ function mapQuotationRow(quotation: QuotationRequestRecord): AdminQuotationRow {
     emailStatus: quotation.emailStatus,
     itemCount: quotation.items.length,
     totalQty: quotation.totalQty,
+    processRoute: deriveQuotationRoute(quotation),
     createdAt: quotation.createdAt,
+    updatedAt: quotation.updatedAt,
     acceptedAt: quotation.acceptedAt,
+    isRequestedNew,
+    isAcceptedNew,
+    attentionType: isAcceptedNew
+      ? "quotation_accepted"
+      : isRequestedNew
+        ? "quotation_requested"
+        : null,
   };
+}
+
+function deriveQuotationRoute(quotation: QuotationRequestRecord): OrderProcessRoute {
+  if (
+    quotation.source === "custom_request" ||
+    quotation.requirementType === "custom_production"
+  ) {
+    return "production";
+  }
+  if (quotation.requirementType === "standard_customization") {
+    return "customization";
+  }
+  return "fulfillment";
 }
 
 function mapOrderRow(
