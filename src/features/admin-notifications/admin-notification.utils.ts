@@ -19,25 +19,35 @@ export function isNotificationVisibleToScope(
 
 export function isPendingOrderNotification(notification: AdminNotification) {
   return (
-    notification.type === "order_created" &&
-    (notification.status === "unread" || notification.status === "read")
+    ["order_created", "payment_paid"].includes(notification.type) &&
+    notification.status === "unread"
   );
 }
 
 export function isPopupOrderNotification(notification: AdminNotification) {
-  return notification.type === "order_created" && notification.status === "unread";
+  return (
+    ["order_created", "payment_paid"].includes(notification.type) &&
+    notification.status === "unread"
+  );
 }
 
 export function isPendingQuotationNotification(notification: AdminNotification) {
   return (
-    notification.type === "quotation_accepted" &&
+    ["quotation_requested", "quotation_accepted"].includes(notification.type) &&
     notification.status === "unread"
   );
 }
 
 export function isPopupNotification(notification: AdminNotification) {
   return (
-    ["order_created", "quotation_accepted"].includes(notification.type) &&
+    [
+      "order_created",
+      "quotation_requested",
+      "quotation_accepted",
+      "payment_paid",
+    ].includes(
+      notification.type,
+    ) &&
     notification.status === "unread"
   );
 }
@@ -65,7 +75,9 @@ export function transitionNotification(
 
 export function notificationTypeGroup(type: AdminNotificationType) {
   if (type === "order_created") return "order";
-  if (type === "quotation_accepted") return "quotation";
+  if (["quotation_requested", "quotation_accepted"].includes(type)) {
+    return "quotation";
+  }
   if (type === "payment_paid") return "payment";
   if (type === "shipment_created") return "shipment";
   return "system";

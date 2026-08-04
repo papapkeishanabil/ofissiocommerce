@@ -384,11 +384,19 @@ export async function listAdminOrders(): Promise<AdminOrderRow[]> {
     listTrackingRaw(),
     repositoryRegistry.adminNotifications.listAll(),
   ]);
-  const notificationByOrderId = new Map(
+  const newOrderNotificationByOrderId = new Map(
     notifications
       .filter(
         (notification) =>
           notification.type === "order_created" && notification.entityType === "order",
+      )
+      .map((notification) => [notification.entityId, notification] as const),
+  );
+  const paymentNotificationByOrderId = new Map(
+    notifications
+      .filter(
+        (notification) =>
+          notification.type === "payment_paid" && notification.entityType === "order",
       )
       .map((notification) => [notification.entityId, notification] as const),
   );
@@ -398,13 +406,20 @@ export async function listAdminOrders(): Promise<AdminOrderRow[]> {
       mapOrderRow(
         order,
         tracking.find((item) => item.id === order.id),
-        notificationByOrderId.get(order.id) ?? null,
+        {
+          orderCreated: newOrderNotificationByOrderId.get(order.id) ?? null,
+          paymentPaid: paymentNotificationByOrderId.get(order.id) ?? null,
+        },
       ),
     )
     .sort((a, b) => {
+      const paymentChangePriority = Number(b.isPaymentNew) - Number(a.isPaymentNew);
+      if (paymentChangePriority !== 0) return paymentChangePriority;
+      const processingPriority = Number(b.needsProcessing) - Number(a.needsProcessing);
+      if (processingPriority !== 0) return processingPriority;
       const newOrderPriority = Number(b.isNew) - Number(a.isNew);
       if (newOrderPriority !== 0) return newOrderPriority;
-      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+      return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
     });
 }
 
@@ -448,11 +463,18 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
       ),
     )
   ).flat();
-  const newOrderNotification = await repositoryRegistry.adminNotifications.getByEntity({
-    type: "order_created",
-    entityType: "order",
-    entityId: routed.id,
-  });
+  const [newOrderNotification, paymentPaidNotification] = await Promise.all([
+    repositoryRegistry.adminNotifications.getByEntity({
+      type: "order_created",
+      entityType: "order",
+      entityId: routed.id,
+    }),
+    repositoryRegistry.adminNotifications.getByEntity({
+      type: "payment_paid",
+      entityType: "order",
+      entityId: routed.id,
+    }),
+  ]);
   return {
     order: routed,
     tracking,
@@ -465,6 +487,12 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
     newOrderNotification: newOrderNotification
       ? { id: newOrderNotification.id, status: newOrderNotification.status }
       : null,
+    attentionNotifications: [paymentPaidNotification, newOrderNotification]
+      .filter((notification) => notification?.status === "unread")
+      .map((notification) => ({
+        id: notification!.id,
+        status: notification!.status,
+      })),
   };
 }
 
@@ -909,15 +937,27 @@ function mapQuotationRow(quotation: QuotationRequestRecord): AdminQuotationRow {
 function mapOrderRow(
   order: PaymentOrderRecord,
   tracking?: CustomerTrackingOrder | null,
-  notification?: { id: string; status: string } | null,
+  notifications: {
+    orderCreated?: { id: string; status: string } | null;
+    paymentPaid?: { id: string; status: string } | null;
+  } = {},
 ): AdminOrderRow {
   const routed = ensureOrderProcessRouting(order);
+  const paymentStatus =
+    routed.status === "payment_received"
+      ? "paid"
+      : tracking?.paymentStatus ?? "waiting_payment";
+  const isPaid = paymentStatus === "paid" || routed.status === "payment_received";
+  const needsProcessing =
+    isPaid && ["not_started", "ready_to_process"].includes(routed.processStatus ?? "not_started");
+  const isPaymentNew = notifications.paymentPaid?.status === "unread";
+  const isNew = notifications.orderCreated?.status === "unread";
   return {
     id: routed.id,
     orderNumber: tracking?.orderNumber ?? routed.orderNumber ?? routed.id,
     companyId: routed.companyId,
     companyName: tracking?.companyName ?? routed.companyId,
-    paymentStatus: tracking?.paymentStatus ?? "waiting_payment",
+    paymentStatus,
     orderStatus: routed.status,
     fulfillmentType: routed.items[0]?.fulfillmentType ?? "STANDARD_PRODUCT",
     processRoute: routed.processRoute ?? "fulfillment",
@@ -928,7 +968,9 @@ function mapOrderRow(
     processRouteReason: routed.processRouteReason ?? "",
     trackingStatus: tracking?.currentStageId ?? "-",
     progress: tracking ? calculateTrackingProgress(tracking) : 0,
+    total: routed.calculation.grandTotal,
     createdAt: routed.createdAt,
+    updatedAt: routed.updatedAt,
     wooOrderId: routed.wooOrderId ?? routed.woocommerceOrderId ?? null,
     wooOrderNumber: routed.wooOrderNumber ?? null,
     wooSyncStatus:
@@ -940,8 +982,16 @@ function mapOrderRow(
           : "disabled"),
     wooSyncError: routed.wooSyncError ?? null,
     wooSyncedAt: routed.wooSyncedAt ?? null,
-    isNew: notification?.status === "unread",
-    notificationId: notification?.id ?? null,
+    isNew,
+    isPaymentNew,
+    needsProcessing,
+    attentionType: isPaymentNew || needsProcessing
+      ? "payment_received"
+      : isNew
+        ? "new_order"
+        : null,
+    notificationId:
+      notifications.paymentPaid?.id ?? notifications.orderCreated?.id ?? null,
   };
 }
 

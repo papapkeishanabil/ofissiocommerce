@@ -132,13 +132,18 @@ export interface AdminOrderRow {
   processRouteReason: string;
   trackingStatus: string;
   progress: number;
+  total: number;
   createdAt: string;
+  updatedAt: string;
   wooOrderId: string | null;
   wooOrderNumber: string | null;
   wooSyncStatus: string;
   wooSyncError: string | null;
   wooSyncedAt: string | null;
   isNew: boolean;
+  isPaymentNew: boolean;
+  needsProcessing: boolean;
+  attentionType: "payment_received" | "new_order" | null;
   notificationId: string | null;
 }
 
@@ -155,6 +160,10 @@ export interface AdminOrderDetail {
     id: string;
     status: "unread" | "read" | "acknowledged" | "resolved";
   } | null;
+  attentionNotifications: Array<{
+    id: string;
+    status: "unread" | "read" | "acknowledged" | "resolved";
+  }>;
 }
 
 export interface AdminProcessOrderRow {

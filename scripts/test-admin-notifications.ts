@@ -70,6 +70,30 @@ async function main() {
   const scope = { role: "sales" as const, userId: "sales-test" };
   assert.equal((await manager.summary(scope)).ordersUnread, 1);
 
+  const requestedQuotation = await manager.create({
+    type: "quotation_requested",
+    title: "Permintaan Full Custom Baru",
+    message: "PT Demo mengajukan Full Custom.",
+    entityType: "quotation",
+    entityId: "quo_test_001",
+    entityNumber: "OF-QUO-001",
+    metadata: {
+      adminUrl: "/admin/quotations/quo_test_001",
+      source: "custom_request",
+      totalQty: 100,
+    },
+  });
+  let quotationSummary = await manager.summary(scope);
+  assert.equal(quotationSummary.quotationsUnread, 1);
+  assert.equal(quotationSummary.popupUnread, 2);
+  assert.equal(
+    quotationSummary.latestNotifications.some(
+      (notification) => notification.id === requestedQuotation.notification.id,
+    ),
+    true,
+    "quotation request harus tampil pada sticky popup",
+  );
+
   const acceptedQuotation = await manager.create({
     type: "quotation_accepted",
     title: "Quotation Diterima Customer",
@@ -79,9 +103,9 @@ async function main() {
     entityNumber: "OF-QUO-001",
     metadata: { adminUrl: "/admin/quotations/quo_test_001" },
   });
-  let quotationSummary = await manager.summary(scope);
-  assert.equal(quotationSummary.quotationsUnread, 1);
-  assert.equal(quotationSummary.popupUnread, 2);
+  quotationSummary = await manager.summary(scope);
+  assert.equal(quotationSummary.quotationsUnread, 2);
+  assert.equal(quotationSummary.popupUnread, 3);
   assert.equal(
     quotationSummary.latestNotifications.some(
       (notification) => notification.id === acceptedQuotation.notification.id,
@@ -91,12 +115,16 @@ async function main() {
   );
   await manager.transition(acceptedQuotation.notification.id, "read");
   quotationSummary = await manager.summary(scope);
+  assert.equal(quotationSummary.quotationsUnread, 1);
+  assert.equal(quotationSummary.popupUnread, 2);
+  await manager.transition(requestedQuotation.notification.id, "read");
+  quotationSummary = await manager.summary(scope);
   assert.equal(quotationSummary.quotationsUnread, 0);
   assert.equal(quotationSummary.popupUnread, 1);
 
   await manager.transition(first.notification.id, "read");
   let summary = await manager.summary(scope);
-  assert.equal(summary.ordersUnread, 1, "read tetap dihitung pada badge Orders");
+  assert.equal(summary.ordersUnread, 0, "membuka detail mengurangi badge Orders");
   assert.equal(summary.orderPopupUnread, 0, "read boleh menyembunyikan sticky popup");
 
   await manager.transition(first.notification.id, "acknowledged");
@@ -104,9 +132,31 @@ async function main() {
   assert.equal(summary.ordersUnread, 0, "acknowledge mengurangi badge Orders");
 
   const second = await manager.create({ ...input, entityId: "ord_test_002", entityNumber: "OF-002" });
+  const paid = await manager.create({
+    type: "payment_paid",
+    title: "Pembayaran Order Diterima",
+    message: "Pembayaran OF-002 sudah diterima.",
+    entityType: "order",
+    entityId: "ord_test_002",
+    entityNumber: "OF-002",
+    metadata: { adminUrl: "/admin/orders/ord_test_002" },
+  });
+  summary = await manager.summary(scope);
+  assert.equal(summary.ordersUnread, 2, "order baru dan pembayaran baru masuk badge Orders");
+  assert.equal(
+    summary.latestNotifications.some(
+      (notification) => notification.id === paid.notification.id,
+    ),
+    true,
+    "pembayaran baru harus tampil pada sticky popup",
+  );
   await manager.resolveOrder(second.notification.entityId);
   summary = await manager.summary(scope);
-  assert.equal(summary.ordersUnread, 0, "resolved tidak dihitung pada badge Orders");
+  assert.equal(
+    summary.ordersUnread,
+    0,
+    "mulai proses menyelesaikan notifikasi order dan pembayaran",
+  );
 
   assert.equal(
     orderNotificationEmailIdempotencyKey("ord_test_001"),
@@ -143,7 +193,9 @@ async function main() {
   console.log("- create + duplicate idempotency: PASS");
   console.log("- unread/read/acknowledged/resolved badge rules: PASS");
   console.log("- sticky read behavior: PASS");
+  console.log("- quotation requested badge + sticky popup: PASS");
   console.log("- quotation accepted badge + sticky popup: PASS");
+  console.log("- payment paid badge + sticky popup + process resolution: PASS");
   console.log("- email idempotency key + disabled fallback: PASS");
 }
 

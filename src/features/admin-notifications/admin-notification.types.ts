@@ -2,6 +2,7 @@ import type { InternalRole } from "@/lib/security/security.types";
 
 export const ADMIN_NOTIFICATION_TYPES = [
   "order_created",
+  "quotation_requested",
   "quotation_accepted",
   "payment_paid",
   "shipment_created",
@@ -116,6 +117,27 @@ export interface QuotationAcceptedNotificationInput {
   total: number;
   currency?: string;
   productSummary: string;
+}
+
+export interface QuotationRequestedNotificationInput {
+  quotationId: string;
+  quotationNumber: string;
+  customerName: string;
+  companyName: string;
+  totalQty: number;
+  productSummary: string;
+  source: "web_cart" | "custom_request";
+  requestedProcessRoute: "fulfillment" | "customization" | "production";
+}
+
+export interface PaymentPaidNotificationInput {
+  orderId: string;
+  orderNumber: string;
+  companyName: string;
+  total: number;
+  currency?: string;
+  provider: string;
+  paidAt?: string | null;
 }
 
 export interface AdminNotificationMutationContext {

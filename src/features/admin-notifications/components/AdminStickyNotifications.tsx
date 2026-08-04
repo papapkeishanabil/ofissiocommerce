@@ -54,8 +54,12 @@ function NotificationCard({
   const companyName = String(notification.metadata.companyName ?? "Customer Ofissio");
   const productSummary = String(notification.metadata.productSummary ?? "Produk Ofissio");
   const total = Number(notification.metadata.total ?? 0);
+  const totalQty = Number(notification.metadata.totalQty ?? 0);
   const currency = String(notification.metadata.currency ?? "IDR");
-  const isQuotation = notification.type === "quotation_accepted";
+  const isQuotation = ["quotation_requested", "quotation_accepted"].includes(
+    notification.type,
+  );
+  const isQuotationRequest = notification.type === "quotation_requested";
   return (
     <article className="overflow-hidden rounded-2xl border border-brand-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.18)]">
       <div className="flex gap-3 border-b border-line bg-gradient-to-r from-brand-50 to-white px-4 py-3.5">
@@ -78,7 +82,13 @@ function NotificationCard({
         <p className="font-semibold text-ink">{companyName}</p>
         <p className="line-clamp-2 text-ink-muted">{productSummary}</p>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <strong className="text-ink">{formatNotificationMoney(total, currency)}</strong>
+          <strong className="text-ink">
+            {isQuotationRequest
+              ? totalQty > 0
+                ? `${totalQty} pcs · Menunggu review harga`
+                : "Menunggu review harga"
+              : formatNotificationMoney(total, currency)}
+          </strong>
           <span className="inline-flex items-center gap-1 text-xs text-ink-subtle">
             <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
             {formatRelativeTime(notification.createdAt)}

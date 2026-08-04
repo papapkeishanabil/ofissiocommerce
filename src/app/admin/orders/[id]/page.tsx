@@ -38,7 +38,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         : "disabled");
   return (
     <div className="space-y-5">
-      <AdminOrderNotificationRead notification={detail.newOrderNotification} />
+      <AdminOrderNotificationRead notifications={detail.attentionNotifications} />
       <Link href="/admin/orders" className="text-sm font-bold text-brand-700">
         ← Back to orders
       </Link>

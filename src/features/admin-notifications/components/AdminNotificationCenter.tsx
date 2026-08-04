@@ -29,7 +29,8 @@ const STATUS_FILTERS: Array<{ value: "all" | AdminNotificationStatus; label: str
 const TYPE_FILTERS: Array<{ value: "all" | AdminNotificationType; label: string }> = [
   { value: "all", label: "Semua tipe" },
   { value: "order_created", label: "Order" },
-  { value: "quotation_accepted", label: "Quotation" },
+  { value: "quotation_requested", label: "Quotation baru" },
+  { value: "quotation_accepted", label: "Quotation diterima" },
   { value: "payment_paid", label: "Payment" },
   { value: "shipment_created", label: "Shipment" },
   { value: "system_warning", label: "System" },

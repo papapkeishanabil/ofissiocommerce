@@ -5,6 +5,7 @@ import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBa
 import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentActions";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminQuotationProgress } from "@/features/admin/components/AdminQuotationProgress";
+import { AdminProcessRouteBadge } from "@/features/admin/components/AdminProcessRouteBadge";
 import {
   AdminQuotationProcessControl,
   AdminQuotationStatusActions,
@@ -17,6 +18,8 @@ import { getEmailRuntimeConfig } from "@/features/email/email.config";
 import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
 import { getGlobalTaxSettings } from "@/features/tax/tax.service";
 import { quotationTaxLabel } from "@/features/quotation/quotation.utils";
+import { requirementTypeLabel } from "@/features/quotation/quotation-requirement";
+import { quotationSourceLabel } from "@/features/quotation/custom-quotation";
 import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
 
 interface PageProps {
@@ -70,6 +73,13 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <AdminBadge tone={quotation.source === "custom_request" ? "warning" : "neutral"}>
+              {quotationSourceLabel(quotation.source)}
+            </AdminBadge>
+            <AdminProcessRouteBadge
+              route={quotation.requestedProcessRoute}
+              showDescription
+            />
             <AdminBadge tone={adminStatusTone(quotation.status)}>{quotation.status}</AdminBadge>
             <AdminBadge tone={adminStatusTone(quotation.emailStatus)}>{quotation.emailStatus}</AdminBadge>
           </div>
@@ -92,6 +102,91 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             <dd className="text-ink-muted">Harga final Phase 17</dd>
           </div>
         </dl>
+
+        <div className="mt-4 rounded-2xl border border-line bg-slate-50 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">
+                Jenis kebutuhan customer
+              </p>
+              <p className="mt-1 font-bold text-ink">
+                {requirementTypeLabel(quotation.requirementType)}
+              </p>
+            </div>
+            <p className="max-w-xl text-sm text-ink-muted">
+              Route ini akan dipertahankan saat quotation dikonversi menjadi order.
+              Sistem hanya dapat menaikkan route jika menemukan kebutuhan yang lebih kompleks.
+            </p>
+          </div>
+          {quotation.productionBrief ? (
+            <dl className="mt-4 grid gap-3 border-t border-line pt-4 text-sm md:grid-cols-2">
+              <BriefRow
+                label="Nama proyek"
+                value={quotation.productionBrief.projectName ?? "Belum diberi nama"}
+              />
+              <BriefRow
+                label="Jenis pakaian"
+                value={quotation.productionBrief.garmentType ?? "Belum ditentukan"}
+              />
+              <BriefRow
+                label="Estimasi jumlah"
+                value={
+                  quotation.productionBrief.estimatedQuantity
+                    ? `${quotation.productionBrief.estimatedQuantity} pcs`
+                    : `${quotation.totalQty} pcs`
+                }
+              />
+              <BriefRow
+                label="Penggunaan"
+                value={quotation.productionBrief.usageContext ?? "Belum dijelaskan"}
+              />
+              <BriefRow
+                label="Brief desain/model"
+                value={quotation.productionBrief.designDescription}
+              />
+              <BriefRow
+                label="Bahan"
+                value={quotation.productionBrief.materialPreference ?? "Belum ditentukan"}
+              />
+              <BriefRow
+                label="Warna"
+                value={quotation.productionBrief.colorPreference ?? "Belum ditentukan"}
+              />
+              <BriefRow
+                label="Ukuran/pola"
+                value={quotation.productionBrief.sizeNotes ?? "Mengikuti pembahasan"}
+              />
+              <BriefRow
+                label="Target kebutuhan"
+                value={
+                  quotation.productionBrief.targetDate
+                    ? formatAdminDate(quotation.productionBrief.targetDate)
+                    : "Belum ditentukan"
+                }
+              />
+              {(quotation.productionBrief.referenceFiles?.length ?? 0) > 0 ? (
+                <div className="rounded-2xl bg-white p-3 ring-1 ring-line md:col-span-2">
+                  <dt className="text-xs font-bold uppercase tracking-[0.14em] text-ink-muted">
+                    File referensi customer
+                  </dt>
+                  <dd className="mt-2">
+                    <ul className="flex flex-wrap gap-2">
+                      {quotation.productionBrief.referenceFiles?.map((file) => (
+                        <li
+                          key={file.fileId}
+                          className="max-w-full truncate rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-800 ring-1 ring-brand-100"
+                          title={file.filename}
+                        >
+                          {file.filename}
+                        </li>
+                      ))}
+                    </ul>
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : null}
+        </div>
 
         {quotation.customerNotes ? (
           <div className="mt-4 rounded-2xl border border-line bg-white p-4 text-sm">
@@ -284,6 +379,19 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                 <AdminBadge tone="brand">{item.fulfillmentType}</AdminBadge>
               </div>
 
+              {item.source === "custom" ? (
+                <div className="mt-4 rounded-2xl border border-ochre-200 bg-ochre-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-900">
+                    Custom project scope
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-amber-950">
+                    Item ini dibuat dari brief customer, bukan dari produk katalog. Harga,
+                    pola, bahan, size chart, dan feasibility ditetapkan saat review sales
+                    dan produksi.
+                  </p>
+                </div>
+              ) : (
+                <>
               <div className="mt-4 rounded-2xl bg-slate-50 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">Size matrix</p>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
@@ -331,6 +439,8 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                   </div>
                 )}
               </div>
+                </>
+              )}
             </article>
           ))
         )}
@@ -397,6 +507,17 @@ function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-slate-50 p-4">
       <dt className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">
+        {label}
+      </dt>
+      <dd className="mt-1 break-words font-semibold text-ink">{value}</dd>
+    </div>
+  );
+}
+
+function BriefRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-white p-3 ring-1 ring-line">
+      <dt className="text-xs font-bold uppercase tracking-[0.12em] text-ink-muted">
         {label}
       </dt>
       <dd className="mt-1 break-words font-semibold text-ink">{value}</dd>

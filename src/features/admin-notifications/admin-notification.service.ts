@@ -14,7 +14,9 @@ import type {
   AdminNotificationScope,
   CreateAdminNotificationInput,
   OrderCreatedNotificationInput,
+  PaymentPaidNotificationInput,
   QuotationAcceptedNotificationInput,
+  QuotationRequestedNotificationInput,
 } from "./admin-notification.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { logInternalError } from "@/lib/security/safe-error-response";
@@ -157,6 +159,96 @@ export async function createQuotationAcceptedNotification(
         type: "quotation_accepted",
         quotationId: quotation.quotationId,
       },
+    });
+  }
+
+  return result.notification;
+}
+
+export async function createQuotationRequestedNotification(
+  quotation: QuotationRequestedNotificationInput,
+  context: AdminNotificationMutationContext = {},
+) {
+  const isFullCustom = quotation.source === "custom_request";
+  const result = await manager.create({
+    type: "quotation_requested",
+    title: isFullCustom
+      ? "Permintaan Full Custom Baru"
+      : "Permintaan Quotation Baru",
+    message: `${quotation.customerName} dari ${quotation.companyName} mengajukan ${quotation.quotationNumber} untuk ${quotation.totalQty} pcs.`,
+    entityType: "quotation",
+    entityId: quotation.quotationId,
+    entityNumber: quotation.quotationNumber,
+    severity: "info",
+    metadata: {
+      quotationId: quotation.quotationId,
+      quotationNumber: quotation.quotationNumber,
+      customerName: quotation.customerName,
+      companyName: quotation.companyName,
+      totalQty: quotation.totalQty,
+      productSummary: quotation.productSummary,
+      requestedProcessRoute: quotation.requestedProcessRoute,
+      adminUrl: `/admin/quotations/${quotation.quotationId}`,
+      source: quotation.source,
+    },
+    emailStatus: "not_required",
+  });
+
+  if (result.created) {
+    logAuditEvent({
+      request: context.request,
+      actorId: context.actorId ?? null,
+      actorType: "system",
+      action: "admin_quotation_requested_notification_created",
+      entityType: "admin_notification",
+      entityId: result.notification.id,
+      metadata: {
+        type: "quotation_requested",
+        quotationId: quotation.quotationId,
+        source: quotation.source,
+      },
+    });
+  }
+
+  return result.notification;
+}
+
+export async function createPaymentPaidNotification(
+  payment: PaymentPaidNotificationInput,
+  context: AdminNotificationMutationContext = {},
+) {
+  const result = await manager.create({
+    type: "payment_paid",
+    title: "Pembayaran Order Diterima",
+    message: `Pembayaran ${payment.orderNumber} dari ${payment.companyName} senilai ${formatNotificationMoney(payment.total, payment.currency)} sudah diterima dan siap diproses.`,
+    entityType: "order",
+    entityId: payment.orderId,
+    entityNumber: payment.orderNumber,
+    severity: "success",
+    metadata: {
+      orderId: payment.orderId,
+      orderNumber: payment.orderNumber,
+      companyName: payment.companyName,
+      total: payment.total,
+      currency: payment.currency ?? "IDR",
+      provider: payment.provider,
+      paidAt: payment.paidAt ?? new Date().toISOString(),
+      productSummary: "Pembayaran lunas; order siap masuk antrean proses.",
+      adminUrl: `/admin/orders/${payment.orderId}`,
+      source: "payment_callback",
+    },
+    emailStatus: "not_required",
+  });
+
+  if (result.created) {
+    logAuditEvent({
+      request: context.request,
+      actorId: context.actorId ?? null,
+      actorType: "system",
+      action: "admin_payment_paid_notification_created",
+      entityType: "admin_notification",
+      entityId: result.notification.id,
+      metadata: { orderId: payment.orderId, provider: payment.provider },
     });
   }
 

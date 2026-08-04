@@ -117,16 +117,24 @@ export function createAdminNotificationManager(
     },
 
     async resolveOrder(orderId: string) {
-      const notification = await repository.getByEntity({
-        type: "order_created",
-        entityType: "order",
-        entityId: orderId,
-      });
-      if (!notification || notification.status === "resolved") return notification;
-      return repository.update(
-        notification.id,
-        transitionNotification(notification, "resolved"),
+      const notifications = await Promise.all(
+        (["order_created", "payment_paid"] as const).map((type) =>
+          repository.getByEntity({ type, entityType: "order", entityId: orderId }),
+        ),
       );
+      const updated = await Promise.all(
+        notifications.filter(Boolean).map((notification) =>
+          notification!.status === "resolved"
+            ? Promise.resolve(notification)
+            : repository.update(
+                notification!.id,
+                transitionNotification(notification!, "resolved"),
+              ),
+        ),
+      );
+      return updated.find((notification) => notification?.type === "payment_paid")
+        ?? updated[0]
+        ?? null;
     },
   };
 }
