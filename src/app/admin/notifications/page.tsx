@@ -1,7 +1,7 @@
 import { AdminNotificationCenter } from "@/features/admin-notifications/components/AdminNotificationCenter";
-import { requireInternalAdmin } from "@/features/admin/admin.service";
+import { requireInternalAdminServer } from "@/features/admin/admin.service";
 
-export default function AdminNotificationsPage() {
-  requireInternalAdmin(undefined, "admin:notification:view");
+export default async function AdminNotificationsPage() {
+  await requireInternalAdminServer("admin:notification:view");
   return <AdminNotificationCenter />;
 }

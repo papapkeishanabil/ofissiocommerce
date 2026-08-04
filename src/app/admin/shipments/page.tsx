@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
-import { listAdminShipments, requireInternalAdmin } from "@/features/admin/admin.service";
+import { listAdminShipments, requireInternalAdminServer } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
 import {
   shipmentProviderLabel,
@@ -10,7 +10,7 @@ import {
 } from "@/features/shipments/shipment.config";
 
 export default async function AdminShipmentsPage() {
-  requireInternalAdmin(undefined, "admin:shipment:view");
+  await requireInternalAdminServer("admin:shipment:view");
   const shipments = await listAdminShipments();
 
   return (

@@ -1,4 +1,4 @@
-import { requireInternalAdmin } from "@/features/admin/admin.service";
+import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
 import { AdminBackLink, AdminPageHeader } from "@/features/admin/components/AdminSurface";
 import { getProductEditorTaxonomyOptions } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
@@ -9,7 +9,7 @@ import { getStorageRuntimeConfig } from "@/features/storage/storage.config";
 export const dynamic = "force-dynamic";
 
 export default async function AdminNewProductPage() {
-  requireInternalAdmin(undefined, "admin:catalog:update");
+  await requireInternalAdminServer("admin:catalog:update");
   try {
     const options = await getProductEditorTaxonomyOptions();
     return (

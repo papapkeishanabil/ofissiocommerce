@@ -1,6 +1,6 @@
 import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
 import { AdminPageHeader } from "@/features/admin/components/AdminSurface";
-import { requireInternalAdmin } from "@/features/admin/admin.service";
+import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import {
   listCatalogCategories,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
@@ -8,7 +8,7 @@ import { CatalogAdminTabs } from "@/features/catalog-taxonomy/components/Catalog
 import { CategoryManager } from "@/features/catalog-taxonomy/components/CategoryManager";
 
 export default async function AdminCatalogCategoriesPage() {
-  requireInternalAdmin(undefined, "admin:catalog:view");
+  await requireInternalAdminServer("admin:catalog:view");
   try {
     const categories = await listCatalogCategories();
     return (

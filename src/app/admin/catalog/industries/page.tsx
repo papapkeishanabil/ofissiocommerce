@@ -1,11 +1,11 @@
 import { AdminPageHeader } from "@/features/admin/components/AdminSurface";
-import { requireInternalAdmin } from "@/features/admin/admin.service";
+import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { listIndustryMaster } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { CatalogAdminTabs } from "@/features/catalog-taxonomy/components/CatalogAdminTabs";
 import { IndustryManager } from "@/features/catalog-taxonomy/components/IndustryManager";
 
 export default async function AdminCatalogIndustriesPage() {
-  requireInternalAdmin(undefined, "admin:catalog:view");
+  await requireInternalAdminServer("admin:catalog:view");
   const industries = await listIndustryMaster();
   return (
     <div className="space-y-6">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Boxes, Box, ExternalLink, FileBox, Pencil, Plus } from "lucide-react";
 
-import { requireInternalAdmin } from "@/features/admin/admin.service";
+import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { AdminBadge } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
@@ -25,7 +25,7 @@ import { listAdminWooCommerceProducts } from "@/features/products/woocommerce/wo
 import type { AdminWooCommerceProduct } from "@/features/products/woocommerce/woocommerce-product-admin.types";
 
 export default async function AdminProductsPage() {
-  requireInternalAdmin(undefined, "admin:catalog:view");
+  await requireInternalAdminServer("admin:catalog:view");
   try {
     const products = await listAdminWooCommerceProducts();
     const validCount = products.filter(

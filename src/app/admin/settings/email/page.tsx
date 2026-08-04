@@ -7,7 +7,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import { requireInternalAdmin } from "@/features/admin/admin.service";
+import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { AdminEmailTestForm } from "@/features/email/components/AdminEmailTestForm";
 import { validateEmailConfig } from "@/features/email/email.config";
 import { emailRepository } from "@/features/email/email.repository";
@@ -16,7 +16,7 @@ import type { EmailLog, EmailStatus } from "@/features/email/email.types";
 export const dynamic = "force-dynamic";
 
 export default async function AdminEmailSettingsPage() {
-  requireInternalAdmin(undefined, "admin:email:view");
+  await requireInternalAdminServer("admin:email:view");
   const validation = validateEmailConfig();
   const config = validation.config;
   const emailLogs = await emailRepository.listAll().catch(() => []);

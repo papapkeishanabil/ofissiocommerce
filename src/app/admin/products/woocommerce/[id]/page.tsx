@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { requireInternalAdmin } from "@/features/admin/admin.service";
+import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
 import { AdminBackLink, AdminPageHeader } from "@/features/admin/components/AdminSurface";
 import { getProductEditorTaxonomyOptions } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
@@ -18,7 +18,7 @@ interface PageProps {
 }
 
 export default async function AdminWooProductDetailPage({ params, searchParams }: PageProps) {
-  requireInternalAdmin(undefined, "admin:catalog:view");
+  await requireInternalAdminServer("admin:catalog:view");
   const { id } = await params;
   const { uploadWarning } = await searchParams;
   if (!/^\d+$/.test(id)) notFound();

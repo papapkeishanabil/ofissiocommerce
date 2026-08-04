@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminShipmentPanel } from "@/features/admin/components/AdminShipmentPanel";
-import { getAdminShipmentDetail, requireInternalAdmin } from "@/features/admin/admin.service";
+import { getAdminShipmentDetail, requireInternalAdminServer } from "@/features/admin/admin.service";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
 import {
   shipmentProviderLabel,
@@ -16,7 +16,7 @@ interface PageProps {
 }
 
 export default async function AdminShipmentDetailPage({ params }: PageProps) {
-  requireInternalAdmin(undefined, "admin:shipment:view");
+  await requireInternalAdminServer("admin:shipment:view");
   const { id } = await params;
   const detail = await getAdminShipmentDetail(id);
   if (!detail) notFound();

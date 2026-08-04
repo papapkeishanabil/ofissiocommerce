@@ -3,12 +3,12 @@ import {
   AdminPageHeader,
   AdminPanel,
 } from "@/features/admin/components/AdminSurface";
-import { requireInternalAdmin } from "@/features/admin/admin.service";
+import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { listCatalogAttributes } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { CatalogAdminTabs } from "@/features/catalog-taxonomy/components/CatalogAdminTabs";
 
 export default async function AdminCatalogAttributesPage() {
-  requireInternalAdmin(undefined, "admin:catalog:view");
+  await requireInternalAdminServer("admin:catalog:view");
   try {
     const attributes = await listCatalogAttributes();
     return (
