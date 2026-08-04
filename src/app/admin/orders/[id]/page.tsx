@@ -8,12 +8,15 @@ import { AdminOrderProcessPanel } from "@/features/admin/components/AdminOrderPr
 import { AdminOrderProgress } from "@/features/admin/components/AdminOrderProgress";
 import { AdminPaymentPanel } from "@/features/admin/components/AdminPaymentPanel";
 import { AdminShipmentPanel } from "@/features/admin/components/AdminShipmentPanel";
+import { AdminCarrierShippingPanel } from "@/features/admin/components/AdminCarrierShippingPanel";
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
 import { AdminOrderNotificationRead } from "@/features/admin-notifications/components/AdminOrderNotificationRead";
 import { getAdminOrderDetail } from "@/features/admin/admin.service";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
 import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
 import { getPaymentRuntimeConfig } from "@/features/payment/payment.config";
+import { getCarrierShippingConfig } from "@/features/carrier-shipping/carrier-shipping.config";
+import { getCarrierShippingState } from "@/features/carrier-shipping/carrier-shipping.service";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -25,6 +28,11 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
   if (!detail) notFound();
   const { order, tracking, documents, payment, paymentEvents } = detail;
   const paymentConfig = getPaymentRuntimeConfig();
+  const carrierConfig = getCarrierShippingConfig();
+  const carrierShipping = await getCarrierShippingState({
+    orderId: order.id,
+    companyId: order.companyId,
+  });
   const invoicePdf = documents.find(
     (document) => document.documentType === "invoice_pdf" && document.status === "generated",
   );
@@ -117,6 +125,19 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         requestedProvider={paymentConfig.requestedProvider}
         activeProvider={paymentConfig.provider}
         ipaymuConfigured={paymentConfig.ipaymu.isComplete}
+      />
+
+      <AdminCarrierShippingPanel
+        orderId={order.id}
+        paymentReceived={order.status === "payment_received" || payment?.status === "paid"}
+        provider={carrierConfig.provider}
+        providerConfigured={
+          carrierConfig.isRuntimeAllowed &&
+          (carrierConfig.provider === "mock" || carrierConfig.biteship.isConfigured)
+        }
+        initialQuotes={carrierShipping.quotes}
+        initialShipment={carrierShipping.shipment}
+        initialEvents={carrierShipping.events}
       />
 
       <AdminShipmentPanel
