@@ -79,7 +79,12 @@ export function QuotationDetailPage({ id }: QuotationDetailPageProps) {
         <p className="mt-1 text-sm text-ink-muted">
           Masuk untuk melihat quotation perusahaan Anda.
         </p>
-        <Button className="mt-5" onClick={() => openAuth({ kind: "request_quote" })}>
+        <Button
+          className="mt-5"
+          onClick={() =>
+            openAuth({ kind: "request_quote", returnTo: `/quotes/${id}` })
+          }
+        >
           Masuk / Daftar
         </Button>
       </div>

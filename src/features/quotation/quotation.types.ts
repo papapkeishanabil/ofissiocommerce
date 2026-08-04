@@ -1,6 +1,36 @@
 import type { ValidatedCheckoutCartItem } from "@/features/checkout/checkout-cart.types";
 import type { EmailSendResult, EmailStatus } from "@/features/email/email.types";
-import type { WooOrderSyncStatus } from "@/features/orders/order.types";
+import type {
+  OrderProcessRoute,
+  WooOrderSyncStatus,
+} from "@/features/orders/order.types";
+
+export type QuotationRequirementType =
+  | "standard_product"
+  | "standard_customization"
+  | "custom_production";
+
+export type QuotationSource = "web_cart" | "custom_request";
+
+export interface ProductionReferenceFile {
+  fileId: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
+export interface ProductionRequestBrief {
+  projectName?: string | null;
+  garmentType?: string | null;
+  estimatedQuantity?: number | null;
+  usageContext?: string | null;
+  designDescription: string;
+  materialPreference: string | null;
+  colorPreference: string | null;
+  sizeNotes: string | null;
+  targetDate: string | null;
+  referenceFiles?: ProductionReferenceFile[];
+}
 
 export const QUOTATION_STATUSES = [
   "draft",
@@ -106,7 +136,7 @@ export interface QuotationRequestRecord {
   picEmail: string | null;
   picWhatsapp: string | null;
   status: QuotationStatus;
-  source: "web_cart";
+  source: QuotationSource;
   items: QuotationItemRecord[];
   subtotalEstimate: number;
   internalNotes: QuotationNote[];
@@ -126,6 +156,9 @@ export interface QuotationRequestRecord {
   customerEmail: string | null;
   totalQty: number;
   embroideryPointCount: number;
+  requirementType: QuotationRequirementType;
+  requestedProcessRoute: OrderProcessRoute;
+  productionBrief: ProductionRequestBrief | null;
   customerNotes: string | null;
   shippingDestination: string | null;
   emailStatus: EmailStatus;
@@ -154,6 +187,8 @@ export interface CreateQuotationRequestInput {
   picName: string | null;
   picEmail: string | null;
   picWhatsapp: string | null;
+  requirementType?: QuotationRequirementType;
+  productionBrief?: ProductionRequestBrief | null;
   customerNotes: string | null;
   shippingDestination: string | null;
   items: Array<{
@@ -163,6 +198,20 @@ export interface CreateQuotationRequestInput {
     customization: string | null;
     embroideryPlacements: unknown[];
   }>;
+}
+
+export interface CreateCustomQuotationRequestInput {
+  companyId: string;
+  companyName: string;
+  userId: string;
+  userEmail: string | null;
+  userName: string | null;
+  picName: string | null;
+  picEmail: string | null;
+  picWhatsapp: string | null;
+  productionBrief: ProductionRequestBrief;
+  referenceFileIds: string[];
+  customerNotes: string | null;
 }
 
 export interface CreateQuotationRequestResult {

@@ -13,14 +13,22 @@ import { mapPaymentOrderToTracking } from "@/features/tracking/tracking.service"
 import {
   createOrderCreatedNotification,
   createQuotationAcceptedNotification,
+  createQuotationRequestedNotification,
 } from "@/features/admin-notifications/admin-notification.service";
 import { getGlobalTaxSettings } from "@/features/tax/tax.service";
+import { storageService } from "@/features/storage/storage.service";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
 import type { AuditActorType } from "@/lib/security/security.types";
 
 import { quotationRepository } from "./quotation.repository";
+import {
+  normalizeProductionBrief,
+  requirementTypeLabel,
+  resolveQuotationRequirement,
+} from "./quotation-requirement";
 import type {
+  CreateCustomQuotationRequestInput,
   CreateQuotationRequestInput,
   CreateQuotationRequestResult,
   QuotationEventRecord,
@@ -29,6 +37,7 @@ import type {
   QuotationRequestRecord,
   QuotationStatus,
 } from "./quotation.types";
+import { buildCustomProductionItem } from "./custom-quotation";
 import {
   buildQuotationItems,
   calculateQuotationPricing,
@@ -64,6 +73,24 @@ export async function createQuotationRequest(
   const now = new Date().toISOString();
   const id = `quo_${randomUUID()}`;
   const quotationNumber = buildQuotationNumber(now);
+  const requirement = resolveQuotationRequirement({
+    requestedType: input.requirementType,
+    items: cart.items,
+  });
+  const productionBrief =
+    requirement.requirementType === "custom_production"
+      ? normalizeProductionBrief(input.productionBrief)
+      : null;
+  if (
+    requirement.requirementType === "custom_production" &&
+    !productionBrief
+  ) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Ringkasan desain atau kebutuhan produksi khusus wajib diisi.",
+      400,
+    );
+  }
   const picName =
     input.picName?.trim() ||
     input.userName?.trim() ||
@@ -77,6 +104,9 @@ export async function createQuotationRequest(
     picEmail,
     picWhatsapp: input.picWhatsapp,
     customerNotes: input.customerNotes,
+    requirementType: requirement.requirementType,
+    requestedProcessRoute: requirement.requestedProcessRoute,
+    productionBrief,
     items: cart.items,
     createdAt: now,
     internalUrl: buildPublicUrl(`/admin/quotations/${id}`),
@@ -133,6 +163,9 @@ export async function createQuotationRequest(
       (total, item) => total + item.embroideryPlacements.length,
       0,
     ),
+    requirementType: requirement.requirementType,
+    requestedProcessRoute: requirement.requestedProcessRoute,
+    productionBrief,
     customerNotes: input.customerNotes,
     shippingDestination: input.shippingDestination,
     emailStatus,
@@ -150,6 +183,11 @@ export async function createQuotationRequest(
     updatedAt: now,
   };
   await quotationRepository.save(record);
+  await notifyQuotationRequestedSafely({
+    quotation: record,
+    actorId: input.userId,
+    request,
+  });
   await addQuotationEvent({
     quotation: record,
     actorId: input.userId,
@@ -162,6 +200,8 @@ export async function createQuotationRequest(
       quotationNumber,
       totalQty: cart.totalQty,
       itemCount: cart.items.length,
+      requirementType: requirement.requirementType,
+      requestedProcessRoute: requirement.requestedProcessRoute,
       emailStatus,
     },
   });
@@ -178,10 +218,229 @@ export async function createQuotationRequest(
       totalQty: cart.totalQty,
       itemCount: cart.items.length,
       embroideryPointCount: record.embroideryPointCount,
+      requirementType: requirementTypeLabel(requirement.requirementType),
+      requestedProcessRoute: requirement.requestedProcessRoute,
       emailStatus,
     },
   });
   return { quotation: record, emails };
+}
+
+export async function createCustomQuotationRequest(
+  input: CreateCustomQuotationRequestInput,
+  request?: Request,
+): Promise<CreateQuotationRequestResult> {
+  const now = new Date().toISOString();
+  const id = `quo_${randomUUID()}`;
+  const quotationNumber = buildQuotationNumber(now);
+  const productionBrief = normalizeProductionBrief(input.productionBrief);
+  if (
+    !productionBrief?.projectName ||
+    !productionBrief.garmentType ||
+    !productionBrief.estimatedQuantity ||
+    productionBrief.designDescription.length < 10
+  ) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Brief full custom belum lengkap. Isi nama proyek, jenis pakaian, jumlah, dan kebutuhan desain.",
+      400,
+    );
+  }
+
+  const referenceFiles = await resolveCustomReferenceFiles({
+    companyId: input.companyId,
+    fileIds: input.referenceFileIds,
+  });
+  const completeBrief = normalizeProductionBrief({
+    ...productionBrief,
+    referenceFiles,
+  });
+  if (!completeBrief) {
+    throw createApiError("BAD_REQUEST", "Brief full custom belum valid.", 400);
+  }
+
+  const customItem = buildCustomProductionItem({
+    quotationId: id,
+    brief: completeBrief,
+  });
+  const picName =
+    input.picName?.trim() ||
+    input.userName?.trim() ||
+    input.companyName ||
+    "Customer Ofissio";
+  const picEmail = input.picEmail?.trim() || input.userEmail;
+  const emailContext = {
+    quotationNumber,
+    companyName: input.companyName || input.companyId,
+    picName,
+    picEmail,
+    picWhatsapp: input.picWhatsapp,
+    customerNotes: input.customerNotes,
+    requirementType: "custom_production" as const,
+    requestedProcessRoute: "production" as const,
+    productionBrief: completeBrief,
+    items: [customItem],
+    createdAt: now,
+    internalUrl: buildPublicUrl(`/admin/quotations/${id}`),
+    customerUrl: buildPublicUrl(`/quotes/${id}`),
+  };
+  const emails = await Promise.all([
+    emailService.sendQuotationRequestToSales({
+      companyId: input.companyId,
+      userId: input.userId,
+      context: emailContext,
+      request,
+    }),
+    emailService.sendQuotationConfirmationToCustomer({
+      companyId: input.companyId,
+      userId: input.userId,
+      customerEmail: picEmail,
+      context: emailContext,
+      request,
+    }),
+  ]);
+  const taxState = await getGlobalTaxSettings();
+  const emailStatus = aggregateEmailStatus(emails);
+  const record: QuotationRequestRecord = {
+    id,
+    quotationNumber,
+    companyId: input.companyId,
+    companyName: input.companyName || input.companyId,
+    userId: input.userId,
+    userEmail: input.userEmail,
+    picName,
+    picEmail,
+    picWhatsapp: input.picWhatsapp,
+    status: "submitted",
+    source: "custom_request",
+    items: buildQuotationItems([customItem], id, now),
+    subtotalEstimate: 0,
+    internalNotes: [],
+    salesNotes: null,
+    customerMessage: null,
+    subtotal: null,
+    discountTotal: 0,
+    taxEnabled: taxState.settings.enabled,
+    taxRate: taxState.settings.rate,
+    taxLabel: taxState.settings.label,
+    taxTotal: 0,
+    shippingEstimate: 0,
+    grandTotal: null,
+    currency: "IDR",
+    validUntil: null,
+    salesEmail: null,
+    customerEmail: picEmail,
+    totalQty: completeBrief.estimatedQuantity ?? 1,
+    embroideryPointCount: 0,
+    requirementType: "custom_production",
+    requestedProcessRoute: "production",
+    productionBrief: completeBrief,
+    customerNotes: input.customerNotes,
+    shippingDestination: null,
+    emailStatus,
+    emailLogIds: emails.map((email) => email.id),
+    emailResults: emails,
+    acceptedAt: null,
+    rejectedAt: null,
+    convertedOrderId: null,
+    wooOrderId: null,
+    wooOrderNumber: null,
+    wooSyncStatus: "disabled",
+    wooSyncError: null,
+    wooSyncedAt: null,
+    quotationPdfDocumentId: null,
+    quotationPdfGeneratedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await quotationRepository.save(record);
+  await notifyQuotationRequestedSafely({
+    quotation: record,
+    actorId: input.userId,
+    request,
+  });
+  await Promise.all(
+    referenceFiles.map((file) =>
+      storageService
+        .markFileAsUsed({ companyId: input.companyId, fileId: file.fileId, request })
+        .catch((error) =>
+          logInternalError(error, {
+            area: "quotation_custom_request",
+            action: "reference_file_mark_used_failed",
+            fileId: file.fileId,
+          }),
+        ),
+    ),
+  );
+  await addQuotationEvent({
+    quotation: record,
+    actorId: input.userId,
+    actorType: "customer",
+    eventType: "submitted",
+    oldStatus: null,
+    newStatus: "submitted",
+    note: input.customerNotes,
+    metadata: {
+      source: "custom_request",
+      quotationNumber,
+      totalQty: record.totalQty,
+      itemCount: 1,
+      referenceFileCount: referenceFiles.length,
+      requirementType: "custom_production",
+      requestedProcessRoute: "production",
+      emailStatus,
+    },
+  });
+  logAuditEvent({
+    request,
+    actorId: input.userId,
+    actorType: "customer",
+    companyId: input.companyId,
+    action: "custom_quotation_request_created",
+    entityType: "quotation",
+    entityId: id,
+    metadata: {
+      quotationNumber,
+      totalQty: record.totalQty,
+      referenceFileCount: referenceFiles.length,
+      requestedProcessRoute: "production",
+      emailStatus,
+    },
+  });
+  return { quotation: record, emails };
+}
+
+async function resolveCustomReferenceFiles(input: {
+  companyId: string;
+  fileIds: string[];
+}) {
+  const fileIds = [...new Set(input.fileIds)].slice(0, 5);
+  const files = await Promise.all(
+    fileIds.map((fileId) =>
+      storageService.getFileById({ companyId: input.companyId, fileId }),
+    ),
+  );
+  return files.map((file, index) => {
+    if (
+      !file ||
+      file.fileType !== "artwork" ||
+      file.companyId !== input.companyId ||
+      ["deleted", "rejected"].includes(file.status)
+    ) {
+      throw createApiError(
+        "BAD_REQUEST",
+        `File referensi ke-${index + 1} tidak valid atau bukan milik perusahaan Anda.`,
+        400,
+      );
+    }
+    return {
+      fileId: file.id,
+      filename: file.originalFilename,
+      mimeType: file.mimeType,
+      sizeBytes: file.sizeBytes,
+    };
+  });
 }
 
 export async function listQuotationRequests(companyId: string) {
@@ -686,7 +945,10 @@ export async function convertQuotationToOrder(input: {
     quantityTierApplied: item.quantityTierApplied ?? false,
     transactionMode: "quotation_converted",
   }));
-  const processRouting = deriveOrderProcessRouting({ items: orderItems });
+  const processRouting = deriveOrderProcessRouting({
+    items: orderItems,
+    requestedProcessRoute: quotation.requestedProcessRoute,
+  });
   const order: PaymentOrderRecord = {
     id: orderId,
     orderNumber: referenceId,
@@ -921,6 +1183,42 @@ async function notifyConvertedOrderSafely(input: {
       area: "quotation_order_notification",
       orderId: input.order.id,
       quotationId: input.quotation.id,
+    });
+  }
+}
+
+async function notifyQuotationRequestedSafely(input: {
+  quotation: QuotationRequestRecord;
+  actorId: string | null;
+  request?: Request;
+}) {
+  const productSummary = input.quotation.items
+    .slice(0, 3)
+    .map((item) => `${item.productName} — ${item.totalQty} pcs`)
+    .join(", ");
+  try {
+    await createQuotationRequestedNotification(
+      {
+        quotationId: input.quotation.id,
+        quotationNumber: input.quotation.quotationNumber,
+        customerName: input.quotation.picName,
+        companyName: input.quotation.companyName,
+        totalQty: input.quotation.totalQty,
+        productSummary:
+          productSummary ||
+          (input.quotation.source === "custom_request"
+            ? "Proyek seragam Full Custom"
+            : "Permintaan quotation produk Ofissio"),
+        source: input.quotation.source,
+        requestedProcessRoute: input.quotation.requestedProcessRoute,
+      },
+      { actorId: input.actorId, request: input.request },
+    );
+  } catch (error) {
+    logInternalError(error, {
+      area: "quotation_requested_notification",
+      quotationId: input.quotation.id,
+      source: input.quotation.source,
     });
   }
 }

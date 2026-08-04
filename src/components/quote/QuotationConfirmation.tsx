@@ -21,6 +21,10 @@ import {
   isQuotationExpired,
   quotationTaxLabel,
 } from "@/features/quotation/quotation.utils";
+import {
+  processRouteCustomerLabel,
+  requirementTypeLabel,
+} from "@/features/quotation/quotation-requirement";
 import { useAuth } from "@/hooks/use-auth";
 import { formatIDR } from "@/types/product";
 import type { AuthSession } from "@/types/account";
@@ -185,6 +189,48 @@ export function QuotationConfirmation({
           ) : null}
         </div>
 
+        <div className="mt-4 grid gap-3 rounded-2xl border border-line bg-slate-50 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="min-w-0">
+            <p className="font-black text-ink">
+              {requirementTypeLabel(quotation.requirementType)}
+            </p>
+            <p className="mt-1 text-ink-muted">
+              Rute setelah quotation diterima: {processRouteCustomerLabel(quotation.requestedProcessRoute)}
+            </p>
+          </div>
+          <span className="h-fit rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-800 ring-1 ring-line">
+            {processRouteCustomerLabel(quotation.requestedProcessRoute)}
+          </span>
+          {quotation.productionBrief ? (
+            <div className="min-w-0 border-t border-line pt-3 sm:col-span-2">
+              <p className="font-bold text-ink">
+                {quotation.productionBrief.projectName ?? "Brief produksi khusus"}
+              </p>
+              <p className="mt-1 break-words leading-6 text-ink-muted">
+                {quotation.productionBrief.designDescription}
+              </p>
+              <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                <BriefSummary label="Jenis pakaian" value={quotation.productionBrief.garmentType ?? "Dibahas saat review"} />
+                <BriefSummary label="Bahan" value={quotation.productionBrief.materialPreference ?? "Minta rekomendasi"} />
+                <BriefSummary label="Warna" value={quotation.productionBrief.colorPreference ?? "Dibahas saat review"} />
+                <BriefSummary label="Ukuran/pola" value={quotation.productionBrief.sizeNotes ?? "Dibahas saat review"} />
+              </dl>
+              {(quotation.productionBrief.referenceFiles?.length ?? 0) > 0 ? (
+                <div className="mt-3 border-t border-line pt-3">
+                  <p className="text-xs font-bold text-ink">File referensi</p>
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {quotation.productionBrief.referenceFiles?.map((file) => (
+                      <li key={file.fileId} className="max-w-full truncate rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-ink-muted ring-1 ring-line" title={file.filename}>
+                        {file.filename}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
         {canShowFinalPrice ? (
           <dl className="mt-5 grid gap-3 text-sm md:grid-cols-5">
             <PriceCard label="Subtotal" value={quotation.subtotal ?? 0} />
@@ -282,9 +328,15 @@ export function QuotationConfirmation({
 
       <section className="mt-6 space-y-4">
         <div>
-          <h2 className="text-xl font-black text-ink">Rincian produk dan bordir</h2>
+          <h2 className="text-xl font-black text-ink">
+            {quotation.source === "custom_request"
+              ? "Rincian proyek Full Custom"
+              : "Rincian produk dan bordir"}
+          </h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Periksa kembali jumlah per ukuran serta detail bordir yang diajukan.
+            {quotation.source === "custom_request"
+              ? "Periksa kembali brief, estimasi jumlah, dan referensi yang diajukan."
+              : "Periksa kembali jumlah per ukuran serta detail bordir yang diajukan."}
           </p>
         </div>
         {quotation.items.map((item) => (
@@ -304,6 +356,17 @@ export function QuotationConfirmation({
               </span>
             </div>
 
+            {item.source === "custom" ? (
+              <div className="mt-5 grid gap-3 rounded-2xl border border-ochre-200 bg-ochre-50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <BriefSummary label="Jenis pakaian" value={quotation.productionBrief?.garmentType ?? "Dibahas saat review"} />
+                <BriefSummary label="Estimasi jumlah" value={`${quotation.productionBrief?.estimatedQuantity ?? item.totalQty} pcs`} />
+                <BriefSummary label="Target kebutuhan" value={quotation.productionBrief?.targetDate ? formatDate(quotation.productionBrief.targetDate) : "Belum ditentukan"} />
+                <BriefSummary label="Rute proses" value="Production Order / SPK" />
+                <p className="leading-6 text-amber-950 sm:col-span-2 lg:col-span-4">
+                  Produk, pola, size chart, bahan, dan harga final ditetapkan setelah feasibility review. Tidak ada distribusi ukuran produk katalog pada tahap ini.
+                </p>
+              </div>
+            ) : (
             <div className="mt-5 grid items-start overflow-hidden rounded-2xl border border-line lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.78fr)]">
               <div className="p-4 sm:p-5 lg:border-r lg:border-line">
                 <div className="flex items-center justify-between gap-3">
@@ -406,6 +469,7 @@ export function QuotationConfirmation({
                 {item.missingEmbroideryPricingZones.length > 0 ? <p className="mt-3 text-xs font-semibold text-amber-800">Harga bordir untuk zona ini perlu dikonfirmasi admin.</p> : null}
               </div>
             </div>
+            )}
           </article>
         ))}
       </section>
@@ -438,8 +502,8 @@ export function QuotationConfirmation({
 
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         <ButtonLink href="/dashboard">Lihat di dashboard</ButtonLink>
-        <ButtonLink href="/catalog" variant="outline">
-          Lanjut belanja
+        <ButtonLink href={quotation.source === "custom_request" ? "/custom-request" : "/catalog"} variant="outline">
+          {quotation.source === "custom_request" ? "Ajukan proyek Full Custom lain" : "Lanjut belanja"}
         </ButtonLink>
       </div>
     </main>
@@ -493,6 +557,15 @@ function PriceCard({
       <dd className={strong ? "mt-1 text-lg font-black text-ink" : "mt-1 font-bold text-ink"}>
         {formatIDR(value)}
       </dd>
+    </div>
+  );
+}
+
+function BriefSummary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-white px-3 py-2.5 ring-1 ring-line">
+      <dt className="font-bold uppercase tracking-[0.1em] text-ink-muted">{label}</dt>
+      <dd className="mt-1 break-words font-bold leading-5 text-ink">{value}</dd>
     </div>
   );
 }

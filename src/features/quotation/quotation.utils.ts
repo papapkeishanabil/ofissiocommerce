@@ -6,6 +6,12 @@ import type {
   QuotationRequestRecord,
   QuotationStatus,
 } from "./quotation.types";
+import {
+  normalizeProductionBrief,
+  requirementTypeToProcessRoute,
+  resolveQuotationRequirement,
+  safestQuotationProcessRoute,
+} from "./quotation-requirement";
 
 export const DEFAULT_QUOTATION_VALID_DAYS = 14;
 
@@ -46,9 +52,18 @@ export function normalizeQuotationRecord(
     pricingSubtotal == null
       ? null
       : Math.max(0, pricingSubtotal - discountTotal) + taxTotal + shippingEstimate;
+  const requirement = resolveQuotationRequirement({
+    requestedType: quotation.requirementType,
+    items: normalizedItems,
+  });
+  const requestedProcessRoute = safestQuotationProcessRoute(
+    quotation.requestedProcessRoute,
+    requirementTypeToProcessRoute(requirement.requirementType),
+  );
 
   return {
     ...quotation,
+    source: quotation.source === "custom_request" ? "custom_request" : "web_cart",
     items: normalizedItems,
     subtotalEstimate,
     internalNotes: Array.isArray(quotation.internalNotes)
@@ -85,6 +100,12 @@ export function normalizeQuotationRecord(
     embroideryPointCount:
       quotation.embroideryPointCount ||
       normalizedItems.reduce((total, item) => total + item.embroideryPlacements.length, 0),
+    requirementType: requirement.requirementType,
+    requestedProcessRoute,
+    productionBrief:
+      requestedProcessRoute === "production"
+        ? normalizeProductionBrief(quotation.productionBrief)
+        : null,
     updatedAt: now,
   };
 }

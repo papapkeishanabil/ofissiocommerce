@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { createQuotationRequest } from "@/features/quotation/quotation.service";
-import { quotationRequestBodySchema } from "@/features/quotation/quotation.validation";
+import { createCustomQuotationRequest } from "@/features/quotation/quotation.service";
+import { customQuotationRequestBodySchema } from "@/features/quotation/quotation.validation";
 import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
-import { logAuditEvent } from "@/lib/security/audit-log";
 import { requireAuth } from "@/lib/security/auth-guard";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
 import { requireRole } from "@/lib/security/role-guard";
@@ -15,14 +14,10 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     rateLimitOrThrow({
-      key: createRateLimitKey(request, "quotation.request"),
-      limit: 20,
+      key: createRateLimitKey(request, "quotation.custom_request"),
+      limit: 10,
       windowMs: 60_000,
     });
-    const payload = validateInput(
-      quotationRequestBodySchema,
-      await request.json(),
-    );
     const session = requireAuth(request, {
       companyId: request.headers.get("x-ofissio-company-id"),
       companyName: request.headers.get("x-ofissio-company-name"),
@@ -32,49 +27,27 @@ export async function POST(request: Request) {
       role: request.headers.get("x-ofissio-role"),
     });
     requireRole(session, "quotation:create");
-
-    const result = await createQuotationRequest(
+    const payload = validateInput(
+      customQuotationRequestBodySchema,
+      await request.json(),
+    );
+    const result = await createCustomQuotationRequest(
       {
         companyId: session.companyId,
-        companyName:
-          session.companyName ??
-          request.headers.get("x-ofissio-company-name") ??
-          session.companyId,
+        companyName: session.companyName ?? session.companyId,
         userId: session.userId,
         userEmail: session.email,
         userName: session.name,
-        picName:
-          payload.picName ??
-          request.headers.get("x-ofissio-user-name") ??
-          session.name,
-        picEmail:
-          payload.picEmail ??
-          request.headers.get("x-ofissio-user-email") ??
-          session.email,
+        picName: payload.picName ?? session.name,
+        picEmail: payload.picEmail ?? session.email,
         picWhatsapp: payload.picWhatsapp ?? null,
-        requirementType: payload.requirementType,
-        productionBrief: payload.productionBrief ?? null,
+        productionBrief: payload.productionBrief,
+        referenceFileIds: payload.referenceFileIds,
         customerNotes: payload.customerNotes ?? null,
-        shippingDestination: payload.shippingDestination ?? null,
-        items: payload.items,
       },
       request,
     );
 
-    logAuditEvent({
-      request,
-      actorId: session.userId,
-      actorType: "customer",
-      companyId: session.companyId,
-      action: "quotation_request_api_created",
-      entityType: "quotation",
-      entityId: result.quotation.id,
-      metadata: {
-        quotationNumber: result.quotation.quotationNumber,
-        requestedProcessRoute: result.quotation.requestedProcessRoute,
-        emailStatus: result.quotation.emailStatus,
-      },
-    });
     return NextResponse.json(
       {
         ok: true,
@@ -86,7 +59,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return safeErrorResponse(
       error,
-      "Request quotation belum dapat diproses.",
+      "Permintaan full custom belum dapat diproses.",
       400,
     );
   }
