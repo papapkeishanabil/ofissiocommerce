@@ -13,6 +13,7 @@ type RoutingInput =
       items: ValidatedCheckoutCartItem[];
       processStatus?: OrderProcessStatus;
       replenishmentStatus?: PaymentOrderRecord["replenishmentStatus"];
+      requestedProcessRoute?: OrderProcessRoute;
     };
 
 const CUSTOM_DESIGN_KEYWORDS = [
@@ -28,10 +29,24 @@ const CUSTOM_DESIGN_KEYWORDS = [
   "produksi khusus",
 ] as const;
 
+export function isCustomDesignDescription(value?: string | null) {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  return CUSTOM_DESIGN_KEYWORDS.some((keyword) => normalized.includes(keyword));
+}
+
 export function deriveOrderProcessRouting(input: RoutingInput): OrderProcessRouting {
-  const customizationType = deriveCustomizationType(input.items);
-  const hasCustomization = customizationType !== "none";
-  const processRoute = routeForCustomization(customizationType);
+  const inferredCustomizationType = deriveCustomizationType(input.items);
+  const requestedProcessRoute =
+    "requestedProcessRoute" in input ? input.requestedProcessRoute : undefined;
+  const customizationType =
+    requestedProcessRoute === "production"
+      ? "custom_design"
+      : requestedProcessRoute === "customization" && inferredCustomizationType === "none"
+        ? "embroidery"
+        : inferredCustomizationType;
+  const inferredRoute = routeForCustomization(customizationType);
+  const processRoute = safestProcessRoute(requestedProcessRoute, inferredRoute);
+  const hasCustomization = processRoute !== "fulfillment";
   const replenishmentStatus = input.replenishmentStatus ?? "not_required";
   return {
     processRoute,
@@ -44,6 +59,19 @@ export function deriveOrderProcessRouting(input: RoutingInput): OrderProcessRout
     customizationType,
     processRouteReason: reasonForRoute(processRoute, customizationType),
   };
+}
+
+function safestProcessRoute(
+  requested: OrderProcessRoute | undefined,
+  inferred: OrderProcessRoute,
+): OrderProcessRoute {
+  const priority: Record<OrderProcessRoute, number> = {
+    fulfillment: 0,
+    customization: 1,
+    production: 2,
+  };
+  if (!requested) return inferred;
+  return priority[requested] >= priority[inferred] ? requested : inferred;
 }
 
 export function ensureOrderProcessRouting(order: PaymentOrderRecord): PaymentOrderRecord {
@@ -128,7 +156,7 @@ function deriveCustomizationType(items: ValidatedCheckoutCartItem[]): OrderCusto
 
 function deriveItemCustomizationType(item: ValidatedCheckoutCartItem): OrderCustomizationType {
   const note = item.customization?.toLowerCase() ?? "";
-  if (CUSTOM_DESIGN_KEYWORDS.some((keyword) => note.includes(keyword))) {
+  if (isCustomDesignDescription(note)) {
     return "custom_design";
   }
   if (note.includes("dtf")) return "dtf";

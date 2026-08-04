@@ -17,6 +17,7 @@ import type {
 } from "@/features/orders/order.types";
 
 import { AdminBadge, adminStatusTone } from "./AdminBadge";
+import { AdminProcessRouteBadge } from "./AdminProcessRouteBadge";
 
 interface AdminOrderProcessPanelProps {
   orderId: string;
@@ -85,10 +86,8 @@ export function AdminOrderProcessPanel({
     <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700">
-            Process routing
-          </p>
-          <h3 className="mt-1 text-lg font-black text-ink">
+          <AdminProcessRouteBadge route={processRoute} showDescription />
+          <h3 className="mt-3 text-lg font-black text-ink">
             {processRouteLabel(processRoute)}
           </h3>
           <p className="mt-1 text-sm text-ink-muted">

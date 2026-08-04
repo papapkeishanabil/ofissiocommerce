@@ -3,14 +3,12 @@ import { notFound } from "next/navigation";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminProcessRouteBadge } from "@/features/admin/components/AdminProcessRouteBadge";
 import { AdminProcessOrderActions } from "@/features/admin/components/AdminProcessOrderActions";
 import { AdminShipmentPanel } from "@/features/admin/components/AdminShipmentPanel";
 import { getAdminProcessOrderDetail } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
-import {
-  processOrderRouteLabel,
-  processOrderStatusLabel,
-} from "@/features/process-orders/process-order.config";
+import { processOrderStatusLabel } from "@/features/process-orders/process-order.config";
 import { summarizeSizeMatrix } from "@/features/tracking/tracking-utils";
 
 interface PageProps {
@@ -38,10 +36,11 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">
-              {processOrderRouteLabel(processOrder.processRoute)}
-            </p>
-            <h2 className="mt-1 text-2xl font-black text-ink">
+            <AdminProcessRouteBadge
+              route={processOrder.processRoute}
+              showDescription
+            />
+            <h2 className="mt-3 text-2xl font-black text-ink">
               {processOrder.processOrderNumber}
             </h2>
             <p className="mt-1 text-sm text-ink-muted">
@@ -52,9 +51,7 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
             <AdminBadge tone={adminStatusTone(processOrder.processStatus)}>
               {processOrderStatusLabel(processOrder.processStatus)}
             </AdminBadge>
-            <AdminBadge tone={adminStatusTone(processOrder.processRoute)}>
-              {processOrder.processRoute}
-            </AdminBadge>
+            <AdminProcessRouteBadge route={processOrder.processRoute} />
           </div>
         </div>
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminProcessRouteBadge } from "@/features/admin/components/AdminProcessRouteBadge";
 import {
   ADMIN_TABLE_CLASS,
   AdminPageHeader,
@@ -9,7 +10,6 @@ import {
 } from "@/features/admin/components/AdminSurface";
 import { listAdminProcessOrders } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
-import { processOrderRouteLabel } from "@/features/process-orders/process-order.config";
 
 export default async function AdminProcessOrdersPage() {
   const processOrders = await listAdminProcessOrders();
@@ -57,9 +57,10 @@ export default async function AdminProcessOrdersPage() {
                   </td>
                   <td className="px-4 py-3 text-ink-muted">{processOrder.companyName}</td>
                   <td className="px-4 py-3">
-                    <AdminBadge tone={adminStatusTone(processOrder.processRoute)}>
-                      {processOrderRouteLabel(processOrder.processRoute)}
-                    </AdminBadge>
+                    <AdminProcessRouteBadge
+                      route={processOrder.processRoute}
+                      showDescription
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <AdminBadge tone={adminStatusTone(processOrder.processStatus)}>
