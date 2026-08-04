@@ -136,5 +136,26 @@ export function createAdminNotificationManager(
         ?? updated[0]
         ?? null;
     },
+
+    async resolveQuotation(quotationId: string) {
+      const notifications = await Promise.all(
+        (["quotation_requested", "quotation_accepted"] as const).map((type) =>
+          repository.getByEntity({ type, entityType: "quotation", entityId: quotationId }),
+        ),
+      );
+      const updated = await Promise.all(
+        notifications.filter(Boolean).map((notification) =>
+          notification!.status === "resolved"
+            ? Promise.resolve(notification)
+            : repository.update(
+                notification!.id,
+                transitionNotification(notification!, "resolved"),
+              ),
+        ),
+      );
+      return updated.find((notification) => notification?.type === "quotation_accepted")
+        ?? updated[0]
+        ?? null;
+    },
   };
 }

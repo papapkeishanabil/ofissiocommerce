@@ -310,6 +310,25 @@ export async function resolveOrderCreatedNotifications(
   return updated;
 }
 
+export async function resolveQuotationNotifications(
+  quotationId: string,
+  context: AdminNotificationMutationContext = {},
+) {
+  const updated = await manager.resolveQuotation(quotationId);
+  if (updated) {
+    logAuditEvent({
+      request: context.request,
+      actorId: context.actorId ?? null,
+      actorType: "internal",
+      action: "admin_notification_resolved_by_quotation_update",
+      entityType: "admin_notification",
+      entityId: updated.id,
+      metadata: { quotationId },
+    });
+  }
+  return updated;
+}
+
 async function transitionWithAudit(
   id: string,
   status: "read" | "acknowledged" | "resolved",
