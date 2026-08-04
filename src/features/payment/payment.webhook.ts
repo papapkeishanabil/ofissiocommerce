@@ -3,8 +3,10 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { syncPaymentStatusToWooCommerce } from "@/features/commerce/commerce.service";
+import { createPaymentPaidNotification } from "@/features/admin-notifications/admin-notification.service";
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { upsertTrackingFromPaymentOrderPersisted } from "@/features/tracking/tracking-payment.integration";
+import { logInternalError } from "@/lib/security/safe-error-response";
 
 import { getPaymentRuntimeConfig } from "./payment.config";
 import {
@@ -75,6 +77,14 @@ export async function processIpaymuCallback(
     payment.status === "paid" ||
     (!claimed.inserted && callbackStateAlreadyApplied(payment, callback, targetStatus))
   ) {
+    if (payment.status === "paid") {
+      await notifyPaymentPaid({
+        payment,
+        order,
+        orderNumber: order.orderNumber ?? payment.referenceId,
+        companyName: order.companyId,
+      });
+    }
     return {
       paymentId: payment.id,
       idempotent: true,
@@ -153,9 +163,15 @@ export async function processIpaymuCallback(
       "payment_received",
     );
     if (updatedOrder) {
-      await upsertTrackingFromPaymentOrderPersisted({
+      const { tracking } = await upsertTrackingFromPaymentOrderPersisted({
         payment: updatedPayment,
         order: updatedOrder,
+      });
+      await notifyPaymentPaid({
+        payment: updatedPayment,
+        order: updatedOrder,
+        orderNumber: tracking.orderNumber ?? updatedOrder.orderNumber ?? updatedPayment.referenceId,
+        companyName: tracking.companyName ?? updatedOrder.companyId,
       });
       void syncPaymentStatusToWooCommerce({
         payment: updatedPayment,
@@ -179,6 +195,31 @@ export async function processIpaymuCallback(
     status: targetStatus,
     manualReview: false,
   };
+}
+
+async function notifyPaymentPaid(input: {
+  payment: PaymentRecord;
+  order: PaymentOrderRecord;
+  orderNumber: string;
+  companyName: string;
+}) {
+  try {
+    await createPaymentPaidNotification({
+      orderId: input.order.id,
+      orderNumber: input.orderNumber,
+      companyName: input.companyName,
+      total: input.payment.amount,
+      currency: input.payment.currency,
+      provider: input.payment.provider,
+      paidAt: input.payment.paidAt,
+    });
+  } catch (error) {
+    logInternalError(error, {
+      area: "payment_paid_admin_notification",
+      orderId: input.order.id,
+      paymentId: input.payment.id,
+    });
+  }
 }
 
 function callbackStateAlreadyApplied(

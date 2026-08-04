@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
+import { quotationIdFromNextPath } from "@/features/auth/auth-navigation";
 
 import { Modal } from "@/components/ui/Modal";
 import { LoginForm } from "./LoginForm";
@@ -22,6 +23,10 @@ export function AuthModal() {
   const setMode = useUIStore((s) => s.setAuthMode);
   const closeAuth = useUIStore((s) => s.closeAuth);
   const consumeIntent = useUIStore((s) => s.consumeIntent);
+  const authIntent = useUIStore((s) => s.authIntent);
+  const returnTo =
+    authIntent.kind === "request_quote" ? authIntent.returnTo : undefined;
+  const quotationId = returnTo ? quotationIdFromNextPath(returnTo) : null;
 
   // Watch auth state; when login/register succeeds while modal is open,
   // consume intent and route.
@@ -33,7 +38,9 @@ export function AuthModal() {
       const intent = consumeIntent();
       closeAuth();
       if (intent.kind === "checkout") router.push("/checkout");
-      else if (intent.kind === "request_quote") router.push("/quote");
+      else if (intent.kind === "request_quote") {
+        router.push(intent.returnTo ?? "/quote");
+      }
       else if (intent.kind === "none") router.push("/dashboard");
       // save_configuration / repeat_order handled at their origin later.
     }
@@ -54,6 +61,7 @@ export function AuthModal() {
     >
       {mode === "login" ? (
         <LoginForm
+          quotationId={quotationId ?? undefined}
           onSuccess={() => {
             // useEffect will handle intent routing
           }}
@@ -61,6 +69,7 @@ export function AuthModal() {
         />
       ) : (
         <RegisterForm
+          quotationId={quotationId ?? undefined}
           onSuccess={() => {
             // useEffect will handle intent routing
           }}

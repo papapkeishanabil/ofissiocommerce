@@ -26,7 +26,8 @@ export interface SyncCheckoutCartInput {
 
 export interface ValidatedCheckoutCartItem {
   productId: string;
-  source: "mock" | "woocommerce";
+  /** `custom` is an internal quotation line, not a catalog product. */
+  source: "mock" | "woocommerce" | "custom";
   sourceId: string;
   productSlug: string;
   productName: string;

@@ -77,6 +77,9 @@ async function run() {
   assertMiddlewareTrustBoundary();
   console.log("PASS: middleware membuang header identitas browser sebelum verifikasi.");
 
+  assertQuotationRegistrationBoundary();
+  console.log("PASS: registrasi quotation memakai recipient email, server company scope, dan fallback POST.");
+
   assertNoClientSecret();
   console.log("PASS: service role tidak ditemukan di client source/bundle.");
 }
@@ -130,6 +133,53 @@ function assertMiddlewareTrustBoundary() {
   const source = readFileSync(join(process.cwd(), "src/middleware.ts"), "utf8");
   assert(source.includes("UNTRUSTED_IDENTITY_HEADERS"), "header stripping tidak ditemukan");
   assert(source.includes("AUTH_MODE"), "production auth mode tidak diperiksa");
+}
+
+function assertQuotationRegistrationBoundary() {
+  const service = readFileSync(
+    join(process.cwd(), "src/features/auth/supabase-auth.service.ts"),
+    "utf8",
+  );
+  const form = readFileSync(
+    join(process.cwd(), "src/components/auth/RegisterForm.tsx"),
+    "utf8",
+  );
+  const route = readFileSync(
+    join(process.cwd(), "src/app/api/auth/register/route.ts"),
+    "utf8",
+  );
+  const modal = readFileSync(
+    join(process.cwd(), "src/components/auth/AuthModal.tsx"),
+    "utf8",
+  );
+  assert(
+    service.includes("resolveQuotationRegistrationTarget") &&
+      service.includes("recipientEmails.includes(normalizedEmail)"),
+    "email penerima quotation belum diverifikasi di server",
+  );
+  assert(
+    service.includes("input.registrationTarget?.companyId"),
+    "company quotation belum ditentukan server-side",
+  );
+  assert(
+    form.includes('method="post"') && form.includes('action="/api/auth/register"'),
+    "fallback form pendaftaran belum menggunakan POST",
+  );
+  assert(
+    route.includes("application/x-www-form-urlencoded") &&
+      route.includes("Object.fromEntries(await request.formData())"),
+    "register API belum menerima fallback form POST",
+  );
+  assert(
+    modal.includes("quotationId={quotationId ?? undefined}") &&
+      modal.includes("intent.returnTo ?? \"/quote\""),
+    "modal auth belum mempertahankan tujuan quotation",
+  );
+  assert(
+    service.includes("findUnambiguousQuotationIdForEmail") &&
+      service.includes("ensureQuotationCompany"),
+    "akun quotation lama belum memiliki jalur repair yang aman",
+  );
 }
 
 function assertNoClientSecret() {

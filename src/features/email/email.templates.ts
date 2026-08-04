@@ -1,6 +1,15 @@
 import type { ValidatedCheckoutCartItem } from "@/features/checkout/checkout-cart.types";
 import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payment.types";
-import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import {
+  processRouteCustomerLabel,
+  requirementTypeLabel,
+} from "@/features/quotation/quotation-requirement";
+import type {
+  ProductionRequestBrief,
+  QuotationRequestRecord,
+  QuotationRequirementType,
+} from "@/features/quotation/quotation.types";
+import type { OrderProcessRoute } from "@/features/orders/order.types";
 import { quotationTaxLabel } from "@/features/quotation/quotation.utils";
 import {
   embroideryTechniqueLabel,
@@ -26,13 +35,16 @@ interface QuotationEmailContext {
   picEmail: string | null;
   picWhatsapp: string | null;
   customerNotes: string | null;
+  requirementType: QuotationRequirementType;
+  requestedProcessRoute: OrderProcessRoute;
+  productionBrief: ProductionRequestBrief | null;
   items: ValidatedCheckoutCartItem[];
   createdAt: string;
   internalUrl: string;
   customerUrl: string;
 }
 
-type SizeSummaryItem = Pick<ValidatedCheckoutCartItem, "sizeMatrix">;
+type SizeSummaryItem = Pick<ValidatedCheckoutCartItem, "sizeMatrix" | "source">;
 type EmbroiderySummaryItem = Pick<
   ValidatedCheckoutCartItem,
   "embroideryPlacements" | "embroideryLines" | "embroideryTotal"
@@ -40,6 +52,7 @@ type EmbroiderySummaryItem = Pick<
 type QuotationSummaryItem = Pick<
   ValidatedCheckoutCartItem,
   | "productName"
+  | "source"
   | "sku"
   | "selectedColor"
   | "totalQty"
@@ -82,9 +95,12 @@ export function renderQuotationRequestToSales(
         { label: "Email", value: ctx.picEmail ?? "-" },
         { label: "WhatsApp", value: ctx.picWhatsapp ?? "-" },
         { label: "Perusahaan", value: ctx.companyName },
+        { label: "Jenis kebutuhan", value: requirementTypeLabel(ctx.requirementType) },
+        { label: "Rute proses", value: processRouteCustomerLabel(ctx.requestedProcessRoute) },
       ])}
       ${renderEmailSectionHeading("Rincian kebutuhan", "Tinjau jumlah, ukuran, dan detail bordir sebelum menyiapkan penawaran final.")}
       ${itemsHtml}
+      ${productionBriefHtml(ctx.productionBrief)}
       ${
         ctx.customerNotes
           ? renderEmailNotice({
@@ -110,6 +126,9 @@ export function renderQuotationRequestToSales(
       `Email: ${ctx.picEmail ?? "-"}`,
       `WhatsApp: ${ctx.picWhatsapp ?? "-"}`,
       `Diterima: ${formatEmailDateTime(ctx.createdAt)}`,
+      `Jenis kebutuhan: ${requirementTypeLabel(ctx.requirementType)}`,
+      `Rute proses: ${processRouteCustomerLabel(ctx.requestedProcessRoute)}`,
+      ...productionBriefText(ctx.productionBrief),
       "",
       "Rincian kebutuhan:",
       itemLines,
@@ -151,9 +170,12 @@ export function renderQuotationConfirmationToCustomer(
         { label: "Tanggal permintaan", value: formatEmailDate(ctx.createdAt) },
         { label: "Perusahaan", value: ctx.companyName },
         { label: "PIC", value: ctx.picName },
+        { label: "Jenis kebutuhan", value: requirementTypeLabel(ctx.requirementType) },
+        { label: "Rute proses", value: processRouteCustomerLabel(ctx.requestedProcessRoute) },
       ])}
       ${renderEmailSectionHeading("Ringkasan permintaan", "Data berikut menjadi dasar peninjauan tim sales Ofissio.")}
       ${itemsHtml}
+      ${productionBriefHtml(ctx.productionBrief)}
       ${
         ctx.customerNotes
           ? renderEmailNotice({
@@ -178,6 +200,9 @@ export function renderQuotationConfirmationToCustomer(
       `Halo ${ctx.picName},`,
       "",
       `Permintaan quotation ${ctx.quotationNumber} untuk ${ctx.companyName} sudah diterima Ofissio.`,
+      `Jenis kebutuhan: ${requirementTypeLabel(ctx.requirementType)}`,
+      `Rute proses: ${processRouteCustomerLabel(ctx.requestedProcessRoute)}`,
+      ...productionBriefText(ctx.productionBrief),
       "",
       "Ringkasan permintaan:",
       itemLines,
@@ -192,6 +217,46 @@ export function renderQuotationConfirmationToCustomer(
       .join("\n"),
     html,
   };
+}
+
+function productionBriefHtml(brief: ProductionRequestBrief | null) {
+  if (!brief) return "";
+  const details = [
+    brief.projectName ? `Proyek: ${brief.projectName}` : null,
+    brief.garmentType ? `Jenis pakaian: ${brief.garmentType}` : null,
+    brief.estimatedQuantity ? `Estimasi jumlah: ${brief.estimatedQuantity} pcs` : null,
+    brief.usageContext ? `Penggunaan: ${brief.usageContext}` : null,
+    brief.materialPreference ? `Bahan: ${brief.materialPreference}` : null,
+    brief.colorPreference ? `Warna: ${brief.colorPreference}` : null,
+    brief.sizeNotes ? `Ukuran/pola: ${brief.sizeNotes}` : null,
+    brief.targetDate ? `Target: ${brief.targetDate}` : null,
+    brief.referenceFiles?.length
+      ? `Referensi: ${brief.referenceFiles.map((file) => file.filename).join(", ")}`
+      : null,
+  ].filter(Boolean);
+  return renderEmailNotice({
+    title: "Brief produksi khusus",
+    text: [brief.designDescription, ...details].join(" | "),
+    tone: "warning",
+  });
+}
+
+function productionBriefText(brief: ProductionRequestBrief | null) {
+  if (!brief) return [];
+  return [
+    brief.projectName ? `Nama proyek: ${brief.projectName}` : "",
+    brief.garmentType ? `Jenis pakaian: ${brief.garmentType}` : "",
+    brief.estimatedQuantity ? `Estimasi jumlah: ${brief.estimatedQuantity} pcs` : "",
+    brief.usageContext ? `Konteks penggunaan: ${brief.usageContext}` : "",
+    `Brief produksi: ${brief.designDescription}`,
+    brief.materialPreference ? `Preferensi bahan: ${brief.materialPreference}` : "",
+    brief.colorPreference ? `Preferensi warna: ${brief.colorPreference}` : "",
+    brief.sizeNotes ? `Ukuran/pola khusus: ${brief.sizeNotes}` : "",
+    brief.targetDate ? `Target kebutuhan: ${brief.targetDate}` : "",
+    brief.referenceFiles?.length
+      ? `File referensi: ${brief.referenceFiles.map((file) => file.filename).join(", ")}`
+      : "",
+  ].filter(Boolean);
 }
 
 export function renderQuotationReadyToCustomer(
@@ -229,9 +294,12 @@ export function renderQuotationReadyToCustomer(
         { label: "Berlaku sampai", value: validUntil },
         { label: "Perusahaan", value: quotation.companyName },
         { label: "PIC", value: quotation.picName },
+        { label: "Jenis kebutuhan", value: requirementTypeLabel(quotation.requirementType) },
+        { label: "Rute proses", value: processRouteCustomerLabel(quotation.requestedProcessRoute) },
       ])}
       ${renderEmailSectionHeading("Rincian penawaran", "Harga berikut sudah mencakup konfigurasi produk dan customization yang tercantum.")}
       ${itemsHtml}
+      ${productionBriefHtml(quotation.productionBrief)}
       ${renderEmailSummary({
         rows: [
           { label: "Subtotal", value: formatMoney(quotation.subtotal ?? 0) },
@@ -271,6 +339,9 @@ export function renderQuotationReadyToCustomer(
       `Halo ${quotation.picName},`,
       "",
       `Penawaran resmi Ofissio ${quotation.quotationNumber} untuk ${quotation.companyName} sudah siap ditinjau.`,
+      `Jenis kebutuhan: ${requirementTypeLabel(quotation.requirementType)}`,
+      `Rute proses: ${processRouteCustomerLabel(quotation.requestedProcessRoute)}`,
+      ...productionBriefText(quotation.productionBrief),
       "",
       "Rincian penawaran:",
       itemLines,
@@ -439,7 +510,17 @@ function quotationItemText(
 ) {
   return items
     .map((item) =>
-      [
+      item.source === "custom"
+        ? [
+            `- ${item.productName}, ${item.totalQty} pcs`,
+            "  Spesifikasi produk mengikuti brief Full Custom dan feasibility review.",
+            includePrice
+              ? `  Total item: ${formatMoney(item.finalLineTotal ?? item.finalEstimatedTotal ?? 0)}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join("\n")
+        : [
         `- ${item.productName} (${item.sku}), ${item.selectedColor}, ${item.totalQty} pcs`,
         `  Ukuran: ${sizeSummary(item)}`,
         `  Detail bordir: ${embroiderySummary(item)}`,
@@ -459,6 +540,7 @@ function quotationItemText(
 }
 
 function sizeSummary(item: SizeSummaryItem) {
+  if (item.source === "custom") return "Mengikuti brief / size chart customer";
   const summary = Object.entries(item.sizeMatrix)
     .filter(([, qty]) => qty > 0)
     .map(([size, qty]) => `${size}: ${qty} pcs`)

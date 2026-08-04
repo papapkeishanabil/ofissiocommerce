@@ -6,19 +6,19 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { addressSchema, type AddressForm as AddressValues } from "@/schemas/auth";
-import { addAddress } from "@/lib/auth/auth-service";
 import { useAuthStore } from "@/stores/auth-store";
-import { genId } from "@/lib/mock/storage";
+import type { Address } from "@/types/account";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 
 interface CompanyAddressFormProps {
+  address?: Address | null;
   onSuccess?: () => void;
 }
 
-export function CompanyAddressForm({ onSuccess }: CompanyAddressFormProps) {
+export function CompanyAddressForm({ address, onSuccess }: CompanyAddressFormProps) {
   const refresh = useAuthStore((s) => s.refresh);
   const session = useAuthStore((s) => s.session);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -33,43 +33,58 @@ export function CompanyAddressForm({ onSuccess }: CompanyAddressFormProps) {
   } = useForm<AddressValues>({
     resolver: zodResolver(addressSchema),
     defaultValues: {
-      label: "",
-      recipientName: session?.user.fullName ?? "",
-      recipientPhone: session?.user.whatsapp ?? "",
-      street: "",
-      city: "",
-      province: "",
-      postalCode: "",
-      isDefaultShipping: false,
-      isDefaultBilling: false,
+      label: address?.label ?? "",
+      recipientName: address?.recipientName ?? session?.user.fullName ?? "",
+      recipientPhone: address?.recipientPhone ?? session?.user.whatsapp ?? "",
+      street: address?.street ?? "",
+      city: address?.city ?? "",
+      province: address?.province ?? "",
+      postalCode: address?.postalCode ?? "",
+      isDefaultShipping: address?.isDefaultShipping ?? false,
+      isDefaultBilling: address?.isDefaultBilling ?? false,
     },
   });
 
   const isDefaultShipping = watch("isDefaultShipping");
 
-  const onSubmit = handleSubmit((values) => {
+  const onSubmit = handleSubmit(async (values) => {
     if (!session) return;
     setSubmitting(true);
     setServerError(null);
-    const next = addAddress(session.company.id, {
-      id: genId("addr"),
-      label: values.label,
-      recipientName: values.recipientName,
-      recipientPhone: values.recipientPhone,
-      street: values.street,
-      city: values.city,
-      province: values.province,
-      postalCode: values.postalCode,
-      isDefaultShipping: !!values.isDefaultShipping,
-      isDefaultBilling: !!values.isDefaultBilling,
-    });
-    setSubmitting(false);
-    if (!next) {
-      setServerError("Gagal menambah alamat.");
-      return;
+    try {
+      const response = await fetch(
+        address
+          ? `/api/company/addresses/${encodeURIComponent(address.id)}`
+          : "/api/company/addresses",
+        {
+          method: address ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        },
+      );
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+      };
+      if (!response.ok || !result.ok) {
+        throw new Error(
+          result.message ??
+            (address ? "Gagal memperbarui alamat." : "Gagal menambah alamat."),
+        );
+      }
+      await refresh();
+      onSuccess?.();
+    } catch (error) {
+      setServerError(
+        error instanceof Error
+          ? error.message
+          : address
+            ? "Gagal memperbarui alamat."
+            : "Gagal menambah alamat.",
+      );
+    } finally {
+      setSubmitting(false);
     }
-    refresh();
-    onSuccess?.();
   });
 
   return (
@@ -181,7 +196,11 @@ export function CompanyAddressForm({ onSuccess }: CompanyAddressFormProps) {
       )}
 
       <Button type="submit" className="w-full" disabled={submitting}>
-        {submitting ? "Menyimpan..." : "Tambah Alamat"}
+        {submitting
+          ? "Menyimpan..."
+          : address
+            ? "Simpan Perubahan Alamat"
+            : "Tambah Alamat"}
       </Button>
     </form>
   );

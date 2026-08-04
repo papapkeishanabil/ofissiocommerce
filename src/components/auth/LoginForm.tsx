@@ -16,9 +16,14 @@ import { Input } from "@/components/ui/Input";
 interface LoginFormProps {
   onSuccess?: () => void;
   onSwitchToRegister?: () => void;
+  quotationId?: string;
 }
 
-export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
+export function LoginForm({
+  onSuccess,
+  onSwitchToRegister,
+  quotationId,
+}: LoginFormProps) {
   const login = useAuthStore((s) => s.login);
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -35,7 +40,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setServerError(null);
-    const r = await login(values.email, values.password);
+    const r = await login(values.email, values.password, quotationId);
     setSubmitting(false);
     if (!r.ok) {
       setServerError(r.reason ?? "Login gagal.");

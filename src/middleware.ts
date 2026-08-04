@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  if (refreshedTokens) setAuthCookies(response, refreshedTokens, settings.mode);
+  if (refreshedTokens) setAuthCookies(response, refreshedTokens, settings.mode, request);
   return response;
 }
 
@@ -330,11 +330,21 @@ function setAuthCookies(
   response: NextResponse,
   tokens: RefreshedTokens,
   mode: "development" | "production",
+  request: NextRequest,
 ) {
+  // Cookie `Secure` hanya aktif saat request lewat HTTPS; akses HTTP LAN tetap
+  // berfungsi (browser membuang cookie Secure pada HTTP non-localhost).
+  let requestIsHttps = false;
+  try {
+    requestIsHttps = new URL(request.url).protocol === "https:";
+  } catch {
+    requestIsHttps = false;
+  }
+  const secure = mode === "production" && requestIsHttps;
   const common = {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: mode === "production",
+    secure,
     path: "/",
   };
   response.cookies.set(AUTH_ACCESS_COOKIE, tokens.accessToken, {

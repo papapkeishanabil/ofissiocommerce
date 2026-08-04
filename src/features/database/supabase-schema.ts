@@ -50,6 +50,19 @@ export const PHASE_24_SHIPMENT_COLUMNS = [
   "deleted_at",
 ] as const;
 
+export const CUSTOMER_COMPANY_PROFILE_COLUMNS = [
+  "phone",
+  "pic_name",
+  "pic_email",
+  "pic_whatsapp",
+  "profile_completed_at",
+] as const;
+
+export const CUSTOMER_ADDRESS_COLUMNS = [
+  "is_default_shipping",
+  "is_default_billing",
+] as const;
+
 export const REQUIRED_SUPABASE_TABLES = [
   "companies",
   "user_profiles",

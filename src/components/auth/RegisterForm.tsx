@@ -19,11 +19,13 @@ import { Input } from "@/components/ui/Input";
 interface RegisterFormProps {
   onSuccess?: () => void;
   onSwitchToLogin?: () => void;
+  quotationId?: string;
 }
 
 export function RegisterForm({
   onSuccess,
   onSwitchToLogin,
+  quotationId,
 }: RegisterFormProps) {
   const registerUser = useAuthStore((s) => s.register);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export function RegisterForm({
       email: values.email,
       whatsapp: values.whatsapp,
       password: values.password,
+      quotationId,
     });
     setSubmitting(false);
     if (!r.ok) {
@@ -61,30 +64,31 @@ export function RegisterForm({
       return;
     }
     if (r.requiresEmailVerification) {
-      setServerSuccess("Akun dibuat. Periksa email Anda untuk verifikasi sebelum login.");
+      setServerSuccess(
+        "Akun berhasil dibuat. Buka email verifikasi dari Supabase/Ofissio dan klik tautannya. Setelah email terverifikasi, kembali ke halaman ini lalu masuk untuk membuka quotation.",
+      );
       return;
     }
     onSuccess?.();
   });
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      {serverError && (
-        <div
-          role="alert"
-          className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700"
-        >
-          {serverError}
-        </div>
-      )}
-      {serverSuccess && (
-        <div role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-          {serverSuccess}
-        </div>
-      )}
-
+    <form
+      action="/api/auth/register"
+      method="post"
+      onSubmit={onSubmit}
+      className="space-y-4"
+      noValidate
+    >
+      {quotationId ? (
+        <input type="hidden" name="quotationId" value={quotationId} />
+      ) : null}
       <div className="rounded-lg bg-brand-50 px-3 py-2 text-[11px] leading-snug text-brand-800">
-        Pengguna pertama yang mendaftar otomatis menjadi <strong>Admin Perusahaan</strong>.
+        {quotationId ? (
+          <>Gunakan <strong>email penerima penawaran</strong> agar akun terhubung ke quotation dan perusahaan yang benar.</>
+        ) : (
+          <>Pengguna pertama yang mendaftar otomatis menjadi <strong>Admin Perusahaan</strong>.</>
+        )}
       </div>
 
       <Field
@@ -159,6 +163,43 @@ export function RegisterForm({
           {...field("confirmPassword")}
         />
       </Field>
+
+      {serverError ? (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="rounded-lg bg-red-50 px-3 py-3 text-xs leading-5 text-red-700"
+        >
+          <p>{serverError}</p>
+          {onSwitchToLogin && serverError.includes("sudah terdaftar") ? (
+            <button
+              type="button"
+              onClick={onSwitchToLogin}
+              className="mt-1 font-semibold text-brand-700 underline underline-offset-2"
+            >
+              Masuk dengan akun yang sudah ada
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {serverSuccess ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="space-y-2 rounded-lg bg-emerald-50 px-3 py-3 text-xs leading-5 text-emerald-800"
+        >
+          <p>{serverSuccess}</p>
+          {onSwitchToLogin ? (
+            <button
+              type="button"
+              onClick={onSwitchToLogin}
+              className="font-semibold text-brand-700 underline underline-offset-2"
+            >
+              Kembali ke form masuk
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <Button type="submit" className="w-full" disabled={submitting}>
         {submitting ? "Memproses..." : "Daftar"}

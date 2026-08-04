@@ -165,7 +165,7 @@ export function rowToQuotation(row: Row): QuotationRequestRecord {
     picEmail: row.pic_email ? String(row.pic_email) : null,
     picWhatsapp: row.pic_whatsapp ? String(row.pic_whatsapp) : null,
     status: row.status as QuotationRequestRecord["status"],
-    source: "web_cart",
+    source: row.source === "custom_request" ? "custom_request" : "web_cart",
     items: [],
     subtotalEstimate: Number(row.subtotal_estimate ?? 0),
     totalQty: Number(row.total_qty ?? 0),

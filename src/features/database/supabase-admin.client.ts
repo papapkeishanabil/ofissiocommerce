@@ -322,5 +322,35 @@ export function getSupabaseAdminClient() {
       }
       return parseRows<T>(response, { table, operation: "update" });
     },
+
+    async delete<T extends SupabaseRow>(
+      table: string,
+      filters: NonNullable<SupabaseQueryOptions["filters"]>,
+    ) {
+      assertSafeTableName(table);
+      const { url } = supabaseRestUrl(
+        `${table}?${buildQuery({ filters })}`,
+      );
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: "DELETE",
+          headers: headers("return=representation"),
+        });
+      } catch (error) {
+        logInternalError(error, {
+          area: "supabase_admin_client",
+          operation: "delete",
+          table,
+          reason: "network_error",
+        });
+        throw new SupabaseDatabaseError({
+          reason: "network_error",
+          table,
+          message: "Database Supabase belum dapat dihubungi.",
+        });
+      }
+      return parseRows<T>(response, { table, operation: "delete" });
+    },
   };
 }

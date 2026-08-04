@@ -11,7 +11,11 @@ import { LogoAssetCard } from "./LogoAssetCard";
 import { LogoUploadButton } from "./LogoUploadButton";
 
 function canUploadCompanyLogo(session: AuthSession) {
-  return session.user.role === "company_admin" || session.user.role === "purchasing";
+  return (
+    session.user.role === "customer_admin" ||
+    session.user.role === "company_admin" ||
+    session.user.role === "purchasing"
+  );
 }
 
 function authHeaders(session: AuthSession): HeadersInit {

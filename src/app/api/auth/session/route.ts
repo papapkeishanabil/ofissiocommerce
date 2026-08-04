@@ -24,6 +24,7 @@ export async function GET(request: Request) {
         response,
         result.refreshedTokens,
         config.mode === "production",
+        request,
       );
     }
     return response;

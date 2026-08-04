@@ -4,10 +4,11 @@
 import { useState } from "react";
 
 import { useAuth } from "@/hooks/use-auth";
-import { removeAddress } from "@/lib/auth/auth-service";
-import { Building2, Plus, Trash2 } from "lucide-react";
+import type { Address } from "@/types/account";
+import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { CompanyAddressForm } from "@/components/company/CompanyAddressForm";
@@ -15,6 +16,35 @@ import { CompanyAddressForm } from "@/components/company/CompanyAddressForm";
 export function AddressesPage() {
   const { session, isAuthenticated, hydrated, refresh } = useAuth();
   const [openAdd, setOpenAdd] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function deleteAddress(address: Address) {
+    if (!window.confirm(`Hapus alamat ${address.label}?`)) return;
+    setPageError(null);
+    setDeletingId(address.id);
+    try {
+      const response = await fetch(
+        `/api/company/addresses/${encodeURIComponent(address.id)}`,
+        { method: "DELETE" },
+      );
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+      };
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message ?? "Alamat belum dapat dihapus.");
+      }
+      await refresh();
+    } catch (error) {
+      setPageError(
+        error instanceof Error ? error.message : "Alamat belum dapat dihapus.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (!hydrated) {
     return (
@@ -36,6 +66,14 @@ export function AddressesPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 lg:px-8">
+      <Breadcrumbs
+        items={[
+          { label: "Beranda", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Alamat" },
+        ]}
+        className="mb-4"
+      />
       <header className="mb-5 flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-ink">
@@ -50,6 +88,15 @@ export function AddressesPage() {
           <Plus className="h-4 w-4" /> Tambah
         </Button>
       </header>
+
+      {pageError && (
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {pageError}
+        </div>
+      )}
 
       {addresses.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line bg-surface px-6 py-12 text-center">
@@ -85,17 +132,25 @@ export function AddressesPage() {
                     {a.street}, {a.city}, {a.province} {a.postalCode}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  aria-label={`Hapus ${a.label}`}
-                  onClick={() => {
-                    removeAddress(session.company.id, a.id);
-                    refresh();
-                  }}
-                  className="grid h-8 w-8 place-items-center rounded-lg text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label={`Edit ${a.label}`}
+                    onClick={() => setEditingAddress(a)}
+                    className="grid h-11 w-11 place-items-center rounded-xl text-brand-700 transition hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Hapus ${a.label}`}
+                    disabled={deletingId === a.id}
+                    onClick={() => void deleteAddress(a)}
+                    className="grid h-11 w-11 place-items-center rounded-xl text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </li>
           ))}
@@ -114,6 +169,23 @@ export function AddressesPage() {
             refresh();
           }}
         />
+      </Modal>
+
+      <Modal
+        open={Boolean(editingAddress)}
+        onClose={() => setEditingAddress(null)}
+        title="Edit alamat"
+        size="md"
+      >
+        {editingAddress && (
+          <CompanyAddressForm
+            address={editingAddress}
+            onSuccess={() => {
+              setEditingAddress(null);
+              refresh();
+            }}
+          />
+        )}
       </Modal>
     </div>
   );

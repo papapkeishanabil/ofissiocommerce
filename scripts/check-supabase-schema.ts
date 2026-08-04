@@ -1,6 +1,8 @@
 import { loadEnvConfig } from "@next/env";
 
 import {
+  CUSTOMER_ADDRESS_COLUMNS,
+  CUSTOMER_COMPANY_PROFILE_COLUMNS,
   PHASE_23_PAYMENT_COLUMNS,
   PHASE_24_SHIPMENT_COLUMNS,
   REQUIRED_SUPABASE_TABLES,
@@ -147,6 +149,42 @@ async function run() {
     return;
   }
 
+  const companyProfileColumnCheck = await checkColumns(
+    baseUrl,
+    serviceRoleKey,
+    "companies",
+    CUSTOMER_COMPANY_PROFILE_COLUMNS,
+  );
+  if (!companyProfileColumnCheck.ok) {
+    console.log(
+      `ERROR: companies customer-profile columns belum lengkap (${companyProfileColumnCheck.reason}, status ${
+        companyProfileColumnCheck.status ?? "n/a"
+      }, code ${companyProfileColumnCheck.code ?? "n/a"}).`,
+    );
+    console.log(
+      `Required columns: ${CUSTOMER_COMPANY_PROFILE_COLUMNS.join(", ")}`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const addressColumnCheck = await checkColumns(
+    baseUrl,
+    serviceRoleKey,
+    "company_addresses",
+    CUSTOMER_ADDRESS_COLUMNS,
+  );
+  if (!addressColumnCheck.ok) {
+    console.log(
+      `ERROR: company_addresses default columns belum lengkap (${addressColumnCheck.reason}, status ${
+        addressColumnCheck.status ?? "n/a"
+      }, code ${addressColumnCheck.code ?? "n/a"}).`,
+    );
+    console.log(`Required columns: ${CUSTOMER_ADDRESS_COLUMNS.join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+
   console.log(
     `OK: schema ready. ${REQUIRED_SUPABASE_TABLES.length} required tables reachable.`,
   );
@@ -158,6 +196,12 @@ async function run() {
   );
   console.log(
     `OK: shipments Phase 24 columns reachable (${PHASE_24_SHIPMENT_COLUMNS.length} columns).`,
+  );
+  console.log(
+    `OK: customer company profile columns reachable (${CUSTOMER_COMPANY_PROFILE_COLUMNS.length} columns).`,
+  );
+  console.log(
+    `OK: customer address columns reachable (${CUSTOMER_ADDRESS_COLUMNS.length} columns).`,
   );
   console.log("INFO: Tabel kosong tetap dianggap valid selama tabel bisa di-query.");
 }

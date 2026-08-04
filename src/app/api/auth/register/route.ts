@@ -11,6 +11,10 @@ import { validateInput } from "@/lib/security/validate-input";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const nativeFormSubmission = request.headers
+    .get("content-type")
+    ?.includes("application/x-www-form-urlencoded") ?? false;
+  let quotationId: string | undefined;
   try {
     rateLimitOrThrow({
       key: createRateLimitKey(request, "auth.register"),
@@ -24,24 +28,92 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
-    const input = validateInput(
-      registerProductionSchema,
-      await request.json().catch(() => ({})),
-    );
-    const result = await registerWithSupabase(input);
-    const response = NextResponse.json(
-      {
-        ok: true,
-        requiresEmailVerification: result.requiresEmailVerification,
-        ...(result.session ?? {}),
-      },
-      { status: 201 },
-    );
+    const rawInput = nativeFormSubmission
+      ? Object.fromEntries(await request.formData())
+      : await request.json().catch(() => ({}));
+    const input = validateInput(registerProductionSchema, rawInput);
+    quotationId = input.quotationId;
+    const result = await registerWithSupabase({
+      ...input,
+      emailRedirectTo: buildEmailRedirectUrl(request, input.quotationId),
+    });
+    const response = nativeFormSubmission
+      ? NextResponse.redirect(
+          buildLoginRedirectUrl({
+            quotationId,
+            requiresEmailVerification: result.requiresEmailVerification,
+          }),
+          { status: 303 },
+        )
+      : NextResponse.json(
+          {
+            ok: true,
+            requiresEmailVerification: result.requiresEmailVerification,
+            ...(result.session ?? {}),
+          },
+          { status: 201 },
+        );
     if (result.tokens) {
-      setAuthResponseCookies(response, result.tokens, config.mode === "production");
+      setAuthResponseCookies(response, result.tokens, config.mode === "production", request);
     }
     return response;
   } catch (error) {
+    if (nativeFormSubmission) {
+      return NextResponse.redirect(
+        buildLoginRedirectUrl({ quotationId, registrationError: true }),
+        { status: 303 },
+      );
+    }
     return safeErrorResponse(error, "Pendaftaran belum dapat diproses.", 400);
   }
+}
+
+function buildEmailRedirectUrl(request: Request, quotationId?: string) {
+  const baseUrl = resolvePublicBaseUrl(request);
+  try {
+    const url = new URL("/login", baseUrl);
+    url.searchParams.set("verified", "1");
+    url.searchParams.set("next", quotationId ? `/quotes/${quotationId}` : "/dashboard");
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function resolvePublicBaseUrl(request: Request) {
+  const configuredBaseUrl = process.env.APP_URL?.trim();
+  if (configuredBaseUrl) return configuredBaseUrl;
+
+  if (process.env.NODE_ENV !== "production") {
+    try {
+      const requestUrl = new URL(request.url);
+      if (["localhost", "127.0.0.1", "[::1]"].includes(requestUrl.hostname)) {
+        return requestUrl.origin;
+      }
+    } catch {
+      // Use the known local development origin below.
+    }
+  }
+
+  return "http://localhost:8000";
+}
+
+function buildLoginRedirectUrl(input: {
+  quotationId?: string;
+  requiresEmailVerification?: boolean;
+  registrationError?: boolean;
+}) {
+  const baseUrl = process.env.APP_URL?.trim() || "http://localhost:8000";
+  const url = new URL("/login", baseUrl);
+  url.searchParams.set(
+    "next",
+    input.quotationId ? `/quotes/${input.quotationId}` : "/dashboard",
+  );
+  if (input.requiresEmailVerification) {
+    url.searchParams.set("registered", "verification-required");
+  }
+  if (input.registrationError) {
+    url.searchParams.set("error", "registration-failed");
+  }
+  return url;
 }

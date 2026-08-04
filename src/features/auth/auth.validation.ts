@@ -20,9 +20,17 @@ export const authSessionHintSchema = z.object({
     .nullable(),
 });
 
+const quotationIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .regex(/^quo_[a-z0-9_-]+$/i);
+
 export const signInPlaceholderSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(8).max(200),
+  quotationId: quotationIdSchema.optional(),
 });
 
 export const registerProductionSchema = z.object({
@@ -31,4 +39,5 @@ export const registerProductionSchema = z.object({
   whatsapp: z.string().trim().min(8).max(30),
   password: z.string().min(8).max(200),
   companyName: z.string().trim().min(2).max(180).optional(),
+  quotationId: quotationIdSchema.optional(),
 });

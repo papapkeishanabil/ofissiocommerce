@@ -28,9 +28,13 @@ export async function POST(request: Request) {
       signInPlaceholderSchema,
       await request.json().catch(() => ({})),
     );
-    const result = await signInWithSupabase(payload.email, payload.password);
+    const result = await signInWithSupabase(
+      payload.email,
+      payload.password,
+      payload.quotationId,
+    );
     const response = NextResponse.json({ ok: true, ...result.session });
-    setAuthResponseCookies(response, result.tokens, config.mode === "production");
+    setAuthResponseCookies(response, result.tokens, config.mode === "production", request);
     return response;
   } catch (error) {
     return safeErrorResponse(error, "Login belum dapat diproses.", 401);

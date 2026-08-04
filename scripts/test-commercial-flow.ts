@@ -36,6 +36,8 @@ import {
   renderQuotationRequestToSales,
 } from "../src/features/email/email.templates";
 import { hasPendingLogoUpload } from "../src/schemas/uniform-3d";
+import { deriveOrderProcessRouting } from "../src/features/orders/order-routing.service";
+import { resolveQuotationRequirement } from "../src/features/quotation/quotation-requirement";
 
 const quantityPricing: QuantityPricing = {
   enabled: true,
@@ -63,6 +65,24 @@ const productPricing = calculateQuantityTierPrice({
   quantityPricing,
 });
 assert.equal(productPricing.tierLabel, "100-299 pcs");
+
+const fulfillmentRequirement = resolveQuotationRequirement({
+  requestedType: "standard_product",
+  items: [],
+});
+assert.equal(fulfillmentRequirement.requestedProcessRoute, "fulfillment");
+
+const customizationRequirement = resolveQuotationRequirement({
+  requestedType: "standard_product",
+  items: [
+    {
+      customization: null,
+      embroideryPlacements: [{ technique: "embroidery" }] as ValidatedCheckoutCartItem["embroideryPlacements"],
+    },
+  ],
+});
+assert.equal(customizationRequirement.requirementType, "standard_customization");
+assert.equal(customizationRequirement.requestedProcessRoute, "customization");
 assert.equal(productPricing.unitPrice, 138_000);
 assert.equal(productPricing.subtotal, 13_800_000);
 
@@ -133,6 +153,13 @@ const cartItem: ValidatedCheckoutCartItem = {
   ],
 };
 
+const productionRouting = deriveOrderProcessRouting({
+  items: [cartItem],
+  requestedProcessRoute: "production",
+});
+assert.equal(productionRouting.processRoute, "production");
+assert.equal(productionRouting.customizationType, "custom_design");
+
 const now = "2026-08-01T00:00:00.000Z";
 const quotationItems = buildQuotationItems([cartItem], "quo_a6", now);
 const quotationItem = quotationItems[0];
@@ -172,6 +199,9 @@ const quotation: QuotationRequestRecord = {
   customerEmail: "purchasing@example.test",
   totalQty,
   embroideryPointCount: 2,
+  requirementType: "standard_customization",
+  requestedProcessRoute: "customization",
+  productionBrief: null,
   customerNotes: null,
   shippingDestination: null,
   emailStatus: "skipped",
@@ -456,6 +486,9 @@ function runLifecycleSmoke() {
     picEmail: flow.picEmail,
     picWhatsapp: flow.picWhatsapp,
     customerNotes: flow.customerNotes,
+    requirementType: flow.requirementType,
+    requestedProcessRoute: flow.requestedProcessRoute,
+    productionBrief: flow.productionBrief,
     items: [cartItem],
     createdAt: flow.createdAt,
     internalUrl: `https://example.test/admin/quotations/${flow.id}`,

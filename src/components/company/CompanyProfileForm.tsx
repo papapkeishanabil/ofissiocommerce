@@ -9,7 +9,6 @@ import {
   companyProfileSchema,
   type CompanyProfileForm as CompanyProfileValues,
 } from "@/schemas/auth";
-import { updateCompany } from "@/lib/auth/auth-service";
 import { INDUSTRY_META } from "@/data/industries";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -47,27 +46,34 @@ export function CompanyProfileForm({ onSuccess }: CompanyProfileFormProps) {
     },
   });
 
-  const onSubmit = handleSubmit((values) => {
+  const onSubmit = handleSubmit(async (values) => {
     if (!session) return;
     setSubmitting(true);
     setServerError(null);
-    const next = updateCompany(session.company.id, {
-      companyName: values.companyName,
-      industry: values.industry,
-      employeeCount: values.employeeCount,
-      npwp: values.npwp?.trim() || null,
-      phone: values.phone,
-      picName: values.picName,
-      picEmail: values.picEmail,
-      picWhatsapp: values.picWhatsapp,
-    });
-    setSubmitting(false);
-    if (!next) {
-      setServerError("Gagal menyimpan profil perusahaan.");
-      return;
+    try {
+      const response = await fetch("/api/company/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+      };
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message ?? "Gagal menyimpan profil perusahaan.");
+      }
+      await refresh();
+      onSuccess?.();
+    } catch (error) {
+      setServerError(
+        error instanceof Error
+          ? error.message
+          : "Gagal menyimpan profil perusahaan.",
+      );
+    } finally {
+      setSubmitting(false);
     }
-    refresh();
-    onSuccess?.();
   });
 
   return (

@@ -11,6 +11,11 @@ create table if not exists companies (
   industry text,
   employee_count integer check (employee_count is null or employee_count >= 0),
   npwp text,
+  phone text,
+  pic_name text,
+  pic_email text,
+  pic_whatsapp text,
+  profile_completed_at timestamptz,
   status text not null default 'active' check (status in ('active', 'inactive', 'suspended')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -49,6 +54,8 @@ create table if not exists company_addresses (
   province text not null,
   postal_code text not null,
   is_default boolean not null default false,
+  is_default_shipping boolean not null default false,
+  is_default_billing boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -361,7 +368,7 @@ create table if not exists quotations (
       'converted_to_order'
     )
   ),
-  source text not null default 'web_cart' check (source in ('web_cart')),
+  source text not null default 'web_cart' check (source in ('web_cart', 'custom_request')),
   subtotal_estimate integer not null default 0 check (subtotal_estimate >= 0),
   total_qty integer not null default 0 check (total_qty >= 0),
   embroidery_point_count integer not null default 0 check (embroidery_point_count >= 0),
@@ -864,7 +871,7 @@ alter table embroidery_pricing_zones enable row level security;
 -- Task A6.1 internal admin notification inbox.
 create table if not exists admin_notifications (
   id text primary key,
-  type text not null check (type in ('order_created','quotation_accepted','payment_paid','shipment_created','system_warning')),
+  type text not null check (type in ('order_created','quotation_requested','quotation_accepted','payment_paid','shipment_created','system_warning')),
   title text not null,
   message text not null,
   entity_type text not null,
