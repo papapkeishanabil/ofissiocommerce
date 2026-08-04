@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PackagePlus } from "lucide-react";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
@@ -23,6 +24,17 @@ export default async function AdminOrdersPage() {
         <AdminEmptyState title="Belum ada order" />
       ) : (
         <AdminTableShell>
+          {orders.some((order) => order.isNew) ? (
+            <div className="flex flex-col gap-2 border-b border-brand-200 bg-brand-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <p className="flex items-center gap-2 font-semibold text-brand-950">
+                <PackagePlus className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
+                Order baru yang belum dibuka diprioritaskan di urutan teratas.
+              </p>
+              <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-bold text-brand-800 ring-1 ring-brand-200">
+                {orders.filter((order) => order.isNew).length} order baru
+              </span>
+            </div>
+          ) : null}
           <table className={`${ADMIN_TABLE_CLASS} min-w-[1180px]`}>
             <thead className="bg-slate-50/80">
               <tr>
@@ -42,8 +54,22 @@ export default async function AdminOrdersPage() {
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order.id} className="align-top">
-                  <td className="px-4 py-3 font-bold text-ink">{order.orderNumber}</td>
+                <tr
+                  key={order.id}
+                  className={order.isNew ? "align-top bg-brand-50/70" : "align-top"}
+                  aria-label={order.isNew ? `${order.orderNumber}, order baru dan belum dibuka` : undefined}
+                >
+                  <td
+                    className={`px-4 py-3 font-bold text-ink ${order.isNew ? "border-l-4 border-l-brand-600" : ""}`}
+                  >
+                    {order.orderNumber}
+                    {order.isNew ? (
+                      <span className="mt-1.5 flex w-fit items-center gap-1 rounded-full bg-brand-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-brand-800 ring-1 ring-brand-200">
+                        <PackagePlus className="h-3 w-3" aria-hidden="true" />
+                        Order baru
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3 text-ink-muted">{order.companyName}</td>
                   <td className="px-4 py-3">
                     <AdminBadge tone={adminStatusTone(order.paymentStatus)}>{order.paymentStatus}</AdminBadge>
@@ -86,7 +112,7 @@ export default async function AdminOrdersPage() {
                   <td className="px-4 py-3">{formatAdminDate(order.createdAt)}</td>
                   <td className="px-4 py-3">
                     <Link href={`/admin/orders/${order.id}`} className="font-bold text-brand-700">
-                      View Detail
+                      {order.isNew ? "Buka order" : "View Detail"}
                     </Link>
                   </td>
                 </tr>

@@ -5,9 +5,11 @@ import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBa
 import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentActions";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminOrderProcessPanel } from "@/features/admin/components/AdminOrderProcessPanel";
+import { AdminOrderProgress } from "@/features/admin/components/AdminOrderProgress";
 import { AdminPaymentPanel } from "@/features/admin/components/AdminPaymentPanel";
 import { AdminShipmentPanel } from "@/features/admin/components/AdminShipmentPanel";
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
+import { AdminOrderNotificationRead } from "@/features/admin-notifications/components/AdminOrderNotificationRead";
 import { getAdminOrderDetail } from "@/features/admin/admin.service";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
 import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
@@ -36,9 +38,17 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         : "disabled");
   return (
     <div className="space-y-5">
+      <AdminOrderNotificationRead notification={detail.newOrderNotification} />
       <Link href="/admin/orders" className="text-sm font-bold text-brand-700">
         ← Back to orders
       </Link>
+      <AdminOrderProgress
+        orderStatus={order.status}
+        paymentStatus={payment?.status ?? null}
+        processStatus={detail.processOrder?.processStatus ?? order.processStatus ?? "not_started"}
+        shipmentStatuses={detail.shipments.map((shipment) => shipment.status)}
+        processProgress={detail.processOrder?.progress ?? 0}
+      />
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

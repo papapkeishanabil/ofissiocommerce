@@ -379,9 +379,33 @@ export async function executeAdminQuotationAction(input: {
 }
 
 export async function listAdminOrders(): Promise<AdminOrderRow[]> {
-  const orders = (await repositoryRegistry.orders.listAll?.()) ?? [];
-  const tracking = await listTrackingRaw();
-  return orders.map((order) => mapOrderRow(order, tracking.find((item) => item.id === order.id)));
+  const [orders, tracking, notifications] = await Promise.all([
+    repositoryRegistry.orders.listAll?.() ?? Promise.resolve([]),
+    listTrackingRaw(),
+    repositoryRegistry.adminNotifications.listAll(),
+  ]);
+  const notificationByOrderId = new Map(
+    notifications
+      .filter(
+        (notification) =>
+          notification.type === "order_created" && notification.entityType === "order",
+      )
+      .map((notification) => [notification.entityId, notification] as const),
+  );
+
+  return orders
+    .map((order) =>
+      mapOrderRow(
+        order,
+        tracking.find((item) => item.id === order.id),
+        notificationByOrderId.get(order.id) ?? null,
+      ),
+    )
+    .sort((a, b) => {
+      const newOrderPriority = Number(b.isNew) - Number(a.isNew);
+      if (newOrderPriority !== 0) return newOrderPriority;
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    });
 }
 
 export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail | null> {
@@ -424,6 +448,11 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
       ),
     )
   ).flat();
+  const newOrderNotification = await repositoryRegistry.adminNotifications.getByEntity({
+    type: "order_created",
+    entityType: "order",
+    entityId: routed.id,
+  });
   return {
     order: routed,
     tracking,
@@ -433,6 +462,9 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
     paymentEvents,
     shipments,
     shipmentEvents,
+    newOrderNotification: newOrderNotification
+      ? { id: newOrderNotification.id, status: newOrderNotification.status }
+      : null,
   };
 }
 
@@ -874,7 +906,11 @@ function mapQuotationRow(quotation: QuotationRequestRecord): AdminQuotationRow {
   };
 }
 
-function mapOrderRow(order: PaymentOrderRecord, tracking?: CustomerTrackingOrder | null): AdminOrderRow {
+function mapOrderRow(
+  order: PaymentOrderRecord,
+  tracking?: CustomerTrackingOrder | null,
+  notification?: { id: string; status: string } | null,
+): AdminOrderRow {
   const routed = ensureOrderProcessRouting(order);
   return {
     id: routed.id,
@@ -904,6 +940,8 @@ function mapOrderRow(order: PaymentOrderRecord, tracking?: CustomerTrackingOrder
           : "disabled"),
     wooSyncError: routed.wooSyncError ?? null,
     wooSyncedAt: routed.wooSyncedAt ?? null,
+    isNew: notification?.status === "unread",
+    notificationId: notification?.id ?? null,
   };
 }
 

@@ -138,6 +138,8 @@ export interface AdminOrderRow {
   wooSyncStatus: string;
   wooSyncError: string | null;
   wooSyncedAt: string | null;
+  isNew: boolean;
+  notificationId: string | null;
 }
 
 export interface AdminOrderDetail {
@@ -149,6 +151,10 @@ export interface AdminOrderDetail {
   paymentEvents: PaymentEventRecord[];
   shipments: ShipmentRecord[];
   shipmentEvents: ShipmentEventRecord[];
+  newOrderNotification: {
+    id: string;
+    status: "unread" | "read" | "acknowledged" | "resolved";
+  } | null;
 }
 
 export interface AdminProcessOrderRow {
