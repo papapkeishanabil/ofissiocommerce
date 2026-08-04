@@ -114,6 +114,7 @@ export interface AdminLogoPreview {
 export interface AdminQuotationDetail {
     quotation: QuotationRequestRecord;
     logoPreviews: AdminLogoPreview[];
+    referencePreviews: AdminLogoPreview[];
     events: QuotationEventRecord[];
     emailLogs: EmailLog[];
     documents: DocumentRecord[];

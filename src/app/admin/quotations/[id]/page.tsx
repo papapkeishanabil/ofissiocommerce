@@ -1,11 +1,23 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  ArrowLeft,
+  FileText,
+  History,
+  Mail,
+  MessageSquare,
+  Package,
+  Wallet,
+} from "lucide-react";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentActions";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminProductThumb } from "@/features/admin/components/AdminProductThumb";
 import { AdminQuotationProgress } from "@/features/admin/components/AdminQuotationProgress";
+import { AdminReferenceGallery } from "@/features/admin/components/AdminReferenceGallery";
 import { AdminProcessRouteBadge } from "@/features/admin/components/AdminProcessRouteBadge";
+import { AdminSectionCard } from "@/features/admin/components/AdminSectionCard";
 import {
   AdminQuotationProcessControl,
   AdminQuotationStatusActions,
@@ -13,6 +25,7 @@ import {
 import { AdminQuotationNotificationRead } from "@/features/admin-notifications/components/AdminQuotationNotificationRead";
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
 import { getAdminQuotationDetail } from "@/features/admin/admin.service";
+import { resolveAdminProductImages } from "@/features/admin/admin-product-images";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
 import { getEmailRuntimeConfig } from "@/features/email/email.config";
 import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
@@ -36,11 +49,20 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
   const {
     quotation,
     logoPreviews,
+    referencePreviews,
     events,
     emailLogs,
     documents,
     acceptedNotification,
   } = detail;
+  const referencePreviewByFileId = new Map(
+    referencePreviews
+      .filter((preview) => Boolean(preview.signedUrl))
+      .map((preview) => [preview.fileId, preview.signedUrl as string] as const),
+  );
+  const productImages = await resolveAdminProductImages(
+    quotation.items.map((item) => ({ productId: item.productId, productSlug: item.productSlug })),
+  );
   const emailConfig = getEmailRuntimeConfig();
   const latestEmailLog = emailLogs[0] ?? null;
   const quotationPdf = documents.find(
@@ -53,21 +75,26 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
   return (
     <div className="space-y-5">
       <AdminQuotationNotificationRead notification={acceptedNotification} />
-      <Link href="/admin/quotations" className="text-sm font-bold text-brand-700">
-        ← Back to quotations
+      <Link
+        href="/admin/quotations"
+        className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-700 transition hover:text-brand-800"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Back to quotations
       </Link>
 
       <AdminQuotationProgress status={quotation.status} />
 
       <AdminQuotationProcessControl quotation={quotation} />
 
-      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
+      {/* Page header */}
+      <header className="overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-white to-slate-50/60 p-5 shadow-soft-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">
-              Quotation detail
-            </p>
-            <h2 className="mt-1 text-2xl font-black text-ink">{quotation.quotationNumber}</h2>
+          <div className="min-w-0">
+            <p className="type-eyebrow text-brand-700">Quotation detail</p>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">
+              {quotation.quotationNumber}
+            </h1>
             <p className="mt-1 text-sm text-ink-muted">
               {quotation.companyName} · {formatAdminDate(quotation.createdAt)}
             </p>
@@ -76,16 +103,25 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             <AdminBadge tone={quotation.source === "custom_request" ? "warning" : "neutral"}>
               {quotationSourceLabel(quotation.source)}
             </AdminBadge>
-            <AdminProcessRouteBadge
-              route={quotation.requestedProcessRoute}
-              showDescription
-            />
+            <AdminProcessRouteBadge route={quotation.requestedProcessRoute} />
             <AdminBadge tone={adminStatusTone(quotation.status)}>{quotation.status}</AdminBadge>
             <AdminBadge tone={adminStatusTone(quotation.emailStatus)}>{quotation.emailStatus}</AdminBadge>
           </div>
         </div>
+      </header>
 
-        <dl className="mt-5 grid gap-3 text-sm md:grid-cols-3">
+      <AdminQuotationStatusActions
+        quotation={quotation}
+        defaultTaxRate={taxState.settings.rate}
+        showProcessControl={false}
+      />
+
+      <AdminSectionCard
+        icon={FileText}
+        eyebrow="Overview"
+        title="Ringkasan quotation"
+      >
+        <dl className="grid gap-3 text-sm md:grid-cols-3">
           <div className="rounded-2xl bg-slate-50 p-4">
             <dt className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">PIC</dt>
             <dd className="mt-1 font-semibold text-ink">{quotation.picName}</dd>
@@ -120,67 +156,29 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
           </div>
           {quotation.productionBrief ? (
             <dl className="mt-4 grid gap-3 border-t border-line pt-4 text-sm md:grid-cols-2">
-              <BriefRow
-                label="Nama proyek"
-                value={quotation.productionBrief.projectName ?? "Belum diberi nama"}
-              />
-              <BriefRow
-                label="Jenis pakaian"
-                value={quotation.productionBrief.garmentType ?? "Belum ditentukan"}
-              />
-              <BriefRow
-                label="Estimasi jumlah"
-                value={
-                  quotation.productionBrief.estimatedQuantity
-                    ? `${quotation.productionBrief.estimatedQuantity} pcs`
-                    : `${quotation.totalQty} pcs`
-                }
-              />
-              <BriefRow
-                label="Penggunaan"
-                value={quotation.productionBrief.usageContext ?? "Belum dijelaskan"}
-              />
-              <BriefRow
-                label="Brief desain/model"
-                value={quotation.productionBrief.designDescription}
-              />
-              <BriefRow
-                label="Bahan"
-                value={quotation.productionBrief.materialPreference ?? "Belum ditentukan"}
-              />
-              <BriefRow
-                label="Warna"
-                value={quotation.productionBrief.colorPreference ?? "Belum ditentukan"}
-              />
-              <BriefRow
-                label="Ukuran/pola"
-                value={quotation.productionBrief.sizeNotes ?? "Mengikuti pembahasan"}
-              />
-              <BriefRow
-                label="Target kebutuhan"
-                value={
-                  quotation.productionBrief.targetDate
-                    ? formatAdminDate(quotation.productionBrief.targetDate)
-                    : "Belum ditentukan"
-                }
-              />
+              <BriefRow label="Nama proyek" value={quotation.productionBrief.projectName ?? "Belum diberi nama"} />
+              <BriefRow label="Jenis pakaian" value={quotation.productionBrief.garmentType ?? "Belum ditentukan"} />
+              <BriefRow label="Estimasi jumlah" value={quotation.productionBrief.estimatedQuantity ? `${quotation.productionBrief.estimatedQuantity} pcs` : `${quotation.totalQty} pcs`} />
+              <BriefRow label="Penggunaan" value={quotation.productionBrief.usageContext ?? "Belum dijelaskan"} />
+              <BriefRow label="Brief desain/model" value={quotation.productionBrief.designDescription} />
+              <BriefRow label="Bahan" value={quotation.productionBrief.materialPreference ?? "Belum ditentukan"} />
+              <BriefRow label="Warna" value={quotation.productionBrief.colorPreference ?? "Belum ditentukan"} />
+              <BriefRow label="Ukuran/pola" value={quotation.productionBrief.sizeNotes ?? "Mengikuti pembahasan"} />
+              <BriefRow label="Target kebutuhan" value={quotation.productionBrief.targetDate ? formatAdminDate(quotation.productionBrief.targetDate) : "Belum ditentukan"} />
               {(quotation.productionBrief.referenceFiles?.length ?? 0) > 0 ? (
                 <div className="rounded-2xl bg-white p-3 ring-1 ring-line md:col-span-2">
                   <dt className="text-xs font-bold uppercase tracking-[0.14em] text-ink-muted">
                     File referensi customer
                   </dt>
                   <dd className="mt-2">
-                    <ul className="flex flex-wrap gap-2">
-                      {quotation.productionBrief.referenceFiles?.map((file) => (
-                        <li
-                          key={file.fileId}
-                          className="max-w-full truncate rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-800 ring-1 ring-brand-100"
-                          title={file.filename}
-                        >
-                          {file.filename}
-                        </li>
-                      ))}
-                    </ul>
+                    <AdminReferenceGallery
+                      items={(quotation.productionBrief.referenceFiles ?? []).map((file) => ({
+                        fileId: file.fileId,
+                        filename: file.filename,
+                        mimeType: file.mimeType,
+                        url: referencePreviewByFileId.get(file.fileId) ?? null,
+                      }))}
+                    />
                   </dd>
                 </div>
               ) : null}
@@ -194,51 +192,32 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             <p className="mt-1 text-ink-muted">{quotation.customerNotes}</p>
           </div>
         ) : null}
-      </section>
+      </AdminSectionCard>
 
-      <AdminQuotationStatusActions
-        quotation={quotation}
-        defaultTaxRate={taxState.settings.rate}
-        showProcessControl={false}
-      />
-
-      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-700">
-              Email delivery
-            </p>
-            <h3 className="mt-1 text-lg font-black text-ink">
-              {emailConfig.enabled
-                ? `Provider ${emailConfig.provider}`
-                : "Email real belum aktif — mock/skipped"}
-            </h3>
-            <p className="mt-1 text-sm text-ink-muted">
-              Status quotation saat ini: {quotation.emailStatus}. Email failure tidak
-              membatalkan quotation flow.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <AdminBadge tone={adminStatusTone(quotation.emailStatus)}>
-              {quotation.emailStatus}
-            </AdminBadge>
+      <AdminSectionCard
+        icon={Mail}
+        tone="neutral"
+        eyebrow="Email delivery"
+        title={emailConfig.enabled ? `Provider ${emailConfig.provider}` : "Email real belum aktif — mock/skipped"}
+        description={`Status quotation saat ini: ${quotation.emailStatus}. Email failure tidak membatalkan quotation flow.`}
+        actions={
+          <>
+            <AdminBadge tone={adminStatusTone(quotation.emailStatus)}>{quotation.emailStatus}</AdminBadge>
             <AdminBadge tone={emailConfig.enabled ? "success" : "warning"}>
               {emailConfig.enabled ? "email enabled" : "mock/skipped"}
             </AdminBadge>
-          </div>
-        </div>
+          </>
+        }
+      >
         {latestEmailLog ? (
-          <dl className="mt-4 grid gap-3 text-sm md:grid-cols-4">
+          <dl className="grid gap-3 text-sm md:grid-cols-4">
             <InfoCard label="Last type" value={latestEmailLog.type} />
             <InfoCard label="Last status" value={latestEmailLog.status} />
             <InfoCard label="Provider" value={latestEmailLog.provider} />
-            <InfoCard
-              label="Created"
-              value={formatAdminDate(latestEmailLog.createdAt)}
-            />
+            <InfoCard label="Created" value={formatAdminDate(latestEmailLog.createdAt)} />
           </dl>
         ) : (
-          <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-ink-muted">
+          <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-ink-muted">
             Belum ada email log untuk quotation ini.
           </p>
         )}
@@ -247,33 +226,21 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             Last safe error: {latestEmailLog.errorMessage}
           </p>
         ) : null}
-      </section>
+      </AdminSectionCard>
 
-      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-700">
-              Documents
-            </p>
-            <h3 className="mt-1 text-lg font-black text-ink">
-              Quotation PDF / Penawaran resmi
-            </h3>
-            <p className="mt-1 text-sm text-ink-muted">
-              PDF final hanya untuk quotation status quoted, accepted, atau converted_to_order.
-            </p>
-          </div>
-          <AdminBadge tone={quotationPdf ? "success" : "warning"}>
-            {quotationPdf ? "generated" : "not generated"}
-          </AdminBadge>
-        </div>
+      <AdminSectionCard
+        icon={FileText}
+        tone="neutral"
+        eyebrow="Documents"
+        title="Quotation PDF / Penawaran resmi"
+        description="PDF final hanya untuk quotation status quoted, accepted, atau converted_to_order."
+        actions={<AdminBadge tone={quotationPdf ? "success" : "warning"}>{quotationPdf ? "generated" : "not generated"}</AdminBadge>}
+      >
         {quotationPdf ? (
-          <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+          <dl className="grid gap-3 text-sm md:grid-cols-3">
             <InfoCard label="File" value={quotationPdf.filename} />
             <InfoCard label="Template" value={quotationPdf.templateId} />
-            <InfoCard
-              label="Generated"
-              value={quotationPdf.generatedAt ? formatAdminDate(quotationPdf.generatedAt) : "-"}
-            />
+            <InfoCard label="Generated" value={quotationPdf.generatedAt ? formatAdminDate(quotationPdf.generatedAt) : "-"} />
           </dl>
         ) : null}
         <div className="mt-4">
@@ -289,15 +256,12 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             templateId="quotation_default"
           />
         </div>
-      </section>
+      </AdminSectionCard>
 
       <section id="final-pricing-summary" className="grid scroll-mt-28 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
-          <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ink">
-            Final pricing
-          </h3>
+        <AdminSectionCard icon={Wallet} eyebrow="Final pricing" title="Harga final">
           {quotation.grandTotal ? (
-            <dl className="mt-4 space-y-2 text-sm">
+            <dl className="space-y-2 text-sm">
               <PriceRow label="Subtotal final" value={quotation.subtotal} />
               <PriceRow label="Discount" value={quotation.discountTotal} />
               <PriceRow label={quotationTaxLabel(quotation)} value={quotation.taxTotal} />
@@ -306,32 +270,29 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
               <InfoRow label="Valid until" value={quotation.validUntil ? formatAdminDate(quotation.validUntil) : "-"} />
             </dl>
           ) : (
-            <p className="mt-3 rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+            <p className="rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">
               Menunggu review sales. Harga final belum diisi.
             </p>
           )}
           {quotation.customerMessage ? (
             <div className="mt-4 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900">
-              <p className="font-black">Customer-facing message</p>
+              <p className="font-bold">Customer-facing message</p>
               <p className="mt-1">{quotation.customerMessage}</p>
             </div>
           ) : null}
           {quotation.salesNotes ? (
             <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-ink-muted">
-              <p className="font-black text-ink">Sales notes</p>
+              <p className="font-bold text-ink">Sales notes</p>
               <p className="mt-1">{quotation.salesNotes}</p>
             </div>
           ) : null}
-        </div>
+        </AdminSectionCard>
 
-        <div className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
-          <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ink">
-            Internal notes
-          </h3>
+        <AdminSectionCard icon={MessageSquare} tone="neutral" title="Internal notes">
           {quotation.internalNotes.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-muted">Belum ada internal note.</p>
+            <p className="text-sm text-ink-muted">Belum ada internal note.</p>
           ) : (
-            <ul className="mt-3 space-y-2">
+            <ul className="space-y-2">
               {quotation.internalNotes.slice().reverse().map((note) => (
                 <li key={note.id} className="rounded-2xl bg-slate-50 p-3 text-sm">
                   <p className="text-ink">{note.note}</p>
@@ -342,7 +303,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
               ))}
             </ul>
           )}
-        </div>
+        </AdminSectionCard>
       </section>
 
       <AdminWooSyncPanel
@@ -362,102 +323,118 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         }
       />
 
-      <section className="space-y-4">
-        <h3 className="text-lg font-black text-ink">Items, size matrix, dan bordir</h3>
+      <AdminSectionCard
+        icon={Package}
+        eyebrow="Items"
+        title="Item quotation, size matrix & bordir"
+        description="Foto produk membantu staff mengenali item saat review."
+      >
         {quotation.items.length === 0 ? (
           <AdminEmptyState title="Item quotation belum tersedia" />
         ) : (
-          quotation.items.map((item) => (
-            <article key={`${quotation.id}-${item.productId}-${item.selectedColor}`} className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h4 className="text-lg font-black text-ink">{item.productName}</h4>
-                  <p className="text-sm text-ink-muted">
-                    SKU {item.sku} · {item.selectedColor} · {item.totalQty} pcs
-                  </p>
-                </div>
-                <AdminBadge tone="brand">{item.fulfillmentType}</AdminBadge>
-              </div>
-
-              {item.source === "custom" ? (
-                <div className="mt-4 rounded-2xl border border-ochre-200 bg-ochre-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-900">
-                    Custom project scope
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-amber-950">
-                    Item ini dibuat dari brief customer, bukan dari produk katalog. Harga,
-                    pola, bahan, size chart, dan feasibility ditetapkan saat review sales
-                    dan produksi.
-                  </p>
-                </div>
-              ) : (
-                <>
-              <div className="mt-4 rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">Size matrix</p>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
-                    {Object.entries(item.sizeMatrix).map(([size, qty]) => (
-                      <div key={size} className="rounded-xl bg-white p-3 text-center ring-1 ring-line">
-                        <p className="font-black text-ink">{size}</p>
-                        <p className="text-ink-muted">{qty} pcs</p>
+          <div className="space-y-3">
+            {quotation.items.map((item) => (
+              <article
+                key={`${quotation.id}-${item.productId}-${item.selectedColor}`}
+                className="rounded-2xl border border-line bg-surface-muted/50 p-4"
+              >
+                <div className="flex items-start gap-4">
+                  <AdminProductThumb
+                    src={productImages[item.productId]?.mainImage}
+                    alt={item.productName}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h4 className="text-base font-extrabold tracking-tight text-ink">{item.productName}</h4>
+                        <p className="text-sm text-ink-muted">
+                          SKU {item.sku} · {item.selectedColor} · {item.totalQty} pcs
+                        </p>
                       </div>
-                    ))}
-                  </div>
-              </div>
+                      <AdminBadge tone="brand">{item.fulfillmentType}</AdminBadge>
+                    </div>
 
-              <div className="mt-4 rounded-2xl border border-line bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">Embroidery placements</p>
-                {item.embroideryPlacements.length === 0 ? (
-                  <p className="mt-2 text-sm text-ink-muted">Belum ada placement bordir.</p>
-                ) : (
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
-                    {item.embroideryPlacements.map((placement) => {
-                      const preview = logoPreviews.find((logo) => logo.fileId === placement.logoFileId);
-                      return (
-                        <div key={`${placement.zone}-${placement.logoFileId}`} className="rounded-2xl bg-slate-50 p-3 text-sm">
-                          <div className="flex items-start gap-3">
-                            <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-line">
-                              {preview?.signedUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={preview.signedUrl} alt="" className="max-h-full max-w-full object-contain" />
-                              ) : (
-                                <span className="px-2 text-center text-[10px] font-bold text-ink-muted">Preview unavailable</span>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-bold text-ink">{zoneLabel(placement.zone)}</p>
-                              <p className="truncate text-xs font-semibold text-ink-muted" title={placement.logoFileName}>
-                                {placement.logoFileName}
-                              </p>
-                              <p className="text-xs text-ink-muted">
-                                {embroideryTechniqueLabel(placement.technique)} · {placement.widthCm}×{placement.heightCm} cm · Rotasi {placement.rotation}°
-                              </p>
-                            </div>
+                    {item.source === "custom" ? (
+                      <div className="mt-3 rounded-2xl border border-ochre-200 bg-ochre-50 p-3">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-900">
+                          Custom project scope
+                        </p>
+                        <p className="mt-1.5 text-sm leading-6 text-amber-950">
+                          Item ini dibuat dari brief customer, bukan dari produk katalog. Harga,
+                          pola, bahan, size chart, dan feasibility ditetapkan saat review sales
+                          dan produksi.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mt-3">
+                          <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">Size matrix</p>
+                          <div className="mt-2 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
+                            {Object.entries(item.sizeMatrix).map(([size, qty]) => (
+                              <div key={size} className="rounded-xl bg-white p-2.5 text-center ring-1 ring-line">
+                                <p className="font-extrabold text-ink">{size}</p>
+                                <p className="text-ink-muted">{qty} pcs</p>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-                </>
-              )}
-            </article>
-          ))
-        )}
-      </section>
 
-      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
-        <h3 className="text-lg font-black text-ink">Quotation events</h3>
+                        <div className="mt-3">
+                          <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">Embroidery placements</p>
+                          {item.embroideryPlacements.length === 0 ? (
+                            <p className="mt-1.5 text-sm text-ink-muted">Belum ada placement bordir.</p>
+                          ) : (
+                            <div className="mt-2 grid gap-2 md:grid-cols-2">
+                              {item.embroideryPlacements.map((placement) => {
+                                const preview = logoPreviews.find((logo) => logo.fileId === placement.logoFileId);
+                                return (
+                                  <div key={`${placement.zone}-${placement.logoFileId}`} className="rounded-2xl bg-white p-3 text-sm ring-1 ring-line">
+                                    <div className="flex items-start gap-3">
+                                      <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-50 ring-1 ring-line">
+                                        {preview?.signedUrl ? (
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          <img src={preview.signedUrl} alt="" className="max-h-full max-w-full object-contain" />
+                                        ) : (
+                                          <span className="px-2 text-center text-[10px] font-bold text-ink-muted">N/A</span>
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-ink">{zoneLabel(placement.zone)}</p>
+                                        <p className="truncate text-xs font-semibold text-ink-muted" title={placement.logoFileName}>
+                                          {placement.logoFileName}
+                                        </p>
+                                        <p className="text-xs text-ink-muted">
+                                          {embroideryTechniqueLabel(placement.technique)} · {placement.widthCm}×{placement.heightCm} cm · Rotasi {placement.rotation}°
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </AdminSectionCard>
+
+      <AdminSectionCard icon={History} tone="neutral" title="Quotation events">
         {events.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-muted">
+          <p className="text-sm text-ink-muted">
             Event table belum tersedia atau belum ada event Phase 17.
           </p>
         ) : (
-          <ol className="mt-4 space-y-3">
+          <ol className="space-y-2">
             {events.map((event) => (
-              <li key={event.id} className="rounded-2xl bg-slate-50 p-4 text-sm">
+              <li key={event.id} className="rounded-2xl bg-slate-50 p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-black text-ink">{event.eventType}</p>
+                  <p className="font-bold text-ink">{event.eventType}</p>
                   <span className="text-xs font-semibold text-ink-muted">
                     {formatAdminDate(event.createdAt)}
                   </span>
@@ -470,7 +447,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             ))}
           </ol>
         )}
-      </section>
+      </AdminSectionCard>
     </div>
   );
 }
@@ -487,7 +464,7 @@ function PriceRow({
   return (
     <div className="flex items-center justify-between gap-3 border-b border-line pb-2 last:border-0 last:pb-0">
       <dt className="text-ink-muted">{label}</dt>
-      <dd className={strong ? "text-lg font-black text-ink" : "font-semibold text-ink"}>
+      <dd className={strong ? "text-lg font-extrabold text-ink" : "font-semibold text-ink"}>
         {formatRupiah(value ?? 0)}
       </dd>
     </div>

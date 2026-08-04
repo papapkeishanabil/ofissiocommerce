@@ -276,9 +276,10 @@ export async function listAdminQuotations(input: { search?: string; status?: str
 export async function getAdminQuotationDetail(id: string): Promise<AdminQuotationDetail | null> {
   const quotation = await repositoryRegistry.quotations.getById(id);
   if (!quotation) return null;
-  const [logoPreviews, events, emailLogs, documents, acceptedNotification] =
+  const [logoPreviews, referencePreviews, events, emailLogs, documents, acceptedNotification] =
     await Promise.all([
       getLogoPreviews(quotation),
+      getReferencePreviews(quotation),
       getQuotationEventsById(quotation.id, quotation.companyId),
       getQuotationEmailLogs(quotation),
       getDocumentsByEntity({
@@ -295,6 +296,7 @@ export async function getAdminQuotationDetail(id: string): Promise<AdminQuotatio
   return {
     quotation,
     logoPreviews,
+    referencePreviews,
     events,
     emailLogs,
     documents,
@@ -934,6 +936,23 @@ async function getLogoPreviews(quotation: QuotationRequestRecord): Promise<Admin
   }
   return Promise.all(
     [...uniqueIds].map(async (fileId) => {
+      const signed = await storageService
+        .getSignedFileUrl({ companyId: quotation.companyId, fileId })
+        .catch(() => null);
+      return {
+        fileId,
+        signedUrl: signed?.signedUrl ?? null,
+        unavailable: !signed?.signedUrl,
+      };
+    }),
+  );
+}
+
+async function getReferencePreviews(quotation: QuotationRequestRecord): Promise<AdminLogoPreview[]> {
+  const files = quotation.productionBrief?.referenceFiles ?? [];
+  const uniqueIds = Array.from(new Set(files.map((file) => file.fileId).filter(Boolean)));
+  return Promise.all(
+    uniqueIds.map(async (fileId) => {
       const signed = await storageService
         .getSignedFileUrl({ companyId: quotation.companyId, fileId })
         .catch(() => null);

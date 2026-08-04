@@ -24,6 +24,9 @@ const LABELS: Record<AdminQuotationUpdateStatus, string> = {
   cancelled: "Batalkan",
 };
 
+/** Prefilled sales contact shown on the quotation pricing panel. */
+const DEFAULT_SALES_EMAIL = "sales@ofissio.com";
+
 export function AdminQuotationProcessControl({
   quotation,
 }: {
@@ -550,7 +553,7 @@ export function AdminQuotationStatusActions({
             label="Sales email"
             name="salesEmail"
             type="email"
-            defaultValue={quotation.salesEmail ?? ""}
+            defaultValue={quotation.salesEmail || DEFAULT_SALES_EMAIL}
           />
           <TextField
             label="Customer message"
