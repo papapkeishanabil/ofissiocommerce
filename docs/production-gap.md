@@ -56,11 +56,17 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
    - Pastikan secret WooCommerce tidak muncul di client bundle.
    - Pastikan WordPress Media Application Password/token tersedia server-side, permission `upload_files` benar, serta upload/reorder diuji terhadap WooCommerce staging.
 
-5. Shipping provider
-   - Pilih provider ekspedisi.
-   - Implement provider adapter untuk booking/tracking real.
-   - Simpan credential server-side.
-   - Pertahankan fallback shipment manual.
+5. Biteship shipping activation
+   - Task E provider adapter, server-side rate, idempotent create, persistence,
+     webhook mapping, admin panel, dan tracking bridge sudah tersedia.
+   - Terapkan migration `019_biteship_shipping.sql` di staging.
+   - Isi credential sandbox dan origin warehouse melalui secret manager.
+   - Kalibrasi berat/dimensi kemasan per SKU; Task E masih memakai default server.
+   - Daftarkan webhook HTTPS publik dengan shared-secret authentication.
+   - Uji rate, create, duplicate create, valid/invalid/duplicate webhook, waybill,
+     tracking customer, dan satu delivery sandbox end-to-end.
+   - Aktivasi live wajib memakai credential terpisah dan canary; fallback shipment
+     manual dipertahankan.
 
 6. Monitoring dan observability
    - Error monitoring.
@@ -86,7 +92,8 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
 
 - Admin production-order detail penuh belum dibangun.
 - Admin upload logo atas nama customer belum aktif.
-- Shipping API real belum aktif.
+- Biteship real belum aktif sampai migration 019, env sandbox, origin, dan webhook
+  publik lulus smoke test.
 - WooCommerce live belum aktif.
 - WooCommerce staging activation dapat tetap skipped jika WP staging/env belum tersedia.
 - Supabase Auth production belum aktif sampai migration 015, admin pertama, dan

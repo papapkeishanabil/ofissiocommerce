@@ -63,6 +63,12 @@ export const CUSTOMER_ADDRESS_COLUMNS = [
   "is_default_billing",
 ] as const;
 
+export const TASK_E_CARRIER_SHIPPING_TABLES = [
+  "shipping_quotes",
+  "shipping_shipments",
+  "shipping_events",
+] as const;
+
 export const REQUIRED_SUPABASE_TABLES = [
   "companies",
   "user_profiles",

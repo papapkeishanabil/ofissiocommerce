@@ -17,7 +17,7 @@
     "check:email": "tsx scripts/check-email.ts",
     "check:documents": "tsx scripts/check-documents.ts",
     "check:payment": "tsx --require ./scripts/register-server-only.cjs scripts/check-payment.ts",
-    "check:shipping": "tsx scripts/check-shipping.ts",
+    "check:shipping": "tsx --require ./scripts/register-server-only.cjs scripts/check-shipping.ts",
     "check:auth": "tsx --require ./scripts/register-server-only.cjs scripts/check-auth.ts",
     "test:quantity-pricing": "tsx scripts/test-quantity-pricing.ts",
     "test:embroidery-pricing": "tsx scripts/test-embroidery-pricing.ts",

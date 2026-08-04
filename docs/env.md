@@ -260,3 +260,38 @@ EMAIL_TEST_SEND=true npm run check:email
 ```
 
 Jangan set `NEXT_PUBLIC_RESEND_API_KEY`.
+
+## Shipping / Biteship
+
+Development aman menggunakan:
+
+```bash
+SHIPPING_PROVIDER=mock
+SHIPPING_MODE=sandbox
+BITESHIP_ENABLED=false
+BITESHIP_TEST_CREATE_SHIPMENT=false
+```
+
+Staging Biteship menggunakan:
+
+```bash
+SHIPPING_PROVIDER=biteship
+SHIPPING_MODE=sandbox
+BITESHIP_ENABLED=true
+BITESHIP_MODE=sandbox
+BITESHIP_BASE_URL=https://api.biteship.com
+BITESHIP_API_KEY=
+BITESHIP_WEBHOOK_SECRET=
+BITESHIP_WEBHOOK_URL=https://staging-domain/api/shipping/biteship/webhook
+BITESHIP_ORIGIN_CONTACT_NAME="Ofissio Fulfillment"
+BITESHIP_ORIGIN_CONTACT_PHONE=
+BITESHIP_ORIGIN_ADDRESS=
+BITESHIP_ORIGIN_POSTAL_CODE=
+BITESHIP_ORIGIN_AREA_ID=
+BITESHIP_COURIERS=jne,sicepat,jnt,anteraja
+BITESHIP_TEST_CREATE_SHIPMENT=false
+```
+
+API key dan webhook secret hanya server-side. Production tidak boleh memakai
+mock kecuali `SHIPPING_ALLOW_MOCK_IN_PRODUCTION=true` diset sebagai fallback
+eksplisit. Detail setup dan smoke test ada di `docs/biteship-shipping.md`.

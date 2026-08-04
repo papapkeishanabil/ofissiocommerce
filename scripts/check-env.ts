@@ -63,6 +63,21 @@ const rules: EnvRule[] = [
   { name: "IPAYMU_EXPIRE_MINUTES" },
   { name: "IPAYMU_TEST_CREATE_PAYMENT" },
   { name: "SHIPPING_PROVIDER" },
+  { name: "SHIPPING_MODE" },
+  { name: "SHIPPING_ALLOW_MOCK_IN_PRODUCTION" },
+  { name: "BITESHIP_ENABLED" },
+  { name: "BITESHIP_MODE" },
+  { name: "BITESHIP_BASE_URL" },
+  { name: "BITESHIP_API_KEY", secret: true },
+  { name: "BITESHIP_WEBHOOK_SECRET", secret: true },
+  { name: "BITESHIP_WEBHOOK_URL" },
+  { name: "BITESHIP_ORIGIN_CONTACT_NAME" },
+  { name: "BITESHIP_ORIGIN_CONTACT_PHONE" },
+  { name: "BITESHIP_ORIGIN_ADDRESS" },
+  { name: "BITESHIP_ORIGIN_POSTAL_CODE" },
+  { name: "BITESHIP_ORIGIN_AREA_ID" },
+  { name: "BITESHIP_COURIERS" },
+  { name: "BITESHIP_TEST_CREATE_SHIPMENT" },
   { name: "DEFAULT_ORIGIN_CITY", requiredIn: ["staging", "production"] },
   { name: "DEFAULT_ORIGIN_POSTAL_CODE", requiredIn: ["production"] },
   { name: "SHIPPING_PROVIDER_API_KEY", secret: true },
@@ -96,6 +111,8 @@ const forbiddenPublicSecrets = [
   "NEXT_PUBLIC_WORDPRESS_MEDIA_USERNAME",
   "NEXT_PUBLIC_WORDPRESS_MEDIA_APP_PASSWORD",
   "NEXT_PUBLIC_WORDPRESS_MEDIA_TOKEN",
+  "NEXT_PUBLIC_BITESHIP_API_KEY",
+  "NEXT_PUBLIC_BITESHIP_WEBHOOK_SECRET",
   "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
   "NEXT_PUBLIC_STORAGE_SECRET",
   "NEXT_PUBLIC_S3_SECRET_ACCESS_KEY",
@@ -428,19 +445,63 @@ if (process.env.STORAGE_PROVIDER === "supabase") {
   }
 }
 
-if (process.env.SHIPPING_PROVIDER && process.env.SHIPPING_PROVIDER !== "mock") {
+const shippingProvider = process.env.SHIPPING_PROVIDER?.trim().toLowerCase() || "mock";
+const shippingMode = process.env.SHIPPING_MODE?.trim().toLowerCase() || "sandbox";
+const biteshipMode = process.env.BITESHIP_MODE?.trim().toLowerCase() || shippingMode;
+if (!["mock", "biteship"].includes(shippingProvider)) {
+  problems.push({ level: "error", message: "SHIPPING_PROVIDER harus mock atau biteship." });
+}
+if (!["sandbox", "live"].includes(shippingMode)) {
+  problems.push({ level: "error", message: "SHIPPING_MODE harus sandbox atau live." });
+}
+for (const name of ["BITESHIP_ENABLED", "BITESHIP_TEST_CREATE_SHIPMENT", "SHIPPING_ALLOW_MOCK_IN_PRODUCTION"]) {
+  if (process.env[name] && !isBooleanEnv(process.env[name])) {
+    problems.push({ level: "error", message: `${name} harus bernilai true atau false.` });
+  }
+}
+if (shippingProvider === "biteship") {
   for (const name of [
-    "DEFAULT_ORIGIN_CITY",
-    "DEFAULT_ORIGIN_POSTAL_CODE",
-    "SHIPPING_PROVIDER_API_KEY",
+    "BITESHIP_ENABLED",
+    "BITESHIP_MODE",
+    "BITESHIP_BASE_URL",
+    "BITESHIP_API_KEY",
+    "BITESHIP_WEBHOOK_SECRET",
+    "BITESHIP_WEBHOOK_URL",
+    "BITESHIP_ORIGIN_CONTACT_NAME",
+    "BITESHIP_ORIGIN_CONTACT_PHONE",
+    "BITESHIP_ORIGIN_ADDRESS",
+    "BITESHIP_ORIGIN_POSTAL_CODE",
   ]) {
     if (!process.env[name]?.trim()) {
       problems.push({
         level: appEnv === "development" ? "warning" : "error",
-        message: `${name} wajib untuk SHIPPING_PROVIDER=${process.env.SHIPPING_PROVIDER}.`,
+        message: `${name} wajib untuk SHIPPING_PROVIDER=biteship.`,
       });
     }
   }
+  if (process.env.BITESHIP_ENABLED !== "true") {
+    problems.push({ level: appEnv === "development" ? "warning" : "error", message: "SHIPPING_PROVIDER=biteship membutuhkan BITESHIP_ENABLED=true." });
+  }
+  if (!["sandbox", "live"].includes(biteshipMode)) {
+    problems.push({ level: "error", message: "BITESHIP_MODE harus sandbox atau live." });
+  }
+  if (shippingMode !== biteshipMode) {
+    problems.push({ level: appEnv === "development" ? "warning" : "error", message: "SHIPPING_MODE dan BITESHIP_MODE harus sama." });
+  }
+  if (!isPublicHttpsUrl(process.env.BITESHIP_WEBHOOK_URL)) {
+    problems.push({ level: appEnv === "development" ? "warning" : "error", message: "BITESHIP_WEBHOOK_URL harus HTTPS publik; localhost tidak dapat menerima webhook." });
+  }
+  const baseHost = urlHost(process.env.BITESHIP_BASE_URL);
+  if (baseHost !== "api.biteship.com") {
+    problems.push({ level: appEnv === "development" ? "warning" : "error", message: "BITESHIP_BASE_URL harus memakai api.biteship.com." });
+  }
+}
+if (
+  appEnv === "production" &&
+  shippingProvider === "mock" &&
+  process.env.SHIPPING_ALLOW_MOCK_IN_PRODUCTION !== "true"
+) {
+  problems.push({ level: "error", message: "Production tidak boleh memakai mock shipping tanpa SHIPPING_ALLOW_MOCK_IN_PRODUCTION=true." });
 }
 
 if (process.env.STORAGE_PROVIDER === "s3") {
