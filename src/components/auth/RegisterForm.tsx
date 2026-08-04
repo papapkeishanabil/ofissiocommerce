@@ -27,6 +27,7 @@ export function RegisterForm({
 }: RegisterFormProps) {
   const registerUser = useAuthStore((s) => s.register);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [serverSuccess, setServerSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -44,10 +45,11 @@ export function RegisterForm({
     },
   });
 
-  const onSubmit = handleSubmit((values) => {
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setServerError(null);
-    const r = registerUser({
+    setServerSuccess(null);
+    const r = await registerUser({
       fullName: values.fullName,
       email: values.email,
       whatsapp: values.whatsapp,
@@ -56,6 +58,10 @@ export function RegisterForm({
     setSubmitting(false);
     if (!r.ok) {
       setServerError(r.reason ?? "Pendaftaran gagal.");
+      return;
+    }
+    if (r.requiresEmailVerification) {
+      setServerSuccess("Akun dibuat. Periksa email Anda untuk verifikasi sebelum login.");
       return;
     }
     onSuccess?.();
@@ -69,6 +75,11 @@ export function RegisterForm({
           className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700"
         >
           {serverError}
+        </div>
+      )}
+      {serverSuccess && (
+        <div role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          {serverSuccess}
         </div>
       )}
 

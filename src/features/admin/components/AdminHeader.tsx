@@ -1,6 +1,7 @@
 import type { InternalAdminUser } from "../admin.types";
 import { AdminBadge } from "./AdminBadge";
 import { AdminNotificationBell } from "@/features/admin-notifications/components/AdminNotificationBell";
+import { AdminLogoutButton } from "./AdminLogoutButton";
 
 export function AdminHeader({ user }: { user: InternalAdminUser }) {
   return (
@@ -18,6 +19,7 @@ export function AdminHeader({ user }: { user: InternalAdminUser }) {
             Staging ready
           </div>
           <AdminNotificationBell />
+          <AdminLogoutButton />
           <div className="flex items-center gap-3 rounded-lg border border-line bg-white px-3 py-1.5 text-sm">
             <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">
               {user.name.slice(0, 1).toUpperCase()}

@@ -33,8 +33,12 @@ Company isolation adalah aturan bahwa customer hanya boleh melihat dan mengubah 
 - Quotation company A tidak bisa dibuka company B.
 - File/logo company A tidak bisa dipakai company B.
 
-## Current Phase 14 behavior
+## Task D behavior
 
-Security helper `requireCompanyAccess()` tetap menjadi enforcement utama. API yang sudah memakai auth guard mulai meneruskan scope session ke service call setelah akses company diverifikasi.
+Security helper `requireCompanyAccess()` tetap menjadi enforcement utama.
+Middleware memverifikasi Supabase access token dan mengambil company dari
+`company_memberships`; body/query/header browser bukan sumber company production.
 
-Repository Supabase Priority 1 juga menerima `companyId` dari service/server context dan menambahkan filter `company_id`. Production nanti harus mengganti mock hint dengan real server-side session/JWT.
+Repository Supabase menerima `companyId` dari service/server context dan
+menambahkan filter `company_id`. RLS migration 015 menjadi defense-in-depth;
+service role tetap wajib melewati server guard karena bypass RLS.

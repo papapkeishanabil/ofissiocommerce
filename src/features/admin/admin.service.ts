@@ -1,5 +1,7 @@
 import "server-only";
 
+import { headers } from "next/headers";
+
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { getDocumentsByEntity } from "@/features/documents/document.service";
 import { storageService } from "@/features/storage/storage.service";
@@ -55,6 +57,11 @@ import {
   type AuditEvent,
   type InternalRole,
 } from "@/lib/security/security.types";
+import { getAuthRuntimeConfig } from "@/features/auth/auth.config";
+import {
+  TRUSTED_AUTH_HEADER,
+  TRUSTED_AUTH_KIND_HEADER,
+} from "@/features/auth/auth.constants";
 
 import { ADMIN_ROLE_PERMISSIONS } from "./admin.config";
 import type {
@@ -82,21 +89,32 @@ import { safeMetadataSummary } from "./admin.utils";
 type MaybeRequest = Request | undefined;
 
 export function getCurrentInternalUserMock(request?: MaybeRequest): InternalAdminUser | null {
+  const config = getAuthRuntimeConfig();
   const headers = request instanceof Request ? request.headers : null;
+  const trustedSession =
+    headers?.get(TRUSTED_AUTH_HEADER) === "1" &&
+    headers?.get(TRUSTED_AUTH_KIND_HEADER) === "internal";
+  const allowedDevelopmentHeader =
+    config.mode === "development" && config.internalDevHeadersEnabled;
+  const allowedDevelopmentBypass =
+    !headers && config.mode === "development" && config.adminDevBypass;
+  if (!trustedSession && !allowedDevelopmentHeader && !allowedDevelopmentBypass) {
+    return null;
+  }
   const requestedRole = headers?.get("x-ofissio-internal-role")?.trim();
   const role = requestedRole
     ? INTERNAL_ROLES.includes(requestedRole as InternalRole)
       ? (requestedRole as InternalRole)
       : null
-    : headers || process.env.NODE_ENV === "production"
-      ? null
-      : "super_admin";
+    : allowedDevelopmentBypass
+      ? "super_admin"
+      : null;
   if (!role) return null;
   return {
     id: headers?.get("x-ofissio-internal-user-id")?.trim() || "internal-dev",
     name: headers?.get("x-ofissio-internal-user-name")?.trim() || "Ofissio Internal Dev",
     role,
-    isMock: true,
+    isMock: !trustedSession,
   };
 }
 
@@ -155,6 +173,16 @@ export function requireInternalAdmin(
   return user!;
 }
 
+export async function requireInternalAdminServer(
+  permission: AdminPermission = "admin:view",
+) {
+  const requestHeaders = await headers();
+  const request = new Request("http://ofissio.internal/admin", {
+    headers: requestHeaders,
+  });
+  return requireInternalAdmin(request, permission);
+}
+
 function hasAdminPermission(user: InternalAdminUser | null, permission: AdminPermission) {
   if (!user) return false;
   const permissions = ADMIN_ROLE_PERMISSIONS[user.role] ?? [];
@@ -162,7 +190,6 @@ function hasAdminPermission(user: InternalAdminUser | null, permission: AdminPer
 }
 
 export async function getAdminSummary(): Promise<AdminSummary> {
-  requireInternalAdmin(undefined, "admin:view");
   const [quotations, orders, tracking, uploads, audit] = await Promise.all([
     listAdminQuotations(),
     listAdminOrders(),

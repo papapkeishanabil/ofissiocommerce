@@ -3,6 +3,8 @@ import type { CompanyRole } from "@/types/account";
 export type CustomerRole = CompanyRole;
 
 export const CUSTOMER_ROLES: readonly CustomerRole[] = [
+  "customer_admin",
+  "customer_user",
   "company_admin",
   "purchasing",
   "approver",
@@ -12,6 +14,8 @@ export const CUSTOMER_ROLES: readonly CustomerRole[] = [
 
 export type InternalRole =
   | "super_admin"
+  | "sales_admin"
+  | "finance_admin"
   | "sales"
   | "finance_internal"
   | "product_admin"
@@ -23,6 +27,8 @@ export type InternalRole =
 
 export const INTERNAL_ROLES: readonly InternalRole[] = [
   "super_admin",
+  "sales_admin",
+  "finance_admin",
   "sales",
   "finance_internal",
   "product_admin",
@@ -34,6 +40,11 @@ export const INTERNAL_ROLES: readonly InternalRole[] = [
 ] as const;
 
 export type CustomerPermission =
+  | "customer:dashboard:view"
+  | "customer:quotation:view"
+  | "customer:quotation:action"
+  | "customer:order:view"
+  | "customer:file:upload"
   | "cart:write"
   | "checkout:create"
   | "quotation:create"
@@ -45,6 +56,7 @@ export type CustomerPermission =
   | "company_logo:write";
 
 export type InternalPermission =
+  | "admin:access"
   | "admin:all"
   | "product:manage"
   | "payment:review"

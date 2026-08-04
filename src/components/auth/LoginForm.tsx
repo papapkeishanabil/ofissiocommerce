@@ -32,10 +32,10 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
     defaultValues: { email: "", password: "" },
   });
 
-  const onSubmit = handleSubmit((values) => {
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setServerError(null);
-    const r = login(values.email, values.password);
+    const r = await login(values.email, values.password);
     setSubmitting(false);
     if (!r.ok) {
       setServerError(r.reason ?? "Login gagal.");

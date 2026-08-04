@@ -26,6 +26,24 @@ export interface PersistedCompanyUser {
   status: "active" | "inactive" | "invited";
 }
 
+export interface PersistedCompanyMembership {
+  id: string;
+  companyId: string;
+  userProfileId: string;
+  authUserId: string;
+  role: "customer_user" | "customer_admin";
+  status: "active" | "inactive" | "invited";
+}
+
+export interface PersistedInternalUserProfile {
+  id: string;
+  authUserId: string;
+  name: string;
+  email: string;
+  role: "sales_admin" | "production_admin" | "finance_admin" | "super_admin";
+  status: "active" | "inactive" | "invited";
+}
+
 export interface AuthRepository {
   getUserProfileByAuthId(authUserId: string): Promise<PersistedUserProfile | null>;
   getCompanyUser(input: {
@@ -34,6 +52,8 @@ export interface AuthRepository {
   }): Promise<PersistedCompanyUser | null>;
   listCompanyUsers(companyId: string): Promise<PersistedCompanyUser[]>;
   getCompanyById(companyId: string): Promise<PersistedCompany | null>;
+  getCompanyMembershipByAuthId(authUserId: string): Promise<PersistedCompanyMembership | null>;
+  getInternalUserByAuthId(authUserId: string): Promise<PersistedInternalUserProfile | null>;
 }
 
 export const mockAuthRepository: AuthRepository = {
@@ -47,6 +67,12 @@ export const mockAuthRepository: AuthRepository = {
     return [];
   },
   async getCompanyById() {
+    return null;
+  },
+  async getCompanyMembershipByAuthId() {
+    return null;
+  },
+  async getInternalUserByAuthId() {
     return null;
   },
 };

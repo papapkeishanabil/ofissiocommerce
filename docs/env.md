@@ -30,6 +30,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
 AUTH_PROVIDER=mock
+AUTH_MODE=development
+AUTH_REQUIRE_EMAIL_VERIFICATION=false
+ADMIN_DEV_BYPASS=false
+INTERNAL_DEV_HEADERS_ENABLED=false
 AUTH_SESSION_COOKIE_NAME=ofissio_session
 
 STORAGE_PROVIDER=mock
@@ -113,6 +117,9 @@ Gunakan default aman:
 PRODUCT_SOURCE=mock
 DATABASE_PROVIDER=mock
 AUTH_PROVIDER=mock
+AUTH_MODE=development
+ADMIN_DEV_BYPASS=false
+INTERNAL_DEV_HEADERS_ENABLED=false
 PAYMENT_PROVIDER=mock
 SHIPPING_PROVIDER=mock
 WOOCOMMERCE_ENABLED=false
@@ -143,7 +150,7 @@ WooCommerce live test masih pending sampai env tersedia.
 
 Production belum boleh diaktifkan sampai gap berikut selesai:
 
-- Auth/session production.
+- Migration auth Task D diterapkan dan akun `super_admin` pertama diuji.
 - Database dan storage persistent.
 - iPaymu live signature verified.
 - Shipping provider real.
@@ -164,6 +171,10 @@ Untuk staging Supabase nanti:
 ```bash
 DATABASE_PROVIDER=supabase
 AUTH_PROVIDER=supabase
+AUTH_MODE=production
+AUTH_REQUIRE_EMAIL_VERIFICATION=true
+ADMIN_DEV_BYPASS=false
+INTERNAL_DEV_HEADERS_ENABLED=false
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
@@ -171,6 +182,10 @@ AUTH_SESSION_COOKIE_NAME=ofissio_session
 ```
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` boleh public untuk client auth. `SUPABASE_SERVICE_ROLE_KEY` hanya boleh disimpan server-side di hosting secret manager.
+
+`AUTH_MODE=production` menolak `AUTH_PROVIDER=mock`. Header development dan
+admin bypass hanya berfungsi pada `AUTH_MODE=development` serta harus diaktifkan
+eksplisit. Lihat `docs/auth-production.md`.
 
 ## Storage
 

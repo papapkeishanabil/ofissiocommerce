@@ -10,6 +10,8 @@ import type {
   AuthSession,
   AuthSessionHint,
 } from "./auth.types";
+import { getAuthRuntimeConfig } from "./auth.config";
+import { TRUSTED_AUTH_HEADER } from "./auth.constants";
 
 function normalizeRole(value?: string | null): CustomerRole {
   return CUSTOMER_ROLES.includes(value as CustomerRole)
@@ -21,6 +23,9 @@ export const mockAuthProvider: AuthProviderAdapter = {
   name: "mock",
 
   getCurrentSession(request?: Request, hint: AuthSessionHint = {}): AuthSession | null {
+    const config = getAuthRuntimeConfig();
+    const trustedByMiddleware = request?.headers.get(TRUSTED_AUTH_HEADER) === "1";
+    if (!trustedByMiddleware && !config.internalDevHeadersEnabled) return null;
     const companyId =
       hint.companyId?.trim() ||
       request?.headers.get("x-ofissio-company-id")?.trim() ||

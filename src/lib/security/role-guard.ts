@@ -11,6 +11,36 @@ import type {
 import type { StorageFileType } from "@/features/storage/storage.types";
 
 export const CUSTOMER_PERMISSION_MAP: Record<CustomerRole, CustomerPermission[]> = {
+  customer_admin: [
+    "customer:dashboard:view",
+    "customer:quotation:view",
+    "customer:quotation:action",
+    "customer:order:view",
+    "customer:file:upload",
+    "artwork:approve",
+    "cart:write",
+    "checkout:create",
+    "company_logo:write",
+    "file:view",
+    "file:write",
+    "order:view",
+    "payment:view",
+    "quotation:create",
+  ],
+  customer_user: [
+    "customer:dashboard:view",
+    "customer:quotation:view",
+    "customer:quotation:action",
+    "customer:order:view",
+    "customer:file:upload",
+    "cart:write",
+    "checkout:create",
+    "file:view",
+    "file:write",
+    "order:view",
+    "payment:view",
+    "quotation:create",
+  ],
   company_admin: [
     "artwork:approve",
     "cart:write",
@@ -38,6 +68,7 @@ export const CUSTOMER_PERMISSION_MAP: Record<CustomerRole, CustomerPermission[]>
 
 export const INTERNAL_PERMISSION_MAP: Record<InternalRole, InternalPermission[]> = {
   super_admin: [
+    "admin:access",
     "admin:all",
     "payment:review",
     "product:manage",
@@ -45,6 +76,8 @@ export const INTERNAL_PERMISSION_MAP: Record<InternalRole, InternalPermission[]>
     "shipping:update",
     "support:view",
   ],
+  sales_admin: ["admin:access", "support:view"],
+  finance_admin: ["admin:access", "payment:review", "support:view"],
   sales: ["support:view"],
   finance_internal: ["payment:review", "support:view"],
   product_admin: ["product:manage", "support:view"],

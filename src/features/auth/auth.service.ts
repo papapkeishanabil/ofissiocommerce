@@ -1,5 +1,7 @@
 import "server-only";
 
+import { headers } from "next/headers";
+
 import type { CustomerPermission } from "@/lib/security/security.types";
 import { CUSTOMER_PERMISSION_MAP } from "@/lib/security/role-guard";
 import { createApiError } from "@/lib/security/safe-error-response";
@@ -35,6 +37,20 @@ export function getCurrentUser(request?: Request, hint: AuthSessionHint = {}) {
         email: session.email,
         name: session.name,
       }
+    : null;
+}
+
+export async function getCurrentSessionServer() {
+  const requestHeaders = await headers();
+  return getCurrentSession(
+    new Request("http://ofissio.internal/session", { headers: requestHeaders }),
+  );
+}
+
+export async function getCurrentUserServer() {
+  const session = await getCurrentSessionServer();
+  return session
+    ? { id: session.userId, email: session.email, name: session.name }
     : null;
 }
 

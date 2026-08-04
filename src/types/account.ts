@@ -4,6 +4,8 @@
 // structure but only `company_admin` (first registrar) is auto-assigned.
 
 export const COMPANY_ROLES = [
+  "customer_admin",
+  "customer_user",
   "company_admin",
   "purchasing",
   "approver",
@@ -15,6 +17,10 @@ export type CompanyRole = (typeof COMPANY_ROLES)[number];
 
 export function roleLabel(role: CompanyRole): string {
   switch (role) {
+    case "customer_admin":
+      return "Admin Customer";
+    case "customer_user":
+      return "Customer User";
     case "company_admin":
       return "Admin Perusahaan";
     case "purchasing":

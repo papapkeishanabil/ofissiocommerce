@@ -30,11 +30,21 @@ import type {
 } from "@/features/shipments/shipment.types";
 
 export type AdminPermission =
+  | "admin:access"
   | "admin:view"
+  | "admin:quotation:convert"
   | "admin:quotation:view"
   | "admin:quotation:update"
   | "admin:order:view"
   | "admin:order:update"
+  | "admin:payment:view"
+  | "admin:payment:create"
+  | "admin:invoice:view"
+  | "admin:invoice:send"
+  | "admin:product:view"
+  | "admin:product:update"
+  | "admin:settings:view"
+  | "admin:settings:update"
   | "admin:process-order:view"
   | "admin:process-order:update"
   | "admin:shipment:view"

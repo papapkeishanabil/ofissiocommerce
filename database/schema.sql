@@ -910,3 +910,40 @@ insert into tax_settings (id, enabled, rate, label, calculation_basis)
 values ('default', true, 11, 'PPN', 'after_discount')
 on conflict (id) do nothing;
 alter table tax_settings enable row level security;
+
+-- Task D Supabase Auth production tables. Apply migration
+-- 015_supabase_auth_production.sql for policies and compatibility setup.
+create unique index if not exists idx_user_profiles_auth_user_id_unique
+  on user_profiles(auth_user_id)
+  where auth_user_id is not null;
+
+create table if not exists company_memberships (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies(id) on delete cascade,
+  user_profile_id uuid not null references user_profiles(id) on delete cascade,
+  auth_user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null check (role in ('customer_user', 'customer_admin')),
+  status text not null default 'active' check (status in ('active', 'inactive', 'invited')),
+  invited_by uuid references auth.users(id) on delete set null,
+  joined_at timestamptz,
+  last_accessed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(company_id, auth_user_id),
+  unique(company_id, user_profile_id)
+);
+
+create table if not exists internal_user_profiles (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null unique references auth.users(id) on delete cascade,
+  name text not null,
+  email text not null,
+  role text not null check (role in ('sales_admin', 'production_admin', 'finance_admin', 'super_admin')),
+  status text not null default 'active' check (status in ('active', 'inactive', 'invited')),
+  last_login_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table company_memberships enable row level security;
+alter table internal_user_profiles enable row level security;

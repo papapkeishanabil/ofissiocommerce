@@ -4,10 +4,17 @@ import type {
 } from "@/lib/security/security.types";
 
 export type AuthProvider = "mock" | "supabase";
+export type AuthMode = "development" | "production";
 
 export interface AuthRuntimeConfig {
   requestedProvider: AuthProvider;
   provider: AuthProvider;
+  mode: AuthMode;
+  requireEmailVerification: boolean;
+  adminDevBypass: boolean;
+  internalDevHeadersEnabled: boolean;
+  isProductionSafe: boolean;
+  configurationErrors: string[];
   sessionCookieName: string;
   supabase: {
     url: string;
@@ -24,6 +31,14 @@ export interface AuthSession {
   companyId: string;
   companyName: string | null;
   role: CustomerRole;
+  provider: AuthProvider;
+}
+
+export interface InternalAuthSession {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  role: import("@/lib/security/security.types").InternalRole;
   provider: AuthProvider;
 }
 

@@ -2,6 +2,15 @@
 
 Phase 16 memakai internal role foundation berikut:
 
+Role canonical Task D:
+
+- `super_admin`
+- `sales_admin`
+- `production_admin`
+- `finance_admin`
+
+Role berikut dipertahankan sementara sebagai compatibility alias/foundation:
+
 - `super_admin`
 - `sales`
 - `finance_internal`
@@ -24,4 +33,6 @@ Phase 16 memakai internal role foundation berikut:
 
 ## Production requirement
 
-Mock internal guard hanya untuk development/staging foundation. Production wajib memakai real internal auth, session, audit actor, dan permission review.
+Mock internal guard hanya boleh pada `AUTH_MODE=development` dengan flag explicit.
+Production memakai Supabase session dan role `internal_user_profiles`; header
+development selalu dibuang/ditolak.

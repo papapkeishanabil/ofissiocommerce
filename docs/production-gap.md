@@ -8,10 +8,16 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
 
 ## Gap kritikal sebelum production
 
-1. Real auth dan session production
-   - Ganti mock customer auth dengan provider production.
-   - Ganti mock internal admin guard dengan auth internal yang benar.
-   - Terapkan role mapping customer/admin dari database, bukan header mock.
+1. Supabase Auth activation
+   - Task D code hardening selesai: cookie HTTP-only, refresh handling,
+     middleware token verification, server RBAC, dan company isolation tersedia.
+   - Terapkan migration `015_supabase_auth_production.sql` di staging.
+   - Buat dan uji akun `super_admin` pertama tanpa menyimpan password di seed.
+   - Aktifkan `AUTH_PROVIDER=supabase`, `AUTH_MODE=production`, dan email
+     verification sesuai kebijakan.
+   - Jalankan login/logout customer serta admin smoke test terhadap staging.
+   - Service-role repository tetap bypass RLS; server guard dan audit monitoring
+     harus dipertahankan.
 
 2. iPaymu live/sandbox activation
    - Task C hardening code selesai: request memakai grand total backend,
@@ -83,7 +89,8 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
 - Shipping API real belum aktif.
 - WooCommerce live belum aktif.
 - WooCommerce staging activation dapat tetap skipped jika WP staging/env belum tersedia.
-- Auth production belum aktif.
+- Supabase Auth production belum aktif sampai migration 015, admin pertama, dan
+  staging login smoke selesai.
 
 ## Prinsip go-live
 

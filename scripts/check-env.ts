@@ -23,6 +23,10 @@ const rules: EnvRule[] = [
   { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY" },
   { name: "SUPABASE_SERVICE_ROLE_KEY", secret: true },
   { name: "AUTH_PROVIDER" },
+  { name: "AUTH_MODE" },
+  { name: "AUTH_REQUIRE_EMAIL_VERIFICATION" },
+  { name: "ADMIN_DEV_BYPASS" },
+  { name: "INTERNAL_DEV_HEADERS_ENABLED" },
   { name: "AUTH_SESSION_COOKIE_NAME" },
   { name: "STORAGE_PROVIDER" },
   { name: "STORAGE_BUCKET_LOGOS" },
@@ -122,6 +126,52 @@ for (const name of forbiddenPublicSecrets) {
       level: "error",
       message: `${name} tidak boleh diset karena akan bocor ke client bundle.`,
     });
+  }
+}
+
+const authMode = process.env.AUTH_MODE?.trim().toLowerCase() || "development";
+const authProvider = process.env.AUTH_PROVIDER?.trim().toLowerCase() || "mock";
+if (!["development", "production"].includes(authMode)) {
+  problems.push({ level: "error", message: "AUTH_MODE harus development atau production." });
+}
+for (const name of [
+  "AUTH_REQUIRE_EMAIL_VERIFICATION",
+  "ADMIN_DEV_BYPASS",
+  "INTERNAL_DEV_HEADERS_ENABLED",
+]) {
+  if (process.env[name] && !isBooleanEnv(process.env[name])) {
+    problems.push({ level: "error", message: `${name} harus bernilai true atau false.` });
+  }
+}
+if (authMode === "production") {
+  if (authProvider !== "supabase") {
+    problems.push({
+      level: "error",
+      message: "AUTH_MODE=production wajib memakai AUTH_PROVIDER=supabase.",
+    });
+  }
+  if (process.env.ADMIN_DEV_BYPASS === "true") {
+    problems.push({ level: "error", message: "ADMIN_DEV_BYPASS wajib false di production." });
+  }
+  if (process.env.INTERNAL_DEV_HEADERS_ENABLED === "true") {
+    problems.push({
+      level: "error",
+      message: "INTERNAL_DEV_HEADERS_ENABLED wajib false di production.",
+    });
+  }
+}
+if (authProvider === "supabase") {
+  for (const name of [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ]) {
+    if (!process.env[name]?.trim()) {
+      problems.push({
+        level: authMode === "production" ? "error" : "warning",
+        message: `${name} wajib untuk AUTH_PROVIDER=supabase.`,
+      });
+    }
   }
 }
 

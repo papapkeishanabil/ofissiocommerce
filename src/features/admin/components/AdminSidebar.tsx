@@ -20,7 +20,7 @@ import {
   Workflow,
 } from "lucide-react";
 
-import { ADMIN_NAV_ITEMS } from "../admin.config";
+import { ADMIN_NAV_ITEMS, ADMIN_ROLE_PERMISSIONS } from "../admin.config";
 import { cn } from "@/lib/utils";
 import { useAdminNotifications } from "@/features/admin-notifications/components/AdminNotificationProvider";
 import type { InternalAdminUser } from "../admin.types";
@@ -77,18 +77,7 @@ export function AdminSidebar({ user }: { user: InternalAdminUser }) {
         className="relative flex gap-1.5 overflow-x-auto px-3 pb-4 lg:block lg:min-h-0 lg:flex-1 lg:space-y-0.5 lg:overflow-y-auto lg:overflow-x-hidden lg:px-3 lg:pr-4"
       >
         {ADMIN_NAV_ITEMS.map((item) => {
-          if (
-            item.href === "/admin/settings/email" &&
-            !["super_admin", "sales"].includes(user.role)
-          ) {
-            return null;
-          }
-          if (
-            item.href === "/admin/settings/tax" &&
-            !["super_admin", "sales", "finance_internal"].includes(user.role)
-          ) {
-            return null;
-          }
+          if (!ADMIN_ROLE_PERMISSIONS[user.role]?.includes(item.permission)) return null;
           const Icon = ICONS[item.href] ?? Home;
           const active =
             item.href === "/admin"

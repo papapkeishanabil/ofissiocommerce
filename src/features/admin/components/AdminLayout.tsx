@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Manrope } from "next/font/google";
 
-import { requireInternalAdmin } from "../admin.service";
+import { requireInternalAdminServer } from "../admin.service";
 import { AdminHeader } from "./AdminHeader";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminNotificationProvider } from "@/features/admin-notifications/components/AdminNotificationProvider";
@@ -14,8 +14,8 @@ const manrope = Manrope({
   display: "swap",
 });
 
-export function AdminLayout({ children }: { children: ReactNode }) {
-  const user = requireInternalAdmin(undefined, "admin:view");
+export async function AdminLayout({ children }: { children: ReactNode }) {
+  const user = await requireInternalAdminServer("admin:view");
   return (
     <div
       className={`${manrope.variable} admin-shell isolate min-h-screen w-full overflow-x-clip bg-slate-50 text-ink`}
