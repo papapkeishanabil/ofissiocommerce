@@ -11,6 +11,7 @@ import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { createShipmentForOrder, getShipmentsByOrder, updateShipment } from "@/features/shipments/shipment.service";
 import { normalizeProvider } from "@/features/shipments/shipment.utils";
 import type { ShipmentStatus } from "@/features/shipments/shipment.types";
+import { buildTimeline } from "@/features/tracking/tracking-utils";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
 
@@ -289,7 +290,8 @@ async function applyProviderShipmentUpdate(input: {
   const nextStatus = mapBiteshipStatus(input.result.status);
   const changed =
     nextStatus !== input.shipment.shipmentStatus ||
-    input.result.waybillId !== input.shipment.biteshipWaybillId ||
+    (input.result.waybillId !== null &&
+      input.result.waybillId !== input.shipment.biteshipWaybillId) ||
     (input.result.price > 0 && input.result.price !== input.shipment.shippingPrice);
   const updated: CarrierShipmentRecord = {
     ...input.shipment,
@@ -307,9 +309,8 @@ async function applyProviderShipmentUpdate(input: {
     updatedAt: new Date().toISOString(),
   };
   const saved = changed ? await updateCarrierShipment(updated) : input.shipment;
-  let event: CarrierShippingEventRecord | null = null;
   if (changed || input.webhookEventId) {
-    event = await addEvent({
+    await addEvent({
       shipment: saved,
       eventType: input.webhookEventId ? "webhook_received" : "tracking_refreshed",
       oldStatus: input.shipment.shipmentStatus,
@@ -337,9 +338,12 @@ async function applyProviderShipmentUpdate(input: {
   return {
     idempotent: !changed,
     shipment: saved,
-    events: event
-      ? [event, ...(await listCarrierShippingEvents({ shipmentId: saved.id, companyId: saved.companyId }))]
-      : await listCarrierShippingEvents({ shipmentId: saved.id, companyId: saved.companyId }),
+    // The freshly saved event is already present in this query. Prepending it
+    // would duplicate the same timeline item in the admin response.
+    events: await listCarrierShippingEvents({
+      shipmentId: saved.id,
+      companyId: saved.companyId,
+    }),
   };
 }
 
@@ -415,7 +419,11 @@ async function resolveDestination(order: PaymentOrderRecord): Promise<ShippingAd
     };
   }
   const client = getSupabaseAdminClient();
-  if (client) {
+  // Legacy/mock orders may still carry a text company id, while
+  // company_addresses.company_id is UUID. Do not send an invalid UUID to
+  // PostgREST; a real provider should surface the actionable address error
+  // below instead of a raw database query failure.
+  if (client && isUuid(order.companyId)) {
     const addresses = await client.select("company_addresses", {
       filters: { company_id: order.companyId },
       order: "is_default_shipping.desc,created_at.asc",
@@ -434,7 +442,7 @@ async function resolveDestination(order: PaymentOrderRecord): Promise<ShippingAd
       };
     }
   }
-  if (repositoryRegistry.provider === "mock") {
+  if (getCarrierShippingConfig().provider === "mock") {
     return {
       contactName: "Mock Customer",
       contactPhone: "081200000000",
@@ -446,6 +454,12 @@ async function resolveDestination(order: PaymentOrderRecord): Promise<ShippingAd
     };
   }
   throw createApiError("VALIDATION_ERROR", "Alamat pengiriman customer belum lengkap.", 400);
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
 function providerAdapter(provider: "mock" | "biteship"): CarrierShippingProviderAdapter {
@@ -514,8 +528,20 @@ async function syncLegacyShipment(
     shipmentId: carrier.id,
     companyId: carrier.companyId,
   });
+  const currentStageId = carrierStatusToTrackingStage(
+    carrier.shipmentStatus,
+    tracking.currentStageId,
+  );
+  const productionTimeline = buildTimeline(tracking.fulfillmentType, currentStageId);
   return repositoryRegistry.tracking.upsertTrackingOrder?.({
     ...tracking,
+    currentStageId,
+    productionTimeline,
+    items: tracking.items.map((item) => ({
+      ...item,
+      currentStageId,
+      stages: productionTimeline.map((stage) => ({ ...stage })),
+    })),
     shipmentTimeline: buildCustomerCarrierTimeline(carrier, carrierEvents),
     statusNote: customerCarrierStatusNote(carrier.shipmentStatus),
     shippingTrackingNumber: carrier.biteshipWaybillId,
@@ -526,6 +552,25 @@ async function syncLegacyShipment(
     shipmentUpdatedAt: carrier.updatedAt,
     updatedAt: new Date().toISOString(),
   });
+}
+
+function carrierStatusToTrackingStage(
+  status: CarrierShipmentRecord["shipmentStatus"],
+  currentStageId: string,
+) {
+  switch (status) {
+    case "shipment_created":
+    case "pickup_scheduled":
+      return "ready_to_ship";
+    case "picked_up":
+    case "in_transit":
+    case "out_for_delivery":
+      return "in_transit";
+    case "delivered":
+      return "delivered";
+    default:
+      return currentStageId;
+  }
 }
 
 async function mirrorCarrierShipmentToWooCommerce(

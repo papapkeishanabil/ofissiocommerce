@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Download, FileText, Mail, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface AdminDocumentActionsProps {
   entityId: string;
@@ -17,6 +18,7 @@ interface AdminDocumentActionsProps {
   sendLabel?: string;
   resendLabel?: string;
   initialDocumentAvailable?: boolean;
+  initialEmailSent?: boolean;
 }
 
 export function AdminDocumentActions({
@@ -33,13 +35,15 @@ export function AdminDocumentActions({
   sendLabel = "Kirim ke customer",
   resendLabel = "Kirim ulang ke customer",
   initialDocumentAvailable = false,
+  initialEmailSent = false,
 }: AdminDocumentActionsProps) {
+  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [messageIsError, setMessageIsError] = useState(false);
   const [documentAvailable, setDocumentAvailable] = useState(
     initialDocumentAvailable,
   );
-  const [emailSent, setEmailSent] = useState(false);
+  const [emailSent, setEmailSent] = useState(initialEmailSent);
   const [isPending, startTransition] = useTransition();
 
   function generate(forceRegenerate = false) {
@@ -63,6 +67,8 @@ export function AdminDocumentActions({
         message?: string;
         document?: { filename?: string };
         idempotent?: boolean;
+        paymentIncluded?: boolean;
+        qrIncluded?: boolean;
       };
       if (!response.ok || !result.ok) {
         setMessageIsError(true);
@@ -70,11 +76,16 @@ export function AdminDocumentActions({
         return;
       }
       setDocumentAvailable(true);
+      const paymentNote =
+        result.paymentIncluded && result.qrIncluded
+          ? " Payment link dan QR sudah disertakan."
+          : "";
       setMessage(
         `${result.idempotent ? "Dokumen existing dipakai" : "Dokumen berhasil dibuat"}: ${
           result.document?.filename ?? entityId
-        }`,
+        }.${paymentNote}`,
       );
+      router.refresh();
     });
   }
 
@@ -130,6 +141,7 @@ export function AdminDocumentActions({
         result.message ??
           `Invoice berhasil diproses melalui ${result.email?.provider ?? "email"}.`,
       );
+      router.refresh();
     });
   }
 

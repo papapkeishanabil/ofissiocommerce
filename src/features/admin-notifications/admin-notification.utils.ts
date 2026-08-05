@@ -19,14 +19,16 @@ export function isNotificationVisibleToScope(
 
 export function isPendingOrderNotification(notification: AdminNotification) {
   return (
-    ["order_created", "payment_paid"].includes(notification.type) &&
+    (["order_created", "payment_paid"].includes(notification.type) ||
+      isReadyForShipmentNotification(notification)) &&
     notification.status === "unread"
   );
 }
 
 export function isPopupOrderNotification(notification: AdminNotification) {
   return (
-    ["order_created", "payment_paid"].includes(notification.type) &&
+    (["order_created", "payment_paid"].includes(notification.type) ||
+      isReadyForShipmentNotification(notification)) &&
     notification.status === "unread"
   );
 }
@@ -40,15 +42,21 @@ export function isPendingQuotationNotification(notification: AdminNotification) 
 
 export function isPopupNotification(notification: AdminNotification) {
   return (
-    [
+    ([
       "order_created",
       "quotation_requested",
       "quotation_accepted",
       "payment_paid",
-    ].includes(
-      notification.type,
-    ) &&
+    ].includes(notification.type) || isReadyForShipmentNotification(notification)) &&
     notification.status === "unread"
+  );
+}
+
+function isReadyForShipmentNotification(notification: AdminNotification) {
+  return (
+    notification.type === "system_warning" &&
+    notification.entityType === "order" &&
+    notification.metadata.source === "process_completed"
   );
 }
 

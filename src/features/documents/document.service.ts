@@ -4,13 +4,16 @@ import { randomUUID } from "node:crypto";
 
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { getPaymentQrForInvoice } from "@/features/payment/payment-qr.service";
-import { recordPaymentEvent } from "@/features/payment/payment.service";
+import {
+  ensurePaymentForInvoice,
+  recordPaymentEvent,
+} from "@/features/payment/payment.service";
 import { SupabaseDatabaseError } from "@/features/database/database.errors";
 import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payment.types";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
 import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
 import { logAuditEvent } from "@/lib/security/audit-log";
-import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
+import { createApiError } from "@/lib/security/safe-error-response";
 import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
 
 import { getDocumentRuntimeConfig } from "./document.config";
@@ -196,23 +199,39 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
     const order = await getOrderGlobal(input.orderId);
     if (!order) throw createApiError("NOT_FOUND", "Order tidak ditemukan.", 404);
     companyId = order.companyId;
+    const payment = await ensurePaymentForInvoice({
+      orderId: order.id,
+      companyId: order.companyId,
+      userId: order.userId,
+    });
+    const invoicePaymentQr = getPaymentQrForInvoice(payment);
     const existing = await latestGeneratedDocument({
       companyId: order.companyId,
       entityType: "order",
       entityId: order.id,
       documentType: "invoice_pdf",
     });
-    if (existing && !input.forceRegenerate) {
-      return { document: existing, idempotent: true };
+    const existingUsesCurrentPayment = Boolean(
+      existing &&
+        existing.metadata.paymentReference === payment.referenceId &&
+        existing.metadata.paymentLinkAvailable === true &&
+        existing.metadata.paymentQrAvailable === true,
+    );
+    if (existing && !input.forceRegenerate && existingUsesCurrentPayment) {
+      return {
+        document: existing,
+        idempotent: true,
+        paymentIncluded: true,
+        qrIncluded: true,
+      };
     }
-    if (existing && input.forceRegenerate) {
+    if (existing && (input.forceRegenerate || !existingUsesCurrentPayment)) {
       await documentRepository.update(existing.id, {
         status: "expired",
         deletedAt: new Date().toISOString(),
       });
     }
     const now = new Date().toISOString();
-    const payment = await findPaymentForOrder(order);
     const documentNumber = safeDocumentNumber({
       documentType: "invoice_pdf",
       sourceNumber: order.orderNumber ?? order.id,
@@ -239,6 +258,9 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
         templateId,
         orderNumber: order.orderNumber ?? order.id,
         paymentStatus: data.paymentStatus,
+        paymentReference: payment.referenceId,
+        paymentLinkAvailable: Boolean(payment.paymentUrl),
+        paymentQrAvailable: invoicePaymentQr.kind !== "none",
       },
     });
     const document = await saveDocumentRecord({
@@ -257,6 +279,10 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
         quotationId: order.quotationId ?? null,
         paymentStatus: data.paymentStatus,
         paymentProvider: data.paymentProvider,
+        paymentId: payment.id,
+        paymentReference: payment.referenceId,
+        paymentLinkAvailable: Boolean(payment.paymentUrl),
+        paymentQrAvailable: invoicePaymentQr.kind !== "none",
       },
     });
     if (payment) {
@@ -300,7 +326,12 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
       entityId: order.id,
       document,
     });
-    return { document, idempotent: false };
+    return {
+      document,
+      idempotent: false,
+      paymentIncluded: Boolean(payment.paymentUrl),
+      qrIncluded: invoicePaymentQr.kind !== "none",
+    };
   } catch (error) {
     auditDocument({
       request: input.request,
@@ -666,24 +697,6 @@ async function signedUrlForDocument(input: {
 async function getOrderGlobal(orderId: string) {
   const orders = (await repositoryRegistry.orders.listAll?.()) ?? [];
   return orders.find((order) => order.id === orderId || order.orderNumber === orderId) ?? null;
-}
-
-async function findPaymentForOrder(order: PaymentOrderRecord) {
-  for (const reference of [order.orderNumber, order.id]) {
-    if (!reference) continue;
-    try {
-      const payment = await repositoryRegistry.payments.getPaymentByReference(reference);
-      if (payment?.orderId === order.id || payment?.companyId === order.companyId) {
-        return payment;
-      }
-    } catch (error) {
-      logInternalError(error, {
-        area: "documents",
-        action: "payment_lookup_for_invoice_failed",
-      });
-    }
-  }
-  return null;
 }
 
 function auditDocument(input: {

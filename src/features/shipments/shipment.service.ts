@@ -1,12 +1,14 @@
 import "server-only";
 
+import { resolveProcessReadyToShipNotification } from "@/features/admin-notifications/admin-notification.service";
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import {
   mapPaymentOrderToTracking,
 } from "@/features/tracking/tracking.service";
+import { buildTimeline } from "@/features/tracking/tracking-utils";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
-import { createApiError } from "@/lib/security/safe-error-response";
+import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
 
 import { resolveTrackingUrl } from "./shipment-provider.config";
 import {
@@ -141,6 +143,18 @@ export async function createShipmentForOrder(input: CreateShipmentInput & { requ
   });
 
   await syncShipmentTracking(created, [event]);
+  try {
+    await resolveProcessReadyToShipNotification(order.id, {
+      actorId: input.actorId,
+      request: input.request,
+    });
+  } catch (error) {
+    logInternalError(error, {
+      area: "shipment",
+      operation: "resolve_ready_to_ship_notification",
+      orderId: order.id,
+    });
+  }
   logAuditEvent({
     request: input.request,
     actorId: input.actorId,
@@ -404,14 +418,20 @@ async function syncShipmentTracking(
       paymentStatus: order.status === "payment_received" ? "paid" : "waiting_payment",
       companyName: shipment.companyId,
     });
+  const currentStageId = shipmentStatusToTrackingStage(
+    shipment.status,
+    tracking.currentStageId,
+  );
+  const productionTimeline = buildTimeline(tracking.fulfillmentType, currentStageId);
   const next: CustomerTrackingOrder = {
     ...tracking,
-    currentStageId:
-      shipment.status === "delivered"
-        ? "delivered"
-        : shipment.status === "in_transit" || shipment.status === "picked_up"
-          ? "shipping"
-          : tracking.currentStageId,
+    currentStageId,
+    productionTimeline,
+    items: tracking.items.map((item) => ({
+      ...item,
+      currentStageId,
+      stages: productionTimeline.map((stage) => ({ ...stage })),
+    })),
     nextStep: customerNextStepForShipment(shipment),
     estimatedDeliveryDate: shipment.deliveredAt,
     selectedShippingRate: mapShipmentToShippingRate(shipment),
@@ -426,6 +446,24 @@ async function syncShipmentTracking(
     updatedAt: new Date().toISOString(),
   };
   return repositoryRegistry.tracking.upsertTrackingOrder?.(next);
+}
+
+function shipmentStatusToTrackingStage(
+  status: ShipmentStatus,
+  currentStageId: string,
+) {
+  switch (status) {
+    case "ready_to_ship":
+    case "booked":
+      return "ready_to_ship";
+    case "picked_up":
+    case "in_transit":
+      return "in_transit";
+    case "delivered":
+      return "delivered";
+    default:
+      return currentStageId;
+  }
 }
 
 function appendNote(current: string | null, note: string) {

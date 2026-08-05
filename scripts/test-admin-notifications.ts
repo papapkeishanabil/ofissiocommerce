@@ -158,6 +158,43 @@ async function main() {
     "mulai proses menyelesaikan notifikasi order dan pembayaran",
   );
 
+  const readyToShip = await manager.create({
+    type: "system_warning",
+    title: "Process Selesai - Siap Dikirim",
+    message: "FUL-2026-0001 sudah mencapai 100%.",
+    entityType: "order",
+    entityId: "ord_ready_001",
+    entityNumber: "OF-READY-001",
+    severity: "success",
+    metadata: {
+      source: "process_completed",
+      adminUrl: "/admin/orders/ord_ready_001#shipping",
+    },
+  });
+  const readyDuplicate = await manager.create({
+    type: "system_warning",
+    title: "Process Selesai - Siap Dikirim",
+    message: "Duplicate callback tidak boleh menambah notifikasi.",
+    entityType: "order",
+    entityId: "ord_ready_001",
+    entityNumber: "OF-READY-001",
+    metadata: { source: "process_completed" },
+  });
+  summary = await manager.summary(scope);
+  assert.equal(readyToShip.created, true);
+  assert.equal(readyDuplicate.created, false, "notifikasi siap kirim harus idempotent");
+  assert.equal(summary.ordersUnread, 1, "process 100% masuk badge Orders");
+  assert.equal(
+    summary.latestNotifications.some(
+      (notification) => notification.id === readyToShip.notification.id,
+    ),
+    true,
+    "process 100% harus tampil pada sticky popup",
+  );
+  await manager.transition(readyToShip.notification.id, "resolved");
+  summary = await manager.summary(scope);
+  assert.equal(summary.ordersUnread, 0, "shipment dibuat menyelesaikan badge siap kirim");
+
   assert.equal(
     orderNotificationEmailIdempotencyKey("ord_test_001"),
     orderNotificationEmailIdempotencyKey("ord_test_001"),
@@ -196,6 +233,7 @@ async function main() {
   console.log("- quotation requested badge + sticky popup: PASS");
   console.log("- quotation accepted badge + sticky popup: PASS");
   console.log("- payment paid badge + sticky popup + process resolution: PASS");
+  console.log("- process completed ready-to-ship badge + idempotency: PASS");
   console.log("- email idempotency key + disabled fallback: PASS");
 }
 

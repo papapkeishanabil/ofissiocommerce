@@ -8,6 +8,7 @@ loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 
 const originalEnv = snapshotEnv([
   "DATABASE_PROVIDER",
+  "STORAGE_PROVIDER",
   "PAYMENT_PROVIDER",
   "PAYMENT_MODE",
   "IPAYMU_ENABLED",
@@ -39,6 +40,7 @@ async function run() {
 async function runIsolatedCallbackSmoke() {
   Object.assign(process.env, {
     DATABASE_PROVIDER: "mock",
+    STORAGE_PROVIDER: "mock",
     PAYMENT_PROVIDER: "ipaymu",
     PAYMENT_MODE: "sandbox",
     IPAYMU_ENABLED: "true",
@@ -83,8 +85,35 @@ async function runIsolatedCallbackSmoke() {
   assert.equal(created.amount, createOrder.calculation.grandTotal);
   assert.equal(reused.paymentId, created.paymentId);
   assert.equal(reused.idempotent, true);
+  const invoicePayment = await paymentService.ensurePaymentForInvoice({
+    orderId: createOrder.id,
+    companyId: createOrder.companyId,
+    userId: createOrder.userId,
+  });
+  assert.equal(invoicePayment.id, created.paymentId);
+  assert.ok(invoicePayment.paymentUrl);
+  const [{ repositoryRegistry }, documentService] = await Promise.all([
+    import("../src/features/repositories/repository.factory"),
+    import("../src/features/documents/document.service"),
+  ]);
+  await repositoryRegistry.orders.saveOrder?.({ paymentOrder: createOrder });
+  const generatedInvoice = await documentService.generateInvoicePdf({
+    orderId: createOrder.id,
+    actorId: "payment-check-admin",
+  });
+  assert.equal(generatedInvoice.paymentIncluded, true);
+  assert.equal(generatedInvoice.qrIncluded, true);
+  assert.equal(generatedInvoice.document.metadata.paymentReference, invoicePayment.referenceId);
+  const reusedInvoice = await documentService.generateInvoicePdf({
+    orderId: createOrder.id,
+    actorId: "payment-check-admin",
+  });
+  assert.equal(reusedInvoice.document.id, generatedInvoice.document.id);
+  assert.equal(reusedInvoice.idempotent, true);
   process.env.PAYMENT_PROVIDER = "ipaymu";
   console.log("PASS: create payment backend-priced dan pending session direuse secara idempotent.");
+  console.log("PASS: generate invoice dapat memastikan payment link tanpa membuat payment ganda.");
+  console.log("PASS: invoice PDF menyertakan payment link dan QR secara idempotent.");
 
   const bodyOrder = buildOrder("body");
   const createBody = buildCreatePaymentBody(

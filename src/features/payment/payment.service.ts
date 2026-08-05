@@ -184,6 +184,33 @@ export async function createPaymentForOrder(input: {
   return operation;
 }
 
+export async function ensurePaymentForInvoice(input: {
+  orderId: string;
+  companyId: string;
+  userId: string;
+}): Promise<PaymentRecord> {
+  const result = await createPaymentForOrder(input);
+  const payment = await findPaymentByIdPersisted({
+    companyId: input.companyId,
+    paymentId: result.paymentId,
+  });
+  if (!payment) {
+    throw createApiError(
+      "NOT_FOUND",
+      "Payment untuk invoice belum tersedia.",
+      404,
+    );
+  }
+  if (!payment.paymentUrl) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Payment link belum tersedia. Invoice belum dapat dibuat.",
+      409,
+    );
+  }
+  return payment;
+}
+
 async function createPaymentForOrderUnlocked(input: {
   orderId: string;
   companyId: string;

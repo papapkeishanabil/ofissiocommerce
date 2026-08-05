@@ -310,6 +310,37 @@ export async function resolveOrderCreatedNotifications(
   return updated;
 }
 
+export async function resolveProcessReadyToShipNotification(
+  orderId: string,
+  context: AdminNotificationMutationContext = {},
+) {
+  const notification = await adminNotificationRepository.getByEntity({
+    type: "system_warning",
+    entityType: "order",
+    entityId: orderId,
+  });
+  if (
+    !notification ||
+    notification.metadata.source !== "process_completed" ||
+    notification.status === "resolved"
+  ) {
+    return notification;
+  }
+  const updated = await manager.transition(notification.id, "resolved");
+  if (updated) {
+    logAuditEvent({
+      request: context.request,
+      actorId: context.actorId ?? null,
+      actorType: "internal",
+      action: "admin_ready_to_ship_notification_resolved",
+      entityType: "admin_notification",
+      entityId: updated.id,
+      metadata: { orderId },
+    });
+  }
+  return updated;
+}
+
 export async function resolveQuotationNotifications(
   quotationId: string,
   context: AdminNotificationMutationContext = {},

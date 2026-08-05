@@ -47,6 +47,8 @@ export async function POST(request: Request, context: RouteContext) {
         generatedAt: result.document.generatedAt,
       },
       idempotent: result.idempotent,
+      paymentIncluded: result.paymentIncluded,
+      qrIncluded: result.qrIncluded,
     });
   } catch (error) {
     return safeErrorResponse(error, "Invoice PDF belum dapat dibuat.", 400);
