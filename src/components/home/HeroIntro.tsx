@@ -17,10 +17,9 @@ export function HeroIntro() {
     <section className={`${manrope.variable} relative flex min-h-[92svh] w-full items-center overflow-hidden bg-[#070d1c]`}>
       {/* Video background — autoplay + loop (NOT scrubbing) */}
       <video autoPlay loop muted playsInline preload="auto" className="absolute inset-0 h-full w-full object-cover">
-        <source src="/KL-008-Rev.mp4" type="video/mp4" />
+        <source src="/hero-workers.mp4" type="video/mp4" />
       </video>
-      <div className="absolute inset-0 bg-[#070d1c]/40" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#070d1c]/70 via-[#070d1c]/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#070d1c]/50 via-[#070d1c]/10 to-transparent" />
       {/* Bottom fade — smooth transition to light sections below */}
       <div className="pointer-events-none absolute -bottom-px left-0 right-0 z-[1] h-64 bg-gradient-to-b from-transparent via-surface/60 to-surface" />
 
@@ -32,13 +31,13 @@ export function HeroIntro() {
             Procurement Workwear · Indonesia
           </span>
 
-          <h1 className={`${manrope.className} text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl`}>
+          <h1 className={`${manrope.className} [text-shadow:0_2px_22px_rgba(7,13,28,0.55)] text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl`}>
             Workwear Ready Stock<br />
             untuk Perusahaan,<br />
-            <span className="text-white/70">Siap Bordir, Lebih Cepat.</span>
+            <span className="text-white/80">Siap Bordir, Lebih Cepat.</span>
           </h1>
 
-          <p className="mt-6 max-w-lg text-lg leading-relaxed text-white/80">
+          <p className="mt-6 max-w-lg text-lg leading-relaxed text-white/90 [text-shadow:0_2px_14px_rgba(7,13,28,0.6)]">
             Ofissio membantu perusahaan mendapatkan baju kerja ready stock yang rapi,
             stok reliable, dan siap bordir logo — tanpa proses custom yang panjang.
           </p>
