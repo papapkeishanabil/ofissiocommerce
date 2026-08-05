@@ -29,6 +29,8 @@ interface AdminOrderProcessPanelProps {
   processRouteReason?: string | null;
   processOrderId?: string | null;
   processOrderNumber?: string | null;
+  paymentReceived: boolean;
+  canUpdate: boolean;
 }
 
 export function AdminOrderProcessPanel({
@@ -41,6 +43,8 @@ export function AdminOrderProcessPanel({
   processRouteReason,
   processOrderId,
   processOrderNumber,
+  paymentReceived,
+  canUpdate,
 }: AdminOrderProcessPanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -109,6 +113,12 @@ export function AdminOrderProcessPanel({
         </p>
       ) : null}
 
+      {!paymentReceived && !processOrderId ? (
+        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950">
+          Pembayaran belum terverifikasi. Process order akan aktif setelah status pembayaran menjadi paid.
+        </p>
+      ) : null}
+
       <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
         <Info label="has_customization" value={hasCustomization ? "true" : "false"} />
         <Info label="customization_type" value={customizationType} />
@@ -146,7 +156,7 @@ export function AdminOrderProcessPanel({
             size="sm"
             variant={processRoute === "production" ? "secondary" : "primary"}
             onClick={startProcess}
-            disabled={isPending || isCompleted}
+            disabled={isPending || isCompleted || !paymentReceived || !canUpdate}
             aria-busy={isPending}
           >
             {isPending
@@ -159,7 +169,9 @@ export function AdminOrderProcessPanel({
           </Button>
         )}
         <p className="self-center text-xs font-semibold text-ink-muted">
-          Phase 19 membuat dokumen kerja internal sesuai route, tanpa input ulang order.
+          {canUpdate
+            ? "Dokumen kerja dibuat dari snapshot order tanpa input ulang."
+            : "Role Anda memiliki akses lihat saja untuk process order."}
         </p>
       </div>
     </section>

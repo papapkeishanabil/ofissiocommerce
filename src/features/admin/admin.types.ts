@@ -95,6 +95,7 @@ export interface AdminQuotationRow {
   itemCount: number;
   totalQty: number;
   processRoute: OrderProcessRoute;
+  intakeChannel: string | null;
   createdAt: string;
   updatedAt: string;
   acceptedAt: string | null;
@@ -109,6 +110,37 @@ export interface AdminLogoPreview {
   fileId: string;
   signedUrl: string | null;
   unavailable: boolean;
+}
+
+export interface AdminOrderArtworkPreview extends AdminLogoPreview {
+  filename: string;
+  mimeType: string;
+}
+
+export interface AdminOrderAddressSnapshot {
+  id: string;
+  label: string;
+  recipientName: string;
+  recipientPhone: string;
+  street: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  isDefaultShipping: boolean;
+  isDefaultBilling: boolean;
+}
+
+export interface AdminOrderCustomerSnapshot {
+  companyId: string;
+  companyName: string;
+  legalName: string | null;
+  industry: string | null;
+  phone: string | null;
+  picName: string | null;
+  picEmail: string | null;
+  picWhatsapp: string | null;
+  shippingAddress: AdminOrderAddressSnapshot | null;
+  billingAddress: AdminOrderAddressSnapshot | null;
 }
 
 export interface AdminQuotationDetail {
@@ -159,7 +191,11 @@ export interface AdminOrderDetail {
   order: PaymentOrderRecord;
   tracking: CustomerTrackingOrder | null;
   processOrder: ProcessOrder | null;
+  processOrderDetail: ProcessOrderDetail | null;
+  customer: AdminOrderCustomerSnapshot;
+  artworkPreviews: AdminOrderArtworkPreview[];
   documents: DocumentRecord[];
+  invoiceDelivery: EmailLog | null;
   payment: PaymentRecord | null;
   paymentEvents: PaymentEventRecord[];
   shipments: ShipmentRecord[];

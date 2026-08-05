@@ -87,6 +87,10 @@ import type {
 } from "./admin.types";
 import type { AdminQuotationPatchPayload, AdminQuotationUpdateStatus } from "./admin.validation";
 import { safeMetadataSummary } from "./admin.utils";
+import {
+  getAdminOrderArtworkPreviews,
+  getAdminOrderCustomerSnapshot,
+} from "./admin-order-workbench.service";
 
 type MaybeRequest = Request | undefined;
 
@@ -505,6 +509,21 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
       ),
     )
   ).flat();
+  const [processOrderDetail, customer, artworkPreviews, companyEmailLogs] = await Promise.all([
+    processOrder
+      ? getProcessOrderDetail(processOrder.id, routed.companyId).catch(() => null)
+      : Promise.resolve(null),
+    getAdminOrderCustomerSnapshot({ order: routed, tracking }),
+    getAdminOrderArtworkPreviews(routed),
+    repositoryRegistry.emailLogs.listByCompany(routed.companyId).catch(() => []),
+  ]);
+  const invoiceDelivery = companyEmailLogs.find(
+    (log) =>
+      (log.status === "sent" || log.status === "mocked") &&
+      log.safeMetadata.emailPurpose === "invoice_ready" &&
+      (log.safeMetadata.orderId === routed.id ||
+        log.safeMetadata.orderNumber === routed.orderNumber),
+  ) ?? null;
   const [newOrderNotification, paymentPaidNotification] = await Promise.all([
     repositoryRegistry.adminNotifications.getByEntity({
       type: "order_created",
@@ -521,7 +540,11 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
     order: routed,
     tracking,
     processOrder,
+    processOrderDetail,
+    customer,
+    artworkPreviews,
     documents,
+    invoiceDelivery,
     payment,
     paymentEvents,
     shipments,
@@ -548,6 +571,15 @@ export async function startAdminOrderProcess(input: {
   }
   const detail = await getAdminOrderDetail(input.id);
   if (!detail) throw createApiError("NOT_FOUND", "Order tidak ditemukan.", 404);
+  const paymentReceived =
+    detail.order.status === "payment_received" || detail.payment?.status === "paid";
+  if (!detail.processOrder && !paymentReceived) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Pembayaran belum terverifikasi. Process order belum dapat dimulai.",
+      409,
+    );
+  }
   const result = await createProcessOrderFromOrder({
     order: detail.order,
     actorId: input.actor.id,
@@ -994,6 +1026,7 @@ function mapQuotationRow(
     itemCount: quotation.items.length,
     totalQty: quotation.totalQty,
     processRoute: deriveQuotationRoute(quotation),
+    intakeChannel: quotation.productionBrief?.intakeChannel ?? null,
     createdAt: quotation.createdAt,
     updatedAt: quotation.updatedAt,
     acceptedAt: quotation.acceptedAt,
