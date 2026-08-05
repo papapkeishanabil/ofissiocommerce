@@ -19,6 +19,71 @@ export interface ProductionReferenceFile {
   sizeBytes: number;
 }
 
+export const CUSTOM_REQUEST_INTAKE_CHANNELS = [
+  "customer_portal",
+  "whatsapp",
+  "phone",
+  "email",
+  "customer_visit",
+  "other",
+] as const;
+
+export type CustomRequestIntakeChannel =
+  (typeof CUSTOM_REQUEST_INTAKE_CHANNELS)[number];
+
+export const CUSTOM_BRIEF_APPROVAL_STATUSES = [
+  "not_required",
+  "pending_customer_approval",
+  "approved",
+  "revision_requested",
+] as const;
+
+export type CustomBriefApprovalStatus =
+  (typeof CUSTOM_BRIEF_APPROVAL_STATUSES)[number];
+
+export const TECHNICAL_GARMENT_CATEGORIES = [
+  "upper",
+  "lower",
+  "overall",
+  "other",
+] as const;
+
+export type TechnicalGarmentCategory =
+  (typeof TECHNICAL_GARMENT_CATEGORIES)[number];
+
+export const TECHNICAL_SPEC_STATUSES = [
+  "specified",
+  "not_used",
+  "recommendation",
+] as const;
+
+export type TechnicalSpecStatus =
+  (typeof TECHNICAL_SPEC_STATUSES)[number];
+
+export interface TechnicalSpecificationValue {
+  key: string;
+  label: string;
+  status: TechnicalSpecStatus;
+  option: string | null;
+  detail: string | null;
+  notes: string | null;
+}
+
+export interface TechnicalSizeQuantity {
+  size: string;
+  quantity: number;
+}
+
+export interface TechnicalGarmentSpecification {
+  id: string;
+  category: TechnicalGarmentCategory;
+  garmentType: string;
+  templateKey: string | null;
+  quantity: number;
+  specifications: TechnicalSpecificationValue[];
+  sizeBreakdown: TechnicalSizeQuantity[];
+}
+
 export interface ProductionRequestBrief {
   projectName?: string | null;
   garmentType?: string | null;
@@ -30,6 +95,13 @@ export interface ProductionRequestBrief {
   sizeNotes: string | null;
   targetDate: string | null;
   referenceFiles?: ProductionReferenceFile[];
+  intakeChannel?: CustomRequestIntakeChannel;
+  externalReference?: string | null;
+  technicalSpecifications?: TechnicalGarmentSpecification[];
+  approvalStatus?: CustomBriefApprovalStatus;
+  approvalRequestedAt?: string | null;
+  approvedAt?: string | null;
+  approvalRevisionNote?: string | null;
 }
 
 export const QUOTATION_STATUSES = [
@@ -212,6 +284,8 @@ export interface CreateCustomQuotationRequestInput {
   productionBrief: ProductionRequestBrief;
   referenceFileIds: string[];
   customerNotes: string | null;
+  actorType?: "customer" | "internal";
+  sendCustomerConfirmation?: boolean;
 }
 
 export interface CreateQuotationRequestResult {

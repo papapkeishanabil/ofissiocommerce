@@ -13,6 +13,10 @@ import {
   isQuotationPricingEditable,
   isQuotationSendable,
 } from "@/features/quotation/quotation.utils";
+import {
+  getBriefApprovalStatus,
+  requiresCustomerBriefApproval,
+} from "@/features/quotation/quotation-requirement";
 import { formatIDR } from "@/types/product";
 import { ADMIN_QUOTATION_UPDATE_STATUSES } from "../admin.config";
 import type { AdminQuotationUpdateStatus } from "../admin.validation";
@@ -35,15 +39,26 @@ export function AdminQuotationProcessControl({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
-  const canConvert = quotation.status === "accepted" && Boolean(quotation.grandTotal);
-  const canEditPricing = isQuotationPricingEditable(quotation.status);
+  const briefApprovalPending = requiresCustomerBriefApproval(quotation);
+  const canConvert = !briefApprovalPending && quotation.status === "accepted" && Boolean(quotation.grandTotal);
+  const canEditPricing = !briefApprovalPending && isQuotationPricingEditable(quotation.status);
   const canSendQuote =
-    hasFinalQuotationPricing(quotation) && isQuotationSendable(quotation.status);
+    !briefApprovalPending && hasFinalQuotationPricing(quotation) && isQuotationSendable(quotation.status);
   const isResendingQuote = quotation.status === "quoted";
-  const availableStatuses = ADMIN_QUOTATION_UPDATE_STATUSES.filter(
-    (status) => canAdminTransitionQuotationStatus(quotation.status, status),
-  );
-  const nextStep = processControlCopy(quotation.status);
+  const availableStatuses = briefApprovalPending
+    ? []
+    : ADMIN_QUOTATION_UPDATE_STATUSES.filter(
+        (status) => canAdminTransitionQuotationStatus(quotation.status, status),
+      );
+  const nextStep = briefApprovalPending
+    ? {
+        title: getBriefApprovalStatus(quotation.productionBrief) === "revision_requested"
+          ? "Customer meminta revisi brief"
+          : "Menunggu persetujuan brief dari customer",
+        description:
+          "Pricing dan pengiriman quotation dikunci. Bagikan halaman approval kepada customer, lalu lanjutkan setelah brief disetujui.",
+      }
+    : processControlCopy(quotation.status);
 
   function patchQuotation(payload: Record<string, unknown>, success: string) {
     setMessage(null);
@@ -147,7 +162,14 @@ export function AdminQuotationProcessControl({
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
-          {canConvert ? (
+          {briefApprovalPending ? (
+            <a
+              href={`/briefs/${quotation.id}`}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-black text-white transition hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+            >
+              Buka halaman approval
+            </a>
+          ) : canConvert ? (
             <Button type="button" disabled={isPending} onClick={convertToOrder}>
               {isPending ? "Memproses..." : "Konversi menjadi order"}
             </Button>
@@ -228,6 +250,7 @@ export function AdminQuotationStatusActions({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const briefApprovalPending = requiresCustomerBriefApproval(quotation);
 
   function patchQuotation(payload: Record<string, unknown>, success: string) {
     setMessage(null);
@@ -321,15 +344,24 @@ export function AdminQuotationStatusActions({
     );
   }
 
-  const canConvert = quotation.status === "accepted";
-  const canEditPricing = isQuotationPricingEditable(quotation.status);
+  const canConvert = !briefApprovalPending && quotation.status === "accepted";
+  const canEditPricing = !briefApprovalPending && isQuotationPricingEditable(quotation.status);
   const canSendQuote =
+    !briefApprovalPending &&
     hasFinalQuotationPricing(quotation) &&
     isQuotationSendable(quotation.status);
   const isResendingQuote = quotation.status === "quoted";
 
   return (
     <section className="space-y-4">
+      {briefApprovalPending ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="font-black text-amber-950">Quotation belum dapat diproses</p>
+          <p className="mt-1 text-sm leading-6 text-amber-800">
+            Brief sales-assisted masih menunggu persetujuan customer. Editor harga dan tombol kirim penawaran akan aktif setelah approval.
+          </p>
+        </div>
+      ) : null}
       {showProcessControl ? (
       <div className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <div>
@@ -349,6 +381,7 @@ export function AdminQuotationStatusActions({
               variant={status === quotation.status ? "secondary" : "outline"}
               disabled={
                 isPending ||
+                briefApprovalPending ||
                 status === quotation.status ||
                 !canAdminTransitionQuotationStatus(quotation.status, status)
               }
@@ -406,21 +439,27 @@ export function AdminQuotationStatusActions({
       {!canEditPricing ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-black text-brand-950">Harga final sudah dikunci</p>
+            <p className="font-black text-brand-950">
+              {briefApprovalPending ? "Harga belum dapat diproses" : "Harga final sudah dikunci"}
+            </p>
             <p className="mt-1 text-sm leading-6 text-brand-800">
-              Editor disembunyikan karena quotation sudah melewati tahap pricing. Rincian final tetap tersedia di ringkasan.
+              {briefApprovalPending
+                ? "Editor disembunyikan sampai customer menyetujui brief Full Custom."
+                : "Editor disembunyikan karena quotation sudah melewati tahap pricing. Rincian final tetap tersedia di ringkasan."}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <span className="font-black tabular-nums text-brand-950">
               {quotation.grandTotal ? formatIDR(quotation.grandTotal) : "Belum tersedia"}
             </span>
-            <a
-              href="#final-pricing-summary"
-              className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-black text-brand-800 ring-1 ring-brand-200 transition hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-            >
-              Lihat ringkasan
-            </a>
+            {!briefApprovalPending ? (
+              <a
+                href="#final-pricing-summary"
+                className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-black text-brand-800 ring-1 ring-brand-200 transition hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+              >
+                Lihat ringkasan
+              </a>
+            ) : null}
           </div>
         </div>
       ) : null}

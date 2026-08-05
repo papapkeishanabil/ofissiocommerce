@@ -3,13 +3,14 @@
 
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import type {
   QuotationEventRecord,
   QuotationRequestRecord,
 } from "@/features/quotation/quotation.types";
 import { useAuth } from "@/hooks/use-auth";
 import { useUIStore } from "@/stores/ui-store";
+import { requiresCustomerBriefApproval } from "@/features/quotation/quotation-requirement";
 import type { AuthSession } from "@/types/account";
 import { QuotationConfirmation } from "./QuotationConfirmation";
 
@@ -98,6 +99,19 @@ export function QuotationDetailPage({ id }: QuotationDetailPageProps) {
         <p className="mt-1 text-sm text-ink-muted">
           Quotation tidak ada, belum tersimpan di server foundation, atau milik company lain.
         </p>
+      </div>
+    );
+  }
+  if (requiresCustomerBriefApproval(quotation)) {
+    return (
+      <div className="mx-auto grid w-full max-w-lg place-items-center px-4 py-16 text-center">
+        <h1 className="text-xl font-black text-ink">Brief perlu persetujuan Anda</h1>
+        <p className="mt-2 text-sm leading-6 text-ink-muted">
+          Sales Ofissio sudah mencatat kebutuhan Full Custom. Quotation dan harga belum diproses sampai Anda menyetujui spesifikasinya.
+        </p>
+        <ButtonLink className="mt-5" href={`/briefs/${quotation.id}`}>
+          Periksa dan setujui brief
+        </ButtonLink>
       </div>
     );
   }

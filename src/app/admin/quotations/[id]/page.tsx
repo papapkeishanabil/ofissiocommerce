@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
+import { AdminBriefApprovalLink } from "@/features/admin/components/AdminBriefApprovalLink";
 import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentActions";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminProductThumb } from "@/features/admin/components/AdminProductThumb";
@@ -31,8 +32,13 @@ import { getEmailRuntimeConfig } from "@/features/email/email.config";
 import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
 import { getGlobalTaxSettings } from "@/features/tax/tax.service";
 import { quotationTaxLabel } from "@/features/quotation/quotation.utils";
-import { requirementTypeLabel } from "@/features/quotation/quotation-requirement";
+import {
+  getBriefApprovalStatus,
+  requirementTypeLabel,
+  requiresCustomerBriefApproval,
+} from "@/features/quotation/quotation-requirement";
 import { quotationSourceLabel } from "@/features/quotation/custom-quotation";
+import type { TechnicalGarmentSpecification } from "@/features/quotation/quotation.types";
 import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
 
 interface PageProps {
@@ -71,6 +77,8 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
   const canGenerateQuotationPdf = ["quoted", "accepted", "converted_to_order"].includes(
     quotation.status,
   );
+  const briefApprovalStatus = getBriefApprovalStatus(quotation.productionBrief);
+  const briefApprovalPending = requiresCustomerBriefApproval(quotation);
 
   return (
     <div className="space-y-5">
@@ -83,7 +91,31 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         Back to quotations
       </Link>
 
-      <AdminQuotationProgress status={quotation.status} />
+      {briefApprovalPending ? (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-soft-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="type-eyebrow text-amber-800">Tahap 1 dari 2 · approval brief</p>
+              <h2 className="mt-1 text-lg font-black text-amber-950">
+                {briefApprovalStatus === "revision_requested"
+                  ? "Customer meminta revisi spesifikasi"
+                  : "Menunggu persetujuan customer"}
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-amber-800">
+                Brief ini belum menjadi quotation aktif. Kirim link approval kepada customer; pricing baru terbuka setelah brief disetujui.
+              </p>
+              {quotation.productionBrief?.approvalRevisionNote ? (
+                <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-sm font-semibold text-amber-950">
+                  Catatan customer: {quotation.productionBrief.approvalRevisionNote}
+                </p>
+              ) : null}
+            </div>
+            <AdminBriefApprovalLink briefId={quotation.id} />
+          </div>
+        </section>
+      ) : (
+        <AdminQuotationProgress status={quotation.status} />
+      )}
 
       <AdminQuotationProcessControl quotation={quotation} />
 
@@ -91,7 +123,9 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
       <header className="overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-white to-slate-50/60 p-5 shadow-soft-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="type-eyebrow text-brand-700">Quotation detail</p>
+            <p className="type-eyebrow text-brand-700">
+              {briefApprovalPending ? "Draft brief Full Custom" : "Quotation detail"}
+            </p>
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">
               {quotation.quotationNumber}
             </h1>
@@ -105,6 +139,11 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             </AdminBadge>
             <AdminProcessRouteBadge route={quotation.requestedProcessRoute} />
             <AdminBadge tone={adminStatusTone(quotation.status)}>{quotation.status}</AdminBadge>
+            {quotation.productionBrief?.intakeChannel !== "customer_portal" ? (
+              <AdminBadge tone={briefApprovalStatus === "approved" ? "success" : "warning"}>
+                brief {briefApprovalStatus}
+              </AdminBadge>
+            ) : null}
             <AdminBadge tone={adminStatusTone(quotation.emailStatus)}>{quotation.emailStatus}</AdminBadge>
           </div>
         </div>
@@ -165,6 +204,25 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
               <BriefRow label="Warna" value={quotation.productionBrief.colorPreference ?? "Belum ditentukan"} />
               <BriefRow label="Ukuran/pola" value={quotation.productionBrief.sizeNotes ?? "Mengikuti pembahasan"} />
               <BriefRow label="Target kebutuhan" value={quotation.productionBrief.targetDate ? formatAdminDate(quotation.productionBrief.targetDate) : "Belum ditentukan"} />
+              <BriefRow
+                label="Sumber brief"
+                value={quotation.productionBrief.intakeChannel === "customer_portal"
+                  ? "Customer portal"
+                  : `Sales-assisted · ${quotation.productionBrief.intakeChannel ?? "internal"}`}
+              />
+              <BriefRow label="No. PO / referensi" value={quotation.productionBrief.externalReference ?? "Belum dicatat"} />
+              {(quotation.productionBrief.technicalSpecifications?.length ?? 0) > 0 ? (
+                <div className="md:col-span-2">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-ink-muted">
+                    Spesifikasi teknis terstruktur
+                  </p>
+                  <div className="space-y-3">
+                    {quotation.productionBrief.technicalSpecifications?.map((garment) => (
+                      <TechnicalSpecificationCard key={garment.id} garment={garment} />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               {(quotation.productionBrief.referenceFiles?.length ?? 0) > 0 ? (
                 <div className="rounded-2xl bg-white p-3 ring-1 ring-line md:col-span-2">
                   <dt className="text-xs font-bold uppercase tracking-[0.14em] text-ink-muted">
@@ -499,5 +557,56 @@ function BriefRow({ label, value }: { label: string; value: string }) {
       </dt>
       <dd className="mt-1 break-words font-semibold text-ink">{value}</dd>
     </div>
+  );
+}
+
+function TechnicalSpecificationCard({
+  garment,
+}: {
+  garment: TechnicalGarmentSpecification;
+}) {
+  const visibleSpecifications = garment.specifications.filter(
+    (specification) => specification.status !== "not_used",
+  );
+  const sizeBreakdown = garment.sizeBreakdown.filter((entry) => entry.quantity > 0);
+  return (
+    <article className="rounded-2xl border border-line bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-bold text-ink">{garment.garmentType}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
+            {garment.category} · {garment.quantity} pcs
+          </p>
+        </div>
+        {garment.templateKey ? (
+          <AdminBadge tone="brand">{garment.templateKey.replaceAll("_", " ")}</AdminBadge>
+        ) : null}
+      </div>
+      {visibleSpecifications.length > 0 ? (
+        <dl className="mt-3 grid gap-2 md:grid-cols-2">
+          {visibleSpecifications.map((specification) => (
+            <div key={specification.key} className="rounded-xl bg-slate-50 p-3">
+              <dt className="text-xs font-bold text-ink-muted">{specification.label}</dt>
+              <dd className="mt-1 text-sm font-semibold text-ink">
+                {specification.status === "recommendation"
+                  ? "Minta rekomendasi Ofissio"
+                  : [specification.option, specification.detail, specification.notes]
+                      .filter(Boolean)
+                      .join(" · ") || "Digunakan"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {sizeBreakdown.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
+          {sizeBreakdown.map((entry) => (
+            <span key={`${garment.id}-${entry.size}`} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-800">
+              {entry.size}: {entry.quantity} pcs
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </article>
   );
 }

@@ -23,7 +23,9 @@ import type { AuditActorType } from "@/lib/security/security.types";
 
 import { quotationRepository } from "./quotation.repository";
 import {
+  getBriefApprovalStatus,
   normalizeProductionBrief,
+  requiresCustomerBriefApproval,
   requirementTypeLabel,
   resolveQuotationRequirement,
 } from "./quotation-requirement";
@@ -230,6 +232,8 @@ export async function createCustomQuotationRequest(
   input: CreateCustomQuotationRequestInput,
   request?: Request,
 ): Promise<CreateQuotationRequestResult> {
+  const actorType = input.actorType ?? "customer";
+  const sendCustomerConfirmation = input.sendCustomerConfirmation ?? true;
   const now = new Date().toISOString();
   const id = `quo_${randomUUID()}`;
   const quotationNumber = buildQuotationNumber(now);
@@ -254,6 +258,11 @@ export async function createCustomQuotationRequest(
   const completeBrief = normalizeProductionBrief({
     ...productionBrief,
     referenceFiles,
+    approvalStatus:
+      actorType === "internal" ? "pending_customer_approval" : "approved",
+    approvalRequestedAt: actorType === "internal" ? now : null,
+    approvedAt: actorType === "customer" ? now : null,
+    approvalRevisionNote: null,
   });
   if (!completeBrief) {
     throw createApiError("BAD_REQUEST", "Brief full custom belum valid.", 400);
@@ -284,21 +293,26 @@ export async function createCustomQuotationRequest(
     internalUrl: buildPublicUrl(`/admin/quotations/${id}`),
     customerUrl: buildPublicUrl(`/quotes/${id}`),
   };
-  const emails = await Promise.all([
-    emailService.sendQuotationRequestToSales({
-      companyId: input.companyId,
-      userId: input.userId,
-      context: emailContext,
-      request,
-    }),
-    emailService.sendQuotationConfirmationToCustomer({
+  const emailTasks = actorType === "internal"
+    ? []
+    : [
+        emailService.sendQuotationRequestToSales({
+          companyId: input.companyId,
+          userId: input.userId,
+          context: emailContext,
+          request,
+        }),
+      ];
+  if (sendCustomerConfirmation) {
+    emailTasks.push(emailService.sendQuotationConfirmationToCustomer({
       companyId: input.companyId,
       userId: input.userId,
       customerEmail: picEmail,
       context: emailContext,
       request,
-    }),
-  ]);
+    }));
+  }
+  const emails = await Promise.all(emailTasks);
   const taxState = await getGlobalTaxSettings();
   const emailStatus = aggregateEmailStatus(emails);
   const record: QuotationRequestRecord = {
@@ -311,7 +325,7 @@ export async function createCustomQuotationRequest(
     picName,
     picEmail,
     picWhatsapp: input.picWhatsapp,
-    status: "submitted",
+    status: actorType === "internal" ? "draft" : "submitted",
     source: "custom_request",
     items: buildQuotationItems([customItem], id, now),
     subtotalEstimate: 0,
@@ -355,11 +369,13 @@ export async function createCustomQuotationRequest(
   };
 
   await quotationRepository.save(record);
-  await notifyQuotationRequestedSafely({
-    quotation: record,
-    actorId: input.userId,
-    request,
-  });
+  if (actorType !== "internal") {
+    await notifyQuotationRequestedSafely({
+      quotation: record,
+      actorId: input.userId,
+      request,
+    });
+  }
   await Promise.all(
     referenceFiles.map((file) =>
       storageService
@@ -376,13 +392,15 @@ export async function createCustomQuotationRequest(
   await addQuotationEvent({
     quotation: record,
     actorId: input.userId,
-    actorType: "customer",
-    eventType: "submitted",
+    actorType,
+    eventType: actorType === "internal" ? "status_changed" : "submitted",
     oldStatus: null,
-    newStatus: "submitted",
+    newStatus: actorType === "internal" ? "draft" : "submitted",
     note: input.customerNotes,
     metadata: {
       source: "custom_request",
+      briefApprovalStatus: getBriefApprovalStatus(completeBrief),
+      intakeChannel: completeBrief.intakeChannel ?? "customer_portal",
       quotationNumber,
       totalQty: record.totalQty,
       itemCount: 1,
@@ -395,9 +413,12 @@ export async function createCustomQuotationRequest(
   logAuditEvent({
     request,
     actorId: input.userId,
-    actorType: "customer",
+    actorType,
     companyId: input.companyId,
-    action: "custom_quotation_request_created",
+    action:
+      actorType === "internal"
+        ? "sales_assisted_custom_quotation_created"
+        : "custom_quotation_request_created",
     entityType: "quotation",
     entityId: id,
     metadata: {
@@ -405,6 +426,7 @@ export async function createCustomQuotationRequest(
       totalQty: record.totalQty,
       referenceFileCount: referenceFiles.length,
       requestedProcessRoute: "production",
+      intakeChannel: completeBrief.intakeChannel ?? "customer_portal",
       emailStatus,
     },
   });
@@ -459,6 +481,104 @@ export async function getQuotationEventsById(id: string, companyId: string) {
   return quotationRepository.getEvents?.(id) ?? [];
 }
 
+export async function updateSalesAssistedBriefApproval(input: {
+  id: string;
+  companyId: string;
+  userId: string;
+  action: "approve" | "request_revision";
+  note?: string | null;
+  request?: Request;
+}) {
+  const current = await requireCompanyQuotation(input.id, input.companyId);
+  const brief = current.productionBrief;
+  if (
+    current.source !== "custom_request" ||
+    !brief ||
+    brief.intakeChannel === "customer_portal"
+  ) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Dokumen ini bukan brief Full Custom yang dibuat oleh sales.",
+      400,
+    );
+  }
+
+  const currentApproval = getBriefApprovalStatus(brief);
+  if (input.action === "approve" && currentApproval === "approved") {
+    return normalizeQuotationRecord(current);
+  }
+  if (input.action === "request_revision" && !input.note?.trim()) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Jelaskan bagian brief yang perlu direvisi.",
+      400,
+    );
+  }
+
+  const now = new Date().toISOString();
+  const approved = input.action === "approve";
+  const nextBrief = normalizeProductionBrief({
+    ...brief,
+    approvalStatus: approved ? "approved" : "revision_requested",
+    approvedAt: approved ? now : null,
+    approvalRevisionNote: approved ? null : input.note?.trim() ?? null,
+  });
+  if (!nextBrief) {
+    throw createApiError("BAD_REQUEST", "Brief Full Custom belum valid.", 400);
+  }
+
+  const updated = await quotationRepository.update(current.id, {
+    productionBrief: nextBrief,
+    status: approved ? "submitted" : "draft",
+  });
+  if (!updated) {
+    throw createApiError("NOT_FOUND", "Brief Full Custom tidak ditemukan.", 404);
+  }
+  const normalized = normalizeQuotationRecord(updated);
+
+  await addQuotationEvent({
+    quotation: normalized,
+    actorId: input.userId,
+    actorType: "customer",
+    eventType: "status_changed",
+    oldStatus: current.status,
+    newStatus: normalized.status,
+    note: approved
+      ? "Customer menyetujui brief Full Custom."
+      : input.note?.trim() ?? null,
+    metadata: {
+      briefApprovalStatus: nextBrief.approvalStatus,
+      action: input.action,
+    },
+  });
+
+  if (approved) {
+    await notifyQuotationRequestedSafely({
+      quotation: normalized,
+      actorId: input.userId,
+      request: input.request,
+    });
+  }
+
+  logAuditEvent({
+    request: input.request,
+    actorId: input.userId,
+    actorType: "customer",
+    companyId: current.companyId,
+    action: approved
+      ? "sales_assisted_brief_customer_approved"
+      : "sales_assisted_brief_revision_requested",
+    entityType: "quotation",
+    entityId: current.id,
+    metadata: {
+      previousApprovalStatus: currentApproval,
+      nextApprovalStatus: nextBrief.approvalStatus,
+    },
+  });
+
+  return normalized;
+}
+
 export async function updateQuotationStatus(input: {
   id: string;
   status: QuotationStatus;
@@ -468,6 +588,13 @@ export async function updateQuotationStatus(input: {
   request?: Request;
 }) {
   const current = await requireQuotation(input.id);
+  if (requiresCustomerBriefApproval(current)) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Brief Full Custom belum disetujui customer. Proses quotation masih dikunci.",
+      400,
+    );
+  }
   if (!canAdminTransitionQuotationStatus(current.status, input.status)) {
     throw createApiError(
       "BAD_REQUEST",
@@ -517,6 +644,13 @@ export async function updateQuotationPricing(input: {
   request?: Request;
 }) {
   const current = await requireQuotation(input.id);
+  if (requiresCustomerBriefApproval(current)) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Harga belum dapat diisi sebelum customer menyetujui brief Full Custom.",
+      400,
+    );
+  }
   if (!isQuotationPricingEditable(current.status)) {
     throw createApiError(
       "BAD_REQUEST",
@@ -638,6 +772,13 @@ export async function sendQuotationReadyToCustomer(input: {
   request?: Request;
 }) {
   const quotation = await requireQuotation(input.id);
+  if (requiresCustomerBriefApproval(quotation)) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Quotation belum dapat dikirim karena brief Full Custom belum disetujui customer.",
+      400,
+    );
+  }
   if (!isQuotationSendable(quotation.status)) {
     throw createApiError(
       "BAD_REQUEST",

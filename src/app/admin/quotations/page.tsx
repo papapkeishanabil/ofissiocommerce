@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, BellRing, CheckCircle2, Clock3, FileText } from "lucide-react";
+import { ArrowRight, BellRing, CheckCircle2, Clock3, FileText, MessageSquarePlus } from "lucide-react";
 
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import {
@@ -39,7 +39,12 @@ export default async function AdminQuotationsPage({ searchParams }: PageProps) {
         title="Request quotation B2B"
         description="Quotation yang baru masuk atau baru diterima customer disorot dan ditempatkan paling atas. Process routing memudahkan sales memperkirakan alur kerja."
         actions={
-          <form className="flex flex-col gap-2 sm:flex-row" action="/admin/quotations">
+          <div className="flex flex-col gap-2">
+            <ButtonLink href="/admin/quotations/new" size="sm" className="self-start sm:self-end">
+              <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+              Input brief untuk approval
+            </ButtonLink>
+            <form className="flex flex-col gap-2 sm:flex-row" action="/admin/quotations">
           <input
             name="search"
             defaultValue={search}
@@ -61,7 +66,8 @@ export default async function AdminQuotationsPage({ searchParams }: PageProps) {
             <option value="rejected">Rejected</option>
           </select>
           <Button type="submit" size="sm">Filter</Button>
-        </form>
+            </form>
+          </div>
         }
       />
 
@@ -221,6 +227,13 @@ function QuotationRow({
         <div className="text-xs text-ink-muted">
           {quotation.picName} · {quotation.picEmail ?? "-"}
         </div>
+        {quotation.intakeChannel ? (
+          <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-ink-muted">
+            {quotation.intakeChannel === "customer_portal"
+              ? "Customer portal"
+              : `Sales · ${quotation.intakeChannel}`}
+          </span>
+        ) : null}
       </td>
       <td className="px-4 py-3.5">
         <AdminBadge tone={adminStatusTone(quotation.status)}>{quotation.status}</AdminBadge>
