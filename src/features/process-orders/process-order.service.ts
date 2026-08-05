@@ -29,6 +29,7 @@ import {
   processOrderPrefix,
 } from "@/features/process-orders/process-order.utils";
 import { ensureOrderProcessRouting } from "@/features/orders/order-routing.service";
+import { createAdminNotification } from "@/features/admin-notifications/admin-notification.service";
 import type { PaymentOrderRecord } from "@/features/payment/payment.types";
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { SupabaseDatabaseError } from "@/features/database/database.errors";
@@ -39,7 +40,7 @@ import type {
   TrackingFulfillmentType,
 } from "@/features/tracking/tracking.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
-import { createApiError } from "@/lib/security/safe-error-response";
+import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
 
 const repository = getProcessOrderRepository();
 
@@ -309,6 +310,16 @@ export async function updateProcessOrder(input: {
 }) {
   const detail = await getRequiredProcessOrderDetail(input.processOrderId);
   const current = detail.processOrder;
+  if (
+    input.patch.processStatus === "completed" &&
+    detail.tasks.some((task) => task.status !== "completed")
+  ) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Seluruh checklist harus selesai sebelum process order ditutup.",
+      409,
+    );
+  }
   const progress =
     input.patch.processStatus === "completed"
       ? 100
@@ -364,14 +375,37 @@ export async function completeProcessTask(input: {
   const current = detail.processOrder;
   const task = detail.tasks.find((candidate) => candidate.id === input.taskId);
   if (!task) throw createApiError("NOT_FOUND", "Task process order tidak ditemukan.", 404);
-  if (task.status !== "completed") {
-    await repository.updateTaskStatus({
-      processOrderId: current.id,
-      taskId: task.id,
-      companyId: current.companyId,
-      status: "completed",
-      notes: input.notes ?? task.notes,
-    });
+  if (task.status === "completed") {
+    return detail;
+  }
+  await repository.updateTaskStatus({
+    processOrderId: current.id,
+    taskId: task.id,
+    companyId: current.companyId,
+    status: "completed",
+    notes: input.notes ?? task.notes,
+  });
+
+  // Process Order owns work only until the goods are ready to ship. Older
+  // fulfillment rows may still contain the legacy `shipped` and `completed`
+  // tasks; close them silently when `ready_to_ship` is reached so shipment is
+  // the only source of truth for pickup, transit, and delivery.
+  if (current.processRoute === "fulfillment" && task.taskKey === "ready_to_ship") {
+    const legacyShippingTasks = detail.tasks.filter((candidate) =>
+      ["shipped", "completed"].includes(candidate.taskKey) &&
+      candidate.status !== "completed",
+    );
+    await Promise.all(
+      legacyShippingTasks.map((candidate) =>
+        repository.updateTaskStatus({
+          processOrderId: current.id,
+          taskId: candidate.id,
+          companyId: current.companyId,
+          status: "completed",
+          notes: "Tahap pengiriman dipindahkan ke Shipment.",
+        }),
+      ),
+    );
   }
 
   const afterComplete = await repository.listProcessOrderTasks({
@@ -494,7 +528,7 @@ export function getCustomerTrackingStatusFromProcessOrder(processOrder: ProcessO
     currentStageId,
     customerLabel:
       processOrder.processStatus === "completed"
-        ? "Pesanan selesai"
+        ? "Pengerjaan selesai, pesanan siap dikirim"
         : currentTemplate?.customerLabel ?? initialCustomerLabel(processOrder.processRoute),
     nextStep: nextCustomerStep(processOrder),
     progress: processOrder.progress,
@@ -658,6 +692,12 @@ async function afterProcessOrderUpdated(input: {
       },
     });
     await syncTrackingFromProcessOrder(input.updated, sourceOrder);
+    if (
+      input.current.processStatus !== "completed" &&
+      input.updated.processStatus === "completed"
+    ) {
+      await notifyProcessReadyToShip(input.updated, sourceOrder, input.request);
+    }
   }
   logAuditEvent({
     request: input.request,
@@ -688,6 +728,12 @@ async function syncTrackingFromProcessOrder(
     companyId: order.companyId,
     orderId: order.id,
   });
+  if (
+    existing?.currentStageId === "delivered" ||
+    existing?.shipmentStatus === "delivered"
+  ) {
+    return existing;
+  }
   const status = getCustomerTrackingStatusFromProcessOrder(processOrder);
   const base = existing ?? mapPaymentOrderToTracking({
     order,
@@ -728,7 +774,7 @@ function routeToTrackingFulfillmentType(route: ProcessOrderRoute): TrackingFulfi
 }
 
 function mapProcessStageToCustomerStage(processOrder: ProcessOrder) {
-  if (processOrder.processStatus === "completed") return "completed";
+  if (processOrder.processStatus === "completed") return "ready_to_ship";
   if (processOrder.processStatus === "waiting_customer_approval") return "artwork_approval";
 
   if (processOrder.processRoute === "fulfillment") {
@@ -736,11 +782,11 @@ function mapProcessStageToCustomerStage(processOrder: ProcessOrder) {
       case "packing":
         return "packing";
       case "ready_to_ship":
-        return "awaiting_pickup";
+        return "ready_to_ship";
       case "shipped":
         return "in_transit";
       case "completed":
-        return "completed";
+        return "ready_to_ship";
       default:
         return "order_processing";
     }
@@ -753,8 +799,9 @@ function mapProcessStageToCustomerStage(processOrder: ProcessOrder) {
       case "qc_custom":
         return "custom_qc";
       case "packing":
-      case "ready_to_ship":
         return "packing";
+      case "ready_to_ship":
+        return "ready_to_ship";
       default:
         return "custom_process";
     }
@@ -796,10 +843,51 @@ function initialCustomerLabel(route: ProcessOrderRoute) {
 }
 
 function nextCustomerStep(processOrder: ProcessOrder) {
-  if (processOrder.processStatus === "completed") return null;
+  if (processOrder.processStatus === "completed") {
+    return "Pengerjaan internal selesai. Tim Ofissio sedang menyiapkan pengiriman.";
+  }
   const templates = DEFAULT_PROCESS_TASK_TEMPLATES[processOrder.processRoute];
   const currentIndex = templates.findIndex(
     (task) => task.stage === processOrder.currentStage || task.taskKey === processOrder.currentStage,
   );
   return templates[currentIndex + 1]?.customerLabel ?? "Tim Ofissio akan memperbarui tahap berikutnya.";
+}
+
+async function notifyProcessReadyToShip(
+  processOrder: ProcessOrder,
+  order: PaymentOrderRecord,
+  request?: Request,
+) {
+  try {
+    await createAdminNotification({
+      type: "system_warning",
+      title: "Process Selesai - Siap Dikirim",
+      message: `${processOrder.processOrderNumber} sudah mencapai 100%. Buat shipment dan lengkapi nomor resi untuk customer.`,
+      entityType: "order",
+      entityId: order.id,
+      entityNumber: order.orderNumber ?? processOrder.processOrderNumber,
+      severity: "success",
+      metadata: {
+        source: "process_completed",
+        orderId: order.id,
+        processOrderId: processOrder.id,
+        processOrderNumber: processOrder.processOrderNumber,
+        processRoute: processOrder.processRoute,
+        total: order.calculation.grandTotal,
+        currency: "IDR",
+        productSummary: `${processOrderRouteLabel(processOrder.processRoute)} selesai; menunggu pembuatan shipment.`,
+        adminUrl: `/admin/orders/${order.id}#shipping`,
+        readyForShipment: true,
+      },
+      emailStatus: "not_required",
+    });
+  } catch (error) {
+    logInternalError(error, {
+      area: "process_order",
+      operation: "notify_ready_to_ship",
+      processOrderId: processOrder.id,
+      orderId: order.id,
+      requestPath: request?.url,
+    });
+  }
 }

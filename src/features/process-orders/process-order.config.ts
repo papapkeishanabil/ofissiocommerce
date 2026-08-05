@@ -84,18 +84,6 @@ export const DEFAULT_PROCESS_TASK_TEMPLATES = {
       stage: "ready_to_ship",
       customerLabel: "Pesanan siap dikirim",
     },
-    {
-      taskKey: "shipped",
-      taskName: "Serahkan ke kurir",
-      stage: "shipped",
-      customerLabel: "Pesanan dalam pengiriman",
-    },
-    {
-      taskKey: "completed",
-      taskName: "Completed",
-      stage: "completed",
-      customerLabel: "Pesanan selesai",
-    },
   ],
   customization: [
     {
@@ -212,7 +200,7 @@ export function processOrderStatusLabel(status: ProcessOrderStatus) {
     case "on_hold":
       return "Ditahan";
     case "completed":
-      return "Selesai";
+      return "Pengerjaan selesai";
     case "cancelled":
       return "Dibatalkan";
   }

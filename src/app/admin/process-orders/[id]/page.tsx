@@ -3,10 +3,16 @@ import { notFound } from "next/navigation";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminInlineProcessChecklist } from "@/features/admin/components/AdminInlineProcessChecklist";
 import { AdminProcessRouteBadge } from "@/features/admin/components/AdminProcessRouteBadge";
 import { AdminProcessOrderActions } from "@/features/admin/components/AdminProcessOrderActions";
+import { AdminProcessOrderEventComposer } from "@/features/admin/components/AdminProcessOrderEventComposer";
 import { AdminShipmentPanel } from "@/features/admin/components/AdminShipmentPanel";
-import { getAdminProcessOrderDetail } from "@/features/admin/admin.service";
+import {
+  canUpdateProcessOrder,
+  getAdminProcessOrderDetail,
+  requireInternalAdminServer,
+} from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
 import { processOrderStatusLabel } from "@/features/process-orders/process-order.config";
 import { summarizeSizeMatrix } from "@/features/tracking/tracking-utils";
@@ -17,9 +23,13 @@ interface PageProps {
 
 export default async function AdminProcessOrderDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const detail = await getAdminProcessOrderDetail(id);
+  const [detail, actor] = await Promise.all([
+    getAdminProcessOrderDetail(id),
+    requireInternalAdminServer("admin:process-order:view"),
+  ]);
   if (!detail) notFound();
   const { processOrder, sourceOrder, items, tasks, events } = detail;
+  const canUpdate = canUpdateProcessOrder(actor);
 
   return (
     <div className="space-y-5">
@@ -70,45 +80,12 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
         </dl>
       </section>
 
-      <AdminProcessOrderActions
-        processOrderId={processOrder.id}
-        processStatus={processOrder.processStatus}
-        replenishmentStatus={processOrder.replenishmentStatus}
+      <AdminInlineProcessChecklist
+        processOrder={processOrder}
         tasks={tasks}
+        canUpdate={canUpdate}
+        variant="workbench"
       />
-
-      {sourceOrder ? (
-        <AdminShipmentPanel
-          orderId={sourceOrder.id}
-          processOrderId={processOrder.id}
-          shipments={detail.shipment ? [detail.shipment] : []}
-          events={detail.shipmentEvents}
-          createFrom="process-order"
-        />
-      ) : null}
-
-      <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
-        <h3 className="text-lg font-black text-ink">Task checklist</h3>
-        <ol className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {tasks.map((task) => (
-            <li key={task.id} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-line">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <span className="font-mono text-xs font-bold text-brand-700">
-                    {String(task.sortOrder).padStart(2, "0")}
-                  </span>
-                  <p className="mt-1 font-black text-ink">{task.taskName}</p>
-                  <p className="mt-1 font-mono text-xs text-ink-muted">{task.stage}</p>
-                </div>
-                <AdminBadge tone={adminStatusTone(task.status)}>{task.status}</AdminBadge>
-              </div>
-              <p className="mt-3 text-xs text-ink-muted">
-                Started: {formatAdminDate(task.startedAt)} · Completed: {formatAdminDate(task.completedAt)}
-              </p>
-            </li>
-          ))}
-        </ol>
-      </section>
 
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Items & customization snapshot</h3>
@@ -132,13 +109,34 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
                 <dl className="mt-3 grid gap-3 text-sm md:grid-cols-3">
                   <Info label="size matrix" value={summarizeSizeMatrix(item.sizeMatrix)} />
                   <Info label="placements" value={`${item.customization.placements.length} titik`} />
-                  <Info label="model3dUrl" value={item.model3dUrl ?? "-"} />
+                  <Info label="instruksi custom" value={item.customization.text ?? "Tidak ada instruksi tambahan"} />
                 </dl>
               </article>
             ))}
           </div>
         )}
       </section>
+
+      <AdminProcessOrderActions
+        processOrder={processOrder}
+        tasks={tasks}
+        canUpdate={canUpdate}
+      />
+
+      <AdminProcessOrderEventComposer
+        processOrderId={processOrder.id}
+        canUpdate={canUpdate}
+      />
+
+      {sourceOrder ? (
+        <AdminShipmentPanel
+          orderId={sourceOrder.id}
+          processOrderId={processOrder.id}
+          shipments={detail.shipment ? [detail.shipment] : []}
+          events={detail.shipmentEvents}
+          createFrom="process-order"
+        />
+      ) : null}
 
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Event timeline</h3>
