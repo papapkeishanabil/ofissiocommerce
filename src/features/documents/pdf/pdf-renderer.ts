@@ -10,6 +10,15 @@ type PdfFont = NonNullable<PdfTextOptions["font"]>;
 
 interface PdfPage {
   ops: string[];
+  links: PdfLinkAnnotation[];
+}
+
+interface PdfLinkAnnotation {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  url: string;
 }
 
 function rgb(hex = "#111827") {
@@ -65,7 +74,7 @@ export class SimplePdfDocument {
   }
 
   addPage() {
-    const page: PdfPage = { ops: [] };
+    const page: PdfPage = { ops: [], links: [] };
     this.pages.push(page);
     this.page = page;
     this.cursorY = MARGIN;
@@ -118,6 +127,17 @@ export class SimplePdfDocument {
       colorOp(stroke, true),
       `1 w ${x1.toFixed(2)} ${this.toPdfY(y1).toFixed(2)} m ${x2.toFixed(2)} ${this.toPdfY(y2).toFixed(2)} l S`,
     );
+  }
+
+  link(url: string | null | undefined, x: number, y: number, width: number, height: number) {
+    if (!url || width <= 0 || height <= 0) return;
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return;
+      this.page.links.push({ x, y, width, height, url: parsed.toString() });
+    } catch {
+      // Invalid links remain visible as text but are never embedded as PDF actions.
+    }
   }
 
   text(
@@ -196,10 +216,27 @@ export class SimplePdfDocument {
       pageIds.push(0);
     }
 
+    const annotationIds = this.pages.map((page) =>
+      page.links.map((link) => {
+        const left = link.x;
+        const bottom = this.toPdfY(link.y + link.height);
+        const right = link.x + link.width;
+        const top = this.toPdfY(link.y);
+        return addObject(
+          `<< /Type /Annot /Subtype /Link /Rect [${left.toFixed(2)} ${bottom.toFixed(2)} ${right.toFixed(2)} ${top.toFixed(2)}] /Border [0 0 0] /A << /S /URI /URI (${escapePdfText(link.url)}) >> >>`,
+        );
+      }),
+    );
+
     const pagesIdPlaceholder = objects.length + this.pages.length + 1;
     for (let index = 0; index < this.pages.length; index += 1) {
+      const annotations = annotationIds[index] ?? [];
+      const annotationsEntry =
+        annotations.length > 0
+          ? ` /Annots [${annotations.map((id) => `${id} 0 R`).join(" ")}]`
+          : "";
       const pageId = addObject(
-        `<< /Type /Page /Parent ${pagesIdPlaceholder} 0 R /MediaBox [0 0 ${this.width.toFixed(2)} ${this.height.toFixed(2)}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R /F3 ${fontMonoId} 0 R >> >> /Contents ${contentIds[index]} 0 R >>`,
+        `<< /Type /Page /Parent ${pagesIdPlaceholder} 0 R /MediaBox [0 0 ${this.width.toFixed(2)} ${this.height.toFixed(2)}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R /F3 ${fontMonoId} 0 R >> >> /Contents ${contentIds[index]} 0 R${annotationsEntry} >>`,
       );
       pageIds[index] = pageId;
     }

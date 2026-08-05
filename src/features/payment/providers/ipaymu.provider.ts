@@ -161,7 +161,10 @@ export function parseCallbackPayload(payload: unknown): NormalizedPaymentCallbac
   const record = toRecord(payload);
   const referenceId = stringValue(record.reference_id ?? record.referenceId);
   if (!referenceId) throw new Error("Reference callback iPaymu kosong.");
-  const amount = numberValue(record.amount ?? record.total ?? record.sub_total);
+  // iPaymu may add buyer-facing escrow/provider fees to `amount` and `total`.
+  // `sub_total` remains the backend-authoritative order amount that Ofissio
+  // originally sent, so use it for amount matching when it is available.
+  const amount = numberValue(record.sub_total ?? record.amount ?? record.total);
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Amount callback iPaymu tidak valid.");
   }
@@ -373,6 +376,9 @@ function safeCallbackSnapshot(record: CallbackRecord) {
     transaction_status_code: stringValue(record.transaction_status_code),
     amount: stringValue(record.amount),
     total: stringValue(record.total),
+    sub_total: stringValue(record.sub_total),
+    fee: stringValue(record.fee),
+    paid_off: stringValue(record.paid_off),
     trx_id: stringValue(record.trx_id),
     sid: stringValue(record.sid),
     channel: stringValue(record.channel),

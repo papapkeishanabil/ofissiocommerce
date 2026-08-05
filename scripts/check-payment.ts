@@ -104,6 +104,21 @@ async function runIsolatedCallbackSmoke() {
   assert.equal(generatedInvoice.paymentIncluded, true);
   assert.equal(generatedInvoice.qrIncluded, true);
   assert.equal(generatedInvoice.document.metadata.paymentReference, invoicePayment.referenceId);
+  const { getGeneratedPdfSignedUrl } = await import(
+    "../src/features/documents/providers/storage-document.provider"
+  );
+  const invoicePdfUrl = await getGeneratedPdfSignedUrl({
+    bucket: generatedInvoice.document.storageBucket,
+    key: generatedInvoice.document.storageKey,
+    mimeType: generatedInvoice.document.mimeType,
+  });
+  const invoicePdfBytes = await fetch(invoicePdfUrl.signedUrl).then((response) =>
+    response.arrayBuffer(),
+  );
+  const invoicePdfSource = Buffer.from(invoicePdfBytes).toString("latin1");
+  assert.match(invoicePdfSource, /\/Subtype \/Link/);
+  assert.match(invoicePdfSource, /\/S \/URI/);
+  assert.ok(invoicePdfSource.includes(invoicePayment.paymentUrl!));
   const reusedInvoice = await documentService.generateInvoicePdf({
     orderId: createOrder.id,
     actorId: "payment-check-admin",
@@ -114,6 +129,7 @@ async function runIsolatedCallbackSmoke() {
   console.log("PASS: create payment backend-priced dan pending session direuse secara idempotent.");
   console.log("PASS: generate invoice dapat memastikan payment link tanpa membuat payment ganda.");
   console.log("PASS: invoice PDF menyertakan payment link dan QR secara idempotent.");
+  console.log("PASS: tombol, QR, dan URL invoice memiliki hyperlink PDF aktif.");
 
   const bodyOrder = buildOrder("body");
   const createBody = buildCreatePaymentBody(
@@ -148,6 +164,28 @@ async function runIsolatedCallbackSmoke() {
   });
   assert.equal(paidEvents.filter((event) => event.eventType === "payment_paid").length, 1);
   console.log("PASS: callback paid valid memperbarui payment, order, tracking, dan event.");
+
+  const feeInclusive = buildPaymentAndOrder("fee-inclusive", 10_000);
+  await store.savePaymentPersisted(feeInclusive.payment, feeInclusive.order);
+  const feeInclusivePayload = {
+    ...callbackPayload(feeInclusive.payment.referenceId, 10_000, "1", "berhasil"),
+    amount: "10180",
+    total: "10180",
+    sub_total: "10000",
+    fee: "250",
+    paid_off: "9930",
+    is_escrow: "true",
+  };
+  const feeInclusiveResult = await processIpaymuCallback(
+    feeInclusivePayload,
+    signedHeaders(feeInclusivePayload, "evt-fee-inclusive"),
+  );
+  assert.equal(feeInclusiveResult.status, "paid");
+  assert.equal(store.findPaymentById(feeInclusive.payment.id)?.status, "paid");
+  assert.equal(store.findPaymentOrder(feeInclusive.order.id)?.status, "payment_received");
+  console.log(
+    "PASS: callback dengan biaya escrow memvalidasi sub_total order dan tetap mencatat payment paid.",
+  );
 
   const duplicate = await processIpaymuCallback(paidPayload, paidHeaders);
   assert.equal(duplicate.idempotent, true);
@@ -273,7 +311,13 @@ async function maybeCreateRealSandboxPayment() {
     customer: { companyId: "payment-check", userId: "payment-check" },
   });
   assert.ok(result.paymentUrl);
-  console.log("PASS: transaksi sandbox nyata dibuat atas flag eksplisit (payment URL tersedia). ");
+  console.log("PASS: sesi pembayaran sandbox nyata dibuat atas flag eksplisit.");
+  console.log(`Reference ID: ${referenceId}`);
+  console.log(`Session ID: ${result.providerPaymentId ?? "tidak dikembalikan iPaymu"}`);
+  console.log(`Payment URL: ${result.paymentUrl}`);
+  console.log(
+    "INFO: sesi provider-only ini tidak disimpan sebagai order/payment Ofissio; gunakan payment link dari Admin Order untuk callback end-to-end.",
+  );
 }
 
 async function assertReturnAndCancelPagesAreReadOnly() {

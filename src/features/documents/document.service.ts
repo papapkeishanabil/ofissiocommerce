@@ -49,6 +49,8 @@ import {
   uploadGeneratedPdf,
 } from "./providers/storage-document.provider";
 
+const INVOICE_RENDERER_VERSION = "invoice-payment-links-v1";
+
 export async function getDocumentsByEntity(input: {
   companyId?: string;
   entityType: DocumentEntityType;
@@ -215,7 +217,8 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
       existing &&
         existing.metadata.paymentReference === payment.referenceId &&
         existing.metadata.paymentLinkAvailable === true &&
-        existing.metadata.paymentQrAvailable === true,
+        existing.metadata.paymentQrAvailable === true &&
+        existing.metadata.rendererVersion === INVOICE_RENDERER_VERSION,
     );
     if (existing && !input.forceRegenerate && existingUsesCurrentPayment) {
       return {
@@ -261,6 +264,7 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
         paymentReference: payment.referenceId,
         paymentLinkAvailable: Boolean(payment.paymentUrl),
         paymentQrAvailable: invoicePaymentQr.kind !== "none",
+        rendererVersion: INVOICE_RENDERER_VERSION,
       },
     });
     const document = await saveDocumentRecord({
@@ -283,6 +287,7 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
         paymentReference: payment.referenceId,
         paymentLinkAvailable: Boolean(payment.paymentUrl),
         paymentQrAvailable: invoicePaymentQr.kind !== "none",
+        rendererVersion: INVOICE_RENDERER_VERSION,
       },
     });
     if (payment) {

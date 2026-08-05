@@ -210,6 +210,8 @@ function drawPaymentAndWords(doc: SimplePdfDocument, data: InvoicePdfData) {
     color: "#ffffff",
     align: "center",
   });
+  doc.link(data.paymentLink, LEFT + 82, y + 38, 118, 20);
+  doc.link(data.paymentLink, LEFT + 12, y + 14, 56, 56);
   if (data.paymentReference) {
     doc.text(`Ref: ${data.paymentReference}`, LEFT + 82, y + 63, {
       size: 6.3,
@@ -219,8 +221,9 @@ function drawPaymentAndWords(doc: SimplePdfDocument, data: InvoicePdfData) {
   drawLimitedText(doc, data.paymentLink || "Payment link tersedia setelah payment aktif.", LEFT + 82, y + 73, 140, {
     size: 6.7,
     lineHeight: 8.2,
-    color: MUTED,
+    color: data.paymentLink ? PRIMARY : MUTED,
   }, 1);
+  doc.link(data.paymentLink, LEFT + 82, y + 70, 140, 12);
 
   doc.rect(rightX, y, rightWidth, 84, SURFACE);
   doc.rect(rightX, y, 6, 84, YELLOW);
