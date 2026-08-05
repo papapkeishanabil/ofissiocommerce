@@ -31,11 +31,19 @@ Phase 20 security foundation:
 - Endpoint customer menolak header internal admin untuk flow upload/register/delete logo sampai route khusus seperti `/admin/customers/[id]/logos` dibuat.
 - Response customer disanitasi; `storageKey`, `storageBucket`, provider internals, dan service role key tidak dikirim ke customer response.
 
+## Final RLS boundary
+
+- Migration `020_rls_final_security_review.sql` mencabut direct browser write dan
+  direct read untuk tabel metadata yang memuat storage key.
+- Bucket aktif wajib private; `check:storage` sekarang gagal jika bucket public.
+- `check:rls` juga memverifikasi bucket aktif dan memastikan service-role secret
+  tidak muncul di client source/bundle.
+
 ## Known limitation
 
 - Antivirus scan belum aktif; status masih foundation/TODO.
 - SVG sanitization penuh belum aktif; SVG ditandai perlu sanitization.
-- Supabase Storage RLS/object policies final masih perlu production hardening setelah auth production final.
+- Nama bucket custom di luar default harus ditandai private manual di Supabase.
 - Admin upload atas nama customer belum tersedia.
 - Product GLB admin upload belum aktif.
 - Monitoring provider belum aktif.

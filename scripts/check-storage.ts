@@ -10,6 +10,12 @@ type BucketCheck = {
   reason: string | null;
 };
 
+type BucketInfo = {
+  id: string;
+  name: string;
+  public: boolean;
+};
+
 const REQUIRED_BUCKETS = [
   env("STORAGE_BUCKET_LOGOS", "ofissio-logos"),
   env("STORAGE_BUCKET_ARTWORK", "ofissio-artwork"),
@@ -43,7 +49,7 @@ async function run() {
 
   for (const check of checks) {
     if (check.ok) {
-      console.log(`OK: bucket reachable ${check.bucket}`);
+      console.log(`OK: bucket reachable + private ${check.bucket}`);
     } else {
       console.log(`ERROR: bucket missing/unreachable ${check.bucket} reason=${check.reason}`);
     }
@@ -81,21 +87,26 @@ async function listBuckets(baseUrl: string, serviceRoleKey: string) {
   const payload = (await response.json().catch(() => [])) as Array<{
     id?: unknown;
     name?: unknown;
+    public?: unknown;
   }>;
-  return new Set(
-    payload
-      .flatMap((bucket) => [bucket.id, bucket.name])
-      .filter((value): value is string => typeof value === "string"),
-  );
+  const buckets = new Map<string, BucketInfo>();
+  for (const row of payload) {
+    if (typeof row.id !== "string" || typeof row.name !== "string") continue;
+    const info = { id: row.id, name: row.name, public: row.public === true };
+    buckets.set(row.id, info);
+    buckets.set(row.name, info);
+  }
+  return buckets;
 }
 
 function checkBucket(
-  existingBuckets: Set<string>,
+  existingBuckets: Map<string, BucketInfo>,
   bucket: string,
 ): BucketCheck {
-  return existingBuckets.has(bucket)
-    ? { bucket, ok: true, reason: null }
-    : { bucket, ok: false, reason: "missing_bucket" };
+  const existing = existingBuckets.get(bucket);
+  if (!existing) return { bucket, ok: false, reason: "missing_bucket" };
+  if (existing.public) return { bucket, ok: false, reason: "bucket_is_public" };
+  return { bucket, ok: true, reason: null };
 }
 
 async function writeSmokeTest(

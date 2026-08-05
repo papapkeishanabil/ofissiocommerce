@@ -5,6 +5,10 @@ import { randomUUID } from "node:crypto";
 import type { AuthSession as ClientAuthSession, CompanyRole } from "@/types/account";
 import { getSupabaseAdminClient } from "@/features/database/supabase-admin.client";
 import { quotationRepository } from "@/features/quotation/quotation.repository";
+import {
+  INTERNAL_ROLES,
+  type InternalRole,
+} from "@/lib/security/security.types";
 import { createApiError } from "@/lib/security/safe-error-response";
 
 import { getAuthRuntimeConfig } from "./auth.config";
@@ -657,11 +661,9 @@ function legacyRoleToMembershipRole(value: string | null) {
 }
 
 function normalizeInternalRole(value: string | null): InternalAuthSession["role"] {
-  if (["sales_admin", "production_admin", "finance_admin", "super_admin"].includes(value ?? "")) {
-    return value as InternalAuthSession["role"];
+  if (value && INTERNAL_ROLES.includes(value as InternalRole)) {
+    return value as InternalRole;
   }
-  if (value === "sales") return "sales_admin";
-  if (value === "finance_internal") return "finance_admin";
   return "support";
 }
 

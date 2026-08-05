@@ -344,6 +344,40 @@ create table if not exists uploaded_files (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists documents (
+  id text primary key default gen_random_uuid()::text,
+  company_id text not null,
+  user_id text,
+  document_type text not null check (
+    document_type in (
+      'quotation_pdf',
+      'invoice_pdf',
+      'production_order_pdf_future',
+      'packing_slip_pdf_future'
+    )
+  ),
+  entity_type text not null check (entity_type in ('quotation', 'order', 'process_order')),
+  entity_id text not null,
+  document_number text not null,
+  template_id text not null check (
+    template_id in ('quotation_default', 'invoice_default', 'invoice_ofissio_custom')
+  ),
+  file_id text not null,
+  storage_bucket text not null,
+  storage_key text not null,
+  filename text not null,
+  mime_type text not null default 'application/pdf',
+  size_bytes bigint not null check (size_bytes >= 0),
+  status text not null default 'generated' check (
+    status in ('draft', 'generated', 'failed', 'expired', 'deleted')
+  ),
+  generated_at timestamptz,
+  metadata_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
 create table if not exists quotations (
   id text primary key,
   quotation_number text not null unique,
@@ -945,7 +979,13 @@ create table if not exists internal_user_profiles (
   auth_user_id uuid not null unique references auth.users(id) on delete cascade,
   name text not null,
   email text not null,
-  role text not null check (role in ('sales_admin', 'production_admin', 'finance_admin', 'super_admin')),
+  role text not null check (
+    role in (
+      'super_admin', 'sales_admin', 'finance_admin', 'sales',
+      'finance_internal', 'product_admin', 'production_admin', 'ppic',
+      'qc', 'logistics', 'support'
+    )
+  ),
   status text not null default 'active' check (status in ('active', 'inactive', 'invited')),
   last_login_at timestamptz,
   created_at timestamptz not null default now(),
@@ -1019,3 +1059,212 @@ create unique index if not exists idx_shipping_events_webhook_unique on shipping
 alter table shipping_quotes enable row level security;
 alter table shipping_shipments enable row level security;
 alter table shipping_events enable row level security;
+
+-- Task F final RLS state. Migration 020 remains the deployment artifact.
+create or replace function public.ofissio_has_company_access(target_company_id text)
+returns boolean language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.company_memberships membership
+    where membership.auth_user_id = auth.uid()
+      and membership.status = 'active'
+      and membership.company_id::text = target_company_id
+  );
+$$;
+
+create or replace function public.ofissio_owns_cart(target_cart_id uuid)
+returns boolean language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.carts cart
+    join public.company_memberships membership
+      on membership.company_id = cart.company_id
+     and membership.user_profile_id = cart.user_id
+    where cart.id = target_cart_id
+      and membership.auth_user_id = auth.uid()
+      and membership.status = 'active'
+  );
+$$;
+
+create or replace function public.ofissio_owns_cart_item(target_cart_item_id uuid)
+returns boolean language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.cart_items item
+    where item.id = target_cart_item_id
+      and public.ofissio_owns_cart(item.cart_id)
+  );
+$$;
+
+create or replace function public.ofissio_has_order_access(target_order_id text)
+returns boolean language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.orders customer_order
+    where customer_order.id = target_order_id
+      and public.ofissio_has_company_access(customer_order.company_id::text)
+  );
+$$;
+
+create or replace function public.ofissio_has_quotation_access(target_quotation_id text)
+returns boolean language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.quotations quotation
+    where quotation.id = target_quotation_id
+      and public.ofissio_has_company_access(quotation.company_id::text)
+  );
+$$;
+
+revoke all on function public.ofissio_has_company_access(text) from public;
+revoke all on function public.ofissio_owns_cart(uuid) from public;
+revoke all on function public.ofissio_owns_cart_item(uuid) from public;
+revoke all on function public.ofissio_has_order_access(text) from public;
+revoke all on function public.ofissio_has_quotation_access(text) from public;
+grant execute on function public.ofissio_has_company_access(text) to authenticated, service_role;
+grant execute on function public.ofissio_owns_cart(uuid) to authenticated, service_role;
+grant execute on function public.ofissio_owns_cart_item(uuid) to authenticated, service_role;
+grant execute on function public.ofissio_has_order_access(text) to authenticated, service_role;
+grant execute on function public.ofissio_has_quotation_access(text) to authenticated, service_role;
+
+do $$
+declare
+  protected_table text;
+begin
+  foreach protected_table in array array[
+    'companies', 'user_profiles', 'company_users', 'company_addresses',
+    'company_memberships', 'internal_user_profiles', 'carts', 'cart_items',
+    'cart_item_size_matrix', 'cart_item_customizations', 'quotations',
+    'quotation_items', 'quotation_events', 'orders', 'order_items',
+    'payments', 'payment_events', 'documents', 'uploaded_files',
+    'company_logos', 'shipments', 'shipment_events', 'shipping_quotes',
+    'shipping_shipments', 'shipping_events', 'tracking_records',
+    'process_orders', 'process_order_items', 'process_order_tasks',
+    'process_order_events', 'email_logs', 'audit_logs', 'woo_sync_logs',
+    'admin_notifications'
+  ]
+  loop
+    execute format('alter table public.%I enable row level security', protected_table);
+    execute format('alter table public.%I force row level security', protected_table);
+  end loop;
+end $$;
+
+drop policy if exists uploaded_files_company_insert on public.uploaded_files;
+drop policy if exists uploaded_files_company_select on public.uploaded_files;
+drop policy if exists carts_owner_write on public.carts;
+drop policy if exists quotation_events_company_insert on public.quotation_events;
+drop policy if exists quotation_events_company_select on public.quotation_events;
+drop policy if exists payment_events_company_insert on public.payment_events;
+drop policy if exists payment_events_company_select on public.payment_events;
+drop policy if exists documents_company_select on public.documents;
+drop policy if exists shipments_company_select on public.shipments;
+drop policy if exists shipment_events_company_select on public.shipment_events;
+drop policy if exists process_orders_company_select on public.process_orders;
+drop policy if exists process_order_items_company_select on public.process_order_items;
+drop policy if exists process_order_tasks_company_select on public.process_order_tasks;
+drop policy if exists process_order_events_company_select on public.process_order_events;
+drop policy if exists woo_sync_logs_company_select on public.woo_sync_logs;
+drop policy if exists woo_sync_logs_company_insert on public.woo_sync_logs;
+
+drop policy if exists company_memberships_self_select on public.company_memberships;
+create policy company_memberships_self_select on public.company_memberships
+  for select to authenticated using (auth_user_id = auth.uid() and status = 'active');
+drop policy if exists user_profiles_self_select on public.user_profiles;
+create policy user_profiles_self_select on public.user_profiles
+  for select to authenticated using (auth_user_id = auth.uid() and status = 'active');
+drop policy if exists companies_member_select on public.companies;
+create policy companies_member_select on public.companies
+  for select to authenticated using (public.ofissio_has_company_access(id::text));
+drop policy if exists company_users_member_select on public.company_users;
+create policy company_users_member_select on public.company_users
+  for select to authenticated using (public.ofissio_has_company_access(company_id::text));
+drop policy if exists company_addresses_company_select on public.company_addresses;
+create policy company_addresses_company_select on public.company_addresses
+  for select to authenticated using (public.ofissio_has_company_access(company_id::text));
+drop policy if exists carts_owner_select on public.carts;
+create policy carts_owner_select on public.carts
+  for select to authenticated using (public.ofissio_owns_cart(id));
+drop policy if exists cart_items_owner_select on public.cart_items;
+create policy cart_items_owner_select on public.cart_items
+  for select to authenticated using (public.ofissio_owns_cart(cart_id));
+drop policy if exists cart_item_size_matrix_owner_select on public.cart_item_size_matrix;
+create policy cart_item_size_matrix_owner_select on public.cart_item_size_matrix
+  for select to authenticated using (public.ofissio_owns_cart_item(cart_item_id));
+drop policy if exists cart_item_customizations_owner_select on public.cart_item_customizations;
+create policy cart_item_customizations_owner_select on public.cart_item_customizations
+  for select to authenticated using (public.ofissio_owns_cart_item(cart_item_id));
+drop policy if exists quotations_company_select on public.quotations;
+create policy quotations_company_select on public.quotations
+  for select to authenticated using (public.ofissio_has_company_access(company_id::text));
+drop policy if exists quotation_items_company_select on public.quotation_items;
+create policy quotation_items_company_select on public.quotation_items
+  for select to authenticated using (public.ofissio_has_quotation_access(quotation_id));
+drop policy if exists orders_company_select on public.orders;
+create policy orders_company_select on public.orders
+  for select to authenticated using (public.ofissio_has_company_access(company_id::text));
+drop policy if exists order_items_company_select on public.order_items;
+create policy order_items_company_select on public.order_items
+  for select to authenticated using (public.ofissio_has_order_access(order_id));
+drop policy if exists payments_company_select on public.payments;
+create policy payments_company_select on public.payments
+  for select to authenticated using (public.ofissio_has_company_access(company_id::text));
+drop policy if exists tracking_records_company_select on public.tracking_records;
+create policy tracking_records_company_select on public.tracking_records
+  for select to authenticated using (public.ofissio_has_company_access(company_id::text));
+drop policy if exists company_logos_company_select on public.company_logos;
+create policy company_logos_company_select on public.company_logos
+  for select to authenticated using (public.ofissio_has_company_access(company_id::text));
+drop policy if exists shipping_quotes_company_select on public.shipping_quotes;
+create policy shipping_quotes_company_select on public.shipping_quotes
+  for select to authenticated using (public.ofissio_has_company_access(company_id::text));
+drop policy if exists shipping_shipments_company_select on public.shipping_shipments;
+create policy shipping_shipments_company_select on public.shipping_shipments
+  for select to authenticated using (public.ofissio_has_company_access(company_id::text));
+
+update storage.buckets set public = false
+where id in ('ofissio-logos', 'ofissio-artwork', 'ofissio-documents', 'ofissio-3d-models');
+
+create or replace function public.ofissio_rls_security_inventory()
+returns table (
+  table_name text,
+  rls_enabled boolean,
+  rls_forced boolean,
+  policy_count bigint,
+  write_policy_count bigint,
+  anonymous_policy_count bigint
+)
+language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  with wanted(table_name) as (
+    select unnest(array[
+      'companies', 'user_profiles', 'company_users', 'company_addresses',
+      'company_memberships', 'internal_user_profiles', 'carts', 'cart_items',
+      'cart_item_size_matrix', 'cart_item_customizations', 'quotations',
+      'quotation_items', 'quotation_events', 'orders', 'order_items',
+      'payments', 'payment_events', 'documents', 'uploaded_files',
+      'company_logos', 'shipments', 'shipment_events', 'shipping_quotes',
+      'shipping_shipments', 'shipping_events', 'tracking_records',
+      'process_orders', 'process_order_items', 'process_order_tasks',
+      'process_order_events', 'email_logs', 'audit_logs', 'woo_sync_logs',
+      'admin_notifications'
+    ]::text[])
+  )
+  select wanted.table_name,
+    coalesce(pg_class.relrowsecurity, false),
+    coalesce(pg_class.relforcerowsecurity, false),
+    (select count(*) from pg_policies policy where policy.schemaname = 'public' and policy.tablename = wanted.table_name),
+    (select count(*) from pg_policies policy where policy.schemaname = 'public' and policy.tablename = wanted.table_name and policy.cmd <> 'SELECT'),
+    (select count(*) from pg_policies policy where policy.schemaname = 'public' and policy.tablename = wanted.table_name and (policy.roles @> array['anon']::name[] or policy.roles @> array['public']::name[]))
+  from wanted
+  left join pg_class on pg_class.relname = wanted.table_name
+    and pg_class.relnamespace = 'public'::regnamespace
+  order by wanted.table_name;
+$$;
+revoke all on function public.ofissio_rls_security_inventory() from public;
+grant execute on function public.ofissio_rls_security_inventory() to service_role;

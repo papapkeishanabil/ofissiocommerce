@@ -19,6 +19,7 @@
     "check:payment": "tsx --require ./scripts/register-server-only.cjs scripts/check-payment.ts",
     "check:shipping": "tsx --require ./scripts/register-server-only.cjs scripts/check-shipping.ts",
     "check:auth": "tsx --require ./scripts/register-server-only.cjs scripts/check-auth.ts",
+    "check:rls": "tsx --require ./scripts/register-server-only.cjs scripts/check-rls.ts",
     "test:quantity-pricing": "tsx scripts/test-quantity-pricing.ts",
     "test:embroidery-pricing": "tsx scripts/test-embroidery-pricing.ts",
     "test:admin-notifications": "tsx scripts/test-admin-notifications.ts",
@@ -26,7 +27,7 @@
     "test:woocommerce-order-sync": "tsx scripts/test-woocommerce-order-sync.ts",
     "test:company-isolation": "tsx scripts/test-company-isolation.ts",
     "verify:supabase-persistence": "tsx scripts/verify-supabase-persistence.ts",
-    "check:all": "npm run check:env && npm run check:auth && npm run check:email && npm run check:documents && npm run check:payment && npm run check:shipping && npm run test:quantity-pricing && npm run test:embroidery-pricing && npm run test:admin-notifications && npm run test:commercial-flow && npm run test:woocommerce-order-sync && npm run typecheck && npm run lint && npm run build"
+    "check:all": "npm run check:env && npm run check:auth && npm run check:rls && npm run check:email && npm run check:documents && npm run check:payment && npm run check:shipping && npm run test:quantity-pricing && npm run test:embroidery-pricing && npm run test:admin-notifications && npm run test:commercial-flow && npm run test:woocommerce-order-sync && npm run typecheck && npm run lint && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

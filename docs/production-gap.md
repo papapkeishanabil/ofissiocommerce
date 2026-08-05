@@ -8,6 +8,16 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
 
 ## Gap kritikal sebelum production
 
+0. Final RLS/security gate
+   - Task F code review tersedia melalui migration
+     `020_rls_final_security_review.sql` dan `npm run check:rls`.
+   - Terapkan migration 020 manual di staging setelah migration 001-019.
+   - Bukti wajib: seluruh tabel inventory `RLS enabled + forced`, tidak ada direct
+     browser write/anonymous policy, bucket aktif private, dan company-isolation
+     smoke pass.
+   - Jalankan external penetration test, CSP review, secret rotation drill, dan
+     backup/restore drill sebelum production.
+
 1. Supabase Auth activation
    - Task D code hardening selesai: cookie HTTP-only, refresh handling,
      middleware token verification, server RBAC, dan company isolation tersedia.
@@ -82,6 +92,8 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
    - Retention policy.
 
 8. Security/policy production
+   - Jalankan dan arsipkan hasil `npm run check:rls` setelah setiap perubahan
+     schema/policy.
    - Privacy Policy.
    - Terms & Conditions.
    - Refund/return policy.

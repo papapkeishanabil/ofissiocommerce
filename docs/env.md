@@ -14,6 +14,18 @@ node --experimental-strip-types scripts/check-env.ts
 
 Di development, env production yang kosong hanya menjadi warning. Di production, env wajib yang kosong dianggap error.
 
+Final database security tidak membutuhkan secret baru. Setelah migration 020
+diterapkan, verifikasi env dan policy aktif dengan:
+
+```bash
+npm run check:env
+npm run check:rls
+```
+
+`check:rls` memakai `NEXT_PUBLIC_SUPABASE_ANON_KEY` hanya untuk memastikan akses
+anonymous ditolak, dan `SUPABASE_SERVICE_ROLE_KEY` hanya dari proses server untuk
+membaca inventory RLS tanpa membaca isi row customer.
+
 ## Env utama
 
 ```bash
