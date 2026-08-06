@@ -4,20 +4,20 @@ import { useId, useState, type FormEvent } from "react";
 import {
   Boxes,
   CircleAlert,
+  CircleCheckBig,
   Link2,
   PackageSearch,
   RefreshCw,
   ShieldCheck,
-  Webhook,
+  Warehouse,
 } from "lucide-react";
 
 import { AdminSectionCard } from "@/features/admin/components/AdminSectionCard";
 
 import type {
   GineeInventory,
-  GineeOrder,
+  GineeInventorySnapshot,
   GineeProductMapping,
-  GineeWebhookEvent,
 } from "../ginee.types";
 
 type Health = {
@@ -27,64 +27,95 @@ type Health = {
   providerMode: string;
   testLive: boolean;
   connectionOk: boolean;
-  shopCount: number;
   configErrors: string[];
-  destructiveSyncEnabled: false;
+  capability: "inventory_read_only";
+  orderImportEnabled: false;
+  stockWriteEnabled: false;
+  checkedAt: string;
 } | null;
+
+type StockCheckResult = {
+  stockSku: string;
+  gineeSku: string;
+  mapped: boolean;
+  mapping: GineeProductMapping | null;
+  inventory: GineeInventory[];
+  lastStock: number;
+  lastCheckedAt: string;
+  unmappedSkus: string[];
+};
 
 type Props = {
   initialHealth: Health;
-  initialOrders: GineeOrder[];
   initialMappings: GineeProductMapping[];
-  initialEvents: GineeWebhookEvent[];
-  canReadSync: boolean;
+  initialSnapshots: GineeInventorySnapshot[];
+  initialUnmappedSkus: string[];
+  canReadStock: boolean;
   canUpdate: boolean;
 };
 
 export function GineeIntegrationPanel(props: Props) {
+  const skuInputId = useId();
   const [health, setHealth] = useState(props.initialHealth);
-  const [orders, setOrders] = useState(props.initialOrders);
   const [mappings, setMappings] = useState(props.initialMappings);
-  const [events, setEvents] = useState(props.initialEvents);
-  const [inventory, setInventory] = useState<GineeInventory[]>([]);
-  const [sku, setSku] = useState("KK-006-S");
+  const [snapshots, setSnapshots] = useState(props.initialSnapshots);
+  const [unmappedSkus, setUnmappedSkus] = useState(props.initialUnmappedSkus);
+  const [result, setResult] = useState<StockCheckResult | null>(null);
+  const [sku, setSku] = useState("KK-006-M");
   const [busy, setBusy] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const mappedGineeSkus = new Set(mappings.map((item) => item.gineeSku));
-  const unmappedGineeSkus = [...new Set(
-    orders.flatMap((order) => order.items.map((item) => item.stockSku)),
-  )].filter((item) => !mappedGineeSkus.has(item));
-  const unlinkedWooSkus = mappings
-    .filter((item) => !item.woocommerceProductId)
-    .map((item) => item.stockSku);
+  const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
   async function refreshHealth() {
     await run("health", async () => {
       const data = await requestJson<{ health: NonNullable<Health> }>("/api/admin/integrations/ginee/health");
       setHealth(data.health);
-    });
+    }, "Status koneksi berhasil diperbarui.");
   }
 
-  async function refreshOrders() {
-    await run("orders", async () => {
-      const data = await requestJson<{ orders: GineeOrder[] }>("/api/admin/integrations/ginee/orders");
-      setOrders(data.orders);
-    });
-  }
-
-  async function findInventory(event: FormEvent) {
+  async function checkStock(event: FormEvent) {
     event.preventDefault();
-    await run("inventory", async () => {
-      const data = await requestJson<{ inventory: GineeInventory[] }>(
-        `/api/admin/integrations/ginee/inventory?sku=${encodeURIComponent(sku)}`,
+    await run("stock", async () => {
+      const data = await requestJson<{ result: StockCheckResult }>(
+        "/api/admin/integrations/ginee/check-stock",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sku }),
+        },
       );
-      setInventory(data.inventory);
-    });
+      setResult(data.result);
+      if (data.result.mapping) {
+        setMappings((current) => current.map((item) =>
+          item.id === data.result.mapping?.id ? data.result.mapping : item,
+        ).filter((item): item is GineeProductMapping => Boolean(item)));
+      }
+      setUnmappedSkus((current) => data.result.mapped
+        ? current.filter((item) => item !== data.result.stockSku)
+        : [...new Set([data.result.stockSku, ...current])]);
+      setSnapshots((current) => [
+        ...data.result.inventory.map((item) => ({
+          id: `local-${data.result.lastCheckedAt}-${item.warehouseId ?? "all"}`,
+          mappingId: data.result.mapping?.id ?? null,
+          stockSku: data.result.stockSku,
+          gineeSku: data.result.gineeSku,
+          gineeWarehouseId: item.warehouseId,
+          warehouseName: item.warehouseName,
+          warehouseStock: item.warehouseStock,
+          availableStock: item.availableStock,
+          reservedStock: item.reservedStock,
+          lockedStock: item.lockedStock,
+          checkedAt: data.result.lastCheckedAt,
+          createdAt: data.result.lastCheckedAt,
+        })),
+        ...current,
+      ].slice(0, 20));
+    }, "Stok Ginee berhasil diperiksa.");
   }
 
   async function saveMapping(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     await run("mapping", async () => {
       const response = await requestJson<{ mapping: GineeProductMapping }>(
         "/api/admin/integrations/ginee/mappings",
@@ -94,35 +125,37 @@ export function GineeIntegrationPanel(props: Props) {
           body: JSON.stringify({
             parentSku: data.get("parentSku"),
             stockSku: data.get("stockSku"),
-            gineeSku: data.get("gineeSku"),
             sizeLabel: data.get("sizeLabel") || null,
+            colorLabel: data.get("colorLabel") || null,
+            woocommerceProductId: data.get("woocommerceProductId") || null,
+            woocommerceVariationId: data.get("woocommerceVariationId") || null,
+            gineeSku: data.get("gineeSku"),
             gineeWarehouseId: data.get("gineeWarehouseId") || null,
           }),
         },
       );
       setMappings((current) => [
         response.mapping,
-        ...current.filter((item) => item.id !== response.mapping.id),
+        ...current.filter((item) =>
+          item.id !== response.mapping.id && item.stockSku !== response.mapping.stockSku,
+        ),
       ]);
-      event.currentTarget.reset();
-    });
+      setUnmappedSkus((current) => current.filter((item) => item !== response.mapping.stockSku));
+      form.reset();
+    }, "Mapping SKU berhasil disimpan.");
   }
 
-  async function refreshEvents() {
-    await run("events", async () => {
-      const data = await requestJson<{ events: GineeWebhookEvent[] }>("/api/admin/integrations/ginee/webhooks");
-      setEvents(data.events);
-    });
-  }
-
-  async function run(key: string, work: () => Promise<void>) {
+  async function run(key: string, work: () => Promise<void>, successMessage: string) {
     setBusy(key);
     setMessage(null);
     try {
       await work();
-      setMessage("Data read-only berhasil diperbarui.");
+      setMessage({ tone: "success", text: successMessage });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Permintaan Ginee belum dapat diproses.");
+      setMessage({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Permintaan Ginee belum dapat diproses.",
+      });
     } finally {
       setBusy(null);
     }
@@ -131,39 +164,47 @@ export function GineeIntegrationPanel(props: Props) {
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-3xl border border-line bg-white shadow-soft-sm">
-        <div className="grid gap-5 bg-gradient-to-br from-brand-950 via-brand-900 to-blue-800 px-6 py-7 text-white lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="grid gap-6 bg-gradient-to-br from-brand-950 via-brand-900 to-blue-800 px-6 py-8 text-white lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-200">Omnichannel integration</p>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-tight md:text-3xl">Ginee read-only control</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
-              Pantau order, shop, inventory, dan mapping SKU tanpa izin membuat atau mengubah data di Ginee.
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-200">Inventory integration</p>
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight md:text-3xl">Ginee stock checker</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100">
+              Periksa stok marketplace per SKU ukuran dan warehouse. Ofissio tidak mengimpor order,
+              tidak mengubah stok Ginee, dan tidak menjalankan sinkronisasi dua arah.
             </p>
           </div>
           <StatusPill ok={Boolean(health?.connectionOk)}>
-            {health?.providerMode === "live_read_only" ? "LIVE READ-ONLY" : "MOCK READ-ONLY"}
+            {health?.providerMode === "live_inventory_read_only" ? "LIVE · INVENTORY ONLY" : "MOCK · INVENTORY ONLY"}
           </StatusPill>
         </div>
       </section>
 
       {message ? (
-        <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">
-          {message}
+        <div
+          role={message.tone === "error" ? "alert" : "status"}
+          className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
+            message.tone === "error"
+              ? "border-red-200 bg-red-50 text-red-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800"
+          }`}
+        >
+          {message.text}
         </div>
       ) : null}
 
       <AdminSectionCard
         icon={ShieldCheck}
         eyebrow="Connection safety"
-        title="Status koneksi"
-        description="Credential disimpan server-side. Tombol write, fulfillment, shipment, dan inventory mutation sengaja tidak tersedia."
-        actions={<ActionButton busy={busy === "health"} onClick={refreshHealth}>Cek ulang</ActionButton>}
+        title="Status koneksi inventory"
+        description="Credential hanya digunakan di server. Kapabilitas client dibatasi ke endpoint baca inventory Ginee."
+        actions={<ActionButton busy={busy === "health"} onClick={refreshHealth}>Cek koneksi</ActionButton>}
       >
         <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <Metric label="Enabled" value={health?.enabled ? "Ya" : "Tidak"} />
-          <Metric label="Configured" value={health?.configured ? "Ya" : "Tidak"} />
+          <Metric label="Provider" value={health?.providerMode.startsWith("live") ? "Live" : "Mock"} />
           <Metric label="Mode" value={health?.mode ?? "sandbox"} />
-          <Metric label="Shop terbaca" value={String(health?.shopCount ?? 0)} />
-          <Metric label="Write sync" value="Selalu nonaktif" />
+          <Metric label="Configured" value={health?.configured ? "Ya" : "Belum"} />
+          <Metric label="Order import" value="Nonaktif" />
+          <Metric label="Stock write" value="Nonaktif" />
         </dl>
         {(health?.configErrors.length ?? 0) > 0 ? (
           <div className="mt-4 space-y-2">
@@ -176,89 +217,165 @@ export function GineeIntegrationPanel(props: Props) {
         ) : null}
       </AdminSectionCard>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
         <AdminSectionCard
           icon={PackageSearch}
-          title="Order terbaru Ginee"
-          description="Snapshot hanya menyimpan data operasional yang sudah disanitasi."
-          actions={props.canReadSync ? <ActionButton busy={busy === "orders"} onClick={refreshOrders}>Tarik data</ActionButton> : undefined}
+          eyebrow="Read-only query"
+          title="Cek stok berdasarkan Stock SKU"
+          description="Gunakan kode model + ukuran, misalnya KK-006-S, KK-006-M, atau KK-006-L."
         >
-          <div className="space-y-3">
-            {orders.length ? orders.map((order) => (
-              <article key={order.gineeOrderId} className="rounded-xl border border-line bg-slate-50 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong className="text-sm text-ink">{order.channelOrderId ?? order.gineeOrderId}</strong>
-                  <StatusPill ok={order.status !== "manual_review"}>{order.status}</StatusPill>
+          {props.canReadStock ? (
+            <form onSubmit={checkStock} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label htmlFor={skuInputId} className="min-w-0 flex-1 text-sm font-bold text-ink">
+                Stock SKU
+                <span className="mt-1 block text-xs font-normal text-ink-muted">Nama produk tidak digunakan sebagai matching key.</span>
+                <input
+                  id={skuInputId}
+                  value={sku}
+                  onChange={(event) => setSku(event.target.value.toUpperCase())}
+                  required
+                  autoComplete="off"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-line px-3 font-semibold uppercase outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                />
+              </label>
+              <button
+                aria-busy={busy === "stock"}
+                disabled={busy === "stock"}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-800 px-5 text-sm font-bold text-white outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-60"
+              >
+                <PackageSearch className="h-4 w-4" aria-hidden="true" />
+                {busy === "stock" ? "Memeriksa…" : "Cek stok"}
+              </button>
+            </form>
+          ) : <EmptyState label="Role ini tidak memiliki izin untuk memeriksa stok." />}
+
+          {result ? (
+            <div className="mt-5" aria-live="polite">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-slate-50 p-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-ink-subtle">Hasil pengecekan</p>
+                  <p className="mt-1 text-lg font-extrabold text-ink">{result.stockSku}</p>
+                  <p className="text-sm text-ink-muted">Ginee SKU: {result.gineeSku}</p>
                 </div>
-                <p className="mt-2 text-xs text-ink-muted">{order.channel} · {order.items.length} item · {formatMoney(order.totalAmount)}</p>
-              </article>
-            )) : <EmptyState label="Belum ada order yang ditarik." />}
-          </div>
+                <div className="text-right">
+                  <p className="text-3xl font-extrabold text-brand-900">{result.lastStock}</p>
+                  <p className="text-xs text-ink-muted">total tersedia</p>
+                </div>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {result.inventory.map((item) => (
+                  <WarehouseStock key={`${item.stockSku}-${item.warehouseId ?? "all"}`} item={item} />
+                ))}
+              </div>
+              {!result.inventory.length ? <EmptyState label="SKU ditemukan tanpa data stok warehouse, atau SKU belum tersedia di Ginee." /> : null}
+              <p className="mt-3 text-xs text-ink-muted">Terakhir dicek {formatDate(result.lastCheckedAt)}</p>
+            </div>
+          ) : null}
         </AdminSectionCard>
 
-        <AdminSectionCard icon={Boxes} title="Cek inventory per Stock SKU" description="SKU variasi wajib unik, misalnya KK-006-S, KK-006-M, dan KK-006-L.">
-          {props.canReadSync ? (
-            <form onSubmit={findInventory} className="flex flex-col gap-3 sm:flex-row">
-              <label className="min-w-0 flex-1 text-sm font-bold text-ink">
-                Stock SKU
-                <input value={sku} onChange={(event) => setSku(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-line px-3 font-medium uppercase outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100" />
-              </label>
-              <button aria-busy={busy === "inventory"} disabled={busy === "inventory"} className="min-h-11 self-end rounded-xl bg-brand-800 px-5 text-sm font-bold text-white outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-60">Cek stok</button>
-            </form>
-          ) : <EmptyState label="Role ini tidak memiliki izin sync read." />}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {inventory.map((item) => (
-              <Metric key={`${item.stockSku}-${item.warehouseId}`} label={`${item.stockSku} · ${item.warehouseName ?? "Warehouse"}`} value={`${item.availableStock} tersedia`} />
-            ))}
-          </div>
+        <AdminSectionCard
+          icon={CircleAlert}
+          eyebrow="Mapping report"
+          title="SKU belum dipetakan"
+          description="SKU ini pernah diperiksa tetapi belum memiliki mapping teknis Ofissio–Ginee."
+        >
+          {unmappedSkus.length ? (
+            <ul className="space-y-2">
+              {unmappedSkus.map((item) => (
+                <li key={item} className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <span className="font-bold text-amber-950">{item}</span>
+                  <span className="text-xs font-bold uppercase tracking-wide text-amber-700">Unmapped</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+              <CircleCheckBig className="h-5 w-5 shrink-0" aria-hidden="true" />
+              Belum ada SKU hasil pengecekan yang membutuhkan mapping.
+            </div>
+          )}
         </AdminSectionCard>
       </div>
 
-      <AdminSectionCard icon={Link2} title="Mapping SKU" description="Hubungkan parent SKU dan SKU variasi WooCommerce/Ofissio ke SKU Ginee. Mapping tidak mengaktifkan stock push atau order write.">
-        <div className="mb-4 grid gap-3 md:grid-cols-2">
-          <CoverageCard
-            label="SKU Ginee belum mapped"
-            values={unmappedGineeSkus}
-            empty="Semua SKU dari order yang ditarik sudah mapped."
-          />
-          <CoverageCard
-            label="Mapping belum punya Woo Product ID"
-            values={unlinkedWooSkus}
-            empty="Semua mapping sudah terhubung ke WooCommerce."
-          />
-        </div>
+      <AdminSectionCard
+        icon={Link2}
+        eyebrow="Technical mapping"
+        title="Mapping SKU per ukuran"
+        description="Parent SKU adalah kode model; Stock SKU wajib menyertakan ukuran. WooCommerce dan Ginee ID hanya referensi teknis."
+      >
         {props.canUpdate ? (
-          <form onSubmit={saveMapping} className="grid gap-3 rounded-2xl border border-line bg-slate-50 p-4 md:grid-cols-5">
+          <form onSubmit={saveMapping} className="grid gap-3 rounded-2xl border border-line bg-slate-50 p-4 sm:grid-cols-2 xl:grid-cols-4">
             <Field name="parentSku" label="Parent SKU" placeholder="KK-006" required />
-            <Field name="stockSku" label="Stock SKU" placeholder="KK-006-S" required />
-            <Field name="gineeSku" label="Ginee SKU" placeholder="KK-006-S" required />
-            <Field name="sizeLabel" label="Ukuran" placeholder="S" />
+            <Field name="stockSku" label="Stock SKU" placeholder="KK-006-M" required />
+            <Field name="sizeLabel" label="Ukuran" placeholder="M" />
+            <Field name="colorLabel" label="Warna (opsional)" placeholder="Kosong jika tidak ada" />
+            <Field name="woocommerceProductId" label="Woo Product ID" placeholder="Opsional" />
+            <Field name="woocommerceVariationId" label="Woo Variation ID" placeholder="Opsional" />
+            <Field name="gineeSku" label="Ginee SKU" placeholder="KK-006-M" required />
             <Field name="gineeWarehouseId" label="Warehouse ID" placeholder="Opsional" />
-            <button aria-busy={busy === "mapping"} disabled={busy === "mapping"} className="min-h-11 rounded-xl bg-brand-800 px-5 text-sm font-bold text-white outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-60 md:col-span-5 md:justify-self-start">Simpan mapping</button>
+            <button
+              aria-busy={busy === "mapping"}
+              disabled={busy === "mapping"}
+              className="min-h-11 rounded-xl bg-brand-800 px-5 text-sm font-bold text-white outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-60 sm:col-span-2 xl:col-span-4 xl:justify-self-start"
+            >
+              {busy === "mapping" ? "Menyimpan…" : "Simpan mapping SKU"}
+            </button>
           </form>
         ) : (
           <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-ink-muted">Role Anda hanya dapat melihat mapping.</p>
         )}
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-ink-subtle"><tr><th className="px-3 py-3">Parent</th><th className="px-3 py-3">Stock SKU</th><th className="px-3 py-3">Ginee SKU</th><th className="px-3 py-3">Ukuran</th><th className="px-3 py-3">Write sync</th></tr></thead>
-            <tbody className="divide-y divide-line">
-              {mappings.map((mapping) => <tr key={mapping.id}><td className="px-3 py-3 font-bold">{mapping.parentSku}</td><td className="px-3 py-3">{mapping.stockSku}</td><td className="px-3 py-3">{mapping.gineeSku}</td><td className="px-3 py-3">{mapping.sizeLabel ?? "-"}</td><td className="px-3 py-3 text-emerald-700">Nonaktif</td></tr>)}
+
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-line">
+          <table className="w-full min-w-[920px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-ink-subtle">
+              <tr>
+                <th className="px-4 py-3">Parent</th>
+                <th className="px-4 py-3">Stock SKU</th>
+                <th className="px-4 py-3">Ukuran</th>
+                <th className="px-4 py-3">Ginee SKU</th>
+                <th className="px-4 py-3">Warehouse</th>
+                <th className="px-4 py-3 text-right">Stok terakhir</th>
+                <th className="px-4 py-3">Terakhir dicek</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line bg-white">
+              {mappings.map((mapping) => (
+                <tr key={mapping.id}>
+                  <td className="px-4 py-3 font-bold text-ink">{mapping.parentSku}</td>
+                  <td className="px-4 py-3 font-semibold text-brand-800">{mapping.stockSku}</td>
+                  <td className="px-4 py-3">{mapping.sizeLabel ?? "-"}</td>
+                  <td className="px-4 py-3">{mapping.gineeSku}</td>
+                  <td className="px-4 py-3">{mapping.gineeWarehouseId ?? "Semua"}</td>
+                  <td className="px-4 py-3 text-right font-bold">{mapping.lastStock ?? "-"}</td>
+                  <td className="px-4 py-3 text-ink-muted">{mapping.lastCheckedAt ? formatDate(mapping.lastCheckedAt) : "Belum dicek"}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
-          {!mappings.length ? <EmptyState label="Belum ada mapping. Terapkan migration 021 sebelum menyimpan ke Supabase." /> : null}
+          {!mappings.length ? <EmptyState label="Belum ada mapping SKU. Terapkan migration 021 sebelum menyimpan ke Supabase." /> : null}
         </div>
       </AdminSectionCard>
 
       <AdminSectionCard
-        icon={Webhook}
-        title="Webhook events"
-        description="Webhook hanya merekam event aman dan menandai order untuk read/refetch. Payload customer tidak disimpan."
-        actions={<ActionButton busy={busy === "events"} onClick={refreshEvents}>Refresh</ActionButton>}
+        icon={Boxes}
+        eyebrow="Audit read"
+        title="Pengecekan stok terbaru"
+        description="Snapshot ini hanya menyimpan SKU, warehouse, jumlah stok, dan waktu pengecekan."
       >
-        <div className="space-y-2">
-          {events.map((event) => <div key={event.id} className="flex flex-wrap justify-between gap-2 rounded-xl border border-line px-4 py-3 text-sm"><span className="font-bold text-ink">{event.eventType}</span><span className="text-ink-muted">{event.status} · {formatDate(event.createdAt)}</span></div>)}
-          {!events.length ? <EmptyState label="Belum ada webhook event." /> : null}
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {snapshots.slice(0, 12).map((item) => (
+            <article key={item.id} className="rounded-xl border border-line bg-slate-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-extrabold text-ink">{item.stockSku}</p>
+                  <p className="mt-1 text-xs text-ink-muted">{item.warehouseName ?? item.gineeWarehouseId ?? "Semua warehouse"}</p>
+                </div>
+                <span className="text-xl font-extrabold text-brand-900">{item.availableStock}</span>
+              </div>
+              <p className="mt-3 text-xs text-ink-muted">{formatDate(item.checkedAt)}</p>
+            </article>
+          ))}
+          {!snapshots.length ? <EmptyState label="Belum ada riwayat pengecekan stok." /> : null}
         </div>
       </AdminSectionCard>
     </div>
@@ -270,13 +387,31 @@ function Field(props: { name: string; label: string; placeholder: string; requir
   return (
     <label htmlFor={id} className="text-sm font-bold text-ink">
       {props.label}{props.required ? <span aria-hidden="true" className="text-red-600"> *</span> : null}
-      <input id={id} name={props.name} placeholder={props.placeholder} required={props.required} aria-required={props.required} className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3 font-medium outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100" />
+      <input
+        id={id}
+        name={props.name}
+        placeholder={props.placeholder}
+        required={props.required}
+        aria-required={props.required}
+        autoComplete="off"
+        className="mt-2 min-h-11 w-full rounded-xl border border-line bg-white px-3 font-medium outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+      />
     </label>
   );
 }
 
 function ActionButton({ busy, onClick, children }: { busy: boolean; onClick: () => void; children: string }) {
-  return <button type="button" aria-busy={busy} disabled={busy} onClick={onClick} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-bold text-brand-800 outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-60"><RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} aria-hidden="true" />{children}</button>;
+  return (
+    <button
+      type="button"
+      aria-busy={busy}
+      disabled={busy}
+      onClick={onClick}
+      className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-bold text-brand-800 outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-60"
+    >
+      <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} aria-hidden="true" />{children}
+    </button>
+  );
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
@@ -291,14 +426,22 @@ function EmptyState({ label }: { label: string }) {
   return <p className="rounded-xl border border-dashed border-line bg-slate-50 px-4 py-5 text-center text-sm text-ink-muted">{label}</p>;
 }
 
-function CoverageCard({ label, values, empty }: { label: string; values: string[]; empty: string }) {
+function WarehouseStock({ item }: { item: GineeInventory }) {
   return (
-    <div className="rounded-xl border border-line bg-slate-50 p-4">
-      <p className="text-xs font-bold uppercase tracking-wide text-ink-subtle">{label}</p>
-      <p className={`mt-2 text-sm font-semibold ${values.length ? "text-amber-800" : "text-emerald-700"}`}>
-        {values.length ? values.join(", ") : empty}
-      </p>
-    </div>
+    <article className="rounded-2xl border border-line bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-brand-800"><Warehouse className="h-5 w-5" aria-hidden="true" /></span>
+          <div><p className="font-bold text-ink">{item.warehouseName ?? "Warehouse Ginee"}</p><p className="text-xs text-ink-muted">{item.warehouseId ?? "ID tidak tersedia"}</p></div>
+        </div>
+        <p className="text-2xl font-extrabold text-brand-900">{item.availableStock}</p>
+      </div>
+      <dl className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+        <div className="rounded-lg bg-slate-50 p-2"><dt className="text-ink-muted">Fisik</dt><dd className="mt-1 font-bold text-ink">{item.warehouseStock}</dd></div>
+        <div className="rounded-lg bg-slate-50 p-2"><dt className="text-ink-muted">Reserved</dt><dd className="mt-1 font-bold text-ink">{item.reservedStock}</dd></div>
+        <div className="rounded-lg bg-slate-50 p-2"><dt className="text-ink-muted">Locked</dt><dd className="mt-1 font-bold text-ink">{item.lockedStock}</dd></div>
+      </dl>
+    </article>
   );
 }
 
@@ -307,10 +450,6 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const body = await response.json().catch(() => ({})) as { message?: string } & T;
   if (!response.ok) throw new Error(body.message || "Permintaan Ginee gagal.");
   return body;
-}
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 }
 
 function formatDate(value: string) {

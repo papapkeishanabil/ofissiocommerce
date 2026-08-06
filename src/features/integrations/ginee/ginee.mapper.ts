@@ -1,120 +1,54 @@
-import type { GineeInventory, GineeOrder, GineeOrderItem, GineeShop } from "./ginee.types";
+import type { GineeInventory } from "./ginee.types";
 
 type JsonObject = Record<string, unknown>;
 
-export function mapGineeShops(payload: unknown): GineeShop[] {
-  return rowsFromPayload(payload).map((row) => ({
-    shopId: stringValue(row.shopId),
-    channel: stringValue(row.channel, "UNKNOWN"),
-    name: stringValue(row.name, "Unnamed shop"),
-    authorizationStatus: stringValue(row.authorizationStatus, "UNKNOWN"),
-  })).filter((shop) => Boolean(shop.shopId));
-}
-
-export function mapGineeOrders(payload: unknown): GineeOrder[] {
-  return rowsFromPayload(payload).map(mapGineeOrder).filter((order) => Boolean(order.gineeOrderId));
-}
-
-export function mapGineeOrder(payload: unknown): GineeOrder {
-  const row = objectValue(payload);
-  const rawStatus = stringValue(row.orderStatus, row.externalOrderStatus, "UNKNOWN");
-  return {
-    gineeOrderId: stringValue(row.orderId),
-    channelOrderId: nullableString(row.externalOrderSn, row.externalOrderId),
-    shopId: nullableString(row.shopId),
-    channel: stringValue(row.channel, "UNKNOWN"),
-    status: mapGineeOrderStatus(rawStatus),
-    rawStatus,
-    totalAmount: nonNegativeNumber(row.totalAmount),
-    currency: stringValue(row.currency, "IDR"),
-    orderCreatedAt: nullableString(row.createAt, row.externalCreateAt),
-    orderUpdatedAt: nullableString(row.lastUpdateAt, row.externalUpdateAt),
-    items: arrayValue(row.items).map(mapGineeOrderItem).filter((item) => Boolean(item.stockSku)),
-  };
-}
-
 export function mapGineeInventory(payload: unknown, requestedSku: string): GineeInventory[] {
-  const now = new Date().toISOString();
-  const rows = rowsFromPayload(payload);
-  const inventoryRows = rows.flatMap((row) => {
-    if (Array.isArray(row.variationBriefs)) {
-      return row.variationBriefs.map((variation) => ({
-        product: row,
-        variation: objectValue(variation),
-        warehouseInventory: objectValue(objectValue(variation).stock),
-        warehouse: {} as JsonObject,
+  const normalizedSku = requestedSku.trim().toUpperCase();
+  const checkedAt = new Date().toISOString();
+  const inventoryRows = rowsFromPayload(payload).flatMap((row) => {
+    const variations = arrayValue(row.variationBriefs);
+    if (variations.length) {
+      return variations.map((value) => ({
+        variation: objectValue(value),
+        inventory: objectValue(objectValue(value).stock),
+        warehouse: objectValue(objectValue(value).warehouse),
       }));
     }
+
+    const warehouseRows = arrayValue(row.warehouseInventories ?? row.warehouseInventoryList);
+    if (warehouseRows.length) {
+      return warehouseRows.map((value) => ({
+        variation: objectValue(row.masterVariation ?? row.variation ?? row),
+        inventory: objectValue(value),
+        warehouse: objectValue(objectValue(value).warehouse),
+      }));
+    }
+
     return [{
-      product: {} as JsonObject,
-      variation: objectValue(row.masterVariation),
-      warehouseInventory: objectValue(row.warehouseInventory),
+      variation: objectValue(row.masterVariation ?? row.variation ?? row),
+      inventory: objectValue(row.warehouseInventory ?? row.inventory ?? row),
       warehouse: objectValue(row.warehouse),
     }];
   });
 
-  return inventoryRows.map(({ product, variation, warehouseInventory, warehouse }) => {
-    const stockSku = stringValue(variation.sku, variation.masterSku, requestedSku).trim().toUpperCase();
-    return {
-      stockSku,
-      gineeProductId: nullableString(product.productId, variation.masterProductId),
-      gineeVariationId: nullableString(variation.id, warehouseInventory.masterVariationId),
-      warehouseId: nullableString(warehouseInventory.warehouseId, warehouse.id),
-      warehouseName: nullableString(warehouse.name),
-      warehouseStock: nonNegativeNumber(warehouseInventory.warehouseStock),
-      availableStock: nonNegativeNumber(warehouseInventory.availableStock),
-      reservedStock: nonNegativeNumber(warehouseInventory.spareStock),
-      lockedStock: nonNegativeNumber(warehouseInventory.lockedStock),
-      lastSyncedAt: now,
-    } satisfies GineeInventory;
-  }).filter((item) => item.stockSku === requestedSku.trim().toUpperCase());
-}
-
-export function mapGineeOrderStatus(value: string) {
-  const status = value.trim().toUpperCase();
-  if (["PAID", "READY_TO_SHIP", "PENDING_SHIPMENT", "SHIPPING"].includes(status)) return "ready";
-  if (["COMPLETED", "DELIVERED"].includes(status)) return "completed";
-  if (["CANCELLED", "CANCELED", "CLOSED"].includes(status)) return "cancelled";
-  if (["UNPAID", "PENDING", "WAITING_PAYMENT"].includes(status)) return "pending";
-  return "manual_review";
-}
-
-export function sanitizedGineeOrderSnapshot(order: GineeOrder) {
-  return {
-    gineeOrderId: order.gineeOrderId,
-    channelOrderId: order.channelOrderId,
-    shopId: order.shopId,
-    channel: order.channel,
-    status: order.status,
-    rawStatus: order.rawStatus,
-    totalAmount: order.totalAmount,
-    currency: order.currency,
-    orderCreatedAt: order.orderCreatedAt,
-    orderUpdatedAt: order.orderUpdatedAt,
-    items: order.items.map((item) => ({
-      itemId: item.itemId,
-      stockSku: item.stockSku,
-      productName: item.productName.slice(0, 160),
-      quantity: item.quantity,
-    })),
-  };
-}
-
-function mapGineeOrderItem(payload: unknown): GineeOrderItem {
-  const row = objectValue(payload);
-  return {
-    itemId: stringValue(row.itemId),
-    stockSku: stringValue(row.masterSku, row.sku, row.variationSku).trim().toUpperCase(),
-    productName: stringValue(row.productName, row.name, "Ginee item"),
-    quantity: Math.max(0, Math.round(nonNegativeNumber(row.quantity, 1))),
-  };
+  return inventoryRows.map(({ variation, inventory, warehouse }) => ({
+    stockSku: stringValue(variation.sku, variation.masterSku, inventory.masterSku, normalizedSku).toUpperCase(),
+    warehouseId: nullableString(inventory.warehouseId, warehouse.id),
+    warehouseName: nullableString(inventory.warehouseName, warehouse.name),
+    warehouseStock: nonNegativeNumber(inventory.warehouseStock, inventory.stock),
+    availableStock: nonNegativeNumber(inventory.availableStock, inventory.available),
+    reservedStock: nonNegativeNumber(inventory.spareStock, inventory.reservedStock),
+    lockedStock: nonNegativeNumber(inventory.lockedStock),
+    lastCheckedAt: checkedAt,
+  })).filter((item) => item.stockSku === normalizedSku);
 }
 
 function rowsFromPayload(payload: unknown): JsonObject[] {
   if (Array.isArray(payload)) return payload.map(objectValue);
   const object = objectValue(payload);
-  if (Array.isArray(object.content)) return object.content.map(objectValue);
-  if (Array.isArray(object.list)) return object.list.map(objectValue);
+  for (const key of ["content", "list", "data", "items"]) {
+    if (Array.isArray(object[key])) return (object[key] as unknown[]).map(objectValue);
+  }
   return Object.keys(object).length ? [object] : [];
 }
 
@@ -137,7 +71,10 @@ function nullableString(...values: unknown[]) {
   return stringValue(...values) || null;
 }
 
-function nonNegativeNumber(value: unknown, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+function nonNegativeNumber(...values: unknown[]) {
+  for (const value of values) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+  }
+  return 0;
 }

@@ -114,6 +114,11 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
 ## Prinsip go-live
 
 Jangan deploy production hanya karena build pass. Production boleh dipertimbangkan setelah semua gap kritikal di atas punya owner, env, smoke test, dan rollback plan.
-# Ginee omnichannel gap
+# Ginee inventory gap
 
-Task G1 baru menyediakan koneksi dan laporan read-only, mapping SKU per ukuran, sanitized order snapshot, serta webhook idempotent yang menunggu refetch. Order import (G2), inventory write/sync (G3), conflict resolution, operational approval, dan live credential sign-off masih production gap. Jangan mengaktifkan `GINEE_SYNC_ORDERS` atau `GINEE_SYNC_INVENTORY` sebelum phase tersebut selesai.
+Task G1 hanya menyediakan pengecekan stok read-only berdasarkan Stock SKU per
+ukuran, mapping teknis, dan snapshot inventory per warehouse. Import order,
+webhook order, update stok Ginee, serta two-way sync tidak termasuk scope dan
+tidak tersedia di aplikasi. Aktivasi production masih membutuhkan credential
+Ginee yang disetujui, pengujian live read-only, kesamaan SKU WooCommerce–Ginee,
+dan prosedur operasional untuk menangani SKU yang belum dipetakan.

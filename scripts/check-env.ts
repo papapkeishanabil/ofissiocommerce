@@ -55,11 +55,7 @@ const rules: EnvRule[] = [
   { name: "GINEE_COUNTRY" },
   { name: "GINEE_ACCESS_KEY", secret: true },
   { name: "GINEE_SECRET_KEY", secret: true },
-  { name: "GINEE_WEBHOOK_SECRET", secret: true },
-  { name: "GINEE_WEBHOOK_URL" },
   { name: "GINEE_TEST_LIVE" },
-  { name: "GINEE_SYNC_ORDERS" },
-  { name: "GINEE_SYNC_INVENTORY" },
   { name: "PAYMENT_PROVIDER" },
   { name: "PAYMENT_MODE" },
   { name: "IPAYMU_ENABLED" },
@@ -124,7 +120,6 @@ const forbiddenPublicSecrets = [
   "NEXT_PUBLIC_WORDPRESS_MEDIA_TOKEN",
   "NEXT_PUBLIC_GINEE_ACCESS_KEY",
   "NEXT_PUBLIC_GINEE_SECRET_KEY",
-  "NEXT_PUBLIC_GINEE_WEBHOOK_SECRET",
   "NEXT_PUBLIC_BITESHIP_API_KEY",
   "NEXT_PUBLIC_BITESHIP_WEBHOOK_SECRET",
   "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
@@ -237,7 +232,7 @@ if (process.env.WOOCOMMERCE_ENABLED === "true") {
 
 const gineeEnabled = process.env.GINEE_ENABLED === "true";
 const gineeMode = process.env.GINEE_MODE?.trim().toLowerCase() || "sandbox";
-for (const name of ["GINEE_ENABLED", "GINEE_TEST_LIVE", "GINEE_SYNC_ORDERS", "GINEE_SYNC_INVENTORY"]) {
+for (const name of ["GINEE_ENABLED", "GINEE_TEST_LIVE"]) {
   if (process.env[name] && !isBooleanEnv(process.env[name])) {
     problems.push({ level: "error", message: `${name} harus bernilai true atau false.` });
   }
@@ -263,18 +258,6 @@ if (gineeEnabled) {
 }
 if (process.env.GINEE_TEST_LIVE === "true" && !gineeEnabled) {
   problems.push({ level: "error", message: "GINEE_TEST_LIVE=true membutuhkan GINEE_ENABLED=true." });
-}
-if (process.env.GINEE_SYNC_ORDERS === "true" || process.env.GINEE_SYNC_INVENTORY === "true") {
-  problems.push({
-    level: "error",
-    message: "Task G1 bersifat read-only; GINEE_SYNC_ORDERS dan GINEE_SYNC_INVENTORY wajib false.",
-  });
-}
-if (process.env.GINEE_WEBHOOK_URL && !isPublicHttpsUrl(process.env.GINEE_WEBHOOK_URL)) {
-  problems.push({
-    level: appEnv === "development" ? "warning" : "error",
-    message: "GINEE_WEBHOOK_URL harus berupa HTTPS publik agar dapat menerima webhook.",
-  });
 }
 
 if (process.env.PAYMENT_PROVIDER === "ipaymu") {

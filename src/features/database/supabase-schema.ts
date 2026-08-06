@@ -71,8 +71,7 @@ export const TASK_E_CARRIER_SHIPPING_TABLES = [
 
 export const TASK_G1_GINEE_TABLES = [
   "ginee_product_mappings",
-  "ginee_order_snapshots",
-  "ginee_webhook_events",
+  "ginee_inventory_snapshots",
 ] as const;
 
 export const REQUIRED_SUPABASE_TABLES = [

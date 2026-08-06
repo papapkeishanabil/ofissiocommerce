@@ -6,11 +6,6 @@ import { getGineeConfig } from "./ginee.config";
 import { buildGineeAuthorization } from "./ginee.signer";
 
 const READ_ONLY_ENDPOINTS = new Set([
-  "POST /openapi/shop/v1/list",
-  "POST /openapi/order/v2/list-order",
-  "POST /openapi/order/v2/get",
-  "POST /openapi/order/v1/batch-get",
-  "POST /openapi/product/master/v1/list",
   "POST /openapi/warehouse-inventory/v1/sku/list",
   "GET /openapi/warehouse-inventory/v1/sku/get",
 ]);

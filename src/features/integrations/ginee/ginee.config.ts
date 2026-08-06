@@ -28,11 +28,7 @@ export function getGineeConfig(): GineeRuntimeConfig {
     country: env("GINEE_COUNTRY", "ID").toUpperCase(),
     accessKey,
     secretKey,
-    webhookSecret: env("GINEE_WEBHOOK_SECRET"),
-    webhookUrl: env("GINEE_WEBHOOK_URL"),
     testLive,
-    syncOrders: boolEnv("GINEE_SYNC_ORDERS"),
-    syncInventory: boolEnv("GINEE_SYNC_INVENTORY"),
     isConfigured,
     useLiveProvider: enabled && testLive && Boolean(accessKey && secretKey),
   };
