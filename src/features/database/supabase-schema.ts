@@ -69,6 +69,12 @@ export const TASK_E_CARRIER_SHIPPING_TABLES = [
   "shipping_events",
 ] as const;
 
+export const TASK_G1_GINEE_TABLES = [
+  "ginee_product_mappings",
+  "ginee_order_snapshots",
+  "ginee_webhook_events",
+] as const;
+
 export const REQUIRED_SUPABASE_TABLES = [
   "companies",
   "user_profiles",
@@ -89,6 +95,7 @@ export const REQUIRED_SUPABASE_TABLES = [
   ...PHASE_24_SHIPMENT_TABLES,
   "embroidery_pricing_zones",
   "admin_notifications",
+  ...TASK_G1_GINEE_TABLES,
 ] as const;
 
 export type RequiredSupabaseTable = (typeof REQUIRED_SUPABASE_TABLES)[number];

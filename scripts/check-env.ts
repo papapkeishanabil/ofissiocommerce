@@ -49,6 +49,17 @@ const rules: EnvRule[] = [
   { name: "WORDPRESS_MEDIA_USERNAME" },
   { name: "WORDPRESS_MEDIA_APP_PASSWORD", secret: true },
   { name: "WORDPRESS_MEDIA_TOKEN", secret: true },
+  { name: "GINEE_ENABLED" },
+  { name: "GINEE_MODE" },
+  { name: "GINEE_BASE_URL" },
+  { name: "GINEE_COUNTRY" },
+  { name: "GINEE_ACCESS_KEY", secret: true },
+  { name: "GINEE_SECRET_KEY", secret: true },
+  { name: "GINEE_WEBHOOK_SECRET", secret: true },
+  { name: "GINEE_WEBHOOK_URL" },
+  { name: "GINEE_TEST_LIVE" },
+  { name: "GINEE_SYNC_ORDERS" },
+  { name: "GINEE_SYNC_INVENTORY" },
   { name: "PAYMENT_PROVIDER" },
   { name: "PAYMENT_MODE" },
   { name: "IPAYMU_ENABLED" },
@@ -111,6 +122,9 @@ const forbiddenPublicSecrets = [
   "NEXT_PUBLIC_WORDPRESS_MEDIA_USERNAME",
   "NEXT_PUBLIC_WORDPRESS_MEDIA_APP_PASSWORD",
   "NEXT_PUBLIC_WORDPRESS_MEDIA_TOKEN",
+  "NEXT_PUBLIC_GINEE_ACCESS_KEY",
+  "NEXT_PUBLIC_GINEE_SECRET_KEY",
+  "NEXT_PUBLIC_GINEE_WEBHOOK_SECRET",
   "NEXT_PUBLIC_BITESHIP_API_KEY",
   "NEXT_PUBLIC_BITESHIP_WEBHOOK_SECRET",
   "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
@@ -219,6 +233,48 @@ if (process.env.WOOCOMMERCE_ENABLED === "true") {
         "Upload foto produk membutuhkan WORDPRESS_MEDIA_TOKEN atau pasangan WORDPRESS_MEDIA_USERNAME + WORDPRESS_MEDIA_APP_PASSWORD.",
     });
   }
+}
+
+const gineeEnabled = process.env.GINEE_ENABLED === "true";
+const gineeMode = process.env.GINEE_MODE?.trim().toLowerCase() || "sandbox";
+for (const name of ["GINEE_ENABLED", "GINEE_TEST_LIVE", "GINEE_SYNC_ORDERS", "GINEE_SYNC_INVENTORY"]) {
+  if (process.env[name] && !isBooleanEnv(process.env[name])) {
+    problems.push({ level: "error", message: `${name} harus bernilai true atau false.` });
+  }
+}
+if (!["sandbox", "live"].includes(gineeMode)) {
+  problems.push({ level: "error", message: "GINEE_MODE harus sandbox atau live." });
+}
+if (process.env.GINEE_BASE_URL && !isHttpsUrl(process.env.GINEE_BASE_URL)) {
+  problems.push({ level: "error", message: "GINEE_BASE_URL harus berupa URL HTTPS." });
+}
+if (process.env.GINEE_COUNTRY && !/^[A-Z]{2}$/i.test(process.env.GINEE_COUNTRY.trim())) {
+  problems.push({ level: "error", message: "GINEE_COUNTRY harus berupa kode negara dua huruf." });
+}
+if (gineeEnabled) {
+  for (const name of ["GINEE_ACCESS_KEY", "GINEE_SECRET_KEY"]) {
+    if (!process.env[name]?.trim()) {
+      problems.push({
+        level: appEnv === "development" ? "warning" : "error",
+        message: `${name} wajib saat GINEE_ENABLED=true.`,
+      });
+    }
+  }
+}
+if (process.env.GINEE_TEST_LIVE === "true" && !gineeEnabled) {
+  problems.push({ level: "error", message: "GINEE_TEST_LIVE=true membutuhkan GINEE_ENABLED=true." });
+}
+if (process.env.GINEE_SYNC_ORDERS === "true" || process.env.GINEE_SYNC_INVENTORY === "true") {
+  problems.push({
+    level: "error",
+    message: "Task G1 bersifat read-only; GINEE_SYNC_ORDERS dan GINEE_SYNC_INVENTORY wajib false.",
+  });
+}
+if (process.env.GINEE_WEBHOOK_URL && !isPublicHttpsUrl(process.env.GINEE_WEBHOOK_URL)) {
+  problems.push({
+    level: appEnv === "development" ? "warning" : "error",
+    message: "GINEE_WEBHOOK_URL harus berupa HTTPS publik agar dapat menerima webhook.",
+  });
 }
 
 if (process.env.PAYMENT_PROVIDER === "ipaymu") {
@@ -569,6 +625,14 @@ function isPublicHttpsUrl(value: string | undefined) {
       url.protocol === "https:" &&
       !["localhost", "127.0.0.1", "::1"].includes(url.hostname)
     );
+  } catch {
+    return false;
+  }
+}
+
+function isHttpsUrl(value: string | undefined) {
+  try {
+    return new URL(value ?? "").protocol === "https:";
   } catch {
     return false;
   }

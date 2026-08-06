@@ -307,3 +307,8 @@ BITESHIP_TEST_CREATE_SHIPMENT=false
 API key dan webhook secret hanya server-side. Production tidak boleh memakai
 mock kecuali `SHIPPING_ALLOW_MOCK_IN_PRODUCTION=true` diset sebagai fallback
 eksplisit. Detail setup dan smoke test ada di `docs/biteship-shipping.md`.
+# Ginee read-only connector (Task G1)
+
+Gunakan `GINEE_ENABLED`, `GINEE_MODE`, `GINEE_BASE_URL`, `GINEE_COUNTRY`, `GINEE_ACCESS_KEY`, `GINEE_SECRET_KEY`, `GINEE_WEBHOOK_SECRET`, `GINEE_WEBHOOK_URL`, dan `GINEE_TEST_LIVE`. Pada Task G1, `GINEE_SYNC_ORDERS` dan `GINEE_SYNC_INVENTORY` wajib tetap `false`.
+
+Credential Ginee hanya boleh berada di environment server dan tidak boleh memakai prefix `NEXT_PUBLIC_`. Default `GINEE_TEST_LIVE=false` memastikan check lokal memakai provider mock. Panduan lengkap ada di [ginee-integration.md](./ginee-integration.md).

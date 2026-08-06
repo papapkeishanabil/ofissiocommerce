@@ -18,6 +18,7 @@ import {
   Percent,
   Truck,
   Workflow,
+  Waypoints,
 } from "lucide-react";
 
 import { ADMIN_NAV_ITEMS, ADMIN_ROLE_PERMISSIONS } from "../admin.config";
@@ -40,6 +41,7 @@ const ICONS = {
   "/admin/catalog": Tags,
   "/admin/uploads": FileArchive,
   "/admin/tracking": Boxes,
+  "/admin/integrations/ginee": Waypoints,
   "/admin/audit": Activity,
 };
 
