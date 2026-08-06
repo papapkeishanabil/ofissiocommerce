@@ -4,6 +4,8 @@ import { ArrowLeft, Calculator, History, Receipt, Truck } from "lucide-react";
 
 import {
   canUpdateProcessOrder,
+  canRequestStockReplenishment,
+  canViewStockMonitoring,
   getAdminOrderDetail,
   requireInternalAdminServer,
 } from "@/features/admin/admin.service";
@@ -36,6 +38,10 @@ import type { OrderProcessRoute } from "@/features/orders/order.types";
 import { getPaymentRuntimeConfig } from "@/features/payment/payment.config";
 import type { ProcessOrder, ProcessOrderTask } from "@/features/process-orders/process-order.types";
 import type { ShipmentStatus } from "@/features/shipments/shipment.types";
+import { AdminOrderStockPanel } from "@/features/stock-monitoring/components/AdminOrderStockPanel";
+import { listOrderReplenishmentRequests } from "@/features/stock-monitoring/replenishment.service";
+import { compareOrderRequirementWithWooStock } from "@/features/stock-monitoring/woocommerce-stock.service";
+import type { OrderStockComparisonResult } from "@/features/stock-monitoring/stock-monitoring.types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -57,9 +63,18 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
     paymentEvents,
     processOrderDetail,
   } = detail;
-  const productImages = await resolveAdminProductImages(
-    order.items.map((item) => ({ productId: item.productId, productSlug: item.productSlug })),
-  );
+  const showStockMonitoring = canViewStockMonitoring(actor);
+  const [productImages, stockComparison, replenishmentRequests] = await Promise.all([
+    resolveAdminProductImages(
+      order.items.map((item) => ({ productId: item.productId, productSlug: item.productSlug })),
+    ),
+    showStockMonitoring
+      ? compareOrderRequirementWithWooStock(order).catch(() => unavailableStockComparison(order))
+      : Promise.resolve(null),
+    showStockMonitoring
+      ? listOrderReplenishmentRequests(order.id).catch(() => [])
+      : Promise.resolve([]),
+  ]);
   const trackingSnapshots = Object.fromEntries(
     (tracking?.items ?? [])
       .filter((item) => Boolean(item.snapshotUrl))
@@ -220,6 +235,16 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
           artworkPreviews={detail.artworkPreviews}
         />
       </div>
+
+      {stockComparison ? (
+        <div id="stock-monitoring" className="scroll-mt-24">
+          <AdminOrderStockPanel
+            comparison={stockComparison}
+            requests={replenishmentRequests}
+            canRequest={canRequestStockReplenishment(actor)}
+          />
+        </div>
+      ) : null}
 
       <div id="process-order" className="scroll-mt-24">
         <AdminOrderProcessPanel
@@ -450,4 +475,19 @@ function InfoCard({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 break-words font-semibold text-ink">{value}</dd>
     </div>
   );
+}
+
+function unavailableStockComparison(
+  order: Pick<import("@/features/payment/payment.types").PaymentOrderRecord, "id">,
+): OrderStockComparisonResult {
+  return {
+    enabled: true,
+    source: "woocommerce",
+    orderId: order.id,
+    requirements: [],
+    hasShortage: false,
+    hasLowStock: false,
+    hasUnsyncedSku: true,
+    lastCheckedAt: new Date().toISOString(),
+  };
 }

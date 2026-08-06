@@ -74,6 +74,13 @@ export const TASK_G1_GINEE_TABLES = [
   "ginee_inventory_snapshots",
 ] as const;
 
+// Added to schema checks after migration 022 is applied in the target
+// environment. Kept separate so an unapplied migration does not incorrectly
+// take the existing staging health endpoint offline.
+export const WOO_STOCK_MONITORING_TABLES = [
+  "production_replenishment_requests",
+] as const;
+
 export const REQUIRED_SUPABASE_TABLES = [
   "companies",
   "user_profiles",

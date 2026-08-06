@@ -56,12 +56,33 @@ export interface WooCommerceProduct {
   price: string;
   regular_price: string;
   sale_price: string;
+  type?: "simple" | "variable" | "variation" | string;
+  manage_stock?: boolean;
+  stock_quantity?: number | null;
   stock_status?: "instock" | "outofstock" | "onbackorder" | string;
+  low_stock_amount?: number | null;
+  variations?: number[];
   images?: WooCommerceImage[];
   categories?: WooCommerceCategory[];
   tags?: WooCommerceTag[];
   attributes?: WooCommerceAttribute[];
   meta_data?: WooCommerceMetaData[];
+}
+
+export interface WooCommerceVariationAttribute {
+  id?: number;
+  name?: string;
+  option: string;
+}
+
+export interface WooCommerceProductVariation {
+  id: number;
+  sku: string;
+  manage_stock?: boolean;
+  stock_quantity?: number | null;
+  stock_status?: "instock" | "outofstock" | "onbackorder" | string;
+  low_stock_amount?: number | null;
+  attributes?: WooCommerceVariationAttribute[];
 }
 
 export interface WooCommerceProductWritePayload {
@@ -96,6 +117,7 @@ export interface WooCommerceListParams {
   slug?: string;
   search?: string;
   category?: string;
+  sku?: string;
 }
 
 export interface WooCommerceOrderMeta {

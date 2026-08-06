@@ -114,11 +114,18 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
 ## Prinsip go-live
 
 Jangan deploy production hanya karena build pass. Production boleh dipertimbangkan setelah semua gap kritikal di atas punya owner, env, smoke test, dan rollback plan.
-# Ginee inventory gap
+# Ginee dan WooCommerce stock monitoring gap
 
-Task G1 hanya menyediakan pengecekan stok read-only berdasarkan Stock SKU per
+Task G1 hanya menyediakan diagnosis Ginee read-only berdasarkan Stock SKU per
 ukuran, mapping teknis, dan snapshot inventory per warehouse. Import order,
-webhook order, update stok Ginee, serta two-way sync tidak termasuk scope dan
-tidak tersedia di aplikasi. Aktivasi production masih membutuhkan credential
-Ginee yang disetujui, pengujian live read-only, kesamaan SKU WooCommerce–Ginee,
-dan prosedur operasional untuk menangani SKU yang belum dipetakan.
+webhook order, update stok Ginee, serta two-way sync tidak termasuk scope.
+
+Monitoring operasional memakai aliran `Ginee → WooCommerce → Ofissio`.
+Sebelum staging dinyatakan siap:
+
+- terapkan migration `022_woocommerce_stock_monitoring.sql`;
+- pastikan semua variasi ukuran WooCommerce memiliki Stock SKU unik;
+- validasi threshold minimum setiap variasi atau nilai default server;
+- uji request replenishment idempotent terhadap Supabase staging;
+- ukur jeda sinkronisasi Ginee ke WooCommerce;
+- pastikan customer payload dan UI tidak menampilkan data stok internal.

@@ -14,6 +14,7 @@ import type {
   WooCommerceListParams,
   WooCommerceOrder,
   WooCommerceProduct,
+  WooCommerceProductVariation,
   WooCommerceProductWritePayload,
   WooCommerceUpdateOrderInput,
 } from "./woocommerce.types";
@@ -28,6 +29,7 @@ export const woocommerceClient = {
   getProducts,
   getProductById,
   getProductBySlug,
+  getProductVariations,
   createProduct,
   updateProduct,
   getCategories,
@@ -69,8 +71,22 @@ async function getProducts(params: WooCommerceListParams = {}) {
     ...(params.slug ? { slug: params.slug } : {}),
     ...(params.search ? { search: params.search } : {}),
     ...(params.category ? { category: params.category } : {}),
+    ...(params.sku ? { sku: params.sku } : {}),
   });
   return products.map(normalizeProductMedia);
+}
+
+async function getProductVariations(
+  productId: string | number,
+  params: { page?: number; per_page?: number } = {},
+) {
+  return wcFetch<WooCommerceProductVariation[]>(
+    `/products/${encodeURIComponent(String(productId))}/variations`,
+    {
+      per_page: String(params.per_page ?? 100),
+      page: String(params.page ?? 1),
+    },
+  );
 }
 
 async function getProductById(id: string | number) {

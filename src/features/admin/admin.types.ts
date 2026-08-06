@@ -64,6 +64,8 @@ export type AdminPermission =
   | "admin:integration:ginee:view"
   | "admin:integration:ginee:update"
   | "admin:integration:ginee:sync_read"
+  | "admin:stock:view"
+  | "admin:stock:request"
   | "admin:audit:view";
 
 export interface InternalAdminUser {

@@ -45,6 +45,10 @@ const rules: EnvRule[] = [
   { name: "WOOCOMMERCE_CONSUMER_SECRET", secret: true },
   { name: "WOOCOMMERCE_SYNC_ORDERS" },
   { name: "WOOCOMMERCE_TEST_WRITE" },
+  { name: "STOCK_MONITORING_ENABLED" },
+  { name: "STOCK_DEFAULT_MINIMUM_QTY" },
+  { name: "STOCK_SOURCE" },
+  { name: "STOCK_CUSTOMER_VISIBILITY" },
   { name: "WORDPRESS_MEDIA_BASE_URL" },
   { name: "WORDPRESS_MEDIA_USERNAME" },
   { name: "WORDPRESS_MEDIA_APP_PASSWORD", secret: true },
@@ -228,6 +232,33 @@ if (process.env.WOOCOMMERCE_ENABLED === "true") {
         "Upload foto produk membutuhkan WORDPRESS_MEDIA_TOKEN atau pasangan WORDPRESS_MEDIA_USERNAME + WORDPRESS_MEDIA_APP_PASSWORD.",
     });
   }
+}
+
+for (const name of ["STOCK_MONITORING_ENABLED", "STOCK_CUSTOMER_VISIBILITY"]) {
+  if (process.env[name] && !isBooleanEnv(process.env[name])) {
+    problems.push({ level: "error", message: `${name} harus bernilai true atau false.` });
+  }
+}
+if (
+  process.env.STOCK_DEFAULT_MINIMUM_QTY &&
+  !/^\d+$/.test(process.env.STOCK_DEFAULT_MINIMUM_QTY.trim())
+) {
+  problems.push({
+    level: "error",
+    message: "STOCK_DEFAULT_MINIMUM_QTY harus berupa bilangan bulat non-negatif.",
+  });
+}
+if (
+  process.env.STOCK_SOURCE &&
+  process.env.STOCK_SOURCE.trim().toLowerCase() !== "woocommerce"
+) {
+  problems.push({ level: "error", message: "STOCK_SOURCE saat ini harus woocommerce." });
+}
+if (process.env.STOCK_CUSTOMER_VISIBILITY === "true") {
+  problems.push({
+    level: "error",
+    message: "STOCK_CUSTOMER_VISIBILITY wajib false; stok hanya untuk admin Ofissio.",
+  });
 }
 
 const gineeEnabled = process.env.GINEE_ENABLED === "true";

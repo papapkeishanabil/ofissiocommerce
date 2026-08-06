@@ -57,6 +57,8 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:integration:ginee:view",
     "admin:integration:ginee:update",
     "admin:integration:ginee:sync_read",
+    "admin:stock:view",
+    "admin:stock:request",
     "admin:audit:view",
   ],
   sales_admin: [
@@ -66,6 +68,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:invoice:send", "admin:notification:view", "admin:notification:update",
     "admin:customer:view", "admin:catalog:view",
     "admin:integration:ginee:view", "admin:integration:ginee:sync_read",
+    "admin:stock:view", "admin:stock:request",
   ],
   finance_admin: [
     "admin:access", "admin:view", "admin:quotation:view", "admin:order:view",
@@ -93,6 +96,8 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:tax:view",
     "admin:integration:ginee:view",
     "admin:integration:ginee:sync_read",
+    "admin:stock:view",
+    "admin:stock:request",
   ],
   finance_internal: ["admin:view", "admin:quotation:view", "admin:order:view", "admin:order:update", "admin:process-order:view", "admin:shipment:view", "admin:tax:view", "admin:tax:update"],
   product_admin: [
@@ -106,6 +111,8 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:integration:ginee:view",
     "admin:integration:ginee:update",
     "admin:integration:ginee:sync_read",
+    "admin:stock:view",
+    "admin:stock:request",
   ],
   production_admin: [
     "admin:view",
@@ -121,10 +128,12 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:catalog:view",
     "admin:integration:ginee:view",
     "admin:integration:ginee:sync_read",
+    "admin:stock:view",
+    "admin:stock:request",
   ],
-  ppic: ["admin:view", "admin:order:view", "admin:process-order:view", "admin:process-order:update", "admin:shipment:view", "admin:tracking:view", "admin:tracking:update", "admin:integration:ginee:view", "admin:integration:ginee:sync_read"],
+  ppic: ["admin:view", "admin:order:view", "admin:process-order:view", "admin:process-order:update", "admin:shipment:view", "admin:tracking:view", "admin:tracking:update", "admin:integration:ginee:view", "admin:integration:ginee:sync_read", "admin:stock:view", "admin:stock:request"],
   qc: ["admin:view", "admin:order:view", "admin:process-order:view", "admin:process-order:update", "admin:shipment:view", "admin:tracking:view", "admin:tracking:update"],
-  logistics: ["admin:view", "admin:order:view", "admin:process-order:view", "admin:process-order:update", "admin:shipment:view", "admin:shipment:update", "admin:tracking:view", "admin:tracking:update", "admin:integration:ginee:view", "admin:integration:ginee:sync_read"],
+  logistics: ["admin:view", "admin:order:view", "admin:process-order:view", "admin:process-order:update", "admin:shipment:view", "admin:shipment:update", "admin:tracking:view", "admin:tracking:update", "admin:integration:ginee:view", "admin:integration:ginee:sync_read", "admin:stock:view", "admin:stock:request"],
   support: [
     "admin:view",
     "admin:quotation:view",
@@ -138,6 +147,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:audit:view",
     "admin:integration:ginee:view",
     "admin:integration:ginee:sync_read",
+    "admin:stock:view",
   ],
 };
 

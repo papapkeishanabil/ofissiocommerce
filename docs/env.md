@@ -318,3 +318,18 @@ Credential Ginee hanya boleh berada di environment server dan tidak boleh
 memakai prefix `NEXT_PUBLIC_`. Default `GINEE_TEST_LIVE=false` memastikan check
 lokal memakai provider mock. Panduan lengkap ada di
 [ginee-integration.md](./ginee-integration.md).
+
+## WooCommerce stock monitoring
+
+Gunakan konfigurasi server berikut untuk monitoring stok internal:
+
+```bash
+STOCK_MONITORING_ENABLED=true
+STOCK_DEFAULT_MINIMUM_QTY=10
+STOCK_SOURCE=woocommerce
+STOCK_CUSTOMER_VISIBILITY=false
+```
+
+`STOCK_CUSTOMER_VISIBILITY` harus tetap `false`. Jumlah stok, status habis, dan
+shortage hanya ditampilkan pada Ofissio Admin. Detail arsitektur dan aturan SKU
+tersedia di [woocommerce-stock-monitoring.md](./woocommerce-stock-monitoring.md).

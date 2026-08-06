@@ -152,6 +152,14 @@ export function canUpdateProcessOrder(user: InternalAdminUser | null) {
   return hasAdminPermission(user, "admin:process-order:update");
 }
 
+export function canRequestStockReplenishment(user: InternalAdminUser | null) {
+  return hasAdminPermission(user, "admin:stock:request");
+}
+
+export function canViewStockMonitoring(user: InternalAdminUser | null) {
+  return hasAdminPermission(user, "admin:stock:view");
+}
+
 export function canViewShipment(user: InternalAdminUser | null) {
   return hasAdminPermission(user, "admin:shipment:view");
 }

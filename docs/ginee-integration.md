@@ -1,7 +1,11 @@
 # Ginee Inventory Read-Only Stock Checker
 
-Task G1 menghubungkan Ofissio ke Ginee hanya untuk membaca jumlah stok SKU di
+Task G1 menghubungkan Ofissio ke Ginee hanya untuk diagnosis jumlah stok SKU di
 warehouse/marketplace. Integrasi ini bukan order sync dan bukan two-way sync.
+
+Sumber stok utama yang dibaca halaman produk dan order Ofissio adalah
+WooCommerce, dengan aliran `Ginee → WooCommerce → Ofissio`. Halaman integrasi
+Ginee tidak digunakan sebagai dependency product detail atau order workbench.
 
 ## Batas tanggung jawab
 
@@ -91,6 +95,9 @@ Contoh body stock check:
 
 Stock check hanya membaca Ginee. Penyimpanan `last_stock`, `last_checked_at`,
 dan snapshot dilakukan di database Ofissio untuk audit internal.
+
+Untuk monitoring stok operasional dari WooCommerce, lihat
+[woocommerce-stock-monitoring.md](./woocommerce-stock-monitoring.md).
 
 ## Verifikasi
 

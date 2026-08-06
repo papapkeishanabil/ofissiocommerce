@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 
-import { requireInternalAdminServer } from "@/features/admin/admin.service";
+import {
+  canRequestStockReplenishment,
+  canViewStockMonitoring,
+  requireInternalAdminServer,
+} from "@/features/admin/admin.service";
 import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
 import { AdminBackLink, AdminPageHeader } from "@/features/admin/components/AdminSurface";
 import { getProductEditorTaxonomyOptions } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
@@ -9,6 +13,8 @@ import { ProductReadinessPanel } from "@/features/products/components/ProductRea
 import { getAdminWooCommerceProduct } from "@/features/products/woocommerce/woocommerce-product-admin.service";
 import { getWordPressMediaRuntimeConfig } from "@/features/products/woocommerce/wordpress-media-upload.service";
 import { getStorageRuntimeConfig } from "@/features/storage/storage.config";
+import { AdminProductStockPanel } from "@/features/stock-monitoring/components/AdminProductStockPanel";
+import { getWooSizeStockMatrix } from "@/features/stock-monitoring/woocommerce-stock.service";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +24,7 @@ interface PageProps {
 }
 
 export default async function AdminWooProductDetailPage({ params, searchParams }: PageProps) {
-  await requireInternalAdminServer("admin:catalog:view");
+  const actor = await requireInternalAdminServer("admin:catalog:view");
   const { id } = await params;
   const { uploadWarning } = await searchParams;
   if (!/^\d+$/.test(id)) notFound();
@@ -27,6 +33,18 @@ export default async function AdminWooProductDetailPage({ params, searchParams }
       getAdminWooCommerceProduct(id),
       getProductEditorTaxonomyOptions(),
     ]);
+    const stockMatrix = canViewStockMonitoring(actor)
+      ? await getWooSizeStockMatrix(product.sku).catch(() => ({
+          enabled: true as const,
+          source: "woocommerce" as const,
+          parentSku: product.sku,
+          productId: product.id,
+          productName: product.name,
+          rows: [],
+          hasVariationSkuWarning: true,
+          lastCheckedAt: new Date().toISOString(),
+        }))
+      : null;
     return (
       <div className="space-y-6">
         <AdminBackLink href="/admin/products">Kembali ke produk</AdminBackLink>
@@ -45,6 +63,12 @@ export default async function AdminWooProductDetailPage({ params, searchParams }
           <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
             Produk berhasil dibuat, tetapi {uploadWarning === "image" ? "foto gagal diupload" : "GLB gagal diupload"}. Silakan retry dari halaman ini.
           </div>
+        ) : null}
+        {stockMatrix ? (
+          <AdminProductStockPanel
+            matrix={stockMatrix}
+            canRequest={canRequestStockReplenishment(actor)}
+          />
         ) : null}
         <AdminProductForm
           mode="edit"
