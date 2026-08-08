@@ -4,6 +4,7 @@ import { setAuthResponseCookies } from "@/features/auth/auth-cookie.response";
 import { getAuthRuntimeConfig } from "@/features/auth/auth.config";
 import { registerWithSupabase } from "@/features/auth/supabase-auth.service";
 import { registerProductionSchema } from "@/features/auth/auth.validation";
+import { logSecurityEvent } from "@/lib/security/audit-log";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
 import { safeErrorResponse } from "@/lib/security/safe-error-response";
 import { validateInput } from "@/lib/security/validate-input";
@@ -37,6 +38,15 @@ export async function POST(request: Request) {
       ...input,
       emailRedirectTo: buildEmailRedirectUrl(request, input.quotationId),
     });
+    logSecurityEvent({
+      request,
+      action: "auth_registration_succeeded",
+      entityType: "auth_user",
+      metadata: {
+        requiresEmailVerification: result.requiresEmailVerification,
+        quotationLinked: Boolean(quotationId),
+      },
+    });
     const response = nativeFormSubmission
       ? NextResponse.redirect(
           buildLoginRedirectUrl({
@@ -58,6 +68,12 @@ export async function POST(request: Request) {
     }
     return response;
   } catch (error) {
+    logSecurityEvent({
+      request,
+      action: "auth_registration_rejected",
+      entityType: "auth_user",
+      metadata: { reason: "invalid_or_unavailable_registration" },
+    });
     if (nativeFormSubmission) {
       return NextResponse.redirect(
         buildLoginRedirectUrl({ quotationId, registrationError: true }),

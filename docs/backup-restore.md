@@ -1,5 +1,9 @@
 # Backup and restore plan
 
+> Dokumen canonical yang lebih lengkap tersedia di
+> [backup-and-restore.md](./backup-and-restore.md). File ini dipertahankan untuk
+> kompatibilitas link dokumentasi lama.
+
 Saat ini Ofissio masih memakai mock/in-memory untuk beberapa area. Dokumen ini adalah rencana production, bukan implementasi database/storage production.
 
 ## Database backup

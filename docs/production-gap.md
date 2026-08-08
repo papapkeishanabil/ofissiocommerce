@@ -104,6 +104,18 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
    - Contact/support page.
    - CSP review untuk GLB, storage signed URL, dan payment redirect.
 
+9. Task I — operational go-live gate
+   - `npm run check:production-readiness` tersedia untuk memisahkan PASS, WARN,
+     dan FAIL berdasarkan `APP_ENV`.
+   - Health endpoint menunjukkan status database/schema, auth, storage, email,
+     payment, shipping, WooCommerce, dan invariant stok customer tanpa secret.
+   - SOP backup/restore dan rollback tersedia, tetapi restore drill production
+     belum selesai sampai ada bukti serta owner.
+   - Empat halaman legal tersedia sebagai draft operasional. Legal review dan
+     business approval tetap blocker sebelum go-live.
+   - Monitoring eksternal, alert routing, on-call/escalation, dan retention log
+     production masih perlu diaktifkan pada platform hosting/observability.
+
 ## Gap non-blocking untuk staging MVP
 
 - Admin production-order detail penuh belum dibangun.

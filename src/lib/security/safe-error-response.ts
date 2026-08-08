@@ -118,8 +118,10 @@ function statusForCode(code: ApiErrorCode) {
 }
 
 function redactSensitive(value: string) {
-  return value.replace(
-    /(api[_-]?key|secret|token|password|signature|authorization)=?[^\s,]*/gi,
-    "$1=[redacted]",
-  );
+  return value
+    .replace(/(bearer\s+)[a-z0-9._~+/=-]+/gi, "$1[redacted]")
+    .replace(
+      /(["']?(?:api[_-]?key|secret|token|password|passphrase|signature|authorization|cookie)["']?\s*[:=]\s*)["']?[^"'\s,}]+["']?/gi,
+      "$1[redacted]",
+    );
 }

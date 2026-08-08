@@ -14,11 +14,18 @@ const LINKS = [
   { label: "Request Quotation", href: "/quote" },
 ];
 
+const LEGAL_LINKS = [
+  { label: "Kebijakan Privasi", href: "/legal/privacy-policy" },
+  { label: "Syarat Layanan", href: "/legal/terms-of-service" },
+  { label: "Kebijakan Refund", href: "/legal/refund-policy" },
+  { label: "Kebijakan Pengiriman", href: "/legal/shipping-policy" },
+];
+
 export function WorkspaceFooter() {
   return (
     <footer className="border-t border-line bg-surface">
       <div className="mx-auto w-full max-w-7xl px-4 py-8 lg:px-8">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.75fr_0.9fr_1.35fr]">
           {/* Brand + tagline */}
           <div className="max-w-xs">
             <Link href="/" className="type-display flex items-center gap-2 text-lg text-ink">
@@ -50,6 +57,22 @@ export function WorkspaceFooter() {
             </ul>
           </nav>
 
+          <nav aria-label="Informasi legal">
+            <p className="type-eyebrow mb-3 text-ink-subtle">Legal</p>
+            <ul className="space-y-2">
+              {LEGAL_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-ink-muted transition-colors hover:text-brand-700 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
           {/* Contact hint */}
           <div>
             <p className="type-eyebrow mb-3 text-ink-subtle">Bantuan</p>
@@ -72,7 +95,7 @@ export function WorkspaceFooter() {
 
         {/* Bottom bar */}
         <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-line pt-5 text-[11px] text-ink-subtle sm:flex-row">
-          <p>© {new Date().getFullYear()} Ofissio Workwear. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Ofissio Workwear. All rights reserved.</p>
           <p className="flex items-center gap-1.5">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Powered by conversational commerce

@@ -30,6 +30,7 @@ membaca inventory RLS tanpa membaca isi row customer.
 
 ```bash
 APP_URL=
+APP_ENV=development
 NODE_ENV=
 LOG_LEVEL=info
 
@@ -141,6 +142,36 @@ STORAGE_PROVIDER=mock
 
 Development tidak boleh crash hanya karena credential production kosong.
 
+## Production readiness gate
+
+`APP_ENV` menentukan ketatnya readiness gate dan tidak menggantikan
+`NODE_ENV`. Gunakan `development`, `staging`, atau `production`. Sebelum go-live:
+
+```bash
+npm run check:production-readiness
+```
+
+Pada development/staging, provider sandbox atau layanan yang belum live muncul
+sebagai `WARN` agar smoke test tetap dapat berjalan. Pada production,
+konfigurasi wajib yang belum aman berubah menjadi `FAIL`. Minimal production:
+
+```bash
+APP_ENV=production
+AUTH_PROVIDER=supabase
+AUTH_MODE=production
+ADMIN_DEV_BYPASS=false
+INTERNAL_DEV_HEADERS_ENABLED=false
+PAYMENT_PROVIDER=ipaymu
+IPAYMU_TEST_CREATE_PAYMENT=false
+SHIPPING_PROVIDER=biteship
+BITESHIP_TEST_CREATE_SHIPMENT=false
+STOCK_CUSTOMER_VISIBILITY=false
+WOOCOMMERCE_SYNC_ORDERS=true
+WOOCOMMERCE_TEST_WRITE=false
+```
+
+Nilai secret tetap berada di secret manager dan tidak dicetak oleh checker.
+
 ## Staging
 
 Staging dipakai untuk mengisi credential real secara bertahap:
@@ -168,6 +199,10 @@ Production belum boleh diaktifkan sampai gap berikut selesai:
 - Shipping provider real.
 - Resend domain verified dan test delivery.
 - WooCommerce product/order sync staging pass.
+
+Gunakan [production-go-live-checklist.md](./production-go-live-checklist.md),
+[backup-and-restore.md](./backup-and-restore.md), dan
+[rollback-sop.md](./rollback-sop.md) sebagai gate operasional final.
 
 ## Database / Supabase
 

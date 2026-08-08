@@ -85,16 +85,38 @@ export function listAuditEvents() {
   return [...state.events];
 }
 
+const BLOCKED_AUDIT_KEY = /(?:api[_-]?key|secret|token|password|passphrase|signature|authorization|cookie|raw(?:provider)?(?:response|payload)|requestbody|responsebody)/i;
+const MAX_AUDIT_DEPTH = 4;
+const MAX_AUDIT_ARRAY_ITEMS = 25;
+const MAX_AUDIT_STRING_LENGTH = 240;
+
 function sanitizeMetadata(metadata: Record<string, unknown>) {
-  const blocked = /(api[_-]?key|secret|token|password|signature|authorization|rawProviderResponse)/i;
+  return sanitizeRecord(metadata, 0);
+}
+
+function sanitizeRecord(value: Record<string, unknown>, depth: number) {
+  if (depth >= MAX_AUDIT_DEPTH) return { truncated: true };
   return Object.fromEntries(
-    Object.entries(metadata)
-      .filter(([key]) => !blocked.test(key))
-      .map(([key, value]) => [
-        key,
-        typeof value === "string" && value.length > 240
-          ? `${value.slice(0, 240)}...`
-          : value,
-      ]),
+    Object.entries(value)
+      .filter(([key]) => !BLOCKED_AUDIT_KEY.test(key))
+      .map(([key, item]) => [key, sanitizeAuditValue(item, depth + 1)]),
   );
+}
+
+function sanitizeAuditValue(value: unknown, depth: number): unknown {
+  if (typeof value === "string") {
+    return value.length > MAX_AUDIT_STRING_LENGTH
+      ? `${value.slice(0, MAX_AUDIT_STRING_LENGTH)}...`
+      : value;
+  }
+  if (Array.isArray(value)) {
+    if (depth >= MAX_AUDIT_DEPTH) return ["[truncated]"];
+    return value
+      .slice(0, MAX_AUDIT_ARRAY_ITEMS)
+      .map((item) => sanitizeAuditValue(item, depth + 1));
+  }
+  if (value && typeof value === "object") {
+    return sanitizeRecord(value as Record<string, unknown>, depth);
+  }
+  return value;
 }
