@@ -20,6 +20,7 @@ Produk hanya tampil jika seluruh field berikut valid:
 - status WooCommerce `publish`;
 - SKU;
 - harga;
+- minimal satu foto utama;
 - minimal satu kategori;
 - minimal satu industri;
 - `has_3d_model=true`;
@@ -31,7 +32,8 @@ Produk hanya tampil jika seluruh field berikut valid:
 - MOQ;
 - lead time;
 - fulfillment type valid;
-- transaction mode valid.
+- transaction mode valid;
+- jika bordir didukung, minimal satu zona bordir.
 
 Produk dengan blocking issue berstatus **Belum Tampil**, **Draft WooCommerce**, atau **Invalid 3D Model**.
 
@@ -40,16 +42,19 @@ Produk dengan blocking issue berstatus **Belum Tampil**, **Draft WooCommerce**, 
 Field ini sebaiknya dilengkapi tetapi tidak memblokir katalog pada A2.6:
 
 - deskripsi panjang;
-- foto tambahan;
+- foto tambahan/gallery;
 - atribut warna;
 - atribut bahan;
 - atribut ukuran;
 - quantity pricing tiers;
 - metadata embroidery pricing lama (warning deprecation; bukan sumber harga);
-- `supports_embroidery=false`;
-- zona bordir kosong.
+- tipe produk belum `variable` atau variation ukuran belum dibuat (warning
+  migrasi; stok admin belum dapat dipercaya sampai distandardisasi).
 
-Jika `supports_embroidery=true` namun zona kosong, admin melihat warning kuat **Zona bordir belum dipilih.** Kesiapan master global diperiksa terpisah pada dashboard dan `/admin/pricing/embroidery`; kondisi ini tidak memblokir katalog.
+Jika `supports_embroidery=true` namun zona kosong, produk **belum tampil** sampai
+admin memilih minimal satu zona. Produk yang memang tidak mendukung bordir tidak
+diwajibkan memiliki zona. Kesiapan master harga global diperiksa terpisah pada
+dashboard dan `/admin/pricing/embroidery`.
 
 ## Contoh JAKET TEST
 

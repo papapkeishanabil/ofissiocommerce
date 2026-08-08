@@ -65,6 +65,10 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
    - Pastikan `woo_order_id` tersimpan di Supabase dan `ofissio_order_id` masuk Woo order meta.
    - Pastikan secret WooCommerce tidak muncul di client bundle.
    - Pastikan WordPress Media Application Password/token tersedia server-side, permission `upload_files` benar, serta upload/reorder diuji terhadap WooCommerce staging.
+   - Terapkan standard variable product Ofissio: Parent SKU, atribut Ukuran,
+     variation SKU per ukuran, `manage_stock`, dan stock quantity per variation.
+   - Jalankan `npm run check:woocommerce-product-standard`; selesaikan seluruh
+     `LIVE WARN` pada KL-007/KK-006 sebelum stok dipakai tim operasional.
 
 5. Biteship shipping activation
    - Task E provider adapter, server-side rate, idempotent create, persistence,
@@ -114,18 +118,16 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
 ## Prinsip go-live
 
 Jangan deploy production hanya karena build pass. Production boleh dipertimbangkan setelah semua gap kritikal di atas punya owner, env, smoke test, dan rollback plan.
-# Ginee dan WooCommerce stock monitoring gap
+# WooCommerce product dan stock monitoring gap
 
-Task G1 hanya menyediakan diagnosis Ginee read-only berdasarkan Stock SKU per
-ukuran, mapping teknis, dan snapshot inventory per warehouse. Import order,
-webhook order, update stok Ginee, serta two-way sync tidak termasuk scope.
-
-Monitoring operasional memakai aliran `Ginee → WooCommerce → Ofissio`.
+Ginee ditunda. WooCommerce Ofissio menjadi sumber resmi katalog dan stok admin.
+Monitoring operasional memakai aliran `WooCommerce Ofissio -> Ofissio Admin`.
 Sebelum staging dinyatakan siap:
 
 - terapkan migration `022_woocommerce_stock_monitoring.sql`;
 - pastikan semua variasi ukuran WooCommerce memiliki Stock SKU unik;
+- pastikan product type variable, atribut Ukuran aktif untuk variation,
+  `manage_stock=true`, dan stock quantity tersedia per variation;
 - validasi threshold minimum setiap variasi atau nilai default server;
 - uji request replenishment idempotent terhadap Supabase staging;
-- ukur jeda sinkronisasi Ginee ke WooCommerce;
 - pastikan customer payload dan UI tidak menampilkan data stok internal.

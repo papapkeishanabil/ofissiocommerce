@@ -171,6 +171,10 @@ function shortIssueLabel(issue: ProductReadinessIssue) {
     lead_time: "Lead time",
     fulfillment_type: "Fulfillment",
     transaction_mode: "Transaction mode",
+    images: "Foto utama",
+    embroidery_zones: "Zona bordir",
+    product_type: "Tipe produk",
+    variations: "Variasi ukuran",
   };
   return labels[issue.field] ?? issue.label;
 }

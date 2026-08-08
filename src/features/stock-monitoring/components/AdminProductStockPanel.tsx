@@ -18,7 +18,7 @@ export function AdminProductStockPanel({
     <AdminSectionCard
       icon={Boxes}
       title="Stok ready-stock WooCommerce"
-      description="Data internal per SKU ukuran. WooCommerce menerima sinkron stok dari Ginee; Ofissio hanya membaca dan tidak mengubah stok."
+      description="Data internal per SKU ukuran dari WooCommerce Ofissio. Customer tidak melihat stok dan Ofissio tidak mengubah jumlah stok."
       actions={<AdminBadge tone="neutral">ADMIN ONLY</AdminBadge>}
       bodyClassName="space-y-4"
     >

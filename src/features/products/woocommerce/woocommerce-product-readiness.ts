@@ -175,13 +175,19 @@ function getRawWooCommerceReadiness(
   if (!normalizeWooTransactionMode(getMetaString(meta, "transaction_mode"))) {
     blockingIssues.push(blocking("transaction_mode", "Transaction mode belum dipilih", "Isi Field Ofissio"));
   }
+  if ((product.images?.length ?? 0) === 0) {
+    blockingIssues.push(blocking("images", "Foto utama produk belum diupload", "Upload foto produk"));
+  }
+  const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
+  const embroideryZones = getMetaStringArray(meta, "embroidery_zones");
+  if (supportsEmbroidery && embroideryZones.length === 0) {
+    blockingIssues.push(blocking("embroidery_zones", "Zona bordir belum dipilih", "Pilih zona bordir"));
+  }
 
   if (!stripHtml(product.description).trim()) {
     warnings.push(warning("description", "Deskripsi panjang belum diisi", "Lengkapi deskripsi"));
   }
-  if ((product.images?.length ?? 0) === 0) {
-    warnings.push(warning("images", "Foto produk belum diupload.", "Upload foto produk"));
-  } else if ((product.images?.length ?? 0) === 1) {
+  if ((product.images?.length ?? 0) === 1) {
     warnings.push(warning("gallery", "Foto tambahan belum diisi", "Lengkapi foto"));
   }
   pushAttributeWarning(warnings, product.attributes, ["warna", "color"], "colors", "Atribut warna belum lengkap");
@@ -195,15 +201,10 @@ function getRawWooCommerceReadiness(
     moq: getMetaNumber(meta, "moq", 0),
   });
   pushQuantityPricingWarnings(warnings, quantityPricing.issues);
-  const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
-  const embroideryZones = getMetaStringArray(meta, "embroidery_zones");
-  if (!supportsEmbroidery) {
-    warnings.push(warning("supports_embroidery", "Dukungan bordir belum diaktifkan", "Tinjau dukungan bordir"));
-    if (embroideryZones.length === 0) {
-      warnings.push(warning("embroidery_zones", "Zona bordir belum diisi", "Pilih zona bordir"));
-    }
-  } else if (embroideryZones.length === 0) {
-    warnings.push(warning("embroidery_zones", "Zona bordir belum dipilih.", "Pilih zona bordir"));
+  if (product.type !== "variable") {
+    warnings.push(warning("product_type", "Produk belum menggunakan variasi ukuran", "Ubah menjadi variable product"));
+  } else if ((product.variations?.length ?? 0) === 0) {
+    warnings.push(warning("variations", "Variasi ukuran belum dibuat", "Lengkapi variasi"));
   }
   if (getMetaValue(meta, "embroidery_pricing") != null) {
     warnings.push(warning("legacy_embroidery_pricing", "Metadata harga bordir lama diabaikan", "Gunakan master Harga Bordir global"));
@@ -251,15 +252,16 @@ function getMappedProductReadiness(product: OfissioProduct): ProductReadiness {
   if (!product.lead_time.trim()) blockingIssues.push(blocking("lead_time", "Lead time belum diisi", "Isi Field Ofissio"));
   if (!VALID_FULFILLMENT_TYPES.includes(product.fulfillment)) blockingIssues.push(blocking("fulfillment_type", "Fulfillment type belum dipilih", "Isi Field Ofissio"));
   if (!VALID_TRANSACTION_MODES.includes(product.transaction_mode)) blockingIssues.push(blocking("transaction_mode", "Transaction mode belum dipilih", "Isi Field Ofissio"));
+  if (!(product.images?.length ?? 0)) blockingIssues.push(blocking("images", "Foto utama produk belum diupload", "Upload foto produk"));
+  if (product.supports_embroidery && !product.embroidery_zones.length) {
+    blockingIssues.push(blocking("embroidery_zones", "Zona bordir belum dipilih", "Pilih zona bordir"));
+  }
 
   if (!product.description.trim()) warnings.push(warning("description", "Deskripsi panjang belum diisi", "Lengkapi deskripsi"));
-  if (!(product.images?.length ?? 0)) warnings.push(warning("images", "Foto produk belum diupload.", "Upload foto produk"));
-  else if ((product.images?.length ?? 0) === 1) warnings.push(warning("gallery", "Foto tambahan belum diisi", "Lengkapi foto"));
+  if ((product.images?.length ?? 0) === 1) warnings.push(warning("gallery", "Foto tambahan belum diisi", "Lengkapi foto"));
   if (!product.available_colors.length) warnings.push(warning("colors", "Atribut warna belum lengkap", "Lengkapi atribut"));
   if (!product.material.trim()) warnings.push(warning("material", "Atribut bahan belum lengkap", "Lengkapi atribut"));
   if (!product.available_sizes.length) warnings.push(warning("sizes", "Atribut ukuran belum lengkap", "Lengkapi atribut"));
-  if (!product.supports_embroidery) warnings.push(warning("supports_embroidery", "Dukungan bordir belum diaktifkan", "Tinjau dukungan bordir"));
-  if (!product.embroidery_zones.length) warnings.push(warning("embroidery_zones", product.supports_embroidery ? "Zona bordir belum dipilih." : "Zona bordir belum diisi", "Pilih zona bordir"));
   if (product.legacyEmbroideryPricing?.zones.length) {
     warnings.push(warning("legacy_embroidery_pricing", "Metadata harga bordir lama diabaikan", "Gunakan master Harga Bordir global"));
   }

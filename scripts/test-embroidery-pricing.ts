@@ -144,6 +144,7 @@ const baseWooProduct: WooCommerceProduct = {
   regular_price: "160000",
   sale_price: "",
   categories: [{ id: 1, name: "Jaket", slug: "jaket" }],
+  images: [{ id: 1, src: "https://commerce.ofissio.test/test-embroidery-pricing.webp" }],
   attributes: [],
   meta_data: [
     { key: "industries", value: JSON.stringify(["mining"]) },

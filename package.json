@@ -14,6 +14,7 @@
     "check:supabase": "tsx scripts/check-supabase-schema.ts",
     "check:woocommerce": "tsx scripts/check-woocommerce.ts",
     "check:woocommerce-stock": "tsx --require ./scripts/register-server-only.cjs scripts/check-woocommerce-stock.ts",
+    "check:woocommerce-product-standard": "tsx --require ./scripts/register-server-only.cjs scripts/check-woocommerce-product-standard.ts",
     "check:storage": "tsx scripts/check-storage.ts",
     "check:email": "tsx scripts/check-email.ts",
     "check:documents": "tsx scripts/check-documents.ts",
@@ -29,7 +30,7 @@
     "test:woocommerce-order-sync": "tsx scripts/test-woocommerce-order-sync.ts",
     "test:company-isolation": "tsx scripts/test-company-isolation.ts",
     "verify:supabase-persistence": "tsx scripts/verify-supabase-persistence.ts",
-    "check:all": "npm run check:env && npm run check:auth && npm run check:rls && npm run check:ginee && npm run check:woocommerce-stock && npm run check:email && npm run check:documents && npm run check:payment && npm run check:shipping && npm run test:quantity-pricing && npm run test:embroidery-pricing && npm run test:admin-notifications && npm run test:commercial-flow && npm run test:woocommerce-order-sync && npm run typecheck && npm run lint && npm run build"
+    "check:all": "npm run check:env && npm run check:auth && npm run check:rls && npm run check:woocommerce-stock && npm run check:woocommerce-product-standard && npm run check:email && npm run check:documents && npm run check:payment && npm run check:shipping && npm run test:quantity-pricing && npm run test:embroidery-pricing && npm run test:admin-notifications && npm run test:commercial-flow && npm run test:woocommerce-order-sync && npm run typecheck && npm run lint && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
