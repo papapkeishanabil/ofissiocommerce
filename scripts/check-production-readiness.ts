@@ -21,6 +21,7 @@ type ReadinessDecision = "GO" | "CONDITIONAL_GO" | "NO_GO";
 const results: Result[] = [];
 const environment = resolveEnvironment();
 const production = environment === "production";
+const stagingReadiness = environment === "staging" || production;
 
 run().catch((error: unknown) => {
   add("FAIL", "Production readiness checker", safeReason(error));
@@ -102,22 +103,16 @@ function checkRuntimeFlags() {
     "STOCK_CUSTOMER_VISIBILITY",
     process.env.STOCK_CUSTOMER_VISIBILITY,
     false,
-    true,
   );
-  expectSafeBoolean(
-    "GINEE_TEST_LIVE",
-    process.env.GINEE_TEST_LIVE,
-    false,
-    true,
-  );
+  checkGineeSafety();
 
   checkExplicitBoolean("WOOCOMMERCE_SYNC_ORDERS", process.env.WOOCOMMERCE_SYNC_ORDERS);
   checkExplicitBoolean("WOOCOMMERCE_TEST_WRITE", process.env.WOOCOMMERCE_TEST_WRITE);
   if (process.env.WOOCOMMERCE_TEST_WRITE === "true") {
     add(
-      production ? "FAIL" : "WARN",
+      stagingReadiness ? "FAIL" : "WARN",
       "WooCommerce test write",
-      "aktif; matikan setelah staging write smoke selesai",
+      "aktif; staging/production readiness mewajibkan false",
     );
   } else if (process.env.WOOCOMMERCE_TEST_WRITE === "false") {
     add("PASS", "WooCommerce test write", "disabled");
@@ -129,16 +124,45 @@ function checkRuntimeFlags() {
     add(production ? "FAIL" : "WARN", "WooCommerce server configuration", "belum lengkap");
   }
 
-  const legalReviewApproved = process.env.LEGAL_REVIEW_APPROVED?.trim().toLowerCase();
-  if (legalReviewApproved === "true") {
-    add("PASS", "Legal business review", "approved");
-  } else {
-    add(
-      production ? "FAIL" : "WARN",
-      "Legal business review",
-      `${legalReviewApproved || "unset"}; review legal dan approval pemilik bisnis belum dibuktikan`,
-    );
+  checkLegalApproval();
+}
+
+function checkGineeSafety() {
+  const gineeEnabled = process.env.GINEE_ENABLED?.trim().toLowerCase() === "true";
+  const testLive = process.env.GINEE_TEST_LIVE?.trim().toLowerCase();
+
+  if (!gineeEnabled && (testLive === undefined || testLive === "" || testLive === "false")) {
+    add("PASS", "GINEE_TEST_LIVE", "false/disabled; Ginee bukan flow utama");
+    return;
   }
+  if (testLive === "false") {
+    add("PASS", "GINEE_TEST_LIVE", "false");
+    return;
+  }
+  if (!testLive) {
+    add("WARN", "GINEE_TEST_LIVE", "belum eksplisit false saat Ginee enabled");
+    return;
+  }
+  add("FAIL", "GINEE_TEST_LIVE", `${testLive}; wajib false untuk release readiness`);
+}
+
+function checkLegalApproval() {
+  const status = process.env.LEGAL_APPROVAL_STATUS?.trim().toLowerCase() || "draft";
+  const supported = ["draft", "internal_review", "approved"];
+
+  if (!supported.includes(status)) {
+    add("FAIL", "Legal approval", `${status}; nilai harus draft, internal_review, atau approved`);
+    return;
+  }
+  if (status === "approved") {
+    add("PASS", "Legal approval", "approved; bukti review tetap disimpan di luar aplikasi");
+    return;
+  }
+  add(
+    production ? "FAIL" : "WARN",
+    "Legal approval",
+    `${status}; final legal review berada di luar aplikasi dan belum disetujui`,
+  );
 }
 
 async function checkDatabase() {

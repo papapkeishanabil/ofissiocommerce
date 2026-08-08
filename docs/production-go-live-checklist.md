@@ -10,7 +10,7 @@ Gunakan [production-go-no-go-report.md](./production-go-no-go-report.md),
 ## 1. Environment dan security gate
 
 - [ ] `APP_ENV=production` dan `APP_URL` memakai HTTPS production.
-- [ ] `LEGAL_REVIEW_APPROVED=true` setelah bukti approval legal/bisnis tersedia.
+- [ ] `LEGAL_APPROVAL_STATUS=approved` setelah bukti approval legal/bisnis tersedia.
 - [ ] `AUTH_PROVIDER=supabase`, `AUTH_MODE=production`.
 - [ ] `ADMIN_DEV_BYPASS=false`, `INTERNAL_DEV_HEADERS_ENABLED=false`.
 - [ ] Email verification, admin RBAC, company isolation, dan session cookie production diuji.

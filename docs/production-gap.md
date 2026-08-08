@@ -136,9 +136,16 @@ Jangan deploy production hanya karena build pass. Production boleh dipertimbangk
 Lihat [production-go-no-go-report.md](./production-go-no-go-report.md) untuk
 keputusan terbaru. Per 8 August 2026, staging berstatus `CONDITIONAL_GO`, sedangkan
 live production berstatus `NO_GO`. Blocker utama adalah provider payment/shipping
-yang masih sandbox, approval legal yang belum dibuktikan, restore/monitoring/
-rollback drill yang belum ditandatangani, flag WooCommerce test write yang masih
-aktif pada environment lokal/staging, dan warning standard variasi produk.
+yang masih sandbox, `LEGAL_APPROVAL_STATUS` yang belum `approved`, restore/
+monitoring/rollback drill yang belum ditandatangani, dan warning standard variasi
+produk. Task J.1 telah menormalkan safety flag lokal dan template menjadi
+`STOCK_CUSTOMER_VISIBILITY=false`, `GINEE_TEST_LIVE=false`,
+`WOOCOMMERCE_TEST_WRITE=false`, `IPAYMU_TEST_CREATE_PAYMENT=false`, dan
+`BITESHIP_TEST_CREATE_SHIPMENT=false`.
+
+Staging tetap boleh `CONDITIONAL_GO` dengan provider sandbox. Live production
+harus `NO_GO` bila iPaymu atau Biteship belum live, legal belum approved, stock
+customer visibility bukan false, atau write/test-create flag masih aktif.
 
 Tag `v0.1.0-rc1` belum dibuat. Tag hanya boleh dibuat dari commit yang telah
 direview, working tree bersih, seluruh migration target terverifikasi, dan

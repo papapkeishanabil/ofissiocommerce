@@ -26,7 +26,7 @@ The staging decision is conditional because the active environment still uses iP
 | Biteship shipping | PASS sandbox | **NO_GO live** | Sandbox foundation checks pass. Live credential, webhook, rate, create shipment, and tracking smoke are required. |
 | SMTP/email | PASS foundation | Conditional | SMTP checker/service pass; SPF, DKIM, DMARC, bounce, and real recipient delivery evidence are required. |
 | Invoice PDF | PASS foundation | Conditional | Document checks/build pass; verify final payment link/QR and approved company identity on release PDF. |
-| Legal pages | PASS technical | **Blocked** | Four routes exist, but `LEGAL_REVIEW_APPROVED=true` has not been evidenced by business/legal approval. |
+| Legal pages | PASS technical | **Blocked** | Four routes exist, but `LEGAL_APPROVAL_STATUS=approved` has not been evidenced by business/legal approval. |
 | Backup/restore | Documentation ready | **Blocked** | SOP exists; a dated staging restore drill and owner sign-off are still required. |
 | Monitoring | Documentation ready | **Blocked** | Health endpoint/logging exist; external alert routing, owner, and escalation test are not evidenced. |
 | Rollback | Documentation ready | Conditional | SOP exists; simulate rollback and record the last-known-good release before tagging. |
@@ -37,11 +37,12 @@ The staging decision is conditional because the active environment still uses iP
 2. Legal content has not been marked as reviewed and approved.
 3. Restore drill, alert delivery, escalation owner, and rollback simulation have no release evidence yet.
 4. WooCommerce product-standard warnings remain for products without complete variable size/SKU metadata.
-5. `WOOCOMMERCE_TEST_WRITE=true` is active in the current local/staging environment and must be `false` in production.
+5. WooCommerce test write, payment test create, shipping test create, stock customer visibility, and Ginee live test must remain explicitly disabled in the deployed environment.
 
 ## Known warnings
 
-- `STOCK_CUSTOMER_VISIBILITY` and `GINEE_TEST_LIVE` must be explicit `false` in production even when their runtime defaults are safe.
+- Task J.1 makes all non-provider safety flags explicit in `.env.example`; the
+  actual hosting environment must use the same values.
 - The current working tree will be dirty while Task J documentation is uncommitted. A release tag must only be created from a reviewed, committed, clean tree.
 - Automated provider checks do not replace a real external callback/webhook smoke test.
 
@@ -61,7 +62,7 @@ All commands below completed with exit code 0 on 8 August 2026 unless a warning 
 | `npm run check:woocommerce-product-standard` | PASS foundation with live warning: KL-007 is not yet a variable product with the Ukuran variation matrix. |
 | `npm run check:payment` | PASS sandbox hardening; no real transaction created because the test flag is false. |
 | `npm run check:shipping` | PASS sandbox hardening/persistence; no real Biteship shipment created. |
-| `npm run check:production-readiness` | **23 PASS, 6 WARN, 0 FAIL; CONDITIONAL_GO.** |
+| `npm run check:production-readiness` | **26 PASS, 3 WARN, 0 FAIL; CONDITIONAL_GO.** Safety flag warnings from Task J are resolved; remaining warnings are iPaymu sandbox, Biteship sandbox, and legal `draft`. |
 | `npm run typecheck` | PASS. |
 | `npm run lint` | PASS, zero lint warnings/errors. |
 | `npm run build` | PASS; 81 static pages generated and all dynamic routes compiled. |
@@ -72,6 +73,11 @@ and storage skipped write smoke because their explicit test flags are false. The
 skips are safe defaults, but the corresponding manual staging evidence is still
 required before live production.
 
+Negative readiness smoke also passes: `WOOCOMMERCE_TEST_WRITE=true` produces
+`FAIL/NO_GO` in staging readiness mode. With `APP_ENV=production`, the current
+sandbox payment, sandbox shipping, and legal `draft` state produce three failures
+and `NO_GO`.
+
 ## Required production flags
 
 ```bash
@@ -80,9 +86,14 @@ WOOCOMMERCE_TEST_WRITE=false
 IPAYMU_TEST_CREATE_PAYMENT=false
 BITESHIP_TEST_CREATE_SHIPMENT=false
 GINEE_TEST_LIVE=false
-LEGAL_REVIEW_APPROVED=true
+LEGAL_APPROVAL_STATUS=approved
 ```
 
 ## Final recommendation
 
 **CONDITIONAL_GO for staging; NO_GO for live production.** Re-run the full command gate after the blockers are closed. A future `GO` requires zero `FAIL`, no unresolved production `WARN`, a clean Git tree, and signed manual smoke-test evidence.
+
+Staging may retain `PAYMENT_MODE=sandbox`, `IPAYMU_MODE=sandbox`,
+`SHIPPING_MODE=sandbox`, and `BITESHIP_MODE=sandbox`, which intentionally produce
+warnings and `CONDITIONAL_GO`. The same modes are hard failures and `NO_GO` when
+`APP_ENV=production`.

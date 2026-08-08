@@ -32,7 +32,7 @@ Rule: do not tag or push until every required item is checked with evidence.
 
 - [ ] Every published product intended for launch passes product readiness.
 - [ ] Customer stock visibility is verified absent in catalog, detail, cart, and checkout.
-- [ ] Legal documents have business/legal sign-off and `LEGAL_REVIEW_APPROVED=true`.
+- [ ] Legal documents have business/legal sign-off and `LEGAL_APPROVAL_STATUS=approved`.
 - [ ] Final customer email and quotation/invoice PDF identity are approved.
 - [ ] Monitoring alerts reach the named on-call owner.
 - [ ] Rollback plan and last-known-good release are recorded.
@@ -62,4 +62,3 @@ git push origin v0.1.0-rc1
 ```
 
 Task J does not create or push this tag automatically.
-

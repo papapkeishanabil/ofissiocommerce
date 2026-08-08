@@ -31,7 +31,7 @@ membaca inventory RLS tanpa membaca isi row customer.
 ```bash
 APP_URL=
 APP_ENV=development
-LEGAL_REVIEW_APPROVED=false
+LEGAL_APPROVAL_STATUS=draft
 NODE_ENV=
 LOG_LEVEL=info
 
@@ -158,7 +158,7 @@ konfigurasi wajib yang belum aman berubah menjadi `FAIL`. Minimal production:
 
 ```bash
 APP_ENV=production
-LEGAL_REVIEW_APPROVED=true
+LEGAL_APPROVAL_STATUS=approved
 AUTH_PROVIDER=supabase
 AUTH_MODE=production
 ADMIN_DEV_BYPASS=false
@@ -174,9 +174,26 @@ WOOCOMMERCE_TEST_WRITE=false
 ```
 
 Nilai secret tetap berada di secret manager dan tidak dicetak oleh checker.
-`LEGAL_REVIEW_APPROVED=true` hanya boleh diset setelah Privacy Policy, Terms of
-Service, Refund Policy, dan Shipping Policy disetujui pemilik bisnis/penasihat
-hukum. Flag ini bukan pengganti bukti approval.
+`LEGAL_APPROVAL_STATUS` menerima `draft`, `internal_review`, atau `approved`.
+Gunakan `approved` hanya setelah Privacy Policy, Terms of Service, Refund Policy,
+dan Shipping Policy disetujui pemilik bisnis/penasihat hukum. Flag ini bukan
+pengganti bukti review legal final yang disimpan di luar aplikasi.
+
+### Safety flags wajib
+
+- `STOCK_CUSTOMER_VISIBILITY=false` mencegah jumlah/status stok internal tampil
+  pada katalog, detail, cart, dan checkout customer.
+- `GINEE_TEST_LIVE=false` karena Ginee bukan flow stok utama Ofissio.
+- `WOOCOMMERCE_TEST_WRITE=false` mencegah test order atau write smoke ke
+  WooCommerce production.
+- `IPAYMU_TEST_CREATE_PAYMENT=false` mencegah checker membuat transaksi test
+  secara otomatis.
+- `BITESHIP_TEST_CREATE_SHIPMENT=false` mencegah checker membuat shipment test
+  secara otomatis.
+
+Staging boleh berstatus `CONDITIONAL_GO` ketika iPaymu dan Biteship masih
+sandbox. Live production tetap `NO_GO` sampai kedua provider berada pada mode
+live, status legal `approved`, dan seluruh safety flag di atas eksplisit aman.
 
 ## Staging
 

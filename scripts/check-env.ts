@@ -15,7 +15,7 @@ const appEnv = resolveAppEnvironment();
 
 const rules: EnvRule[] = [
   { name: "APP_URL", requiredIn: ["staging", "production"] },
-  { name: "LEGAL_REVIEW_APPROVED", requiredIn: ["production"] },
+  { name: "LEGAL_APPROVAL_STATUS", requiredIn: ["production"] },
   { name: "NODE_ENV" },
   { name: "PRODUCT_SOURCE" },
   { name: "DATABASE_PROVIDER" },
@@ -240,16 +240,20 @@ for (const name of ["STOCK_MONITORING_ENABLED", "STOCK_CUSTOMER_VISIBILITY"]) {
     problems.push({ level: "error", message: `${name} harus bernilai true atau false.` });
   }
 }
-if (process.env.LEGAL_REVIEW_APPROVED && !isBooleanEnv(process.env.LEGAL_REVIEW_APPROVED)) {
+const legalApprovalStatus = process.env.LEGAL_APPROVAL_STATUS?.trim().toLowerCase();
+if (
+  legalApprovalStatus &&
+  !["draft", "internal_review", "approved"].includes(legalApprovalStatus)
+) {
   problems.push({
     level: "error",
-    message: "LEGAL_REVIEW_APPROVED harus bernilai true atau false.",
+    message: "LEGAL_APPROVAL_STATUS harus draft, internal_review, atau approved.",
   });
 }
-if (appEnv === "production" && process.env.LEGAL_REVIEW_APPROVED !== "true") {
+if (appEnv === "production" && legalApprovalStatus !== "approved") {
   problems.push({
     level: "error",
-    message: "LEGAL_REVIEW_APPROVED wajib true sebelum live production.",
+    message: "LEGAL_APPROVAL_STATUS wajib approved sebelum live production.",
   });
 }
 if (
