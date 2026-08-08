@@ -16,6 +16,7 @@ loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 type Level = "PASS" | "WARN" | "FAIL";
 type Result = { level: Level; name: string; detail: string };
 type RlsRow = { table_name: string; rls_enabled: boolean; rls_forced: boolean };
+type ReadinessDecision = "GO" | "CONDITIONAL_GO" | "NO_GO";
 
 const results: Result[] = [];
 const environment = resolveEnvironment();
@@ -103,6 +104,12 @@ function checkRuntimeFlags() {
     false,
     true,
   );
+  expectSafeBoolean(
+    "GINEE_TEST_LIVE",
+    process.env.GINEE_TEST_LIVE,
+    false,
+    true,
+  );
 
   checkExplicitBoolean("WOOCOMMERCE_SYNC_ORDERS", process.env.WOOCOMMERCE_SYNC_ORDERS);
   checkExplicitBoolean("WOOCOMMERCE_TEST_WRITE", process.env.WOOCOMMERCE_TEST_WRITE);
@@ -120,6 +127,17 @@ function checkRuntimeFlags() {
     add("PASS", "WooCommerce server configuration", "credential server terdeteksi");
   } else {
     add(production ? "FAIL" : "WARN", "WooCommerce server configuration", "belum lengkap");
+  }
+
+  const legalReviewApproved = process.env.LEGAL_REVIEW_APPROVED?.trim().toLowerCase();
+  if (legalReviewApproved === "true") {
+    add("PASS", "Legal business review", "approved");
+  } else {
+    add(
+      production ? "FAIL" : "WARN",
+      "Legal business review",
+      `${legalReviewApproved || "unset"}; review legal dan approval pemilik bisnis belum dibuktikan`,
+    );
   }
 }
 
@@ -399,6 +417,18 @@ function printResults() {
     fail: results.filter((result) => result.level === "FAIL").length,
   };
   console.log(`Summary: ${counts.pass} PASS, ${counts.warn} WARN, ${counts.fail} FAIL`);
+  const decision = resolveDecision(counts.warn, counts.fail);
+  const scope =
+    decision === "CONDITIONAL_GO"
+      ? "staging only; live production tetap NO_GO sampai seluruh WARN produksi ditutup"
+      : environment;
+  console.log(`Final status: ${decision} (${scope})`);
+}
+
+function resolveDecision(warnCount: number, failCount: number): ReadinessDecision {
+  if (failCount > 0) return "NO_GO";
+  if (warnCount > 0) return "CONDITIONAL_GO";
+  return "GO";
 }
 
 function safeReason(error: unknown) {

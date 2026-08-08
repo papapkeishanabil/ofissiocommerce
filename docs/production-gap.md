@@ -130,6 +130,19 @@ Commercial flow staging telah terbukti dari produk WooCommerce valid, pricing ti
 ## Prinsip go-live
 
 Jangan deploy production hanya karena build pass. Production boleh dipertimbangkan setelah semua gap kritikal di atas punya owner, env, smoke test, dan rollback plan.
+
+## Task J final release decision
+
+Lihat [production-go-no-go-report.md](./production-go-no-go-report.md) untuk
+keputusan terbaru. Per 8 August 2026, staging berstatus `CONDITIONAL_GO`, sedangkan
+live production berstatus `NO_GO`. Blocker utama adalah provider payment/shipping
+yang masih sandbox, approval legal yang belum dibuktikan, restore/monitoring/
+rollback drill yang belum ditandatangani, flag WooCommerce test write yang masih
+aktif pada environment lokal/staging, dan warning standard variasi produk.
+
+Tag `v0.1.0-rc1` belum dibuat. Tag hanya boleh dibuat dari commit yang telah
+direview, working tree bersih, seluruh migration target terverifikasi, dan
+[final-smoke-test.md](./final-smoke-test.md) telah ditandatangani.
 # WooCommerce product dan stock monitoring gap
 
 Ginee ditunda. WooCommerce Ofissio menjadi sumber resmi katalog dan stok admin.

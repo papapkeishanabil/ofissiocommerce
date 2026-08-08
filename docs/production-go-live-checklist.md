@@ -1,10 +1,16 @@
 # Production go-live checklist
 
-Status hanya boleh diberi centang berdasarkan bukti, bukan asumsi. Keputusan final adalah **GO**, **GO WITH ACCEPTED RISK**, atau **NO-GO**.
+Status hanya boleh diberi centang berdasarkan bukti, bukan asumsi. Keputusan final adalah **GO**, **CONDITIONAL_GO** (staging saja), atau **NO_GO**.
+
+Gunakan [production-go-no-go-report.md](./production-go-no-go-report.md),
+[release-checklist.md](./release-checklist.md),
+[migration-application-checklist.md](./migration-application-checklist.md), dan
+[final-smoke-test.md](./final-smoke-test.md) sebagai satu paket bukti release.
 
 ## 1. Environment dan security gate
 
 - [ ] `APP_ENV=production` dan `APP_URL` memakai HTTPS production.
+- [ ] `LEGAL_REVIEW_APPROVED=true` setelah bukti approval legal/bisnis tersedia.
 - [ ] `AUTH_PROVIDER=supabase`, `AUTH_MODE=production`.
 - [ ] `ADMIN_DEV_BYPASS=false`, `INTERNAL_DEV_HEADERS_ENABLED=false`.
 - [ ] Email verification, admin RBAC, company isolation, dan session cookie production diuji.
@@ -24,6 +30,8 @@ Status hanya boleh diberi centang berdasarkan bukti, bukan asumsi. Keputusan fin
 - [ ] SMTP sender, SPF, DKIM, DMARC, reply-to, bounce/failure diuji.
 - [ ] WooCommerce credential production server-side; write flags eksplisit.
 - [ ] `WOOCOMMERCE_TEST_WRITE=false`.
+- [ ] `IPAYMU_TEST_CREATE_PAYMENT=false`, `BITESHIP_TEST_CREATE_SHIPMENT=false`, dan `GINEE_TEST_LIVE=false`.
+- [ ] `STOCK_CUSTOMER_VISIBILITY=false`.
 
 ## 3. Business flow
 

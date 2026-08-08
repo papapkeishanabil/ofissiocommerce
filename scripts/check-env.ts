@@ -15,6 +15,7 @@ const appEnv = resolveAppEnvironment();
 
 const rules: EnvRule[] = [
   { name: "APP_URL", requiredIn: ["staging", "production"] },
+  { name: "LEGAL_REVIEW_APPROVED", requiredIn: ["production"] },
   { name: "NODE_ENV" },
   { name: "PRODUCT_SOURCE" },
   { name: "DATABASE_PROVIDER" },
@@ -238,6 +239,18 @@ for (const name of ["STOCK_MONITORING_ENABLED", "STOCK_CUSTOMER_VISIBILITY"]) {
   if (process.env[name] && !isBooleanEnv(process.env[name])) {
     problems.push({ level: "error", message: `${name} harus bernilai true atau false.` });
   }
+}
+if (process.env.LEGAL_REVIEW_APPROVED && !isBooleanEnv(process.env.LEGAL_REVIEW_APPROVED)) {
+  problems.push({
+    level: "error",
+    message: "LEGAL_REVIEW_APPROVED harus bernilai true atau false.",
+  });
+}
+if (appEnv === "production" && process.env.LEGAL_REVIEW_APPROVED !== "true") {
+  problems.push({
+    level: "error",
+    message: "LEGAL_REVIEW_APPROVED wajib true sebelum live production.",
+  });
 }
 if (
   process.env.STOCK_DEFAULT_MINIMUM_QTY &&

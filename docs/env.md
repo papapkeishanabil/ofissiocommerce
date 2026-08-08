@@ -31,6 +31,7 @@ membaca inventory RLS tanpa membaca isi row customer.
 ```bash
 APP_URL=
 APP_ENV=development
+LEGAL_REVIEW_APPROVED=false
 NODE_ENV=
 LOG_LEVEL=info
 
@@ -157,6 +158,7 @@ konfigurasi wajib yang belum aman berubah menjadi `FAIL`. Minimal production:
 
 ```bash
 APP_ENV=production
+LEGAL_REVIEW_APPROVED=true
 AUTH_PROVIDER=supabase
 AUTH_MODE=production
 ADMIN_DEV_BYPASS=false
@@ -166,11 +168,15 @@ IPAYMU_TEST_CREATE_PAYMENT=false
 SHIPPING_PROVIDER=biteship
 BITESHIP_TEST_CREATE_SHIPMENT=false
 STOCK_CUSTOMER_VISIBILITY=false
+GINEE_TEST_LIVE=false
 WOOCOMMERCE_SYNC_ORDERS=true
 WOOCOMMERCE_TEST_WRITE=false
 ```
 
 Nilai secret tetap berada di secret manager dan tidak dicetak oleh checker.
+`LEGAL_REVIEW_APPROVED=true` hanya boleh diset setelah Privacy Policy, Terms of
+Service, Refund Policy, dan Shipping Policy disetujui pemilik bisnis/penasihat
+hukum. Flag ini bukan pengganti bukti approval.
 
 ## Staging
 
