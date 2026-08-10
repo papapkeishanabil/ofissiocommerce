@@ -24,6 +24,7 @@ import {
   emptyContext,
   type ChatMessage,
   type OfistantContext,
+  type OfistantResponse,
 } from "@/lib/ofistant/ofistant.types";
 import {
   withCatalogSearchVocabulary,
@@ -48,8 +49,17 @@ interface OfistantState {
   init: () => void;
   /** Send a user turn (text or quick reply). */
   sendUserTurn: (text: string, opts?: { viaQuickReply?: boolean }) => void;
+  /** Internal emergency fallback when the chat route is unreachable. */
+  runLocalFallback: (
+    text: string,
+    ctx: OfistantContext,
+    cart: { itemCount: number; totalQty: number; totalEstimatedPrice: number },
+  ) => Promise<void>;
   /** Internal: process an agent response into messages + state. */
-  applyAssistant: (text: string, res: import("@/lib/ofistant/ofistant.types").OfistantResponse) => void;
+  applyAssistant: (
+    text: string,
+    res: OfistantResponse,
+  ) => void;
   /** Confirm and consume the pending action (returns it so UI dispatches). */
   confirmPendingAction: () => OfistantAction | null;
   /** Dismiss pending action (user cancelled). */
@@ -145,50 +155,91 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
       pendingAction: null,
     });
 
-    // Small artificial think delay for natural feel + to show the typing UI.
-    const delay = 380 + Math.min(800, trimmed.length * 8);
+    // Short delay just to let the typing indicator paint; the network
+    // round-trip provides the rest of the natural think time.
+    const delay = 150;
     window.setTimeout(async () => {
       const ctx = get().context;
-      const taxonomy = get().catalogTaxonomy;
-      const detected = detectIntent(trimmed, taxonomy ?? undefined);
-      let catalogSearchResult: CatalogSearchResult | null = null;
-      if (
-        detected.intent === "SEARCH_CATALOG" ||
-        detected.intent === "SELECT_INDUSTRY" ||
+
+      // Prior messages (excluding the current user turn just pushed), capped.
+      const history = get().messages
+        .slice(0, -1)
+        .slice(-10)
+        .map((m) => ({
+          role: (m.role === "system" ? "assistant" : m.role) as
+            | "user"
+            | "assistant",
+          text: m.text,
+        }));
+
+      try {
+        const resp = await fetch("/api/ofistant/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: trimmed, context: ctx, cart, history }),
+        });
+        if (!resp.ok) throw new Error(`http ${resp.status}`);
+        const payload = (await resp.json()) as {
+          ok?: boolean;
+          result?: OfistantResponse;
+        };
+        if (!payload.ok || !payload.result) throw new Error("bad payload");
+        const res = payload.result;
+
+        set({ context: applyResponse(ctx, res) });
+        get().applyAssistant(res.message, res);
+        return;
+      } catch {
+        // Emergency fallback: route unreachable (offline / dev server down).
+        await get().runLocalFallback(trimmed, ctx, cart);
+      }
+    }, delay);
+  },
+
+  runLocalFallback: async (text, ctx, cart) => {
+    const taxonomy = get().catalogTaxonomy;
+    const detected = detectIntent(text, taxonomy ?? undefined);
+    let catalogSearchResult: CatalogSearchResult | null = null;
+    if (
+      detected.intent === "SEARCH_CATALOG" ||
+      detected.intent === "SELECT_INDUSTRY" ||
+      detected.intent === "ASK_QUANTITY_PRICE" ||
+      detected.intent === "ASK_EMBROIDERY_PRICE"
+    ) {
+      const pricingSearchQuery =
         detected.intent === "ASK_QUANTITY_PRICE" ||
         detected.intent === "ASK_EMBROIDERY_PRICE"
-      ) {
-        const pricingSearchQuery = detected.intent === "ASK_QUANTITY_PRICE" || detected.intent === "ASK_EMBROIDERY_PRICE"
-          ? [detected.category, detected.industry].filter(Boolean).join(" ") || ctx.selectedProductSlug || trimmed
-          : trimmed;
-        catalogSearchResult = await fetch(
-          `/api/catalog/search?q=${encodeURIComponent(pricingSearchQuery)}`,
-        )
-          .then(async (response) => {
-            if (!response.ok) return null;
-            const payload = (await response.json()) as {
-              ok?: boolean;
-              result?: CatalogSearchResult;
-            };
-            return payload.ok ? payload.result ?? null : null;
-          })
-          .catch(() => null);
-      }
-      const res = respond({
-        text: trimmed,
-        ctx,
-        cart,
-        taxonomy,
-        catalogSearchResult,
-      });
+          ? [detected.category, detected.industry].filter(Boolean).join(" ") ||
+            ctx.selectedProductSlug ||
+            text
+          : text;
+      catalogSearchResult = await fetch(
+        `/api/catalog/search?q=${encodeURIComponent(pricingSearchQuery)}`,
+      )
+        .then(async (response) => {
+          if (!response.ok) return null;
+          const payload = (await response.json()) as {
+            ok?: boolean;
+            result?: CatalogSearchResult;
+          };
+          return payload.ok ? payload.result ?? null : null;
+        })
+        .catch(() => null);
+    }
+    const res = respond({
+      text,
+      ctx,
+      cart,
+      taxonomy,
+      catalogSearchResult,
+    });
 
-      // Apply context patch first so the assistant message reflects the
-      // fresh state.
-      const nextCtx = applyResponse(ctx, res);
-      set({ context: nextCtx });
+    // Apply context patch first so the assistant message reflects the
+    // fresh state.
+    const nextCtx = applyResponse(ctx, res);
+    set({ context: nextCtx });
 
-      get().applyAssistant(res.message, res);
-    }, delay);
+    get().applyAssistant(res.message, res);
   },
 
   applyAssistant: (text, res) => {

@@ -24,7 +24,7 @@ npm run dev
 | Generate 3D Tripo | Opsional, untuk AI 3D via Tripo | `TRIPO_API_KEY` |
 | Shipping | Saat ini mock/manual, belum butuh API key ekspedisi | `SHIPPING_PROVIDER`, `DEFAULT_ORIGIN_CITY`, `DEFAULT_ORIGIN_POSTAL_CODE` |
 | Storage upload | Default mock; Supabase Storage nanti butuh env Supabase server-side | `STORAGE_PROVIDER`, bucket storage, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
-| Ofistant AI | Opsional/future real LLM | `OFISTANT_LLM_API_KEY`, `OFISTANT_LLM_MODEL` |
+| Ofistant AI | Opsional; HYBRID live dengan auto-fallback ke rule engine | `GEMINI_API_KEY`, `GEMINI_MODEL`, `OFISTANT_LLM_ENABLED` |
 | WooCommerce | Wajib jika memakai catalog/order sync WooCommerce | `PRODUCT_SOURCE`, `WOOCOMMERCE_ENABLED`, `WOOCOMMERCE_BASE_URL`, `WOOCOMMERCE_CONSUMER_KEY`, `WOOCOMMERCE_CONSUMER_SECRET`, `WOOCOMMERCE_SYNC_ORDERS` |
 | WordPress Media | Wajib untuk upload foto produk dari Ofissio Admin | `WORDPRESS_MEDIA_USERNAME` + `WORDPRESS_MEDIA_APP_PASSWORD`, atau `WORDPRESS_MEDIA_TOKEN`; `WORDPRESS_MEDIA_BASE_URL` opsional |
 
@@ -148,14 +148,21 @@ Catatan:
 
 ## 7. Ofistant AI
 
-Disiapkan untuk mode LLM real nanti.
+Ofistant kini HYBRID: bila `GEMINI_API_KEY` terisi, percakapan natural dipahami oleh Google Gemini (via Vercel AI SDK) dan memutuskan intent/action, sementara data faktual (harga, bordir, MOQ, stok, status order) dijaga oleh tool server-side agar tidak halusinasi. Endpoint: `POST /api/ofistant/chat` (anonim, rate limit 20 req/menit/IP).
 
 ```env
-OFISTANT_LLM_API_KEY=
-OFISTANT_LLM_MODEL=
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.0-flash-lite
+OFISTANT_LLM_ENABLED=true
 ```
 
-Saat ini Ofistant masih dapat berjalan dengan rule/mock yang ada.
+Catatan:
+
+- Tanpa `GEMINI_API_KEY` (atau bila LLM gagal), Ofistant otomatis fallback ke rule engine server-side yang diberi data katalog asli — tetap berfungsi, `source:"rules"` terlihat di response network.
+- Kill-switch: `OFISTANT_LLM_ENABLED=false` memaksa rule engine walau key terisi.
+- `GEMINI_API_KEY` hanya boleh dibaca server (tidak boleh ada varian `NEXT_PUBLIC_`).
+- Harga/bordir hanya dihitung lewat tool (`compute_quantity_price`, `compute_embroidery_price`); model dilarang mengarang angka.
+- Route bersifat anonim (pesan pertama pre-login); session opsional dan hanya memperkaya konteks (mis. `companyId` untuk cek status order).
 
 ## 8. WooCommerce
 

@@ -74,3 +74,19 @@ export function applyResponse(
   if (!res.contextPatch) return ctx;
   return mergePatch(ctx, res.contextPatch);
 }
+
+const FALLBACK_MESSAGE_PREFIXES = [
+  "Maaf, saya belum yakin maksud Anda",
+  "Maaf saya belum menangkap maksudnya",
+];
+
+/**
+ * True when the rule engine fell through to its generic "I don't understand"
+ * fallback. The API route uses this to decide whether to escalate the turn to
+ * the LLM (which handles natural conversation the rules can't parse).
+ */
+export function isFallbackOfistantResponse(res: OfistantResponse): boolean {
+  return FALLBACK_MESSAGE_PREFIXES.some((prefix) =>
+    res.message.startsWith(prefix),
+  );
+}
