@@ -74,11 +74,14 @@ export async function createQuotationRequest(
   });
   const now = new Date().toISOString();
   const id = `quo_${randomUUID()}`;
-  const quotationNumber = buildQuotationNumber(now);
   const requirement = resolveQuotationRequirement({
     requestedType: input.requirementType,
     items: cart.items,
   });
+  const quotationNumber = await buildQuotationNumber(
+    now,
+    requirement.requestedProcessRoute,
+  );
   const productionBrief =
     requirement.requirementType === "custom_production"
       ? normalizeProductionBrief(input.productionBrief)
@@ -236,7 +239,7 @@ export async function createCustomQuotationRequest(
   const sendCustomerConfirmation = input.sendCustomerConfirmation ?? true;
   const now = new Date().toISOString();
   const id = `quo_${randomUUID()}`;
-  const quotationNumber = buildQuotationNumber(now);
+  const quotationNumber = await buildQuotationNumber(now, "production");
   const productionBrief = normalizeProductionBrief(input.productionBrief);
   if (
     !productionBrief?.projectName ||
@@ -1394,10 +1397,27 @@ async function notifyQuotationAcceptedSafely(input: {
   }
 }
 
-function buildQuotationNumber(nowIso: string) {
-  const date = nowIso.slice(0, 10).replaceAll("-", "");
-  const suffix = randomUUID().slice(0, 8).toUpperCase();
-  return `OF-QUO-${date}-${suffix}`;
+async function buildQuotationNumber(
+  nowIso: string,
+  processRoute: "fulfillment" | "customization" | "production",
+) {
+  const { nextMonthlyDocumentSequence, safeDocumentNumber } = await import(
+    "@/features/documents/document.utils"
+  );
+  const existing = await quotationRepository.listAll();
+  const date = new Date(nowIso);
+  const sequence = nextMonthlyDocumentSequence({
+    existingNumbers: existing.map((quotation) => quotation.quotationNumber),
+    prefix: "QUO",
+    processRoute,
+    date,
+  });
+  return safeDocumentNumber({
+    documentType: "quotation_pdf",
+    processRoute,
+    sequence,
+    date,
+  });
 }
 
 function aggregateEmailStatus(results: EmailSendResult[]): EmailStatus {

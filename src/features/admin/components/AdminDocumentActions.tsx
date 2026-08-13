@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Download, FileText, Mail, RefreshCw } from "lucide-react";
+import { Download, FileText, Mail, Printer, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface AdminDocumentActionsProps {
@@ -13,6 +13,7 @@ interface AdminDocumentActionsProps {
   generateLabel: string;
   regenerateLabel: string;
   downloadLabel: string;
+  printLabel?: string;
   templateId?: string;
   sendPath?: string;
   sendLabel?: string;
@@ -30,6 +31,7 @@ export function AdminDocumentActions({
   generateLabel,
   regenerateLabel,
   downloadLabel,
+  printLabel,
   templateId,
   sendPath,
   sendLabel = "Kirim ke customer",
@@ -89,7 +91,7 @@ export function AdminDocumentActions({
     });
   }
 
-  function download() {
+  function openDocument(mode: "download" | "print") {
     setMessage(null);
     setMessageIsError(false);
     startTransition(async () => {
@@ -110,7 +112,11 @@ export function AdminDocumentActions({
         return;
       }
       window.open(result.signedUrl, "_blank", "noopener,noreferrer");
-      setMessage("Signed URL dokumen dibuat.");
+      setMessage(
+        mode === "print"
+          ? "PDF dibuka. Gunakan tombol Print pada PDF viewer browser."
+          : "Signed URL dokumen dibuat.",
+      );
     });
   }
 
@@ -174,12 +180,23 @@ export function AdminDocumentActions({
         <button
           type="button"
           disabled={isPending}
-          onClick={download}
+          onClick={() => openDocument("download")}
           className="inline-flex items-center gap-2 rounded-2xl border border-line-strong bg-white px-4 py-2 text-sm font-black text-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Download className="h-4 w-4" />
           {downloadLabel}
         </button>
+        {printLabel ? (
+          <button
+            type="button"
+            disabled={!documentAvailable || isPending}
+            onClick={() => openDocument("print")}
+            className="inline-flex items-center gap-2 rounded-2xl border border-line-strong bg-white px-4 py-2 text-sm font-black text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Printer className="h-4 w-4" />
+            {printLabel}
+          </button>
+        ) : null}
         {sendPath ? (
           <button
             type="button"

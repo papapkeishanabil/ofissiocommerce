@@ -4,6 +4,8 @@ import type { QuotationRequestRecord } from "@/features/quotation/quotation.type
 export const DOCUMENT_TYPES = [
   "quotation_pdf",
   "invoice_pdf",
+  "embroidery_work_order_pdf",
+  "production_work_order_pdf",
   "production_order_pdf_future",
   "packing_slip_pdf_future",
 ] as const;
@@ -32,6 +34,8 @@ export const DOCUMENT_TEMPLATE_IDS = [
   "quotation_default",
   "invoice_default",
   "invoice_ofissio_custom",
+  "embroidery_work_order_ofissio",
+  "production_work_order_ofissio",
 ] as const;
 
 export type DocumentTemplateId = (typeof DOCUMENT_TEMPLATE_IDS)[number];
@@ -92,6 +96,22 @@ export interface GenerateQuotationPdfInput {
 
 export interface GenerateInvoicePdfInput {
   orderId: string;
+  templateId?: DocumentTemplateId;
+  forceRegenerate?: boolean;
+  actorId: string;
+  request?: Request;
+}
+
+export interface GenerateEmbroideryWorkOrderPdfInput {
+  processOrderId: string;
+  templateId?: DocumentTemplateId;
+  forceRegenerate?: boolean;
+  actorId: string;
+  request?: Request;
+}
+
+export interface GenerateProductionWorkOrderPdfInput {
+  processOrderId: string;
   templateId?: DocumentTemplateId;
   forceRegenerate?: boolean;
   actorId: string;
@@ -175,4 +195,60 @@ export interface InvoicePdfData {
   contactEmail: string;
   isPaymentLive: boolean;
   generatedAt: string;
+}
+
+export interface EmbroideryWorkOrderPdfPlacement {
+  zone: string;
+  technique: string;
+  logoFileName: string | null;
+  widthCm: number;
+  heightCm: number;
+  rotation: number;
+  notes: string | null;
+}
+
+export interface EmbroideryWorkOrderPdfItem {
+  productName: string;
+  sku: string;
+  selectedColor: string;
+  totalQty: number;
+  sizeSummary: string;
+  instruction: string | null;
+  placements: EmbroideryWorkOrderPdfPlacement[];
+}
+
+export interface EmbroideryWorkOrderPdfData {
+  workOrderNumber: string;
+  processOrderNumber: string;
+  orderNumber: string;
+  quotationNumber: string | null;
+  companyName: string;
+  createdAt: string;
+  deadline: string | null;
+  priority: string;
+  assignedTeam: string | null;
+  items: EmbroideryWorkOrderPdfItem[];
+  notes: string | null;
+  locationLabel: string;
+  signerName: string;
+  signerTitle: string;
+  contactTel: string;
+  contactWeb: string;
+  contactEmail: string;
+  generatedAt: string;
+}
+
+export interface ProductionWorkOrderPdfData extends EmbroideryWorkOrderPdfData {
+  projectName: string;
+  garmentType: string;
+  usageContext: string | null;
+  designDescription: string;
+  materialPreference: string | null;
+  colorPreference: string | null;
+  sizeNotes: string | null;
+  targetDate: string | null;
+  approvalStatus: string;
+  revisionNote: string | null;
+  technicalSpecifications: Array<{ label: string; value: string }>;
+  referenceFiles: Array<{ label: string; fileName: string }>;
 }

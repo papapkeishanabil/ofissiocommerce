@@ -16,3 +16,13 @@ export const generateInvoicePdfBodySchema = z.object({
   templateId: z.enum(DOCUMENT_TEMPLATE_IDS).optional(),
   forceRegenerate: z.boolean().optional().default(false),
 });
+
+export const generateEmbroideryWorkOrderPdfBodySchema = z.object({
+  templateId: z.enum(DOCUMENT_TEMPLATE_IDS).optional(),
+  forceRegenerate: z.boolean().optional().default(false),
+});
+
+export const generateProductionWorkOrderPdfBodySchema = z.object({
+  templateId: z.enum(DOCUMENT_TEMPLATE_IDS).optional(),
+  forceRegenerate: z.boolean().optional().default(false),
+});

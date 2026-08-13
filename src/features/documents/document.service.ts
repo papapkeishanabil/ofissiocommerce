@@ -12,6 +12,8 @@ import { SupabaseDatabaseError } from "@/features/database/database.errors";
 import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payment.types";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
 import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
+import { getProcessOrderDetail } from "@/features/process-orders/process-order.service";
+import type { ProcessOrderDetail } from "@/features/process-orders/process-order.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
 import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
@@ -20,13 +22,17 @@ import { getDocumentRuntimeConfig } from "./document.config";
 import { documentRepository } from "./document.repository";
 import type {
   DocumentEntityType,
+  EmbroideryWorkOrderPdfData,
   DocumentRecord,
   DocumentSignedUrlResult,
   DocumentTemplateId,
   DocumentType,
   GenerateInvoicePdfInput,
+  GenerateEmbroideryWorkOrderPdfInput,
+  GenerateProductionWorkOrderPdfInput,
   GenerateQuotationPdfInput,
   InvoicePdfData,
+  ProductionWorkOrderPdfData,
   QuotationPdfData,
 } from "./document.types";
 import {
@@ -34,14 +40,19 @@ import {
   formatInvoiceDate,
   formatRupiah,
   isInvoiceTemplate,
+  isEmbroideryWorkOrderTemplate,
+  isProductionWorkOrderTemplate,
   isQuotationFinalForPdf,
   isQuotationTemplate,
+  nextMonthlyDocumentSequence,
   publicDocument,
   safeDocumentNumber,
   sizeMatrixSummary,
 } from "./document.utils";
 import {
   renderInvoicePdfByTemplate,
+  renderEmbroideryWorkOrderPdfByTemplate,
+  renderProductionWorkOrderPdfByTemplate,
   renderQuotationPdfByTemplate,
 } from "./pdf/pdf-template.registry";
 import {
@@ -50,6 +61,8 @@ import {
 } from "./providers/storage-document.provider";
 
 const INVOICE_RENDERER_VERSION = "invoice-payment-links-v1";
+const EMBROIDERY_WORK_ORDER_RENDERER_VERSION = "bwo-ofissio-v1";
+const PRODUCTION_WORK_ORDER_RENDERER_VERSION = "pwo-ofissio-v1";
 
 export async function getDocumentsByEntity(input: {
   companyId?: string;
@@ -126,7 +139,7 @@ export async function generateQuotationPdf(input: GenerateQuotationPdfInput) {
       isFinal,
     });
     const pdf = renderQuotationPdfByTemplate(templateId, data);
-    const filename = `${documentNumber}.pdf`;
+    const filename = `${documentNumber.replaceAll("/", "-")}.pdf`;
     const file = await uploadGeneratedPdf({
       companyId: quotation.companyId,
       userId: quotation.userId,
@@ -235,9 +248,26 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
       });
     }
     const now = new Date().toISOString();
-    const documentNumber = safeDocumentNumber({
+    const previousInvoice = existing ?? (await documentRepository.listByEntity({
+      companyId: order.companyId,
+      entityType: "order",
+      entityId: order.id,
       documentType: "invoice_pdf",
-      sourceNumber: order.orderNumber ?? order.id,
+    }))[0];
+    const allDocuments = previousInvoice || !documentRepository.listAll
+      ? []
+      : await documentRepository.listAll();
+    const sequence = nextMonthlyDocumentSequence({
+      existingNumbers: allDocuments.map((document) => document.documentNumber),
+      prefix: "INV",
+      processRoute: order.processRoute ?? "fulfillment",
+      date: new Date(now),
+    });
+    const documentNumber = previousInvoice?.documentNumber ?? safeDocumentNumber({
+      documentType: "invoice_pdf",
+      processRoute: order.processRoute ?? "fulfillment",
+      sequence,
+      date: new Date(now),
     });
     const data = mapOrderToInvoicePdfData({
       order,
@@ -246,7 +276,7 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
       generatedAt: now,
     });
     const pdf = renderInvoicePdfByTemplate(templateId, data);
-    const filename = `${documentNumber}.pdf`;
+    const filename = `${documentNumber.replaceAll("/", "-")}.pdf`;
     const file = await uploadGeneratedPdf({
       companyId: order.companyId,
       userId: order.userId,
@@ -350,6 +380,187 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
     });
     throw error;
   }
+}
+
+export async function generateEmbroideryWorkOrderPdf(
+  input: GenerateEmbroideryWorkOrderPdfInput,
+) {
+  const config = getDocumentRuntimeConfig();
+  const templateId = input.templateId ?? config.defaultEmbroideryWorkOrderTemplate;
+  if (!isEmbroideryWorkOrderTemplate(templateId)) {
+    throw createApiError("BAD_REQUEST", "Template Bordir Work Order tidak valid.", 400);
+  }
+
+  const detail = await getProcessOrderDetail(input.processOrderId);
+  if (!detail) throw createApiError("NOT_FOUND", "Process order tidak ditemukan.", 404);
+  if (detail.processOrder.processRoute !== "customization") {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Bordir Work Order hanya dapat dibuat untuk routing customization.",
+      400,
+    );
+  }
+
+  const existing = await latestGeneratedDocument({
+    companyId: detail.processOrder.companyId,
+    entityType: "process_order",
+    entityId: detail.processOrder.id,
+    documentType: "embroidery_work_order_pdf",
+  });
+  if (existing && !input.forceRegenerate) {
+    return { document: existing, idempotent: true };
+  }
+  if (existing) {
+    await documentRepository.update(existing.id, {
+      status: "expired",
+      deletedAt: new Date().toISOString(),
+    });
+  }
+
+  const previous = existing ?? (await documentRepository.listByEntity({
+    companyId: detail.processOrder.companyId,
+    entityType: "process_order",
+    entityId: detail.processOrder.id,
+    documentType: "embroidery_work_order_pdf",
+  }))[0];
+  const now = new Date();
+  const allDocuments = previous || !documentRepository.listAll
+    ? []
+    : await documentRepository.listAll();
+  const sequence = nextMonthlyDocumentSequence({
+    existingNumbers: allDocuments.map((document) => document.documentNumber),
+    prefix: "BWO",
+    processRoute: "customization",
+    date: now,
+  });
+  const documentNumber = previous?.documentNumber ?? safeDocumentNumber({
+    documentType: "embroidery_work_order_pdf",
+    processRoute: "customization",
+    sequence,
+    date: now,
+  });
+  const generatedAt = now.toISOString();
+  const data = mapProcessOrderToEmbroideryWorkOrderPdfData({
+    detail,
+    documentNumber,
+    generatedAt,
+  });
+  const pdf = renderEmbroideryWorkOrderPdfByTemplate(templateId, data);
+  const filename = `${documentNumber.replaceAll("/", "-")}.pdf`;
+  const file = await uploadGeneratedPdf({
+    companyId: detail.processOrder.companyId,
+    userId: detail.sourceOrder?.userId ?? null,
+    documentType: "embroidery_work_order_pdf",
+    documentNumber,
+    filename,
+    data: pdf,
+    metadata: {
+      documentType: "embroidery_work_order_pdf",
+      entityType: "process_order",
+      entityId: detail.processOrder.id,
+      templateId,
+      processOrderNumber: detail.processOrder.processOrderNumber,
+      orderNumber: data.orderNumber,
+      rendererVersion: EMBROIDERY_WORK_ORDER_RENDERER_VERSION,
+    },
+  });
+  const document = await saveDocumentRecord({
+    companyId: detail.processOrder.companyId,
+    userId: detail.sourceOrder?.userId ?? null,
+    documentType: "embroidery_work_order_pdf",
+    entityType: "process_order",
+    entityId: detail.processOrder.id,
+    documentNumber,
+    templateId,
+    file,
+    filename,
+    generatedAt,
+    metadata: {
+      processOrderNumber: detail.processOrder.processOrderNumber,
+      orderNumber: data.orderNumber,
+      rendererVersion: EMBROIDERY_WORK_ORDER_RENDERER_VERSION,
+    },
+  });
+  auditDocument({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    action: "pdf_generated",
+    companyId: detail.processOrder.companyId,
+    entityType: "process_order",
+    entityId: detail.processOrder.id,
+    document,
+    metadata: {
+      documentNumber,
+      regenerated: Boolean(input.forceRegenerate),
+    },
+  });
+  return { document, idempotent: false };
+}
+
+export async function getEmbroideryWorkOrderPdfSignedUrl(input: {
+  processOrderId: string;
+  request?: Request;
+  actorId?: string | null;
+}): Promise<DocumentSignedUrlResult> {
+  const detail = await getProcessOrderDetail(input.processOrderId);
+  if (!detail) throw createApiError("NOT_FOUND", "Process order tidak ditemukan.", 404);
+  const document = await latestGeneratedDocument({
+    companyId: detail.processOrder.companyId,
+    entityType: "process_order",
+    entityId: detail.processOrder.id,
+    documentType: "embroidery_work_order_pdf",
+  });
+  if (!document) {
+    throw createApiError("NOT_FOUND", "Bordir Work Order PDF belum tersedia.", 404);
+  }
+  return signedUrlForDocument({
+    document,
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+  });
+}
+
+export async function generateProductionWorkOrderPdf(input: GenerateProductionWorkOrderPdfInput) {
+  const config = getDocumentRuntimeConfig();
+  const templateId = input.templateId ?? config.defaultProductionWorkOrderTemplate;
+  if (!isProductionWorkOrderTemplate(templateId)) throw createApiError("BAD_REQUEST", "Template Production Work Order tidak valid.", 400);
+  const detail = await getProcessOrderDetail(input.processOrderId);
+  if (!detail) throw createApiError("NOT_FOUND", "Process order tidak ditemukan.", 404);
+  if (detail.processOrder.processRoute !== "production") throw createApiError("BAD_REQUEST", "Production Work Order hanya untuk routing production.", 400);
+  const quotation = detail.processOrder.quotationId
+    ? await repositoryRegistry.quotations.getById(detail.processOrder.quotationId)
+    : null;
+  const brief = quotation?.productionBrief;
+  if (!brief) throw createApiError("BAD_REQUEST", "Brief produksi belum tersedia pada quotation.", 400);
+  if (brief.approvalStatus && brief.approvalStatus !== "approved") throw createApiError("BAD_REQUEST", "Brief produksi harus disetujui customer sebelum PWO dibuat.", 400);
+
+  const lookup = { companyId: detail.processOrder.companyId, entityType: "process_order" as const, entityId: detail.processOrder.id, documentType: "production_work_order_pdf" as const };
+  const existing = await latestGeneratedDocument(lookup);
+  if (existing && !input.forceRegenerate) return { document: existing, idempotent: true };
+  if (existing) await documentRepository.update(existing.id,{status:"expired",deletedAt:new Date().toISOString()});
+  const previous = existing ?? (await documentRepository.listByEntity(lookup))[0];
+  const now=new Date();
+  const all=previous||!documentRepository.listAll?[]:await documentRepository.listAll();
+  const sequence=nextMonthlyDocumentSequence({existingNumbers:all.map(d=>d.documentNumber),prefix:"PWO",processRoute:"production",date:now});
+  const documentNumber=previous?.documentNumber??safeDocumentNumber({documentType:"production_work_order_pdf",processRoute:"production",sequence,date:now});
+  const generatedAt=now.toISOString();
+  const data=mapProcessOrderToProductionWorkOrderPdfData({detail,quotation,documentNumber,generatedAt});
+  const pdf=renderProductionWorkOrderPdfByTemplate(templateId,data);
+  const filename=`${documentNumber.replaceAll("/","-")}.pdf`;
+  const file=await uploadGeneratedPdf({companyId:detail.processOrder.companyId,userId:detail.sourceOrder?.userId??null,documentType:"production_work_order_pdf",documentNumber,filename,data:pdf,metadata:{documentType:"production_work_order_pdf",entityType:"process_order",entityId:detail.processOrder.id,templateId,rendererVersion:PRODUCTION_WORK_ORDER_RENDERER_VERSION}});
+  const document=await saveDocumentRecord({companyId:detail.processOrder.companyId,userId:detail.sourceOrder?.userId??null,documentType:"production_work_order_pdf",entityType:"process_order",entityId:detail.processOrder.id,documentNumber,templateId,file,filename,generatedAt,metadata:{processOrderNumber:detail.processOrder.processOrderNumber,rendererVersion:PRODUCTION_WORK_ORDER_RENDERER_VERSION}});
+  auditDocument({request:input.request,actorId:input.actorId,actorType:"internal",action:"pdf_generated",companyId:detail.processOrder.companyId,entityType:"process_order",entityId:detail.processOrder.id,document,metadata:{documentNumber,regenerated:Boolean(input.forceRegenerate)}});
+  return {document,idempotent:false};
+}
+
+export async function getProductionWorkOrderPdfSignedUrl(input:{processOrderId:string;request?:Request;actorId?:string|null}):Promise<DocumentSignedUrlResult>{
+  const detail=await getProcessOrderDetail(input.processOrderId);
+  if(!detail) throw createApiError("NOT_FOUND","Process order tidak ditemukan.",404);
+  const document=await latestGeneratedDocument({companyId:detail.processOrder.companyId,entityType:"process_order",entityId:detail.processOrder.id,documentType:"production_work_order_pdf"});
+  if(!document) throw createApiError("NOT_FOUND","Production Work Order PDF belum tersedia.",404);
+  return signedUrlForDocument({document,request:input.request,actorId:input.actorId,actorType:"internal"});
 }
 
 export async function getQuotationPdfSignedUrl(input: {
@@ -588,6 +799,77 @@ export function mapOrderToInvoicePdfData(input: {
   };
 }
 
+export function mapProcessOrderToEmbroideryWorkOrderPdfData(input: {
+  detail: ProcessOrderDetail;
+  documentNumber: string;
+  generatedAt: string;
+}): EmbroideryWorkOrderPdfData {
+  const config = getDocumentRuntimeConfig();
+  const { processOrder, sourceOrder } = input.detail;
+  return {
+    workOrderNumber: input.documentNumber,
+    processOrderNumber: processOrder.processOrderNumber,
+    orderNumber: sourceOrder?.orderNumber ?? processOrder.ofissioOrderId,
+    quotationNumber: processOrder.quotationId,
+    companyName: sourceOrder?.companyId ?? processOrder.companyId,
+    createdAt: processOrder.createdAt,
+    deadline: processOrder.deadline,
+    priority: processOrder.priority,
+    assignedTeam: processOrder.assignedTeam,
+    notes: processOrder.notes,
+    items: input.detail.items.map((item) => ({
+      productName: item.productName,
+      sku: item.sku,
+      selectedColor: item.selectedColor,
+      totalQty: item.totalQty,
+      sizeSummary: sizeMatrixSummary(item.sizeMatrix),
+      instruction: item.customization.text,
+      placements: item.customization.placements.map((placement) => ({
+        zone: zoneLabel(placement.zone),
+        technique: embroideryTechniqueLabel(placement.technique),
+        logoFileName: placement.logoFileName ?? null,
+        widthCm: placement.widthCm,
+        heightCm: placement.heightCm,
+        rotation: placement.rotation,
+        notes: placement.notes ?? null,
+      })),
+    })),
+    locationLabel: config.companyLocationLabel,
+    signerName: config.signerName,
+    signerTitle: config.signerTitle,
+    contactTel: config.contactTel,
+    contactWeb: config.contactWeb,
+    contactEmail: config.contactEmail,
+    generatedAt: input.generatedAt,
+  };
+}
+
+export function mapProcessOrderToProductionWorkOrderPdfData(input:{
+  detail:ProcessOrderDetail;
+  quotation:QuotationRequestRecord;
+  documentNumber:string;
+  generatedAt:string;
+}):ProductionWorkOrderPdfData{
+  const base=mapProcessOrderToEmbroideryWorkOrderPdfData({detail:input.detail,documentNumber:input.documentNumber,generatedAt:input.generatedAt});
+  const brief=input.quotation.productionBrief;
+  if(!brief) throw createApiError("BAD_REQUEST","Brief produksi belum tersedia.",400);
+  return {
+    ...base,
+    projectName:brief.projectName?.trim()||"Proyek Produksi Ofissio",
+    garmentType:brief.garmentType?.trim()||"Belum ditentukan",
+    usageContext:brief.usageContext??null,
+    designDescription:brief.designDescription,
+    materialPreference:brief.materialPreference??null,
+    colorPreference:brief.colorPreference??null,
+    sizeNotes:brief.sizeNotes??null,
+    targetDate:brief.targetDate??null,
+    approvalStatus:brief.approvalStatus??"approved",
+    revisionNote:brief.approvalRevisionNote??null,
+    technicalSpecifications:(brief.technicalSpecifications??[]).flatMap(group=>group.specifications.filter(spec=>spec.status!=="not_used").map(spec=>({label:`${group.garmentType} / ${spec.label}`,value:[spec.option,spec.detail,spec.notes].filter(Boolean).join(" / ")||spec.status}))),
+    referenceFiles:(brief.referenceFiles??[]).map(file=>({label:"Referensi desain",fileName:file.filename})),
+  };
+}
+
 function publicPaymentUrl(value: string | null) {
   if (!value) return null;
   try {
@@ -710,7 +992,7 @@ function auditDocument(input: {
   actorType: "internal" | "customer" | "system";
   companyId?: string | null;
   action: "pdf_generated" | "pdf_generation_failed";
-  entityType: "quotation" | "order";
+  entityType: "quotation" | "order" | "process_order";
   entityId: string;
   document?: DocumentRecord;
   metadata?: Record<string, unknown>;

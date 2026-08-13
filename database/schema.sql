@@ -352,6 +352,8 @@ create table if not exists documents (
     document_type in (
       'quotation_pdf',
       'invoice_pdf',
+      'embroidery_work_order_pdf',
+      'production_work_order_pdf',
       'production_order_pdf_future',
       'packing_slip_pdf_future'
     )
@@ -360,7 +362,7 @@ create table if not exists documents (
   entity_id text not null,
   document_number text not null,
   template_id text not null check (
-    template_id in ('quotation_default', 'invoice_default', 'invoice_ofissio_custom')
+    template_id in ('quotation_default', 'invoice_default', 'invoice_ofissio_custom', 'embroidery_work_order_ofissio', 'production_work_order_ofissio')
   ),
   file_id text not null,
   storage_bucket text not null,

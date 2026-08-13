@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentActions";
 import { AdminInlineProcessChecklist } from "@/features/admin/components/AdminInlineProcessChecklist";
 import { AdminProcessRouteBadge } from "@/features/admin/components/AdminProcessRouteBadge";
 import { AdminProcessOrderActions } from "@/features/admin/components/AdminProcessOrderActions";
@@ -14,6 +15,7 @@ import {
   requireInternalAdminServer,
 } from "@/features/admin/admin.service";
 import { formatAdminDate } from "@/features/admin/admin.utils";
+import { getDocumentsByEntity } from "@/features/documents/document.service";
 import { processOrderStatusLabel } from "@/features/process-orders/process-order.config";
 import { summarizeSizeMatrix } from "@/features/tracking/tracking-utils";
 
@@ -23,13 +25,23 @@ interface PageProps {
 
 export default async function AdminProcessOrderDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const [detail, actor] = await Promise.all([
+  const [detail, actor, documents] = await Promise.all([
     getAdminProcessOrderDetail(id),
     requireInternalAdminServer("admin:process-order:view"),
+    getDocumentsByEntity({
+      entityType: "process_order",
+      entityId: id,
+    }),
   ]);
   if (!detail) notFound();
   const { processOrder, sourceOrder, items, tasks, events } = detail;
   const canUpdate = canUpdateProcessOrder(actor);
+  const embroideryWorkOrder = documents.find(
+    (document) => document.status === "generated" && !document.deletedAt,
+  );
+  const productionWorkOrder = documents.find(
+    (document) => document.documentType === "production_work_order_pdf" && document.status === "generated" && !document.deletedAt,
+  );
 
   return (
     <div className="space-y-5">
@@ -86,6 +98,57 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
         canUpdate={canUpdate}
         variant="workbench"
       />
+
+      {processOrder.processRoute === "customization" ? (
+        <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-700">
+                Dokumen kerja resmi
+              </p>
+              <h3 className="mt-1 text-lg font-black text-ink">Bordir Work Order</h3>
+              <p className="mt-1 max-w-2xl text-sm text-ink-muted">
+                SPK bordir berformat A4 berisi produk, size matrix, artwork, placement,
+                ukuran, instruksi produksi, checklist QC, dan kolom serah terima.
+              </p>
+            </div>
+            <AdminBadge tone={embroideryWorkOrder ? "success" : "warning"}>
+              {embroideryWorkOrder ? embroideryWorkOrder.documentNumber : "BELUM DIBUAT"}
+            </AdminBadge>
+          </div>
+          <div className="mt-4">
+            <AdminDocumentActions
+              entityId={processOrder.id}
+              generatePath={`/api/admin/process-orders/${processOrder.id}/generate-bwo`}
+              downloadPath={`/api/admin/process-orders/${processOrder.id}/bwo`}
+              canGenerate={canUpdate}
+              blockedMessage="Anda tidak memiliki izin untuk membuat Bordir Work Order."
+              generateLabel="Generate BWO"
+              regenerateLabel="Regenerate BWO"
+              downloadLabel="Download PDF"
+              printLabel="Print BWO"
+              templateId="embroidery_work_order_ofissio"
+              initialDocumentAvailable={Boolean(embroideryWorkOrder)}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {processOrder.processRoute === "production" ? (
+        <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-700">Dokumen produksi resmi</p>
+              <h3 className="mt-1 text-lg font-black text-ink">Production Work Order</h3>
+              <p className="mt-1 max-w-2xl text-sm text-ink-muted">SPK produksi berdasarkan brief customer yang disetujui, lengkap dengan spesifikasi barang, tahapan kerja, QC, dan otorisasi.</p>
+            </div>
+            <AdminBadge tone={productionWorkOrder ? "success" : "warning"}>{productionWorkOrder ? productionWorkOrder.documentNumber : "BELUM DIBUAT"}</AdminBadge>
+          </div>
+          <div className="mt-4">
+            <AdminDocumentActions entityId={processOrder.id} generatePath={`/api/admin/process-orders/${processOrder.id}/generate-pwo`} downloadPath={`/api/admin/process-orders/${processOrder.id}/pwo`} canGenerate={canUpdate} blockedMessage="Anda tidak memiliki izin untuk membuat Production Work Order." generateLabel="Generate PWO" regenerateLabel="Regenerate PWO" downloadLabel="Download PDF" printLabel="Print PWO" templateId="production_work_order_ofissio" initialDocumentAvailable={Boolean(productionWorkOrder)} />
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Items & customization snapshot</h3>

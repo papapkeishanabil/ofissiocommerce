@@ -103,18 +103,56 @@ export function sizeMatrixSummary(sizeMatrix: Record<string, number>) {
 export function safeDocumentNumber(input: {
   documentType: DocumentType;
   sourceNumber?: string | null;
+  processRoute?: "fulfillment" | "customization" | "production" | null;
+  sequence?: number;
   date?: Date;
 }) {
-  const year = String((input.date ?? new Date()).getUTCFullYear());
+  const date = input.date ?? new Date();
+  const year = String(date.getUTCFullYear());
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   const source = input.sourceNumber?.trim();
   if (input.documentType === "quotation_pdf") {
-    return source?.startsWith("OF-QUO") ? source : `OF-QUO-PDF-${year}-${shortId()}`;
+    if (source) return source;
+    return `QUO/OFS/${processRouteCode(input.processRoute)}/${year}/${month}/${formatSequence(input.sequence)}`;
   }
   if (input.documentType === "invoice_pdf") {
-    const suffix = source ? source.replace(/[^a-z0-9]+/gi, "-").slice(-18) : shortId();
-    return `INV-${year}-${suffix.toUpperCase()}`;
+    return `INV/OFS/${processRouteCode(input.processRoute)}/${year}/${month}/${formatSequence(input.sequence)}`;
+  }
+  if (input.documentType === "embroidery_work_order_pdf") {
+    return `BWO/OFS/CUS/${year}/${month}/${formatSequence(input.sequence)}`;
+  }
+  if (input.documentType === "production_work_order_pdf") {
+    return `PWO/OFS/PRO/${year}/${month}/${formatSequence(input.sequence)}`;
   }
   return `DOC-${year}-${shortId()}`;
+}
+
+export function processRouteCode(
+  route: "fulfillment" | "customization" | "production" | null | undefined,
+) {
+  if (route === "customization") return "CUS";
+  if (route === "production") return "PRO";
+  return "FUL";
+}
+
+export function nextMonthlyDocumentSequence(input: {
+  existingNumbers: string[];
+  prefix: "QUO" | "INV" | "BWO" | "PWO";
+  processRoute: "fulfillment" | "customization" | "production";
+  date?: Date;
+}) {
+  const date = input.date ?? new Date();
+  const stem = `${input.prefix}/OFS/${processRouteCode(input.processRoute)}/${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, "0")}/`;
+  const highest = input.existingNumbers.reduce((max, number) => {
+    if (!number.startsWith(stem)) return max;
+    const sequence = Number(number.slice(stem.length));
+    return Number.isInteger(sequence) && sequence > max ? sequence : max;
+  }, 0);
+  return highest + 1;
+}
+
+function formatSequence(sequence: number | undefined) {
+  return String(Math.max(1, sequence ?? 1)).padStart(4, "0");
 }
 
 export function buildDocumentStorageKey(input: {
@@ -169,6 +207,14 @@ export function isInvoiceTemplate(templateId: DocumentTemplateId) {
 
 export function isQuotationTemplate(templateId: DocumentTemplateId) {
   return templateId === "quotation_default";
+}
+
+export function isEmbroideryWorkOrderTemplate(templateId: DocumentTemplateId) {
+  return templateId === "embroidery_work_order_ofissio";
+}
+
+export function isProductionWorkOrderTemplate(templateId: DocumentTemplateId) {
+  return templateId === "production_work_order_ofissio";
 }
 
 function shortId() {
