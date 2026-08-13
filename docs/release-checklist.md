@@ -7,8 +7,9 @@ Rule: do not tag or push until every required item is checked with evidence.
 
 - [ ] Git working tree is clean (`git status --short` has no output).
 - [ ] The release commit has been reviewed and its SHA is recorded.
-- [ ] All Task J command checks pass with no production `FAIL`.
-- [ ] `npm run check:production-readiness` returns `GO` for `APP_ENV=production`.
+- [ ] `npm run check:staging-rc` returns `CONDITIONAL_GO` or `GO` with no `FAIL`.
+- [ ] All Task J command checks pass with no critical security `FAIL`.
+- [ ] For a final live-production tag only: `npm run check:production-readiness` returns `GO` with `APP_ENV=production`.
 - [ ] No `.env.local`, secret, debug artifact, or build cache is tracked.
 - [ ] Client bundle secret scan passes after the final build.
 
@@ -51,14 +52,16 @@ Rule: do not tag or push until every required item is checked with evidence.
 - Accepted risks:
 - Rollback tag:
 
-## Manual release tag
+## Manual staging release-candidate tag
 
-Run only after approval and a clean working tree:
+Jalankan hanya setelah user menyetujui staging RC, seluruh checklist staging
+selesai, release commit direview, dan working tree bersih:
 
 ```bash
-git tag -a v0.1.0-rc1 -m "Ofissio production readiness release candidate"
+git tag -a v0.1.0-rc1 -m "Ofissio staging release candidate"
 git show v0.1.0-rc1 --no-patch
 git push origin v0.1.0-rc1
 ```
 
-Task J does not create or push this tag automatically.
+`npm run check:staging-rc` tidak membuat atau push tag secara otomatis. Jangan
+membuat tag production final selama status live masih `NO_GO`.

@@ -150,6 +150,19 @@ customer visibility bukan false, atau write/test-create flag masih aktif.
 Tag `v0.1.0-rc1` belum dibuat. Tag hanya boleh dibuat dari commit yang telah
 direview, working tree bersih, seluruh migration target terverifikasi, dan
 [final-smoke-test.md](./final-smoke-test.md) telah ditandatangani.
+
+## Task J.2 staging release candidate
+
+Staging RC dipersiapkan melalui
+[staging-release-candidate.md](./staging-release-candidate.md), checklist final di
+[staging-smoke-test.md](./staging-smoke-test.md), dan
+`npm run check:staging-rc`. Status yang diharapkan tetap `CONDITIONAL_GO` dengan
+tiga warning: iPaymu sandbox, Biteship sandbox, dan legal belum `approved`.
+
+Ketiga warning tersebut tidak boleh ditafsirkan sebagai izin live production.
+Live tetap `NO_GO` sampai provider live tervalidasi dan legal disetujui. Runner
+tidak membuat tag; tag staging RC hanya boleh dibuat manual setelah persetujuan
+user dan working tree bersih.
 # WooCommerce product dan stock monitoring gap
 
 Ginee ditunda. WooCommerce Ofissio menjadi sumber resmi katalog dan stok admin.

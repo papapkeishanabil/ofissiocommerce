@@ -67,6 +67,7 @@ Gunakan [production-go-no-go-report.md](./production-go-no-go-report.md),
 
 ```bash
 npm run check:env
+npm run check:staging-rc
 npm run check:production-readiness
 npm run check:auth
 npm run check:rls
@@ -88,6 +89,12 @@ npm run check:all
 - [ ] Setiap WARN memiliki owner, justifikasi, mitigasi, dan approval.
 - [ ] Browser console 0 error pada critical flow desktop/mobile.
 - [ ] Git tag release immutable dibuat setelah seluruh gate lulus dan dicatat sebagai rollback version.
+
+Untuk staging RC, `check:staging-rc` boleh menghasilkan `CONDITIONAL_GO` dengan
+warning iPaymu sandbox, Biteship sandbox, dan legal belum approved. Live tetap
+`NO_GO` sampai ketiganya diselesaikan. Lihat
+[staging-release-candidate.md](./staging-release-candidate.md); checker tidak
+membuat tag otomatis.
 
 ## Go/no-go record
 

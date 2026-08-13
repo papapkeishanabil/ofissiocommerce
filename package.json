@@ -23,6 +23,7 @@
     "check:auth": "tsx --require ./scripts/register-server-only.cjs scripts/check-auth.ts",
     "check:rls": "tsx --require ./scripts/register-server-only.cjs scripts/check-rls.ts",
     "check:production-readiness": "tsx --require ./scripts/register-server-only.cjs scripts/check-production-readiness.ts",
+    "check:staging-rc": "tsx scripts/check-staging-rc.ts",
     "check:ginee": "tsx --require ./scripts/register-server-only.cjs scripts/check-ginee.ts",
     "test:quantity-pricing": "tsx scripts/test-quantity-pricing.ts",
     "test:embroidery-pricing": "tsx scripts/test-embroidery-pricing.ts",

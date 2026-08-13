@@ -241,3 +241,54 @@ Jalankan checklist ini setiap deploy staging.
 - [x] Retry sync tidak membuat Woo order duplikat.
 - [x] Customer tidak bisa trigger endpoint admin sync WooCommerce.
 - [ ] `WOOCOMMERCE_CONSUMER_SECRET` tidak muncul di `.next/static`.
+
+## Task J.2 final staging release candidate
+
+Catat ID data uji dan bukti screenshot/log yang aman untuk setiap flow. Staging
+berstatus `CONDITIONAL_GO`; jangan gunakan credential atau transaksi live.
+
+### Customer
+
+- [ ] Register akun baru, konfirmasi email, lalu login berhasil.
+- [ ] Catalog dapat dibuka dan produk ready tampil tanpa informasi stok internal.
+- [ ] Product detail, foto/gallery, dan 3D configurator dapat dibuka.
+- [ ] Produk/size/quantity/customization dapat dimasukkan ke cart.
+- [ ] Request quotation berhasil dan tampil pada portal customer.
+- [ ] Quotation final dapat dibuka, ditanggapi, dan di-accept satu kali secara idempotent.
+- [ ] Invoice dapat dibuka/download dan rincian order sesuai quotation accepted.
+- [ ] Link pembayaran iPaymu sandbox dapat dibuka dari invoice/payment panel.
+- [ ] Return page hanya menampilkan verifikasi dan tidak menandai order paid.
+- [ ] Dashboard customer menampilkan order dan tracking yang company-scoped.
+
+### Admin
+
+- [ ] Login admin berhasil dan customer shell tidak tampil pada `/admin/*`.
+- [ ] Product readiness menunjukkan metadata yang lengkap atau warning yang dapat ditindaklanjuti.
+- [ ] Stock monitoring menampilkan variation SKU/size untuk admin saja.
+- [ ] Quotation dapat direview, diberi final pricing, dan dikirim ke customer.
+- [ ] Invoice dapat digenerate dengan total, payment link, dan QR yang sesuai.
+- [ ] Payment panel menampilkan pending/paid berdasarkan callback tervalidasi.
+- [ ] Order workbench menampilkan item, size matrix, customization, invoice, payment, dan process route.
+- [ ] Process order checklist dapat dibuat/dilanjutkan tanpa duplikasi dan progress dapat diperbarui.
+- [ ] Request replenishment dapat dibuat jika stok admin berada di bawah threshold.
+- [ ] Biteship sandbox rate check berhasil atau menghasilkan skip yang eksplisit dan aman.
+- [ ] Shipment sandbox/mock dapat dibuat dan tidak menduplikasi shipment aktif.
+- [ ] Tracking timeline customer/admin konsisten sampai status shipment terakhir.
+
+### Security
+
+- [ ] Anonymous ditolak saat mengakses admin page/API.
+- [ ] Customer ditolak saat memanggil admin API.
+- [ ] Customer lintas-company tidak dapat membaca/mengubah quotation, order, file, payment, atau shipment.
+- [ ] Callback iPaymu dengan signature/reference/amount tidak valid ditolak dan tidak menandai paid.
+- [ ] Webhook Biteship tidak valid ditolak dan tidak mengubah shipment.
+- [ ] `.env.local` tidak tracked (`git ls-files .env.local` tidak menghasilkan output).
+- [ ] Nilai secret server tidak ditemukan di `.next/static`.
+- [ ] Browser console tidak memiliki error pada critical flow.
+- [ ] Customer/admin mobile tidak mengalami horizontal overflow.
+
+### Final gate
+
+- [ ] `npm run check:staging-rc` selesai dengan `CONDITIONAL_GO` dan tanpa `FAIL`.
+- [ ] `npm run typecheck`, `npm run lint`, `npm run build`, dan `npm run check:all` lulus.
+- [ ] Status live tetap `NO_GO` selama payment/shipping masih sandbox atau legal belum approved.

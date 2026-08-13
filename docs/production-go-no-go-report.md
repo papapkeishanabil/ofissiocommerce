@@ -9,7 +9,7 @@ Audited base commit: `3fb96a1` plus Task J working-tree changes
 - **Staging: CONDITIONAL_GO.** Automated checks may run and sandbox end-to-end testing may continue.
 - **Live production: NO_GO.** Do not enable real customer traffic, real payment, or real shipping yet.
 
-The staging decision is conditional because the active environment still uses iPaymu and Biteship sandbox, WooCommerce test write is enabled, legal approval is not recorded, and operational restore/alert evidence is not complete. A successful build alone does not change this decision.
+The staging decision is conditional because the active environment still uses iPaymu and Biteship sandbox, legal approval is not recorded, and operational restore/alert evidence is not complete. WooCommerce test write and all automated test-create flags are explicitly disabled. A successful build alone does not change this decision.
 
 ## Go/No-Go matrix
 
@@ -62,6 +62,7 @@ All commands below completed with exit code 0 on 8 August 2026 unless a warning 
 | `npm run check:woocommerce-product-standard` | PASS foundation with live warning: KL-007 is not yet a variable product with the Ukuran variation matrix. |
 | `npm run check:payment` | PASS sandbox hardening; no real transaction created because the test flag is false. |
 | `npm run check:shipping` | PASS sandbox hardening/persistence; no real Biteship shipment created. |
+| `npm run check:staging-rc` | **18 PASS, 3 WARN, 0 FAIL; CONDITIONAL_GO.** Ten required staging gates pass, `.env.local` is untracked, and 213 client-bundle files contain no configured server secret. |
 | `npm run check:production-readiness` | **26 PASS, 3 WARN, 0 FAIL; CONDITIONAL_GO.** Safety flag warnings from Task J are resolved; remaining warnings are iPaymu sandbox, Biteship sandbox, and legal `draft`. |
 | `npm run typecheck` | PASS. |
 | `npm run lint` | PASS, zero lint warnings/errors. |
@@ -97,3 +98,15 @@ Staging may retain `PAYMENT_MODE=sandbox`, `IPAYMU_MODE=sandbox`,
 `SHIPPING_MODE=sandbox`, and `BITESHIP_MODE=sandbox`, which intentionally produce
 warnings and `CONDITIONAL_GO`. The same modes are hard failures and `NO_GO` when
 `APP_ENV=production`.
+
+## Task J.2 staging release candidate
+
+Dokumen [staging-release-candidate.md](./staging-release-candidate.md) dan final
+checklist [staging-smoke-test.md](./staging-smoke-test.md) menjadi sumber bukti
+staging RC. `npm run check:staging-rc` menjalankan safety/security check dan
+seluruh gate integrasi yang diwajibkan dalam konteks `APP_ENV=staging`.
+
+Hasil tanpa critical `FAIL` boleh tetap `CONDITIONAL_GO` hanya untuk tiga risiko
+yang diterima: iPaymu sandbox, Biteship sandbox, dan legal `draft` atau
+`internal_review`. Release tag tetap belum dibuat dan hanya boleh dibuat manual
+setelah user menyetujui serta working tree bersih.
