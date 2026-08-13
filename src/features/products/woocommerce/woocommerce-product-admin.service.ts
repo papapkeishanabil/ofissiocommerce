@@ -123,8 +123,9 @@ export async function createAdminWooCommerceProduct(input: {
   request?: Request;
 }) {
   try {
+    const managedAttributes = await ensureGlobalProductAttributes(input.payload);
     const created = await woocommerceClient.createProduct(
-      buildWritePayload(input.payload),
+      buildWritePayload(input.payload, undefined, managedAttributes),
     );
     logProductAudit("product_created", created.id, input, {
       status: created.status,
@@ -152,10 +153,13 @@ export async function updateAdminWooCommerceProduct(input: {
   request?: Request;
 }) {
   try {
-    const current = await woocommerceClient.getProductById(input.id);
+    const [current, managedAttributes] = await Promise.all([
+      woocommerceClient.getProductById(input.id),
+      ensureGlobalProductAttributes(input.payload),
+    ]);
     const updated = await woocommerceClient.updateProduct(
       input.id,
-      buildWritePayload(input.payload, current),
+      buildWritePayload(input.payload, current, managedAttributes),
     );
     logProductAudit("product_updated", updated.id, input, {
       status: updated.status,
@@ -243,6 +247,7 @@ export async function updateAdminWooCommerceProduct3DMeta(input: {
 function buildWritePayload(
   payload: AdminWooProductPayload,
   current?: WooCommerceProduct,
+  managedAttributes: Awaited<ReturnType<typeof ensureGlobalProductAttributes>> = [],
 ): WooCommerceProductWritePayload {
   const meta = current?.meta_data ?? [];
   const industries = unique(
@@ -291,19 +296,62 @@ function buildWritePayload(
       return existing?.id ? { id: existing.id } : { src };
     }),
     attributes: mergeManagedAttributes(current?.attributes ?? [], [
-      managedAttribute("Color", "color", payload.colors),
-      managedAttribute("Size", "size", payload.sizes),
-      managedAttribute("Material", "material", payload.materials),
-      managedAttribute("Gender", "gender", [payload.gender]),
-      managedAttribute("Sleeve", "sleeve", [payload.sleeveType]),
-      managedAttribute("Safety Features", "safety-features", payload.safetyFeatures),
+      managedAttribute("Warna", "warna", payload.colors, managedAttributes, ["warna", "color"]),
+      managedAttribute("Ukuran", "ukuran", payload.sizes, managedAttributes, ["ukuran", "size"]),
+      managedAttribute("Material", "material", payload.materials, managedAttributes, ["material", "bahan"]),
+      managedAttribute("Gender", "gender", [payload.gender], managedAttributes, ["gender"]),
+      managedAttribute("Tipe Lengan", "tipe-lengan", [payload.sleeveType], managedAttributes, ["tipe-lengan", "sleeve"]),
+      managedAttribute("Safety Features", "safety-features", payload.safetyFeatures, managedAttributes, ["safety-features", "safety"]),
     ]),
     meta_data: entries.map(([key, value]) => metaEntry(meta, key, value)),
   };
 }
 
-function managedAttribute(name: string, slug: string, options: string[]) {
-  return { id: 0, name, slug, visible: true, variation: false, options: unique(options) };
+function managedAttribute(
+  name: string,
+  slug: string,
+  options: string[],
+  attributes: Array<{ id: number; name: string; slug: string }>,
+  aliases: string[],
+) {
+  const global = attributes.find((attribute) => aliases.includes(normalizeAttributeSlug(attribute.slug || attribute.name)));
+  return global
+    ? { id: global.id, slug, visible: true, variation: false, options: unique(options) }
+    : { id: 0, name, slug, visible: true, variation: false, options: unique(options) };
+}
+
+async function ensureGlobalProductAttributes(payload: AdminWooProductPayload) {
+  const specs = [
+    { name: "Warna", slug: "warna", aliases: ["warna", "color"], terms: payload.colors },
+    { name: "Ukuran", slug: "ukuran", aliases: ["ukuran", "size"], terms: payload.sizes },
+    { name: "Material", slug: "material", aliases: ["material", "bahan"], terms: payload.materials },
+    { name: "Gender", slug: "gender", aliases: ["gender"], terms: ["men", "women", "unisex"] },
+    { name: "Tipe Lengan", slug: "tipe-lengan", aliases: ["tipe-lengan", "sleeve"], terms: ["short", "long"] },
+    { name: "Safety Features", slug: "safety-features", aliases: ["safety-features", "safety"], terms: payload.safetyFeatures },
+  ];
+  const attributes = await woocommerceClient.getAttributes();
+  for (const spec of specs) {
+    let attribute = attributes.find((item) => spec.aliases.includes(normalizeAttributeSlug(item.slug || item.name)));
+    if (!attribute) {
+      attribute = await woocommerceClient.createAttribute({
+        name: spec.name,
+        slug: spec.slug,
+        type: "select",
+        order_by: "menu_order",
+        has_archives: false,
+      });
+      attributes.push(attribute);
+    }
+    const existingTerms = await woocommerceClient.getAttributeTerms(attribute.id);
+    const existingNames = new Set(existingTerms.map((term) => term.name.trim().toLocaleLowerCase("id-ID")));
+    for (const term of unique(spec.terms)) {
+      if (!existingNames.has(term.toLocaleLowerCase("id-ID"))) {
+        await woocommerceClient.createAttributeTerm(attribute.id, { name: term });
+        existingNames.add(term.toLocaleLowerCase("id-ID"));
+      }
+    }
+  }
+  return attributes;
 }
 
 function mergeManagedAttributes(
@@ -330,7 +378,14 @@ function mergeManagedAttributes(
 }
 
 function normalizeAttributeSlug(value: string) {
-  return value.toLowerCase().replace(/^pa_/, "").replace(/[ _]+/g, "-");
+  const slug = value.toLowerCase().replace(/^pa_/, "").replace(/[ _]+/g, "-");
+  return ({
+    color: "warna",
+    size: "ukuran",
+    bahan: "material",
+    sleeve: "tipe-lengan",
+    safety: "safety-features",
+  } as Record<string, string>)[slug] ?? slug;
 }
 
 function metaEntry(meta: WooCommerceMetaData[], key: string, value: unknown): WooCommerceMetaData {

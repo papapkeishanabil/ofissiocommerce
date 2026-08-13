@@ -51,12 +51,17 @@ export const DEFAULT_INDUSTRIES: IndustryMaster[] = [
     "rumah sakit",
     "klinik",
     "medis",
+    "apotek",
+    "apotik",
   ], 50),
   industry("Education", "education", "Seragam institusi pendidikan.", [
     "pendidikan",
     "education",
     "sekolah",
     "kampus",
+    "universitas",
+    "akademik",
+    "kuliah",
   ], 60),
   industry("Construction", "construction", "Workwear proyek dan konstruksi.", [
     "proyek",
@@ -70,6 +75,9 @@ export const DEFAULT_INDUSTRIES: IndustryMaster[] = [
     "logistics",
     "gudang",
     "kurir",
+    "ekspedisi",
+    "pengiriman",
+    "cargo kecil",
   ], 80),
   industry("Security", "security", "Seragam keamanan dan petugas security.", [
     "security",
@@ -81,11 +89,18 @@ export const DEFAULT_INDUSTRIES: IndustryMaster[] = [
     "pemerintahan",
     "government",
     "instansi",
+    "bumn",
+    "bumdes",
+    "pemda",
   ], 100),
   industry("Retail", "retail", "Seragam toko dan operasional retail.", [
     "retail",
     "toko",
     "store",
+    "minimarket",
+    "kelontong",
+    "dept store",
+    "department store",
   ], 110),
   industry("Food & Beverage", "food-beverage", "Seragam industri makanan dan minuman.", [
     "f&b",
@@ -95,7 +110,60 @@ export const DEFAULT_INDUSTRIES: IndustryMaster[] = [
     "minuman",
     "restoran",
     "cafe",
+    "barista",
+    "kedai",
+    "warung makan",
   ], 120),
+  industry("Bengkel", "bengkel", "Seragam bengkel motor, mobil, dan toko sparepart.", [
+    "bengkel",
+    "bengkel motor",
+    "bengkel mobil",
+    "workshop",
+    "montir",
+  ], 200),
+  industry("Grosir", "grosir", "Seragam pegawai toko grosir dan distributor.", [
+    "grosir",
+    "toko grosir",
+    "grosir sembako",
+    "distributor",
+  ], 210),
+  industry("Laundry", "laundry", "Seragam staf laundry dan cuci kiloan.", [
+    "laundry",
+    "laundry kiloan",
+    "cuci kiloan",
+    "dry clean",
+  ], 220),
+  industry("Salon", "salon", "Seragam barbershop, salon, dan layanan kecantikan.", [
+    "salon",
+    "barbershop",
+    "barber",
+    "salon kecantikan",
+  ], 230),
+  industry("Bangunan", "bangunan", "Seragam toko bangunan dan material.", [
+    "toko bangunan",
+    "bangunan",
+    "material bangunan",
+  ], 240),
+  industry("Sparepart", "sparepart", "Seragam staf toko sparepart.", [
+    "sparepart",
+    "spare part",
+    "toko sparepart",
+    "undercarriage",
+  ], 250),
+  industry("Petshop", "petshop", "Seragam staf pet shop dan pet store.", [
+    "pet shop",
+    "petshop",
+    "pet store",
+    "hewan",
+  ], 260),
+  industry("Maritim", "maritim", "Seragam maritim, pelabuhan, dan awak kapal.", [
+    "maritim",
+    "laut",
+    "kapal",
+    "pelabuhan",
+    "abk",
+    "awak kapal",
+  ], 290),
 ];
 
 export const DEFAULT_PUBLIC_TAXONOMY: PublicCatalogTaxonomy = {
@@ -115,7 +183,7 @@ export const DEFAULT_PUBLIC_TAXONOMY: PublicCatalogTaxonomy = {
     }),
   ),
   attributes: [
-    attribute("Warna", "warna", ["navy", "hitam", "putih", "abu", "merah", "biru"]),
+    attribute("Warna", "warna", ["navy", "hitam", "putih", "abu", "merah", "biru", "kuning"]),
     attribute("Ukuran", "ukuran", ["s", "m", "l", "xl", "2xl", "3xl", "4xl"]),
     attribute("Bahan", "bahan", [
       "oxford",

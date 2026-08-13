@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Calculator, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Plus, RotateCcw, Save, Settings2, Shirt, Trash2 } from "lucide-react";
-import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Box, Calculator, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Plus, RotateCcw, Save, Settings2, Shirt, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import type { CatalogAttribute, CatalogCategory, IndustryMaster } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 import type { AdminWooCommerceProductDetail } from "@/features/products/woocommerce/woocommerce-product-admin.types";
@@ -504,9 +504,28 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           <CheckboxGroup label="Industri" required options={options.industries.filter((item) => item.active).map((item) => ({ value: item.slug, label: item.name }))} selected={form.industries} onChange={(values) => set("industries", values)} />
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <ListField label="Warna" value={form.colors} onChange={(value) => set("colors", value)} suggestions={attributeTerms(options.attributes, ["color", "warna"])} />
-          <ListField label="Ukuran" value={form.sizes} onChange={(value) => set("sizes", value)} suggestions={attributeTerms(options.attributes, ["size", "ukuran"])} />
-          <ListField label="Material" value={form.materials} onChange={(value) => set("materials", value)} suggestions={attributeTerms(options.attributes, ["material", "bahan"])} />
+          <MasterMultiSelectField
+            label="Warna"
+            masterSlug="warna"
+            value={form.colors}
+            onChange={(value) => set("colors", value)}
+            attribute={findCatalogAttribute(options.attributes, ["color", "warna"])}
+          />
+          <MasterMultiSelectField
+            label="Ukuran"
+            masterSlug="ukuran"
+            value={form.sizes}
+            onChange={(value) => set("sizes", value)}
+            attribute={findCatalogAttribute(options.attributes, ["size", "ukuran"])}
+          />
+          <MasterMultiSelectField
+            label="Material"
+            masterSlug="material"
+            required={false}
+            value={form.materials}
+            onChange={(value) => set("materials", value)}
+            attribute={findCatalogAttribute(options.attributes, ["material", "bahan"])}
+          />
           <Field label="Gender">
             <select className={INPUT} value={form.gender} onChange={(e) => set("gender", e.target.value as AdminWooProductInput["gender"])}>
               <option value="unisex">Unisex</option><option value="men">Pria</option><option value="women">Wanita</option>
@@ -517,7 +536,14 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
               <option value="short">Pendek</option><option value="long">Panjang</option>
             </select>
           </Field>
-          <ListField label="Safety features" value={form.safetyFeatures} onChange={(value) => set("safetyFeatures", value)} suggestions={attributeTerms(options.attributes, ["safety-features", "safety"])} />
+          <MasterMultiSelectField
+            label="Safety Features"
+            masterSlug="safety-features"
+            required={false}
+            value={form.safetyFeatures}
+            onChange={(value) => set("safetyFeatures", value)}
+            attribute={findCatalogAttribute(options.attributes, ["safety-features", "safety"])}
+          />
         </div>
       </FormSection>
 
@@ -665,6 +691,10 @@ function attributeTerms(attributes: CatalogAttribute[], aliases: string[]) {
   return attributes.find((item) => aliases.includes(item.slug.toLowerCase()) || aliases.includes(item.name.toLowerCase()))?.terms.map((term) => term.name) ?? [];
 }
 
+function findCatalogAttribute(attributes: CatalogAttribute[], aliases: string[]) {
+  return attributes.find((item) => aliases.includes(item.slug.toLowerCase()) || aliases.includes(item.name.toLowerCase()));
+}
+
 function lines(value: string) { return value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean); }
 function commaList(value: string) { return value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean); }
 function taxonomySlug(value: string) { return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
@@ -686,7 +716,234 @@ function SelectField({ label, value, values, onChange }: { label: string; value:
 }
 
 function ListField({ label, value, onChange, suggestions }: { label: string; value: string[]; onChange: (value: string[]) => void; suggestions: string[] }) {
-  return <Field label={label} hint={suggestions.length ? `Pilihan master: ${suggestions.join(", ")}` : "Pisahkan beberapa nilai dengan koma."}><input className={INPUT} value={value.join(", ")} onChange={(event) => onChange(commaList(event.target.value))} /></Field>;
+  const canonicalValue = value.join(", ");
+  const [draft, setDraft] = useState(canonicalValue);
+
+  useEffect(() => {
+    // Keep unfinished separators (for example "Navy, ") visible while typing.
+    // Only replace the draft when the actual list changed from outside this field.
+    if (commaList(draft).join(", ") !== canonicalValue) {
+      setDraft(canonicalValue);
+    }
+  }, [canonicalValue, draft]);
+
+  return <Field label={label} hint={suggestions.length ? `Pilihan master: ${suggestions.join(", ")}. Anda juga dapat mengetik warna baru.` : "Pisahkan beberapa nilai dengan koma."}><input className={INPUT} value={draft} onChange={(event) => {
+    const nextDraft = event.target.value;
+    setDraft(nextDraft);
+    onChange(commaList(nextDraft));
+  }} placeholder="Contoh: Navy, Black, Kuning" /></Field>;
+}
+
+function MasterMultiSelectField({
+  label,
+  masterSlug,
+  required = true,
+  value,
+  onChange,
+  attribute,
+}: {
+  label: string;
+  masterSlug: string;
+  required?: boolean;
+  value: string[];
+  onChange: (value: string[]) => void;
+  attribute?: CatalogAttribute;
+}) {
+  const [managedAttribute, setManagedAttribute] = useState(attribute);
+  const [options, setOptions] = useState(() => attribute?.terms.map((term) => term.name) ?? []);
+  const [newValue, setNewValue] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [creatingMaster, setCreatingMaster] = useState(false);
+  const normalizedOptions = new Map(
+    options.map((option) => [option.trim().toLocaleLowerCase("id-ID"), option]),
+  );
+  const available = options.filter(
+    (option) => !value.some((selected) => selected.toLocaleLowerCase("id-ID") === option.toLocaleLowerCase("id-ID")),
+  );
+  const unmanaged = value.filter(
+    (selected) => !normalizedOptions.has(selected.trim().toLocaleLowerCase("id-ID")),
+  );
+
+  async function addMasterValue() {
+    const name = newValue.trim();
+    if (!managedAttribute || name.length < 1) return;
+    setAdding(true);
+    setAddError(null);
+    try {
+      const response = await fetch(`/api/admin/catalog/attributes/${managedAttribute.id}/terms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...MOCK_INTERNAL_HEADERS,
+        },
+        body: JSON.stringify({ name }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+        term?: { name?: string };
+      };
+      if (!response.ok || !result.ok || !result.term?.name) {
+        throw new Error(result.message || `${label} baru belum dapat ditambahkan.`);
+      }
+      const savedName = result.term.name;
+      setOptions((current) => uniqueCaseInsensitive([...current, savedName]));
+      if (!value.some((item) => item.toLocaleLowerCase("id-ID") === savedName.toLocaleLowerCase("id-ID"))) {
+        onChange([...value, savedName]);
+      }
+      setNewValue("");
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : `${label} baru belum dapat ditambahkan.`);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function createMasterAttribute() {
+    setCreatingMaster(true);
+    setAddError(null);
+    try {
+      const response = await fetch("/api/admin/catalog/attributes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json", ...MOCK_INTERNAL_HEADERS },
+        body: JSON.stringify({
+          name: label,
+          slug: masterSlug,
+          initialTerms: value,
+        }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+        attribute?: CatalogAttribute;
+      };
+      if (!response.ok || !result.ok || !result.attribute) {
+        throw new Error(result.message || `Master ${label.toLowerCase()} belum dapat dibuat.`);
+      }
+      setManagedAttribute(result.attribute);
+      setOptions(result.attribute.terms.map((term) => term.name));
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : `Master ${label.toLowerCase()} belum dapat dibuat.`);
+    } finally {
+      setCreatingMaster(false);
+    }
+  }
+
+  return (
+    <Field
+      label={label}
+      required={required}
+      hint={`Pilih dari master ${label.toLowerCase()} agar data konsisten di seluruh katalog.`}
+    >
+      <select
+        className={INPUT}
+        value=""
+        onChange={(event) => {
+          const selected = event.target.value;
+          if (selected) onChange([...value, selected]);
+        }}
+        aria-label={`Tambah ${label.toLowerCase()}`}
+      >
+        <option value="">{available.length ? `+ Pilih ${label.toLowerCase()}` : `Semua ${label.toLowerCase()} master sudah dipilih`}</option>
+        {available.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+
+      {value.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2" aria-label={`${label} terpilih`}>
+          {value.map((selected) => {
+            const managed = normalizedOptions.has(selected.trim().toLocaleLowerCase("id-ID"));
+            return (
+              <span
+                key={selected}
+                className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold ${
+                  managed
+                    ? "border-brand-200 bg-brand-50 text-brand-800"
+                    : "border-amber-300 bg-amber-50 text-amber-900"
+                }`}
+              >
+                {selected}
+                {!managed ? <span className="text-[10px] font-bold uppercase tracking-wide">Legacy</span> : null}
+                <button
+                  type="button"
+                  onClick={() => onChange(value.filter((item) => item !== selected))}
+                  aria-label={`Hapus ${label.toLowerCase()} ${selected}`}
+                  className="grid h-6 w-6 place-items-center rounded-full hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-600"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      ) : required ? (
+        <p className="mt-2 text-xs font-semibold text-amber-700">Pilih minimal satu {label.toLowerCase()}.</p>
+      ) : null}
+
+      {unmanaged.length > 0 ? (
+        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+          {unmanaged.join(", ")} belum terdaftar pada master {label.toLowerCase()}. Tambahkan melalui form di bawah atau hapus dari produk.
+        </p>
+      ) : null}
+      <div className="mt-3 rounded-lg border border-line bg-slate-50 p-3">
+        <p className="text-xs font-bold text-ink">{label} belum tersedia?</p>
+        {managedAttribute ? (
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input
+              className={INPUT}
+              value={newValue}
+              onChange={(event) => setNewValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void addMasterValue();
+                }
+              }}
+              placeholder={label === "Warna" ? "Contoh: Kuning Safety" : "Contoh: 4XL"}
+              maxLength={100}
+            />
+            <button
+              type="button"
+              onClick={() => void addMasterValue()}
+              disabled={adding || newValue.trim().length < 1}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />}
+              Tambah {label}
+            </button>
+          </div>
+        ) : (
+          <div className="mt-2">
+            <p className="text-xs leading-5 text-amber-800">
+              Global attribute {label} belum tersedia. Ofissio dapat membuatnya sekaligus memindahkan pilihan Legacy di atas ke master.
+            </p>
+            <button
+              type="button"
+              onClick={() => void createMasterAttribute()}
+              disabled={creatingMaster}
+              className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {creatingMaster ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />}
+              Siapkan Master {label}
+            </button>
+          </div>
+        )}
+        {addError ? <p role="alert" className="mt-2 text-xs font-semibold text-red-700">{addError}</p> : null}
+        <p className="mt-2 text-[11px] leading-5 text-ink-muted">Master disimpan ke WooCommerce melalui Ofissio dan langsung digunakan pada produk ini.</p>
+      </div>
+    </Field>
+  );
+}
+
+function uniqueCaseInsensitive(values: string[]) {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const key = value.trim().toLocaleLowerCase("id-ID");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function CheckboxGroup({ label, options, selected, onChange, required = false, disabled = false }: { label: string; options: Array<{ value: string; label: string }>; selected: string[]; onChange: (value: string[]) => void; required?: boolean; disabled?: boolean }) {

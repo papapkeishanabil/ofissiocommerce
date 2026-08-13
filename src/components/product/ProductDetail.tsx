@@ -85,7 +85,49 @@ const COLOR_SWATCHES: Record<string, string> = {
   Charcoal: "#334155",
   Olive: "#4d7c0f",
   Burgundy: "#7f1d1d",
+  Kuning: "#facc15",
+  Merah: "#dc2626",
+  Biru: "#2563eb",
+  Hijau: "#16a34a",
+  Putih: "#f8fafc",
+  Hitam: "#0f172a",
+  Abu: "#94a3b8",
+  "Abu-abu": "#94a3b8",
+  Cokelat: "#92400e",
+  Oranye: "#f97316",
+  Ungu: "#7e22ce",
 };
+
+function productColorSwatch(colorName: string) {
+  const exact = COLOR_SWATCHES[colorName];
+  if (exact) return exact;
+
+  const normalized = colorName.trim().toLowerCase();
+  const aliases: Array<[string[], string]> = [
+    [["navy", "biru dongker", "dongker"], "#1e3a8a"],
+    [["black", "hitam"], "#0f172a"],
+    [["white", "putih"], "#f8fafc"],
+    [["yellow", "kuning"], "#facc15"],
+    [["orange", "oranye"], "#f97316"],
+    [["lime", "hijau stabilo"], "#84cc16"],
+    [["dark green", "hijau tua"], "#166534"],
+    [["green", "hijau"], "#16a34a"],
+    [["royal blue", "biru royal"], "#1d4ed8"],
+    [["light blue", "ceil blue", "biru muda"], "#7dd3fc"],
+    [["blue", "biru"], "#2563eb"],
+    [["maroon", "burgundy", "wine", "merah marun"], "#7f1d1d"],
+    [["pink", "merah muda"], "#f9a8d4"],
+    [["red", "merah"], "#dc2626"],
+    [["dark grey", "dark gray", "abu tua"], "#475569"],
+    [["grey", "gray", "abu-abu", "abu"], "#94a3b8"],
+    [["khaki", "cokelat", "brown"], "#92400e"],
+    [["purple", "ungu"], "#7e22ce"],
+    [["teal", "toska"], "#0d9488"],
+    [["olive", "zaitun"], "#4d7c0f"],
+  ];
+  return aliases.find(([names]) => names.some((name) => normalized.includes(name)))?.[1]
+    ?? "#cbd5e1";
+}
 
 export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetailProps) {
   const [color, setColor] = useState<string>(product.colors[0] ?? "Default");
@@ -275,7 +317,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-8 lg:py-8">
+    <div className="w-full px-4 py-6 sm:px-6 lg:px-6 lg:py-8 xl:px-8">
       <Breadcrumbs
         items={[
           { label: "Beranda", href: "/" },
@@ -302,7 +344,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
         Kembali ke katalog
       </ButtonLink>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-8">
+      <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,440px)] lg:gap-6 xl:gap-8">
         {/* Left: gallery + info */}
         <div className="space-y-4">
           <div ref={heroRef} className="space-y-4">
@@ -436,7 +478,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
               <div className="flex flex-wrap gap-2">
                 {product.colors.map((c) => {
                   const active = c === color;
-                  const swatch = COLOR_SWATCHES[c] ?? "#cbd5e1";
+                  const swatch = productColorSwatch(c);
                   return (
                     <button
                       key={c}
@@ -714,7 +756,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
             </button>
           </div>
           <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,_#eef4ff,_#f8fafc_42%,_#eef2f8)] p-3 sm:p-5 lg:p-7">
-            <div className="mx-auto w-full max-w-7xl">
+            <div className="w-full">
               <Uniform3DConfigurator
                 product={product}
                 initialColor={color}

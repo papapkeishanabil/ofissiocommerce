@@ -36,12 +36,27 @@ export const woocommerceClient = {
   createCategory,
   updateCategory,
   getAttributes,
+  createAttribute,
   getAttributeTerms,
+  createAttributeTerm,
   createOrder,
   updateOrder,
   updateOrderStatus,
   getOrderById,
 };
+
+async function createAttribute(input: {
+  name: string;
+  slug: string;
+  type?: "select";
+  order_by?: "menu_order" | "name" | "name_num" | "id";
+  has_archives?: boolean;
+}) {
+  return wcFetch<WooCommerceAttribute>("/products/attributes", undefined, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
 
 async function createProduct(payload: WooCommerceProductWritePayload) {
   const product = await wcFetch<WooCommerceProduct>("/products", undefined, {
@@ -240,6 +255,17 @@ function normalizeBaseUrl(value: string) {
   const trimmed = value.replace(/\/$/, "");
   if (trimmed.endsWith("/wp-json/wc/v3")) return trimmed;
   return `${trimmed}/wp-json/wc/v3`;
+}
+
+async function createAttributeTerm(
+  id: string | number,
+  input: { name: string; slug?: string; description?: string },
+) {
+  return wcFetch<WooCommerceAttributeTerm>(
+    `/products/attributes/${encodeURIComponent(String(id))}/terms`,
+    undefined,
+    { method: "POST", body: JSON.stringify(input) },
+  );
 }
 
 async function updateOrder(

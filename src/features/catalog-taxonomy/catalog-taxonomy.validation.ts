@@ -47,6 +47,21 @@ export const taxonomyIdParamSchema = z.object({
   id: z.string().trim().min(1).max(120),
 });
 
+export const attributeTermCreateSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  slug: slugSchema.optional(),
+  description: z.string().trim().max(500).default(""),
+});
+
+export const attributeCreateSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  slug: slugSchema,
+  initialTerms: z.array(z.string().trim().min(1).max(100)).max(100).default([]),
+});
+
+export type AttributeTermCreatePayload = z.infer<typeof attributeTermCreateSchema>;
+export type AttributeCreatePayload = z.infer<typeof attributeCreateSchema>;
+
 export type CategoryCreatePayload = z.infer<typeof categoryCreateSchema>;
 export type CategoryPatchPayload = z.infer<typeof categoryPatchSchema>;
 export type IndustryCreatePayload = z.infer<typeof industryCreateSchema>;

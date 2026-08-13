@@ -10,6 +10,20 @@ export const INDUSTRIES = [
   "F&B",
   "Security",
   "Corporate",
+  // UKM-naik-kelas expansion: first-class small-business industries so the
+  // catalog, Ofistant, and homepage treat UKM and korporasi as peer audiences.
+  "Bengkel",
+  "Retail",
+  "Grosir",
+  "Laundry",
+  "Salon",
+  "Bangunan",
+  "Sparepart",
+  "Petshop",
+  "Ekspedisi",
+  "BUMN",
+  "Maritim",
+  "Pendidikan",
 ] as const;
 
 export type Industry = (typeof INDUSTRIES)[number];

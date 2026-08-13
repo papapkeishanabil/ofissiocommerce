@@ -72,10 +72,30 @@ export async function searchCatalogProducts(
     return matchesCategory && matchesIndustry && matchesAttributes && matchesTerms;
   });
 
+  // Guarantee: a product whose name the query cites verbatim (exact match, or
+  // the full multi-word name appears as a substring) is always surfaced — even
+  // when taxonomy tokenization extracts a category/industry the product isn't
+  // tagged with (e.g. product names containing SKUs/parens like "KK-006"). This
+  // makes "pick a product by name" flows (Ofistant estimate quick replies, and a
+  // product name embedded in an estimate ask) resolve reliably. Conservative:
+  // only specific (>=8 chars, >=2 tokens) names, so short names like "Kemeja"
+  // never over-match unrelated queries.
+  const queryLower = query.trim().toLowerCase();
+  const nameMatched = products.filter((product) => {
+    const name = product.name.trim().toLowerCase();
+    if (name.length < 8) return false;
+    if (name.split(/\s+/).filter(Boolean).length < 2) return false;
+    return queryLower === name || queryLower.includes(name);
+  });
+  const seenIds = new Set<string>();
+  const merged = [...filtered, ...nameMatched].filter((product) =>
+    seenIds.has(product.id) ? false : (seenIds.add(product.id), true),
+  );
+
   return {
     normalization,
-    resultCount: filtered.length,
-    products: filtered.slice(0, 12).map((product) => ({
+    resultCount: merged.length,
+    products: merged.slice(0, 12).map((product) => ({
       id: product.id,
       slug: product.slug,
       name: product.name,

@@ -367,6 +367,16 @@ const INDUSTRY_DISPLAY_NAMES: Record<string, string> = {
   food_beverage: "Food & Beverage",
   f_b: "Food & Beverage",
   fnb: "Food & Beverage",
+  bengkel: "Bengkel",
+  grosir: "Grosir",
+  laundry: "Laundry",
+  salon: "Salon",
+  bangunan: "Bangunan",
+  sparepart: "Sparepart",
+  petshop: "Petshop",
+  ekspedisi: "Ekspedisi",
+  bumn: "BUMN",
+  maritim: "Maritim",
 };
 
 function industryDisplayName(value: string) {

@@ -198,6 +198,95 @@ export async function listCatalogAttributes(): Promise<CatalogAttribute[]> {
   );
 }
 
+export async function createCatalogAttribute(input: {
+  name: string;
+  slug: string;
+  initialTerms?: string[];
+  actorId: string;
+  request?: Request;
+}): Promise<CatalogAttribute> {
+  const attributes = await woocommerceClient.getAttributes();
+  const normalizedSlug = input.slug.replace(/^pa_/, "").toLowerCase();
+  const duplicate = attributes.find(
+    (item) => item.slug.replace(/^pa_/, "").toLowerCase() === normalizedSlug
+      || item.name.trim().toLocaleLowerCase("id-ID") === input.name.trim().toLocaleLowerCase("id-ID"),
+  );
+  if (duplicate) throw createApiError("VALIDATION_ERROR", "Global attribute tersebut sudah tersedia. Muat ulang halaman.", 409);
+
+  const created = await woocommerceClient.createAttribute({
+    name: input.name.trim(),
+    slug: normalizedSlug,
+    type: "select",
+    order_by: "menu_order",
+    has_archives: false,
+  });
+  const uniqueTerms = [...new Map(
+    (input.initialTerms ?? []).map((name) => [name.trim().toLocaleLowerCase("id-ID"), name.trim()]),
+  ).values()].filter(Boolean);
+  const terms = [];
+  for (const name of uniqueTerms) {
+    terms.push(await woocommerceClient.createAttributeTerm(created.id, { name }));
+  }
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    action: "catalog_attribute_created",
+    entityType: "catalog_attribute",
+    entityId: String(created.id),
+    metadata: { attributeName: created.name, slug: normalizedSlug, initialTermCount: terms.length },
+  });
+  return {
+    id: created.id,
+    name: created.name,
+    slug: created.slug.replace(/^pa_/, ""),
+    type: created.type ?? "select",
+    orderBy: created.order_by ?? "menu_order",
+    hasArchives: created.has_archives ?? false,
+    terms: terms.map((term) => ({
+      id: term.id,
+      name: term.name,
+      slug: term.slug,
+      productCount: term.count ?? 0,
+    })),
+    source: "woocommerce",
+  };
+}
+
+export async function createCatalogAttributeTerm(input: {
+  attributeId: number;
+  name: string;
+  slug?: string;
+  description?: string;
+  actorId: string;
+  request?: Request;
+}) {
+  const attributes = await woocommerceClient.getAttributes();
+  const attribute = attributes.find((item) => item.id === input.attributeId);
+  if (!attribute) throw createApiError("NOT_FOUND", "Atribut tidak ditemukan.", 404);
+  const terms = await woocommerceClient.getAttributeTerms(attribute.id);
+  const normalized = input.name.trim().toLocaleLowerCase("id-ID");
+  const existing = terms.find(
+    (term) => term.name.trim().toLocaleLowerCase("id-ID") === normalized,
+  );
+  if (existing) return { term: existing, created: false, attribute };
+  const term = await woocommerceClient.createAttributeTerm(attribute.id, {
+    name: input.name.trim(),
+    ...(input.slug ? { slug: input.slug } : {}),
+    ...(input.description ? { description: input.description } : {}),
+  });
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    action: "catalog_attribute_term_created",
+    entityType: "catalog_attribute",
+    entityId: String(attribute.id),
+    metadata: { attributeName: attribute.name, termId: term.id, termName: term.name },
+  });
+  return { term, created: true, attribute };
+}
+
 export async function getPublicCatalogTaxonomy(): Promise<PublicCatalogTaxonomy> {
   const [categoriesResult, industriesResult, attributesResult] =
     await Promise.allSettled([
