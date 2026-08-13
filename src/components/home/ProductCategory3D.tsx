@@ -1,8 +1,8 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
 function Model({ url, autoRotate }: { url: string; autoRotate: boolean }) {
@@ -37,6 +37,15 @@ function Model({ url, autoRotate }: { url: string; autoRotate: boolean }) {
     return cloned;
   }, [scene]);
 
+  // In "demand" mode the loop only paints on invalidate. The GLB resolves
+  // asynchronously (after the canvas's first frame), so once the model is
+  // fitted and mounted we nudge the renderer — otherwise a hidden or static
+  // canvas would never show the model at all.
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    invalidate();
+  }, [invalidate, fitted]);
+
   useFrame((_, delta) => {
     if (group.current && autoRotate) {
       group.current.rotation.y += delta * 0.5;
@@ -50,10 +59,29 @@ function Model({ url, autoRotate }: { url: string; autoRotate: boolean }) {
   );
 }
 
-export function ProductCategory3D({ url, autoRotate = true }: { url: string; autoRotate?: boolean }) {
+export function ProductCategory3D({
+  url,
+  autoRotate = true,
+  active = true,
+}: {
+  url: string;
+  autoRotate?: boolean;
+  /** Whether the canvas is currently visible. A hidden or static (no
+   *  auto-rotate) canvas runs on "demand" so it burns no continuous RAF, and we
+   *  explicitly invalidate once the GLB is ready so the static frame still
+   *  paints. Continuous "always" is used only while the model is both visible
+   *  AND spinning. */
+  active?: boolean;
+}) {
+  // Render every frame ONLY while visible and spinning; otherwise "demand". The
+  // old "never" branch never re-rendered after the async GLB load, so under
+  // prefers-reduced-motion (or while the slide was hidden) the model failed to
+  // appear. "demand" + the invalidate() in Model paints it reliably.
+  const frameloop = active && autoRotate ? "always" : "demand";
   return (
     <Canvas
       dpr={[1, 1.5]}
+      frameloop={frameloop}
       camera={{ position: [0, 0.3, 4], fov: 35 }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {

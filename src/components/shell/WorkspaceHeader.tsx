@@ -3,7 +3,9 @@
 
 "use client";
 
+import { useEffect, type MouseEvent } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { LogIn, LogOut, UserRound } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
@@ -11,11 +13,70 @@ import { useCartCount, useCartHydrated } from "@/hooks/use-cart";
 import { useUIStore } from "@/stores/ui-store";
 import { roleLabel } from "@/types/account";
 
+function scrollToHashId(id: string): boolean {
+  if (!id) return false;
+  const el = document.getElementById(id);
+  if (!el) return false;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  return true;
+}
+
 export function WorkspaceHeader() {
   const cartCount = useCartCount();
   const cartHydrated = useCartHydrated();
   const { session, hydrated: authHydrated, logout } = useAuth();
   const openAuth = useUIStore((s) => s.openAuth);
+  const pathname = usePathname();
+
+  // Homepage sections scroll inside a nested container ([data-workspace-scroll]),
+  // not the window, so native hash scrolling never reaches them. After a
+  // cross-page navigation, bring the URL hash target into view — but a hard
+  // refresh must always land on the hero, never jump to a persisted section.
+  useEffect(() => {
+    const navEntry = performance.getEntriesByType(
+      "navigation",
+    )[0] as PerformanceNavigationTiming | undefined;
+    // On reload, cancel any hash the browser may be jumping to and park the
+    // nested scroller at the very top so the hero is what loads. Also drop a
+    // persisted section hash so the NEXT refresh has nothing to natively
+    // scroll to — the flash self-heals after one refresh.
+    if (navEntry?.type === "reload") {
+      const scroller = document.querySelector("[data-workspace-scroll]");
+      if (scroller) scroller.scrollTop = 0;
+      if (window.location.hash) {
+        window.history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
+      }
+      return;
+    }
+
+    const id = window.location.hash.replace(/^#/, "");
+    if (!id) return;
+    const raf = requestAnimationFrame(() => {
+      if (scrollToHashId(id)) {
+        // Drop the hash so a later refresh starts at the hero, not here.
+        window.history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [pathname]);
+
+  const handleSectionNav = (e: MouseEvent<HTMLAnchorElement>, id: string) => {
+    // Same page: smooth-scroll directly without stamping the hash into the URL
+    // — a persisted hash is exactly what makes a later refresh jump to a
+    // section instead of the hero. Cross page: let the Link navigate; the
+    // effect above scrolls once the new route has mounted.
+    if (pathname === "/" && scrollToHashId(id)) {
+      e.preventDefault();
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-line bg-white px-4 lg:px-6">
@@ -30,6 +91,24 @@ export function WorkspaceHeader() {
           Ofissio<span className="text-ochre-500">.</span>
         </span>
       </Link>
+
+      <nav className="hidden items-center gap-5 md:flex lg:gap-6" aria-label="Navigasi utama">
+        <Link href="/#paket" onClick={(e) => handleSectionNav(e, "paket")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
+          Paket
+        </Link>
+        <Link href="/#usaha" onClick={(e) => handleSectionNav(e, "usaha")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
+          Industri
+        </Link>
+        <Link href="/#cara" onClick={(e) => handleSectionNav(e, "cara")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
+          Cara Order
+        </Link>
+        <Link href="/#produk" onClick={(e) => handleSectionNav(e, "produk")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
+          Produk
+        </Link>
+        <Link href="/#cta" onClick={(e) => handleSectionNav(e, "cta")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
+          Konsultasi
+        </Link>
+      </nav>
 
       <div className="flex items-center gap-1">
         {/* Account entry */}

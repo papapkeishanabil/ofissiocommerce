@@ -24,7 +24,7 @@ const LEGAL_LINKS = [
 export function WorkspaceFooter() {
   return (
     <footer className="border-t border-line bg-surface">
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 lg:px-8">
+      <div className="mx-auto w-full max-w-[1600px] px-4 py-8 lg:px-8">
         <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.75fr_0.9fr_1.35fr]">
           {/* Brand + tagline */}
           <div className="max-w-xs">

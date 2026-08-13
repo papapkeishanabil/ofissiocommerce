@@ -55,6 +55,8 @@ export type AdminPermission =
   | "admin:customer:view"
   | "admin:catalog:view"
   | "admin:catalog:update"
+  | "admin:content:view"
+  | "admin:content:update"
   | "admin:notification:view"
   | "admin:notification:update"
   | "admin:email:view"

@@ -1,28 +1,24 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: "Inter";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("/fonts/inter-latin-var.woff2?v=2") format("woff2");
-}
-
-@font-face {
-  font-family: "Manrope";
-  font-style: normal;
-  font-weight: 400 800;
-  font-display: swap;
-  src: url("/fonts/manrope-var.ttf") format("truetype");
-}
+/* Storefront typography = the platform system font (Segoe UI on Windows), chosen
+   to match the approved design preview's ACTUAL rendered look. The preview
+   declares "Manrope" but ships no font file, so on Windows it falls through to
+   Segoe UI — that rendered appearance is what the brand signed off on, so the
+   storefront adopts the same system-ui stack (no Manrope, no Inter, no
+   @font-face, no runtime CDN). The internal admin is separate: it loads its own
+   Manrope via next/font in AdminLayout (--font-admin) and overrides this token
+   inside .admin-shell. The original variable font files remain in /public/fonts/
+   as preserved assets but are no longer wired to the storefront. */
 
 /* ===== Ofissio design tokens (Tailwind v4 CSS-first) =====
    Brand: Ofissio Workwear — navy primary, ochre accent.
    Mirrors the design tokens from the Ofissio Workwear homepage.
 
    Typography note:
-   Inter is self-hosted from /public/fonts so the visual change is real in
-   browser without relying on Google Fonts runtime/CDN access. */
+   Storefront = platform system font (Segoe UI on Windows) via the system-ui
+   stack — matches the approved preview's actual rendered look. Inter is
+   intentionally absent (one source of truth). Admin overrides this in
+   .admin-shell with its own Manrope (--font-admin). */
 @theme {
   /* Brand navy (logo color) */
   --color-brand-50: #eef1fb;
@@ -61,15 +57,17 @@
   --color-line: #e2e8f0;
   --color-line-strong: #c5c5d2;
 
-  /* Typography — Manrope primary (brand), Inter fallback. */
-  --font-sans: Manrope, Inter, system-ui, -apple-system, sans-serif;
-  --font-display: Manrope, Inter, system-ui, -apple-system, sans-serif;
+  /* Typography — storefront platform system font (Segoe UI on Windows), matching
+     the approved preview's actual rendered look. No Manrope/Inter wired. */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* ===== Admin shell scope (A2.6 visual polish — gaya referensi) =====
-   Internal admin memakai Manrope + aksen bright blue + permukaan flat.
-   Terbatas pada .admin-shell; customer storefront tetap Inter + navy.
-   --font-admin disuntik oleh next/font/google (Manrope) di AdminLayout. */
+   Internal admin: bright blue accent + flat surfaces, scoped to .admin-shell.
+   The admin keeps its own Manrope (--font-admin, injected by next/font in
+   AdminLayout); the storefront uses the platform system font, so this block
+   is what gives the admin its distinct type + color identity. */
 .admin-shell {
   --font-sans: var(--font-admin, Inter);
   font-family: var(--font-admin, Inter), system-ui, -apple-system, sans-serif;
@@ -99,7 +97,6 @@ body {
   background-color: var(--color-surface-muted);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -134,7 +131,7 @@ body {
 .shadow-glow-brand { box-shadow: 0 12px 32px rgba(20, 39, 102, 0.28); }
 .shadow-glow-ochre { box-shadow: 0 12px 32px rgba(220, 152, 20, 0.28); }
 
-/* ===== Editorial type scale (Inter-optimized — clean product UI) ===== */
+/* ===== Editorial type scale (Manrope-optimized — clean product UI) ===== */
 .type-display {
   font-family: var(--font-display);
   font-weight: 800;
@@ -214,22 +211,6 @@ body {
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
-}
-
-/* Gradient text utility */
-.text-gradient-brand {
-  background: linear-gradient(135deg, var(--color-brand-600), var(--color-brand-300));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-.text-gradient-ochre {
-  background: linear-gradient(135deg, var(--color-ochre-500), var(--color-ochre-400));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
 }
 
 /* Smooth hover lift (apply to interactive cards) */
@@ -320,4 +301,183 @@ body.chrome-open [data-workspace-scroll]::-webkit-scrollbar-thumb { background-c
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ===== How It Works — "Cara Order" stitch-line journey =====
+   A running-stitch thread + traveling ochre needle; the five number nodes light
+   up cumulatively as the needle passes — each in its own color, warming from
+   deep navy → blue → bronze → amber → gold (the thread "heats" as the order
+   stitches together) — then hold until all five are lit and reset. Scoped to
+   #cara so it can't leak. Keyed to .in-view, which ScrollRevealInit adds to
+   each .scroll-reveal section on scroll-in (and immediately under reduced-
+   motion). The global reduced-motion rule above then snaps every animation to
+   its end state → thread drawn, all five nodes glowing, needle hidden. */
+#cara {
+  --how-loop: 4s;
+  --how-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --how-node-base: 0 0 0 6px var(--color-cool-100), 0 0 0 8px rgba(232, 169, 42, 0.55), 0 6px 14px rgba(20, 39, 102, 0.16);
+  /* per-node "ignition" palette — cool→warm, every color drawn from the
+     brand/ochre family so the sequence reads as one warming thread, not a
+     rainbow. -ink is the glyph color that clears AA contrast on each fill. */
+  --c1: #10245f; --c1-rgb: 16 36 95;   --c1-ink: #ffffff;  /* deep navy   — Ceritakan */
+  --c2: #4a6bd8; --c2-rgb: 74 107 216; --c2-ink: #ffffff;  /* accent blue — Pilih Model */
+  --c3: #6e4900; --c3-rgb: 110 73 0;   --c3-ink: #ffffff;  /* bronze      — Kirim Logo */
+  --c4: #dc9814; --c4-rgb: 220 152 20; --c4-ink: #3d2e00;  /* amber       — Quotation */
+  --c5: #e8a92a; --c5-rgb: 232 169 42; --c5-ink: #3d2e00;  /* gold        — Produksi */
+}
+.how-journey { position: relative; }
+
+/* horizontal stitch + needle — 5-across (lg+) only; below lg the nodes stand
+   alone and light in sequence without a connector */
+.how-stitch-h { display: none; }
+@media (min-width: 1024px) {
+  .how-stitch-h {
+    display: block;
+    position: absolute;
+    top: 30px;                 /* node vertical center */
+    left: 10%; right: 10%;     /* center of column 1 → center of column 5 */
+    height: 10px;
+    transform: translateY(-50%);
+    z-index: 0;
+    pointer-events: none;
+    clip-path: inset(0 100% 0 0);   /* hidden until sewn in */
+  }
+  #cara.in-view .how-stitch-h { animation: how-sew 1.5s var(--how-ease) 0.1s forwards; }
+  #cara.in-view .how-stitch-h .how-needle { animation: how-travel-h var(--how-loop) linear 0.16s infinite; }
+}
+.how-stitch-h svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.how-stitch-h .under { stroke: rgba(220, 152, 20, 0.22); stroke-width: 4; transform: translateY(1.5px); }
+.how-stitch-h .main { stroke: var(--color-ochre-400); stroke-width: 2.6; }
+
+/* traveling needle (ochre bead) */
+.how-needle {
+  position: absolute; top: 50%; left: 0%;
+  width: 11px; height: 11px; border-radius: 999px;
+  background: var(--color-ochre-400);
+  transform: translate(-50%, -50%) scale(0);
+  box-shadow: 0 0 0 4px rgba(232, 169, 42, 0.22), 0 0 14px rgba(232, 169, 42, 0.7);
+  opacity: 0;
+}
+
+/* number node — waiting (light navy-tint) is the base; the per-node animation
+   ignites it in its own color when the needle passes and holds it there */
+.how-node {
+  position: relative; z-index: 2;
+  width: 60px; height: 60px; border-radius: 999px;
+  background: var(--color-brand-50);
+  color: var(--color-brand-600);
+  display: grid; place-items: center;
+  font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  box-shadow: var(--how-node-base);
+}
+#cara.in-view .how-step:nth-child(1) .how-node { animation: how-node-1 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(2) .how-node { animation: how-node-2 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(3) .how-node { animation: how-node-3 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(4) .how-node { animation: how-node-4 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(5) .how-node { animation: how-node-5 var(--how-loop) var(--how-ease) 0.16s infinite; }
+
+@keyframes how-sew { to { clip-path: inset(0 0 0 0); } }
+@keyframes how-travel-h {
+  0%   { left: 0%;   opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  5%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  82%  { left: 100%; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  90%  { left: 100%; opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  100% { left: 0%;   opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+}
+/* Light-up centers track the needle across the 5 nodes (stitch spans the
+   0→82% travel phase; node centers at 10/30/50/70/90% → ignite at 8/25/41/57/74%).
+   Each node ignites in its OWN color: solid fill + tinted glow ring over the
+   cool-100 separator, then holds until the loop resets. */
+@keyframes how-node-1 {
+  0%, 6%     { background: var(--color-brand-50); color: var(--color-brand-600); transform: scale(1);    box-shadow: var(--how-node-base); }
+  8%         { background: var(--c1); color: var(--c1-ink); transform: scale(1.16); box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c1-rgb) / 0.28), 0 12px 30px rgb(var(--c1-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+  10%, 100%  { background: var(--c1); color: var(--c1-ink); transform: scale(1);    box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c1-rgb) / 0.28), 0 12px 30px rgb(var(--c1-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+}
+@keyframes how-node-2 {
+  0%, 23%    { background: var(--color-brand-50); color: var(--color-brand-600); transform: scale(1);    box-shadow: var(--how-node-base); }
+  25%        { background: var(--c2); color: var(--c2-ink); transform: scale(1.16); box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c2-rgb) / 0.28), 0 12px 30px rgb(var(--c2-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+  27%, 100%  { background: var(--c2); color: var(--c2-ink); transform: scale(1);    box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c2-rgb) / 0.28), 0 12px 30px rgb(var(--c2-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+}
+@keyframes how-node-3 {
+  0%, 39%    { background: var(--color-brand-50); color: var(--color-brand-600); transform: scale(1);    box-shadow: var(--how-node-base); }
+  41%        { background: var(--c3); color: var(--c3-ink); transform: scale(1.16); box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c3-rgb) / 0.28), 0 12px 30px rgb(var(--c3-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+  43%, 100%  { background: var(--c3); color: var(--c3-ink); transform: scale(1);    box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c3-rgb) / 0.28), 0 12px 30px rgb(var(--c3-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+}
+@keyframes how-node-4 {
+  0%, 55%    { background: var(--color-brand-50); color: var(--color-brand-600); transform: scale(1);    box-shadow: var(--how-node-base); }
+  57%        { background: var(--c4); color: var(--c4-ink); transform: scale(1.16); box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c4-rgb) / 0.28), 0 12px 30px rgb(var(--c4-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+  59%, 100%  { background: var(--c4); color: var(--c4-ink); transform: scale(1);    box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c4-rgb) / 0.28), 0 12px 30px rgb(var(--c4-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+}
+@keyframes how-node-5 {
+  0%, 72%    { background: var(--color-brand-50); color: var(--color-brand-600); transform: scale(1);    box-shadow: var(--how-node-base); }
+  74%        { background: var(--c5); color: var(--c5-ink); transform: scale(1.16); box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c5-rgb) / 0.28), 0 12px 30px rgb(var(--c5-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+  76%, 100%  { background: var(--c5); color: var(--c5-ink); transform: scale(1);    box-shadow: 0 0 0 6px var(--color-cool-100), 0 0 0 11px rgb(var(--c5-rgb) / 0.28), 0 12px 30px rgb(var(--c5-rgb) / 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+}
+
+/* step card + icon tile mirror their node: when the needle passes, the card's
+   border + glow take that node's color and the icon tile inverts to the node's
+   fill + glyph — then holds (cumulative) until the loop resets. Only
+   border/shadow/color are animated, so the Tailwind hover-lift (transform) on
+   the card still works. */
+#cara.in-view .how-step:nth-child(1) .how-card { animation: how-card-1 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(2) .how-card { animation: how-card-2 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(3) .how-card { animation: how-card-3 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(4) .how-card { animation: how-card-4 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(5) .how-card { animation: how-card-5 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(1) .how-icon { animation: how-icon-1 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(2) .how-icon { animation: how-icon-2 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(3) .how-icon { animation: how-icon-3 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(4) .how-icon { animation: how-icon-4 var(--how-loop) var(--how-ease) 0.16s infinite; }
+#cara.in-view .how-step:nth-child(5) .how-icon { animation: how-icon-5 var(--how-loop) var(--how-ease) 0.16s infinite; }
+
+@keyframes how-card-1 {
+  0%, 6%     { border-color: var(--color-line); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+  8%         { border-color: var(--c1);         box-shadow: 0 10px 26px rgb(var(--c1-rgb) / 0.26); }
+  10%, 100%  { border-color: var(--c1);         box-shadow: 0 8px 20px rgb(var(--c1-rgb) / 0.18); }
+}
+@keyframes how-card-2 {
+  0%, 23%    { border-color: var(--color-line); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+  25%        { border-color: var(--c2);         box-shadow: 0 10px 26px rgb(var(--c2-rgb) / 0.26); }
+  27%, 100%  { border-color: var(--c2);         box-shadow: 0 8px 20px rgb(var(--c2-rgb) / 0.18); }
+}
+@keyframes how-card-3 {
+  0%, 39%    { border-color: var(--color-line); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+  41%        { border-color: var(--c3);         box-shadow: 0 10px 26px rgb(var(--c3-rgb) / 0.26); }
+  43%, 100%  { border-color: var(--c3);         box-shadow: 0 8px 20px rgb(var(--c3-rgb) / 0.18); }
+}
+@keyframes how-card-4 {
+  0%, 55%    { border-color: var(--color-line); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+  57%        { border-color: var(--c4);         box-shadow: 0 10px 26px rgb(var(--c4-rgb) / 0.26); }
+  59%, 100%  { border-color: var(--c4);         box-shadow: 0 8px 20px rgb(var(--c4-rgb) / 0.18); }
+}
+@keyframes how-card-5 {
+  0%, 72%    { border-color: var(--color-line); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+  74%        { border-color: var(--c5);         box-shadow: 0 10px 26px rgb(var(--c5-rgb) / 0.26); }
+  76%, 100%  { border-color: var(--c5);         box-shadow: 0 8px 20px rgb(var(--c5-rgb) / 0.18); }
+}
+@keyframes how-icon-1 {
+  0%, 6%     { background-color: var(--color-brand-50); color: var(--color-brand-700); transform: scale(1); }
+  8%         { background-color: var(--c1); color: var(--c1-ink); transform: scale(1.12); }
+  10%, 100%  { background-color: var(--c1); color: var(--c1-ink); transform: scale(1); }
+}
+@keyframes how-icon-2 {
+  0%, 23%    { background-color: var(--color-brand-50); color: var(--color-brand-700); transform: scale(1); }
+  25%        { background-color: var(--c2); color: var(--c2-ink); transform: scale(1.12); }
+  27%, 100%  { background-color: var(--c2); color: var(--c2-ink); transform: scale(1); }
+}
+@keyframes how-icon-3 {
+  0%, 39%    { background-color: var(--color-brand-50); color: var(--color-brand-700); transform: scale(1); }
+  41%        { background-color: var(--c3); color: var(--c3-ink); transform: scale(1.12); }
+  43%, 100%  { background-color: var(--c3); color: var(--c3-ink); transform: scale(1); }
+}
+@keyframes how-icon-4 {
+  0%, 55%    { background-color: var(--color-brand-50); color: var(--color-brand-700); transform: scale(1); }
+  57%        { background-color: var(--c4); color: var(--c4-ink); transform: scale(1.12); }
+  59%, 100%  { background-color: var(--c4); color: var(--c4-ink); transform: scale(1); }
+}
+@keyframes how-icon-5 {
+  0%, 72%    { background-color: var(--color-brand-50); color: var(--color-brand-700); transform: scale(1); }
+  74%        { background-color: var(--c5); color: var(--c5-ink); transform: scale(1.12); }
+  76%, 100%  { background-color: var(--c5); color: var(--c5-ink); transform: scale(1); }
 }

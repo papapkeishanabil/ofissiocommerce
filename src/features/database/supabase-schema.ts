@@ -101,6 +101,7 @@ export const REQUIRED_SUPABASE_TABLES = [
   ...PHASE_24_SHIPMENT_TABLES,
   "embroidery_pricing_zones",
   "admin_notifications",
+  "site_content",
 ] as const;
 
 export type RequiredSupabaseTable = (typeof REQUIRED_SUPABASE_TABLES)[number];

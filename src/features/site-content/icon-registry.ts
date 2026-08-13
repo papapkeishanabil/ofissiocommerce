@@ -1,0 +1,168 @@
+// src/features/site-content/icon-registry.ts
+// Constrained allowlist of lucide icons the admin may pick from when editing
+// homepage content. Icons are stored in the DB as their string key (e.g.
+// "Boxes"); the public render side resolves them back to a component via
+// `resolveHomepageIcon`. Keeping this an allowlist (not "any lucide icon")
+// means a marketing edit can never reference an un-imported component.
+//
+// Adding an icon the homepage doesn't yet use = a small, intentional code
+// change here (add it to the import, the tuple, and the map). That is the
+// single known code surface for expanding the icon palette.
+
+import {
+  Anchor,
+  Award,
+  BadgeCheck,
+  Boxes,
+  Briefcase,
+  Building2,
+  CheckCircle2,
+  Clock,
+  Coffee,
+  Droplets,
+  Factory,
+  FileText,
+  GraduationCap,
+  Hammer,
+  HardHat,
+  Headset,
+  Heart,
+  Landmark,
+  Layers,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Package,
+  Palette,
+  PawPrint,
+  PenTool,
+  Phone,
+  Pickaxe,
+  Plus,
+  RotateCcw,
+  Scissors,
+  ShieldCheck,
+  Shirt,
+  ShoppingBag,
+  Sparkles,
+  Star,
+  Stethoscope,
+  Store,
+  Tag,
+  Truck,
+  Upload,
+  Users,
+  UtensilsCrossed,
+  Wrench,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
+
+export const HOMEPAGE_ICON_KEYS = [
+  // Homepage card/tile icons (matches the consts in HomePage.tsx).
+  "Anchor",
+  "Award",
+  "Boxes",
+  "Briefcase",
+  "Building2",
+  "Coffee",
+  "Droplets",
+  "Factory",
+  "FileText",
+  "GraduationCap",
+  "Hammer",
+  "HardHat",
+  "Landmark",
+  "Layers",
+  "MessageSquare",
+  "Package",
+  "PawPrint",
+  "Phone",
+  "Pickaxe",
+  "Plus",
+  "RotateCcw",
+  "Scissors",
+  "ShieldCheck",
+  "Shirt",
+  "Sparkles",
+  "Stethoscope",
+  "Store",
+  "Tag",
+  "Truck",
+  "Upload",
+  "Users",
+  "UtensilsCrossed",
+  "Wrench",
+  // Curated superset (commonly useful for marketing edits).
+  "BadgeCheck",
+  "CheckCircle2",
+  "Clock",
+  "Headset",
+  "Heart",
+  "Mail",
+  "MapPin",
+  "Palette",
+  "PenTool",
+  "ShoppingBag",
+  "Star",
+  "Zap",
+] as const;
+
+export type HomepageIconKey = (typeof HOMEPAGE_ICON_KEYS)[number];
+
+export const HOMEPAGE_ICONS: Record<HomepageIconKey, LucideIcon> = {
+  Anchor,
+  Award,
+  BadgeCheck,
+  Boxes,
+  Briefcase,
+  Building2,
+  CheckCircle2,
+  Clock,
+  Coffee,
+  Droplets,
+  Factory,
+  FileText,
+  GraduationCap,
+  Hammer,
+  HardHat,
+  Headset,
+  Heart,
+  Landmark,
+  Layers,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Package,
+  Palette,
+  PawPrint,
+  PenTool,
+  Phone,
+  Pickaxe,
+  Plus,
+  RotateCcw,
+  Scissors,
+  ShieldCheck,
+  Shirt,
+  ShoppingBag,
+  Sparkles,
+  Star,
+  Stethoscope,
+  Store,
+  Tag,
+  Truck,
+  Upload,
+  Users,
+  UtensilsCrossed,
+  Wrench,
+  Zap,
+};
+
+/** Icon used when a stored key is somehow missing from the map. */
+export const FALLBACK_ICON: LucideIcon = Sparkles;
+
+/** Resolve a stored icon key to a renderable component, never throwing. */
+export function resolveHomepageIcon(name: string): LucideIcon {
+  const icon = (HOMEPAGE_ICONS as Record<string, LucideIcon>)[name];
+  return icon ?? FALLBACK_ICON;
+}

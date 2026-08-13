@@ -5,6 +5,13 @@ import type { Metadata, Viewport } from "next";
 import { RouteAwareShell } from "@/components/shell/RouteAwareShell";
 import "./globals.css";
 
+// Storefront renders the platform system font (Segoe UI on Windows) to match the
+// approved design preview exactly: the preview declares "Manrope" but ships no
+// font file, so on Windows it falls through to Segoe UI — and that rendered look
+// is what the brand approved. The internal admin keeps its own Manrope
+// (AdminLayout → --font-admin), fully independent of this root layout. No
+// next/font is wired here.
+
 export const metadata: Metadata = {
   title: {
     default: "Ofissio — Conversational B2B Commerce",
