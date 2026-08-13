@@ -39,6 +39,7 @@ import {
   JOURNEY_STAGES,
   type JourneyStage,
   type OfistantContext,
+  type OfistantPageContext,
   type OfistantResponse,
 } from "@/lib/ofistant/ofistant.types";
 import { getOptionalServerEnv } from "@/lib/security/server-only-secret";
@@ -98,6 +99,33 @@ const ofistantResponseSchema = z.object({
   selectedIndustry: z.string().optional(),
 });
 
+const pageContextLineSchema = z.object({
+  productName: z.string(),
+  color: z.string(),
+  totalQty: z.number(),
+  unitPrice: z.number(),
+  subtotal: z.number(),
+  tierLabel: z.string().nullable().optional(),
+  embroidery: z.array(
+    z.object({
+      label: z.string(),
+      quantity: z.number(),
+      unitPrice: z.number(),
+      subtotal: z.number(),
+    }),
+  ),
+  embroideryTotal: z.number(),
+});
+
+const pageContextSchema = z.object({
+  route: z.string(),
+  label: z.string(),
+  cartPage: z.boolean(),
+  lines: z.array(pageContextLineSchema),
+  cartTotal: z.number(),
+  note: z.string().nullable().optional(),
+});
+
 /** Loose mirror of OfistantContext the client sends; validated permissively. */
 export const ofistantContextPayloadSchema = z.object({
   companyId: z.string().nullable().optional(),
@@ -117,9 +145,30 @@ export const ofistantContextPayloadSchema = z.object({
     })
     .nullable()
     .optional(),
+  /**
+   * Snapshot of the page the customer is viewing (route + real cart/embroidery
+   * breakdown). When present, the model MAY cite these real numbers (see the
+   * anti-hallucination carve-out in the system prompt) — they are not fabricated.
+   */
+  pageContext: pageContextSchema.nullable().optional(),
   uploadedLogoPlaceholder: z.boolean().optional(),
   embroideryPlacements: z.array(z.string()).optional(),
   journeyStage: journeyStageEnum.optional(),
+  /**
+   * Carried estimate request (qty + embroidery zones) from a turn that asked
+   * for a price estimate but had no product yet. The stateless chat route
+   * rebuilds ctx from `emptyContext() + body.context` each turn, so this MUST
+   * round-trip through the client for `resolvePendingEstimate` to fire later.
+   * Zones are validated as plain strings (the rule engine is the authority and
+   * treats unknown zones as "unsupported" — honest, no crash).
+   */
+  pendingEstimateRequest: z
+    .object({
+      qty: z.number(),
+      zones: z.array(z.string()),
+    })
+    .nullable()
+    .optional(),
   turnsTaken: z.number().optional(),
 });
 
@@ -207,6 +256,41 @@ function formatIDRCompact(value: number): string {
   }).format(value);
 }
 
+/**
+ * Render the live page snapshot into a concise, model-readable block. The
+ * numbers here are REAL (read from cart-store), so the prompt explicitly allows
+ * the model to cite them — this is how Ofistant answers "kenapa harga bordir
+ * sekian" from the actual checkout/cart breakdown instead of guessing.
+ */
+function formatPageContextBlock(page: OfistantPageContext | null): string | null {
+  if (!page) return null;
+  const parts: string[] = [`Halaman saat ini: ${page.label}`];
+  if (page.cartPage) {
+    if (page.lines.length === 0) {
+      parts.push("Keranjang kosong (belum ada item).");
+    } else {
+      const linesText = page.lines.slice(0, 8).map((l, i) => {
+        const tier = l.tierLabel ? ` (tier ${l.tierLabel})` : "";
+        const head = `${i + 1}) ${l.productName} — warna ${l.color} — ${l.totalQty} pcs @ ${formatIDRCompact(l.unitPrice)}${tier} = ${formatIDRCompact(l.subtotal)}`;
+        if (l.embroidery.length === 0) return head;
+        const emb = l.embroidery
+          .slice(0, 6)
+          .map(
+            (e) =>
+              `${e.label} (${e.quantity}x ${formatIDRCompact(e.unitPrice)} = ${formatIDRCompact(e.subtotal)})`,
+          )
+          .join("; ");
+        return `${head} | Bordir: ${emb} | total bordir ${formatIDRCompact(l.embroideryTotal)}`;
+      });
+      parts.push("Rincian keranjang (data nyata):\n" + linesText.join("\n"));
+      parts.push(`Total estimasi keranjang: ${formatIDRCompact(page.cartTotal)}`);
+    }
+  } else if (page.note) {
+    parts.push(page.note);
+  }
+  return parts.join("\n");
+}
+
 function buildSystemPrompt(
   ctx: OfistantContext,
   cart: CartSnapshot,
@@ -216,12 +300,14 @@ function buildSystemPrompt(
     taxonomy.industries.map((i) => i.name).join(", ") || "(belum ada data)";
   const categoryList =
     taxonomy.categories.map((c) => c.name).join(", ") || "(belum ada data)";
+  const pageBlock = formatPageContextBlock(ctx.pageContext);
   return [
     `Kamu adalah "Ofistant", asisten pengadaan seragam kerja B2B untuk perusahaan Ofissio. Kamu hanya ikut campur saat mesin rule utama tidak menangkap maksud pelanggan — jadi tugasmu adalah memahami bahasa natural dan membantu pelanggan maju.`,
     ``,
     `ATURAN MUTLAK (anti-halusinasi):`,
-    `- JANGAN pernah menyebut angka harga, biaya bordir, MOQ, lead time, stok, atau resi secara spesifik. Kamu tidak punya akses data transaksi real pada giliran ini.`,
-    `- Jika pelanggan menanyakan harga pasti / harga kuantitas / biaya bordir / status order, arahkan mereka: minta sebutkan produk spesifik lalu klik "Request quotation", atau "Hubungi sales". Boleh menyebut rentang umum HANYA jika yakin, tapi tetap dorong ke quotation untuk angka final.`,
+    `- JANGAN pernah MENGARANG angka harga, biaya bordir, MOQ, lead time, stok, atau resi.`,
+    `- Pengecualian penting: bila ada bagian "INFORMASI HALAMAN SAAT INI" di bawah, angka di sana adalah DATA NYATA yang sedang dilihat pelanggan di layarnya. Kamu BOLEH dan wajib bisa menjelaskan & merincinya bila ditanya — mis. "kenapa harga bordir segini" -> uraikan rincian bordir dari data tersebut.`,
+    `- Di luar data halaman itu, untuk harga pasti / kuantitas / bordir / status order, arahkan pelanggan ke "Request quotation" atau "Hubungi sales". Boleh menyebut rentang umum HANYA jika yakin, tetap dorong ke quotation untuk angka final.`,
     ``,
     `GAYA:`,
     `- Balas dalam Bahasa Indonesia, singkat, sopan, dan ramah. Sapa "Pak/Bu" bila pantas.`,
@@ -246,6 +332,9 @@ function buildSystemPrompt(
     `- Login: ${
       ctx.companyName ? `${ctx.companyName} (terautentikasi)` : "tamu (belum login)"
     }`,
+    ``,
+    `INFORMASI HALAMAN SAAT INI:`,
+    pageBlock ?? `(tidak ada rincian halaman yang diketahui)`,
     ``,
     `INDUSTRI TERSEDIA: ${industryList}`,
     `KATEGORI TERSEDIA: ${categoryList}`,

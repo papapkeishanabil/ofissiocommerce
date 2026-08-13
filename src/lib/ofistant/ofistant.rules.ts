@@ -14,7 +14,7 @@ import type {
   PublicCatalogTaxonomy,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 
-import { detectIntent } from "./ofistant.intent";
+import { detectIntent, type DetectedIntent } from "./ofistant.intent";
 import {
   withConfiguringProduct,
   withItemAdded,
@@ -22,11 +22,12 @@ import {
   withSelectedIndustry,
 } from "./ofistant.context";
 import type { OfistantContext, OfistantResponse } from "./ofistant.types";
-import type { AddToCartAction } from "./ofistant.actions";
+import type { AddToCartAction, OfistantAction } from "./ofistant.actions";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 import {
   calculateEmbroideryPricing,
   embroideryZoneLabel,
+  type EmbroideryPricingZoneId,
 } from "@/features/products/embroidery-pricing";
 import { formatIDR } from "@/types/product";
 
@@ -85,6 +86,141 @@ function buildAddToCartActionFromSelected(
   };
 }
 
+// ---------- estimate helpers ----------
+
+/** Product shape used by estimate calculation (the catalog-search projection). */
+type EstimateProduct = CatalogSearchResult["products"][number];
+
+/**
+ * Final estimate computation for a known product + qty (+ optional embroidery
+ * zones). Pure: returns message/action/quickReplies, never throws, never
+ * fabricates numbers — every value comes from the product's real pricing data
+ * via the existing calculators. Shared by the quantityPricing, embroideryPricing
+ * and resolvePendingEstimate rules so the anti-hallucination wording lives in
+ * one place (smoke tests guard against regression).
+ */
+function buildEstimateResponse(
+  product: EstimateProduct,
+  qty: number,
+  zones: EmbroideryPricingZoneId[],
+): { message: string; action?: OfistantAction; quickReplies: string[] } {
+  const openDetail = (reason: string): OfistantAction => ({
+    type: "OPEN_PRODUCT_DETAIL",
+    payload: { slug: product.slug, reason },
+  });
+
+  // ---- Embroidery path (one or more zones requested) ----
+  if (zones.length > 0) {
+    const embroidery = calculateEmbroideryPricing({
+      totalQty: qty,
+      selectedZones: zones,
+      productSupportedZones: product.supportedEmbroideryZones,
+      globalEmbroideryPricing: product.globalEmbroideryPricing,
+    });
+    if (embroidery.unsupportedZones.length > 0) {
+      return {
+        message: `Zona ${embroidery.unsupportedZones.map(embroideryZoneLabel).join(" dan ")} tidak tersedia untuk ${product.name}. Silakan pilih zona bordir yang didukung pada halaman produk atau hubungi sales untuk kebutuhan khusus.`,
+        action: openDetail("Zona bordir tidak didukung"),
+        quickReplies: ["Lihat produk", "Hubungi sales"],
+      };
+    }
+    if (
+      embroidery.missingPricingZones.length > 0 ||
+      embroidery.lines.length === 0
+    ) {
+      return {
+        message: `Harga bordir untuk zona ${zones.map(embroideryZoneLabel).join(" dan ")} pada ${product.name} perlu dikonfirmasi admin karena bergantung detail logo. Saya tidak akan mengarang harga bordir. Harga final mengikuti quotation admin.`,
+        action: openDetail("Konfirmasi harga bordir"),
+        quickReplies: ["Request quotation", "Lihat produk"],
+      };
+    }
+    const productPrice = calculateQuantityTierPrice({
+      regularPrice: product.regularPrice,
+      totalQty: qty,
+      quantityPricing: product.quantityPricing,
+    });
+    const lineText = embroidery.lines
+      .map(
+        (line) =>
+          `${line.label.replace("Bordir ", "")} ${formatIDR(line.unitPrice)}/pcs${line.setupFeeApplied ? ` + setup ${formatIDR(line.setupFee)}` : ""}`,
+      )
+      .join(" dan ");
+    const estimatedTotal = productPrice.subtotal + embroidery.total;
+    const tierText =
+      productPrice.tierApplied && productPrice.tierLabel
+        ? ` masuk tier ${productPrice.tierLabel}, yaitu ${formatIDR(productPrice.unitPrice)}/pcs`
+        : ` memakai estimasi harga produk ${formatIDR(productPrice.unitPrice)}/pcs`;
+    return {
+      message: `Untuk ${product.name} ${qty} pcs, estimasi harga produk${tierText}. Bordir ${lineText}. Estimasi total produk + bordir ${formatIDR(estimatedTotal)}. Harga final mengikuti quotation admin.`,
+      action: openDetail("Hasil kalkulasi harga bordir"),
+      quickReplies: ["Request quotation", "Lihat produk"],
+    };
+  }
+
+  // ---- Quantity-only path ----
+  const pricing = product.quantityPricing;
+  if (!pricing?.enabled || pricing.tiers.length === 0) {
+    return {
+      message: `Harga quantity untuk ${product.name} perlu dikonfirmasi admin. Saya tidak akan mengarang diskon yang belum tersimpan di data produk.`,
+      action: openDetail("Konfirmasi harga quantity"),
+      quickReplies: ["Request quotation", "Hubungi sales"],
+    };
+  }
+  const result = calculateQuantityTierPrice({
+    regularPrice: product.regularPrice,
+    totalQty: qty,
+    quantityPricing: pricing,
+  });
+  if (!result.tierApplied || !result.tierLabel) {
+    return {
+      message: `Untuk ${product.name}, quantity ${qty} pcs belum masuk tier yang tersedia. Estimasi memakai harga regular ${formatIDR(result.unitPrice)}/pcs, tetapi harga final perlu dikonfirmasi admin.`,
+      quickReplies: ["Request quotation", "Lihat produk"],
+    };
+  }
+  const nextTierHint = result.nextTier
+    ? ` Tambah ${result.nextTier.qtyToNextTier} pcs lagi untuk harga ${formatIDR(result.nextTier.potentialUnitPrice)}/pcs.`
+    : "";
+  return {
+    message: `Untuk ${product.name}, estimasi harga ${qty} pcs masuk tier ${result.tierLabel}, yaitu ${formatIDR(result.unitPrice)}/pcs. Estimasi subtotal produk ${formatIDR(result.subtotal)}.${nextTierHint} Harga final tetap mengikuti quotation admin.`,
+    action: openDetail("Hasil kalkulasi harga quantity"),
+    quickReplies: ["Request quotation", "Lihat produk"],
+  };
+}
+
+/** Real product names to offer as quick replies when an estimate needs a product. */
+function pickProductQuickReplies(ctx: OfistantContext, limit = 3): string[] {
+  const list = ctx.selectedIndustry
+    ? productService.getProductsByIndustry(ctx.selectedIndustry)
+    : productService.getPublishedProducts();
+  return list.slice(0, limit).map((p) => p.name);
+}
+
+/**
+ * No-product response for an estimate request: stash the requested qty + zones
+ * in context (pendingEstimateRequest) so a later product turn auto-completes it,
+ * and offer real product quick replies instead of a dead-end.
+ */
+function estimateNeedsProduct(
+  ctx: OfistantContext,
+  detected: DetectedIntent,
+): OfistantResponse {
+  const productReplies = pickProductQuickReplies(ctx, 3);
+  return {
+    message:
+      productReplies.length > 0
+        ? "Estimasi butuh produk spesifik. Pilih salah satu produk di bawah, atau ketik namanya:"
+        : "Estimasi butuh produk spesifik. Saat ini belum ada produk aktif yang bisa saya hitungkan — coba buka katalog atau hubungi sales.",
+    quickReplies:
+      productReplies.length > 0 ? productReplies : ["Lihat katalog", "Hubungi sales"],
+    contextPatch: {
+      pendingEstimateRequest: {
+        qty: detected.requestedQty ?? 0,
+        zones: detected.requestedEmbroideryZones ?? [],
+      },
+    },
+  };
+}
+
 // ---------- rules (priority order) ----------
 
 const humanHandoff: Rule = ({ text, taxonomy }) => {
@@ -106,7 +242,7 @@ const greeting: Rule = ({ text, ctx, taxonomy }) => {
     return {
       message:
         "Halo, selamat datang di Ofissio. Saya Ofistant, asisten pengadaan seragam perusahaan Anda. Seragam untuk industri apa yang sedang Anda cari?",
-      quickReplies: ["Pertambangan", "Konstruksi", "Manufaktur", "Corporate"],
+      quickReplies: ["Bengkel", "F&B", "Retail", "Corporate"],
     };
   }
   return {
@@ -121,7 +257,7 @@ const askHelp: Rule = ({ text, taxonomy }) => {
   return {
     message:
       "Tentu, saya bisa membantu: menampilkan produk per industri, membuka detail produk, menambahkan ke keranjang, hingga checkout atau request quotation. Coba ketik industri yang Anda butuhkan, misalnya “seragam untuk tambang”.",
-    quickReplies: ["Pertambangan", "Konstruksi", "Perhotelan", "Lihat keranjang"],
+    quickReplies: ["Bengkel", "F&B", "Perhotelan", "Lihat keranjang"],
   };
 };
 
@@ -137,10 +273,8 @@ const quantityPricing: Rule = ({
   const product =
     products.find((item) => item.slug === ctx.selectedProductSlug) ?? products[0];
   if (!product) {
-    return {
-      message: "Sebutkan produk yang ingin dihitung. Harga quantity hanya akan saya ambil dari produk aktif di katalog Ofissio.",
-      quickReplies: ["Lihat katalog", "Hubungi sales"],
-    };
+    // Carry the (qty, zones) request forward; offer real products to pick.
+    return estimateNeedsProduct(ctx, detected);
   }
   const pricing = product.quantityPricing;
   if (!pricing?.enabled || pricing.tiers.length === 0) {
@@ -166,27 +300,11 @@ const quantityPricing: Rule = ({
       quickReplies: ["Hitung 100 pcs", "Request quotation"],
     };
   }
-  const result = calculateQuantityTierPrice({
-    regularPrice: product.regularPrice,
-    totalQty: detected.requestedQty,
-    quantityPricing: pricing,
-  });
-  if (!result.tierApplied || !result.tierLabel) {
-    return {
-      message: `Untuk ${product.name}, quantity ${detected.requestedQty} pcs belum masuk tier yang tersedia. Estimasi memakai harga regular ${formatIDR(result.unitPrice)}/pcs, tetapi harga final perlu dikonfirmasi admin.`,
-      quickReplies: ["Request quotation", "Lihat produk"],
-    };
-  }
-  const nextTierHint = result.nextTier
-    ? ` Tambah ${result.nextTier.qtyToNextTier} pcs lagi untuk harga ${formatIDR(result.nextTier.potentialUnitPrice)}/pcs.`
-    : "";
+  const est = buildEstimateResponse(product, detected.requestedQty, []);
   return {
-    message: `Untuk ${product.name}, estimasi harga ${detected.requestedQty} pcs masuk tier ${result.tierLabel}, yaitu ${formatIDR(result.unitPrice)}/pcs. Estimasi subtotal produk ${formatIDR(result.subtotal)}.${nextTierHint} Harga final tetap mengikuti quotation admin.`,
-    action: {
-      type: "OPEN_PRODUCT_DETAIL",
-      payload: { slug: product.slug, reason: "Hasil kalkulasi harga quantity" },
-    },
-    quickReplies: ["Request quotation", "Lihat produk"],
+    message: est.message,
+    action: est.action,
+    quickReplies: est.quickReplies,
   };
 };
 
@@ -202,10 +320,8 @@ const embroideryPricing: Rule = ({
   const product =
     products.find((item) => item.slug === ctx.selectedProductSlug) ?? products[0];
   if (!product) {
-    return {
-      message: "Sebutkan produk yang ingin dihitung. Harga bordir hanya akan saya ambil dari master global Ofissio dan zona yang didukung produk.",
-      quickReplies: ["Lihat katalog", "Hubungi sales"],
-    };
+    // Carry the (qty, zones) request forward; offer real products to pick.
+    return estimateNeedsProduct(ctx, detected);
   }
   const selectedZones = detected.requestedEmbroideryZones ?? [];
   if (!detected.requestedQty) {
@@ -214,42 +330,60 @@ const embroideryPricing: Rule = ({
       quickReplies: ["Hitung 100 pcs", "Request quotation"],
     };
   }
-  const embroidery = calculateEmbroideryPricing({
-    totalQty: detected.requestedQty,
+  const est = buildEstimateResponse(
+    product,
+    detected.requestedQty,
     selectedZones,
-    productSupportedZones: product.supportedEmbroideryZones,
-    globalEmbroideryPricing: product.globalEmbroideryPricing,
-  });
-  if (embroidery.unsupportedZones.length > 0) {
-    return {
-      message: `Zona ${embroidery.unsupportedZones.map(embroideryZoneLabel).join(" dan ")} tidak tersedia untuk ${product.name}. Silakan pilih zona bordir yang didukung pada halaman produk atau hubungi sales untuk kebutuhan khusus.`,
-      action: { type: "OPEN_PRODUCT_DETAIL", payload: { slug: product.slug, reason: "Zona bordir tidak didukung" } },
-      quickReplies: ["Lihat produk", "Hubungi sales"],
-    };
-  }
-  if (embroidery.missingPricingZones.length > 0 || embroidery.lines.length === 0) {
-    return {
-      message: `Harga bordir untuk zona ${selectedZones.map(embroideryZoneLabel).join(" dan ")} pada ${product.name} perlu dikonfirmasi admin karena bergantung detail logo. Saya tidak akan mengarang harga bordir. Harga final mengikuti quotation admin.`,
-      action: { type: "OPEN_PRODUCT_DETAIL", payload: { slug: product.slug, reason: "Konfirmasi harga bordir" } },
-      quickReplies: ["Request quotation", "Lihat produk"],
-    };
-  }
-  const productPrice = calculateQuantityTierPrice({
-    regularPrice: product.regularPrice,
-    totalQty: detected.requestedQty,
-    quantityPricing: product.quantityPricing,
-  });
-  const lineText = embroidery.lines
-    .map((line) => `${line.label.replace("Bordir ", "")} ${formatIDR(line.unitPrice)}/pcs${line.setupFeeApplied ? ` + setup ${formatIDR(line.setupFee)}` : ""}`)
-    .join(" dan ");
-  const estimatedTotal = productPrice.subtotal + embroidery.total;
-  const tierText = productPrice.tierApplied && productPrice.tierLabel
-    ? ` masuk tier ${productPrice.tierLabel}, yaitu ${formatIDR(productPrice.unitPrice)}/pcs`
-    : ` memakai estimasi harga produk ${formatIDR(productPrice.unitPrice)}/pcs`;
+  );
   return {
-    message: `Untuk ${product.name} ${detected.requestedQty} pcs, estimasi harga produk${tierText}. Bordir ${lineText}. Estimasi total produk + bordir ${formatIDR(estimatedTotal)}. Harga final mengikuti quotation admin.`,
-    action: { type: "OPEN_PRODUCT_DETAIL", payload: { slug: product.slug, reason: "Hasil kalkulasi harga bordir" } },
-    quickReplies: ["Request quotation", "Lihat produk"],
+    message: est.message,
+    action: est.action,
+    quickReplies: est.quickReplies,
+  };
+};
+
+/**
+ * Carries a pending estimate request (qty + embroidery zones) across turns.
+ * Fires when the user picks a product BY EXACT NAME (typically by clicking one
+ * of the quick replies offered by `estimateNeedsProduct`) after an estimate ask
+ * that had no product. Completes the estimate with the carried (qty, zones) and
+ * clears the pending state. Exact-name matching (not a fuzzy products[0]
+ * fallback) is deliberate: it stops this rule from stealing industry/category
+ * turns that merely happen to resolve a product.
+ */
+const resolvePendingEstimate: Rule = ({ text, ctx, catalogSearchResult }) => {
+  const pending = ctx.pendingEstimateRequest;
+  if (!pending) return null;
+  const exactName = text.trim().toLowerCase();
+  const product = (catalogSearchResult?.products ?? []).find(
+    (p) => p.name.toLowerCase() === exactName,
+  );
+  if (!product) return null; // not an exact product pick → defer to other rules
+  if (!pending.qty || pending.qty <= 0) {
+    // Quantity wasn't captured earlier; ask the user to restate it together
+    // with the zones so the pricing rules compute from live data. Clear pending.
+    return {
+      message: `Baik, ${product.name}. Sebutkan juga jumlah pcs-nya, misalnya "100 pcs dengan bordir ${pending.zones.map(embroideryZoneLabel).join(" dan ")}", agar saya hitung estimasinya.`,
+      action: {
+        type: "OPEN_PRODUCT_DETAIL",
+        payload: { slug: product.slug, reason: "Produk dipilih untuk estimasi" },
+      },
+      quickReplies: ["Hitung 100 pcs", "Request quotation"],
+      contextPatch: {
+        ...withProductViewed(ctx, product.id, product.slug),
+        pendingEstimateRequest: null,
+      },
+    };
+  }
+  const est = buildEstimateResponse(product, pending.qty, pending.zones);
+  return {
+    message: est.message,
+    action: est.action,
+    quickReplies: est.quickReplies,
+    contextPatch: {
+      ...withProductViewed(ctx, product.id, product.slug),
+      pendingEstimateRequest: null,
+    },
   };
 };
 
@@ -343,7 +477,7 @@ const recommendAfterContext: Rule = ({ text, ctx, taxonomy }) => {
     return {
       message:
         "Dengan senang hati memberi rekomendasi. Sebelumnya, seragam untuk industri apa yang Anda butuhkan?",
-      quickReplies: ["Pertambangan", "Konstruksi", "Manufaktur", "Perhotelan"],
+      quickReplies: ["Bengkel", "F&B", "Retail", "Perhotelan"],
     };
   }
   const recs = pickRecommendedForIndustry(industry, 3);
@@ -406,7 +540,7 @@ const viewCart: Rule = ({ text, ctx, taxonomy }) => {
     message:
       "Keranjang Anda masih kosong. Mau saya tampilkan produk yang direkomendasikan?",
     action: { type: "OPEN_CART", payload: {} },
-    quickReplies: ["Lihat katalog", "Pertambangan", "Corporate"],
+    quickReplies: ["Lihat katalog", "Bengkel", "Corporate"],
   };
 };
 
@@ -418,7 +552,7 @@ const checkout: Rule = ({ text, ctx, taxonomy }) => {
       message:
         "Checkout butuh item di keranjang. Mau saya bantu pilih produk dulu?",
       action: { type: "SHOW_PRODUCTS", payload: {} },
-      quickReplies: ["Pertambangan", "Konstruksi", "Corporate"],
+      quickReplies: ["Bengkel", "Retail", "Corporate"],
     };
   }
   return {
@@ -510,7 +644,7 @@ const addToCart: Rule = ({ text, ctx, taxonomy }) => {
       message:
         "Untuk menambahkan ke keranjang, saya perlu tahu produk mana. Mau saya tampilkan rekomendasi?",
       action: { type: "SHOW_PRODUCTS", payload: {} },
-      quickReplies: ["Pertambangan", "Konstruksi", "Corporate"],
+      quickReplies: ["Bengkel", "Retail", "Corporate"],
     };
   }
   const product = productService.getProductBySlug(ctx.selectedProductSlug);
@@ -582,7 +716,7 @@ const exploreMore: Rule = ({ text, ctx }) => {
       message:
         "Tentu, saya tampilkan katalog lengkap. Pilih industri untuk rekomendasi yang lebih relevan.",
       action: { type: "SHOW_PRODUCTS", payload: {} },
-      quickReplies: ["Pertambangan", "Konstruksi", "Corporate"],
+      quickReplies: ["Bengkel", "F&B", "Corporate"],
       contextPatch: { journeyStage: "EXPLORING_MORE_PRODUCTS" },
     };
   }
@@ -596,7 +730,7 @@ const exploreMore: Rule = ({ text, ctx }) => {
     return {
       message: `Untuk ${industry}, Anda sudah melihat semua rekomendasi utama. Mau lihat industri lain?`,
       action: { type: "SHOW_PRODUCTS", payload: { industry } },
-      quickReplies: ["Konstruksi", "Perhotelan", "Hubungi sales"],
+      quickReplies: ["Retail", "Perhotelan", "Hubungi sales"],
     };
   }
   return {
@@ -618,7 +752,7 @@ const fallback: Rule = ({ text, ctx }) => {
     return {
       message:
         "Maaf, saya belum yakin maksud Anda. Coba sebutkan industri (cth: “seragam untuk tambang”) atau klik salah satu pilihan di bawah.",
-      quickReplies: ["Pertambangan", "Konstruksi", "Manufaktur", "Hubungi sales"],
+      quickReplies: ["Bengkel", "F&B", "Corporate", "Hubungi sales"],
     };
   }
   return {
@@ -639,6 +773,7 @@ export const RULES: Rule[] = [
   askHelp,
   embroideryPricing,
   quantityPricing,
+  resolvePendingEstimate,
   searchCatalog,
   viewCart,
   checkout,

@@ -6,6 +6,7 @@
 import type { z } from "zod";
 
 import type { OfistantAction } from "./ofistant.actions";
+import type { EmbroideryPricingZoneId } from "@/features/products/embroidery-pricing";
 
 export type JourneyStage =
   | "NEW_VISITOR"
@@ -43,6 +44,45 @@ export interface SizeMatrixSnapshot {
   "3XL": number;
 }
 
+/**
+ * A single cart line as seen by Ofistant when the customer is on a cart-derived
+ * page (cart/checkout). Carries the real embroidery breakdown so Ofistant can
+ * explain "kenapa harga bordir sekian" from actual data — never fabricated.
+ */
+export interface OfistantPageLineContext {
+  productName: string;
+  color: string;
+  totalQty: number;
+  unitPrice: number;
+  subtotal: number;
+  tierLabel: string | null;
+  embroidery: {
+    label: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+  }[];
+  embroideryTotal: number;
+}
+
+/**
+ * Snapshot of the page the customer is currently viewing (the "right panel").
+ * Lets Ofistant answer questions about what is on screen without touching any
+ * page's code — it only READS shared stores (cart-store) + the route.
+ */
+export interface OfistantPageContext {
+  /** pathname, e.g. "/checkout", "/cart", "/product/polo-xxx" */
+  route: string;
+  /** human label in Bahasa Indonesia, e.g. "Checkout", "Detail Produk" */
+  label: string;
+  /** true for cart-derived pages (checkout/cart) — `lines` then carry detail */
+  cartPage: boolean;
+  lines: OfistantPageLineContext[];
+  cartTotal: number;
+  /** extra, page-specific note (e.g. the product slug on a detail page) */
+  note: string | null;
+}
+
 /** Ofistant's memory of the current session. */
 export interface OfistantContext {
   companyId: string | null;
@@ -62,6 +102,17 @@ export interface OfistantContext {
   uploadedLogoPlaceholder: boolean;
   embroideryPlacements: string[];
   journeyStage: JourneyStage;
+  /**
+   * Carried estimate request (qty + embroidery zones) from a turn where the
+   * user asked for a price estimate but no product was resolved yet. The
+   * `resolvePendingEstimate` rule consumes it once a product is identified.
+   */
+  pendingEstimateRequest: {
+    qty: number;
+    zones: EmbroideryPricingZoneId[];
+  } | null;
+  /** snapshot of the page the customer is viewing (route + cart breakdown) */
+  pageContext: OfistantPageContext | null;
   /** monotonic counter to log progression for debugging */
   turnsTaken: number;
 }
@@ -81,6 +132,8 @@ export function emptyContext(): OfistantContext {
     uploadedLogoPlaceholder: false,
     embroideryPlacements: [],
     journeyStage: "NEW_VISITOR",
+    pendingEstimateRequest: null,
+    pageContext: null,
     turnsTaken: 0,
   };
 }

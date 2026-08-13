@@ -212,6 +212,14 @@ export function extractRequestedEmbroideryZones(value: string) {
   for (const [zoneId, pattern] of patterns) {
     if (pattern.test(normalized)) zones.push(zoneId);
   }
+  // Colloquial fallback: bare "dada" (without kiri/kanan) means left chest.
+  if (
+    !zones.includes("left_chest") &&
+    !zones.includes("right_chest") &&
+    /\bdada\b/.test(normalized)
+  ) {
+    zones.push("left_chest");
+  }
   return zones;
 }
 

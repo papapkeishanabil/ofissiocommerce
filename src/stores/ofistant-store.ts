@@ -79,17 +79,6 @@ function genMsgId(role: ChatMessage["role"]): string {
 const WELCOME_TEXT =
   "Halo, selamat datang di Ofissio. Saya Ofistant, asisten pengadaan seragam perusahaan Anda. Seragam untuk industri apa yang sedang Anda cari?";
 
-const WELCOME_QUICK_REPLIES = [
-  "Pertambangan",
-  "Konstruksi",
-  "Manufaktur",
-  "Perhotelan",
-  "Kesehatan",
-  "F&B",
-  "Security",
-  "Corporate",
-];
-
 export const useOfistantStore = create<OfistantState>((set, get) => ({
   messages: [],
   context: emptyContext(),
@@ -111,7 +100,7 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
           ts: Date.now(),
         },
       ],
-      quickReplies: WELCOME_QUICK_REPLIES,
+      quickReplies: [],
     });
     void fetch("/api/catalog/taxonomy")
       .then(async (response) => {
@@ -303,7 +292,7 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
         },
       ],
       context: emptyContext(),
-      quickReplies: WELCOME_QUICK_REPLIES,
+      quickReplies: [],
       pendingAction: null,
       typing: false,
     }),

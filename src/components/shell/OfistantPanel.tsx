@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { GitCompare, Headset, RotateCcw, Search, ShoppingBag, Sparkles, X, type LucideIcon } from "lucide-react";
+import { Headset, RotateCcw, Sparkles, X } from "lucide-react";
 
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { useOfistantAction } from "@/hooks/use-ofistant-action";
+import { useOfistantPageContext } from "@/hooks/use-ofistant-page-context";
 import { Button } from "@/components/ui/Button";
 import { ChatComposer } from "@/components/ofistant/ChatComposer";
 import { ChatMessageView } from "@/components/ofistant/ChatMessageView";
-import { IndustryQuickPicker } from "@/components/ofistant/IndustryQuickPicker";
 import { QuickReplies } from "@/components/ofistant/QuickReplies";
 import { TypingIndicator } from "@/components/ofistant/TypingIndicator";
 
@@ -25,12 +25,13 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const dismissPendingAction = useOfistantStore((s) => s.dismissPendingAction);
   const reset = useOfistantStore((s) => s.reset);
   const hydrated = useOfistantStore((s) => s.hydrated);
-  const journeyStage = useOfistantStore((s) => s.context.journeyStage);
-  const messagesCount = useOfistantStore((s) => s.messages.length);
   const { dispatch } = useOfistantAction();
   const [busy, setBusy] = useState(false);
-  const showIndustryPicker = journeyStage === "NEW_VISITOR" && messagesCount <= 1 && !typing;
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Keep Ofistant aware of the page the customer is viewing + their cart
+  // breakdown, so it can answer questions about what is on screen.
+  useOfistantPageContext();
 
   useEffect(() => { init(); }, [init]);
   useLayoutEffect(() => { const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight; }, [messages, typing, pendingAction]);
@@ -56,7 +57,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-muted text-ink">
       {/* Header — light corporate */}
-      <header className="relative flex items-center justify-between border-b border-line bg-white px-4 py-3.5">
+      <header className="relative flex h-14 items-center justify-between border-b border-line bg-white px-4">
         <div className="flex items-center gap-3">
           <div className="relative">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-sm">
@@ -87,16 +88,17 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
         </div>
       </header>
 
-      {/* Messages */}
+      {/* Messages — conversation-first. The greeting lives in messages[0] as a
+          normal assistant bubble (no separate welcome card, no industry grid),
+          so the panel reads as a chat from the very first frame. The composer
+          below is the hero; the industry is inferred from whatever the user
+          types — the same code path the old picker chips took, minus the
+          directory wall that made this feel like anything but a chat. Contextual
+          quick-replies still surface after each assistant turn. */}
       <div ref={scrollRef} className="relative flex-1 space-y-4 overflow-y-auto bg-surface-muted px-4 py-4" aria-live="polite">
-        {showIndustryPicker ? (
-          <WelcomeCard />
-        ) : (
-          messages.map((m) => (
-            <ChatMessageView key={m.id} message={m} isPendingConfirm={!!pendingAction && lastPendingMsgId === m.id && !!m.requiresConfirm} onConfirm={handleConfirm} onCancel={handleCancel} busy={busy} />
-          ))
-        )}
-        {showIndustryPicker && <IndustryQuickPicker onPick={handleQuickReply} />}
+        {messages.map((m) => (
+          <ChatMessageView key={m.id} message={m} isPendingConfirm={!!pendingAction && lastPendingMsgId === m.id && !!m.requiresConfirm} onConfirm={handleConfirm} onCancel={handleCancel} busy={busy} />
+        ))}
         {typing && (
           <div className="flex items-center gap-2">
             <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-700 text-white">
@@ -107,7 +109,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
             </div>
           </div>
         )}
-        {!typing && quickReplies.length > 0 && !pendingAction && !showIndustryPicker && (
+        {!typing && quickReplies.length > 0 && !pendingAction && (
           <QuickReplies options={quickReplies} onPick={handleQuickReply} />
         )}
       </div>
@@ -129,39 +131,3 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
 }
 
 export const _legacyButtonLinkCompat = Button;
-
-function WelcomeCard() {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-soft-sm">
-      <div className="bg-brand-700 px-4 py-3.5 text-white">
-        <div className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/15">
-            <Sparkles className="h-5 w-5 text-ochre-300" strokeWidth={2.2} />
-          </span>
-          <div>
-            <p className="text-sm font-bold leading-tight">Halo! Saya Ofistant</p>
-            <p className="text-[11px] text-brand-100">Asisten pengadaan seragam</p>
-          </div>
-        </div>
-        <p className="mt-2.5 text-[12.5px] leading-relaxed text-brand-50">
-          Saya bantu cari, bandingkan, &amp; pesan seragam kerja. Pilih industri di
-          bawah atau tanyakan langsung.
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-1.5 px-4 py-3">
-        <CapabilityChip icon={Search} label="Cari produk" />
-        <CapabilityChip icon={GitCompare} label="Bandingkan" />
-        <CapabilityChip icon={ShoppingBag} label="Pesan" />
-      </div>
-    </div>
-  );
-}
-
-function CapabilityChip({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700">
-      <Icon className="h-3 w-3" aria-hidden="true" />
-      {label}
-    </span>
-  );
-}

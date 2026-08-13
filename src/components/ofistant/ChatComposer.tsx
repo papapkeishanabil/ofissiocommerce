@@ -1,58 +1,93 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { ArrowUp, Sparkles } from "lucide-react";
+
+/**
+ * Imperative handle the parent uses to pre-fill the input from outside
+ * (e.g. when a capability chip is clicked). Seeds the value and focuses the
+ * field with the caret at the end, so the user can complete & send.
+ */
+export interface ChatComposerHandle {
+  seed: (text: string) => void;
+}
 
 interface ChatComposerProps {
   disabled?: boolean;
   onSubmit: (text: string) => void;
 }
 
-export function ChatComposer({ disabled, onSubmit }: ChatComposerProps) {
-  const [value, setValue] = useState("");
+export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
+  function ChatComposer({ disabled, onSubmit }, ref) {
+    const [value, setValue] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
 
-  function handle(e: FormEvent) {
-    e.preventDefault();
-    const t = value.trim();
-    if (!t || disabled) return;
-    onSubmit(t);
-    setValue("");
-  }
+    useImperativeHandle(
+      ref,
+      () => ({
+        seed(text: string) {
+          setValue(text);
+          const el = inputRef.current;
+          if (el) {
+            el.focus();
+            const len = text.length;
+            el.setSelectionRange(len, len);
+          }
+        },
+      }),
+      [],
+    );
 
-  return (
-    <div className="space-y-1.5">
-      <form
-        onSubmit={handle}
-        className="group relative flex items-end gap-2 rounded-2xl border border-line bg-surface-muted p-1.5 transition-all focus-within:border-brand-400 focus-within:bg-white focus-within:shadow-soft-sm"
-      >
-        <span aria-hidden className="ml-1 mb-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-700 text-white shadow-soft-xs">
-          <Sparkles className="h-3.5 w-3.5" strokeWidth={2.2} />
-        </span>
+    function handle(e: FormEvent) {
+      e.preventDefault();
+      const t = value.trim();
+      if (!t || disabled) return;
+      onSubmit(t);
+      setValue("");
+    }
 
-        <label htmlFor="ofistant-input" className="sr-only">Ketik pesan ke Ofistant</label>
-        <input
-          id="ofistant-input"
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="Tanya apapun tentang seragam…"
-          disabled={disabled}
-          maxLength={300}
-          className="min-w-0 flex-1 border-none bg-transparent px-1 py-1.5 text-[13px] text-ink outline-none placeholder:text-ink-subtle disabled:opacity-60"
-        />
-
-        <button
-          type="submit"
-          disabled={disabled || !value.trim()}
-          aria-label="Kirim pesan"
-          className="mb-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-xs transition-all hover:bg-brand-800 active:scale-95 disabled:bg-slate-300 disabled:shadow-none"
+    return (
+      <div className="space-y-1.5">
+        <form
+          onSubmit={handle}
+          className="group relative flex items-end gap-2 rounded-2xl border border-line bg-surface-muted p-1.5 transition-all focus-within:border-brand-400 focus-within:bg-white focus-within:shadow-soft-sm"
         >
-          <ArrowUp className="h-4 w-4" strokeWidth={2.2} />
-        </button>
-      </form>
-      <p className="px-2 text-[9px] text-ink-subtle">
-        Ofistant bisa menampilkan produk, membuka detail, menambah ke keranjang &amp; lainnya.
-      </p>
-    </div>
-  );
-}
+          <span aria-hidden className="ml-1 mb-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-700 text-white shadow-soft-xs">
+            <Sparkles className="h-3.5 w-3.5" strokeWidth={2.2} />
+          </span>
+
+          <label htmlFor="ofistant-input" className="sr-only">Ketik pesan ke Ofistant</label>
+          <input
+            id="ofistant-input"
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Tanya apapun tentang seragam…"
+            disabled={disabled}
+            maxLength={300}
+            className="min-w-0 flex-1 border-none bg-transparent px-1 py-1.5 text-[13px] text-ink outline-none placeholder:text-ink-subtle disabled:opacity-60"
+          />
+
+          <button
+            type="submit"
+            disabled={disabled || !value.trim()}
+            aria-label="Kirim pesan"
+            className="mb-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-xs transition-all hover:bg-brand-800 active:scale-95 disabled:bg-slate-300 disabled:shadow-none"
+          >
+            <ArrowUp className="h-4 w-4" strokeWidth={2.2} />
+          </button>
+        </form>
+        <p className="px-2 text-[9px] text-ink-subtle">
+          Ofistant bisa menampilkan produk, membuka detail, menambah ke keranjang &amp; lainnya.
+        </p>
+      </div>
+    );
+  },
+);
