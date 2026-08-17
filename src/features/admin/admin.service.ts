@@ -477,6 +477,49 @@ export async function listAdminOrders(): Promise<AdminOrderRow[]> {
     });
 }
 
+export async function listAdminInvoices(): Promise<import("./admin.types").AdminInvoiceRow[]> {
+  const orders = (await repositoryRegistry.orders.listAll?.()) ?? [];
+  const [documents, emailLogs, tracking] = await Promise.all([
+    repositoryRegistry.documents.listAll?.() ?? Promise.resolve([]),
+    repositoryRegistry.emailLogs.listAll(),
+    listTrackingRaw(),
+  ]);
+
+  return orders
+    .map((order) => {
+      const routed = ensureOrderProcessRouting(order);
+      const invoice = documents
+        .filter((document) => document.entityType === "order" && document.entityId === routed.id && document.documentType === "invoice_pdf")
+        .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0];
+      const deliveries = emailLogs
+        .filter((log) => log.safeMetadata.emailPurpose === "invoice_ready" && (log.safeMetadata.orderId === routed.id || log.safeMetadata.orderNumber === routed.orderNumber))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      const delivery = deliveries[0];
+      const invoiceStatus = delivery?.status === "failed"
+        ? "failed"
+        : delivery && ["sent", "mocked"].includes(delivery.status)
+          ? "sent"
+          : invoice?.status === "generated"
+            ? "ready"
+            : "not_generated";
+      const tracked = tracking.find((item) => item.id === routed.id);
+      return {
+        orderId: routed.id,
+        orderNumber: tracked?.orderNumber ?? routed.orderNumber ?? routed.id,
+        companyName: tracked?.companyName ?? routed.companyId,
+        total: routed.calculation.grandTotal,
+        paymentStatus: routed.status === "payment_received" ? "paid" : tracked?.paymentStatus ?? "waiting_payment",
+        invoiceStatus,
+        filename: invoice?.filename ?? null,
+        updatedAt: delivery?.sentAt ?? delivery?.createdAt ?? invoice?.updatedAt ?? routed.updatedAt,
+      } satisfies import("./admin.types").AdminInvoiceRow;
+    })
+    .sort((a, b) => {
+      const priority = { failed: 0, ready: 1, not_generated: 2, sent: 3 } as const;
+      return priority[a.invoiceStatus] - priority[b.invoiceStatus] || Date.parse(a.updatedAt) - Date.parse(b.updatedAt);
+    });
+}
+
 export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail | null> {
   const orders = (await repositoryRegistry.orders.listAll?.()) ?? [];
   const order = orders.find((item) => item.id === id);
@@ -575,7 +618,7 @@ export async function startAdminOrderProcess(input: {
   request?: Request;
 }) {
   if (!hasAdminPermission(input.actor, "admin:order:update")) {
-    throw createApiError("FORBIDDEN", "Role internal belum boleh memproses order.", 403);
+    throw createApiError("FORBIDDEN", "Role internal belum boleh membuat Perintah Kerja.", 403);
   }
   const detail = await getAdminOrderDetail(input.id);
   if (!detail) throw createApiError("NOT_FOUND", "Order tidak ditemukan.", 404);
@@ -584,7 +627,7 @@ export async function startAdminOrderProcess(input: {
   if (!detail.processOrder && !paymentReceived) {
     throw createApiError(
       "BAD_REQUEST",
-      "Pembayaran belum terverifikasi. Process order belum dapat dimulai.",
+      "Pembayaran belum terverifikasi. Perintah Kerja belum dapat dibuat.",
       409,
     );
   }
@@ -653,7 +696,7 @@ export async function patchAdminProcessOrder(input: {
   request?: Request;
 }) {
   if (!canUpdateProcessOrder(input.actor)) {
-    throw createApiError("FORBIDDEN", "Role internal belum boleh mengubah process order.", 403);
+    throw createApiError("FORBIDDEN", "Role internal belum boleh mengubah Perintah Kerja.", 403);
   }
   return updateProcessOrder({
     processOrderId: input.id,
@@ -691,7 +734,7 @@ export async function addAdminProcessOrderEvent(input: {
   request?: Request;
 }) {
   if (!canUpdateProcessOrder(input.actor)) {
-    throw createApiError("FORBIDDEN", "Role internal belum boleh menambah event process order.", 403);
+    throw createApiError("FORBIDDEN", "Role internal belum boleh menambah aktivitas Perintah Kerja.", 403);
   }
   return addProcessOrderEvent({
     processOrderId: input.id,
@@ -1045,6 +1088,12 @@ function mapQuotationRow(
       : isRequestedNew
         ? "quotation_requested"
         : null,
+    workspace:
+      ["quoted", "revision_requested", "accepted", "rejected", "expired", "converted_to_order", "cancelled"].includes(
+        quotation.status,
+      )
+        ? "quotation"
+        : "request",
   };
 }
 

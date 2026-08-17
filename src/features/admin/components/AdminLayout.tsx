@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Manrope } from "next/font/google";
+import { Onest } from "next/font/google";
 
 import { requireInternalAdminServer } from "../admin.service";
 import { AdminHeader } from "./AdminHeader";
@@ -7,7 +7,7 @@ import { AdminSidebar } from "./AdminSidebar";
 import { AdminNotificationProvider } from "@/features/admin-notifications/components/AdminNotificationProvider";
 import { AdminStickyNotifications } from "@/features/admin-notifications/components/AdminStickyNotifications";
 
-const manrope = Manrope({
+const onest = Onest({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-admin",
@@ -18,7 +18,7 @@ export async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requireInternalAdminServer("admin:view");
   return (
     <div
-      className={`${manrope.variable} admin-shell isolate min-h-screen w-full overflow-x-clip bg-slate-50 text-ink`}
+      className={`${onest.variable} admin-shell isolate min-h-screen w-full overflow-x-clip bg-[#edf0f5] text-ink`}
     >
       <a
         href="#admin-main"
@@ -27,13 +27,13 @@ export async function AdminLayout({ children }: { children: ReactNode }) {
         Lewati ke konten admin
       </a>
       <AdminNotificationProvider role={user.role} userId={user.id}>
-        <div className="relative flex min-h-screen flex-col lg:items-start lg:flex-row">
+        <div className="relative flex min-h-dvh min-w-0 flex-col lg:items-start lg:flex-row lg:gap-2 lg:p-2">
           <AdminSidebar user={user} />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden bg-[#f8f9fb] lg:min-h-[calc(100vh-1rem)] lg:rounded-2xl">
             <AdminHeader user={user} />
             <main
               id="admin-main"
-              className="px-4 py-6 md:px-7 lg:px-10 lg:py-8"
+              className="min-w-0 px-3 py-4 sm:px-4 md:px-5 lg:px-[clamp(1.25rem,2vw,1.75rem)] lg:py-6"
             >
               <div className="mx-auto max-w-[1600px]">{children}</div>
             </main>

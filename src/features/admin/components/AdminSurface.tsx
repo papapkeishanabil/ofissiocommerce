@@ -22,14 +22,14 @@ export function AdminPageHeader({
   return (
     <section
       className={cn(
-        "rounded-xl border border-line bg-white p-5 shadow-soft-sm md:p-6",
+        "rounded-xl bg-white p-5 shadow-[0_7px_22px_rgba(24,36,59,0.06)] md:p-6",
         className,
       )}
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl">
-          <p className="type-eyebrow text-brand-700">{eyebrow}</p>
-          <h2 className="mt-2 text-xl font-bold tracking-tight text-ink md:text-2xl">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-brand-700">{eyebrow}</p>
+          <h2 className="mt-1.5 text-2xl font-bold tracking-[-0.035em] text-ink md:text-3xl">
             {title}
           </h2>
           {description ? (
@@ -55,7 +55,7 @@ export function AdminCard({
   return (
     <section
       className={cn(
-        "rounded-xl border border-line bg-white p-5 shadow-soft-sm",
+        "rounded-xl bg-white p-5 shadow-[0_7px_22px_rgba(24,36,59,0.06)]",
         className,
       )}
     >

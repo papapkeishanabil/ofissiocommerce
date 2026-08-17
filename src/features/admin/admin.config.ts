@@ -4,15 +4,21 @@ import type { AdminPermission } from "./admin.types";
 
 export const ADMIN_NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", permission: "admin:view" },
+  { href: "/admin/help", label: "Panduan", permission: "admin:view" },
   { href: "/admin/products", label: "Produk", permission: "admin:catalog:view" },
   { href: "/admin/pricing/embroidery", label: "Harga Bordir", permission: "admin:catalog:view" },
+  { href: "/admin/promotions", label: "Promo & Kupon", permission: "admin:catalog:view" },
   { href: "/admin/site-content", label: "Konten Homepage", permission: "admin:content:view" },
+  { href: "/admin/ofistant-knowledge", label: "Knowledge Base Ofistant", permission: "admin:knowledge:view" },
   { href: "/admin/settings/tax", label: "PPN", permission: "admin:tax:view" },
+  { href: "/admin/settings/shipping", label: "Kurir Checkout", permission: "admin:settings:view" },
+  { href: "/admin/requests", label: "Permintaan Customer", permission: "admin:quotation:view" },
   { href: "/admin/quotations", label: "Quotations", permission: "admin:quotation:view" },
-  { href: "/admin/orders", label: "Orders", permission: "admin:order:view" },
+  { href: "/admin/orders", label: "Pesanan Customer", permission: "admin:order:view" },
+  { href: "/admin/invoices", label: "Invoices", permission: "admin:invoice:view" },
   { href: "/admin/notifications", label: "Notifikasi", permission: "admin:notification:view" },
   { href: "/admin/settings/email", label: "Email", permission: "admin:email:view" },
-  { href: "/admin/process-orders", label: "Process Orders", permission: "admin:process-order:view" },
+  { href: "/admin/process-orders", label: "Perintah Kerja", permission: "admin:process-order:view" },
   { href: "/admin/shipments", label: "Shipments", permission: "admin:shipment:view" },
   { href: "/admin/customers", label: "Customers", permission: "admin:customer:view" },
   { href: "/admin/catalog", label: "Catalog", permission: "admin:catalog:view" },
@@ -20,6 +26,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/tracking", label: "Tracking", permission: "admin:tracking:view" },
   { href: "/admin/integrations/ginee", label: "Ginee", permission: "admin:integration:ginee:view" },
   { href: "/admin/audit", label: "Audit", permission: "admin:audit:view" },
+  { href: "/admin/users", label: "Tim Ofissio", permission: "admin:user:view" },
 ] as const;
 
 export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
@@ -63,6 +70,11 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:stock:view",
     "admin:stock:request",
     "admin:audit:view",
+    "admin:user:view",
+    "admin:user:update",
+    "admin:knowledge:view",
+    "admin:knowledge:update",
+    "admin:knowledge:publish",
   ],
   sales_admin: [
     "admin:access", "admin:view", "admin:quotation:view", "admin:quotation:update",
@@ -71,7 +83,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:invoice:send", "admin:notification:view", "admin:notification:update",
     "admin:customer:view", "admin:catalog:view",
     "admin:integration:ginee:view", "admin:integration:ginee:sync_read",
-    "admin:stock:view", "admin:stock:request",
+    "admin:stock:view", "admin:stock:request", "admin:knowledge:view", "admin:knowledge:update",
   ],
   finance_admin: [
     "admin:access", "admin:view", "admin:quotation:view", "admin:order:view",
@@ -154,6 +166,10 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:integration:ginee:view",
     "admin:integration:ginee:sync_read",
     "admin:stock:view",
+    "admin:notification:view",
+    "admin:notification:update",
+    "admin:knowledge:view",
+    "admin:knowledge:update",
   ],
 };
 

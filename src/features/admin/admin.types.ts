@@ -68,7 +68,12 @@ export type AdminPermission =
   | "admin:integration:ginee:sync_read"
   | "admin:stock:view"
   | "admin:stock:request"
-  | "admin:audit:view";
+  | "admin:audit:view"
+  | "admin:user:view"
+  | "admin:user:update"
+  | "admin:knowledge:view"
+  | "admin:knowledge:update"
+  | "admin:knowledge:publish";
 
 export interface InternalAdminUser {
   id: string;
@@ -111,6 +116,7 @@ export interface AdminQuotationRow {
   /** unread quotation_accepted notification (customer just accepted) */
   isAcceptedNew: boolean;
   attentionType: "quotation_accepted" | "quotation_requested" | null;
+  workspace: "request" | "quotation";
 }
 
 export interface AdminLogoPreview {
@@ -192,6 +198,17 @@ export interface AdminOrderRow {
   needsProcessing: boolean;
   attentionType: "payment_received" | "new_order" | null;
   notificationId: string | null;
+}
+
+export interface AdminInvoiceRow {
+  orderId: string;
+  orderNumber: string;
+  companyName: string;
+  total: number;
+  paymentStatus: string;
+  invoiceStatus: "not_generated" | "ready" | "sent" | "failed";
+  filename: string | null;
+  updatedAt: string;
 }
 
 export interface AdminOrderDetail {
