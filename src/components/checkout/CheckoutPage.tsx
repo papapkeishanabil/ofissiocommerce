@@ -16,6 +16,7 @@ import { useCartHydrated, useCartItems } from "@/hooks/use-cart";
 import { useCartStore } from "@/stores/cart-store";
 import { useUIStore } from "@/stores/ui-store";
 import { formatIDR } from "@/types/product";
+import { hasCartCustomization, type CartLineItem } from "@/types/cart";
 import type { Address, Company } from "@/types/account";
 import type { ShippingRate } from "@/features/shipping/shipping.types";
 import {
@@ -28,8 +29,10 @@ import {
 
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { ProductThumb } from "@/components/ui/ProductThumb";
 import { CompanyProfileForm } from "@/components/company/CompanyProfileForm";
 import { CompanyAddressForm } from "@/components/company/CompanyAddressForm";
+import { CheckoutFrame } from "./CheckoutFrame";
 
 /** Check only profile fields (excludes address). */
 function isProfileFieldsComplete(c: Company): boolean {
@@ -50,6 +53,7 @@ export function CheckoutPage() {
   const cartHydrated = useCartHydrated();
   const items = useCartItems();
   const clearCart = useCartStore((s) => s.clear);
+  const appliedPromotion = useCartStore((s) => s.appliedPromotion);
   const openAuth = useUIStore((s) => s.openAuth);
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -61,6 +65,7 @@ export function CheckoutPage() {
   >(null);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [backendSubtotal, setBackendSubtotal] = useState<number | null>(null);
+  const [backendDiscount, setBackendDiscount] = useState<number | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
 
   const clientSubtotal = useMemo(
@@ -68,14 +73,23 @@ export function CheckoutPage() {
     [items],
   );
   const subtotal = backendSubtotal ?? clientSubtotal;
-  const tax = Math.round(subtotal * 0.11);
+  const discountTotal = backendDiscount ?? (
+    appliedPromotion?.subtotalAtApply === clientSubtotal
+      ? appliedPromotion.discountTotal
+      : 0
+  );
+  const netSubtotal = Math.max(0, subtotal - discountTotal);
+  const tax = Math.round(netSubtotal * 0.11);
   const selectedShippingRate = shippingRates.find(
     (rate) => rate.id === selectedShippingRateId,
   );
   const shippingCost = selectedShippingRate?.price ?? 0;
-  const total = subtotal + tax + shippingCost;
+  const total = netSubtotal + tax + shippingCost;
   const hasMadeToOrder = items.some(
     (item) => item.fulfillmentType === "MADE_TO_ORDER",
+  );
+  const requiresEmbroideryConsultation = items.some(
+    hasCartCustomization,
   );
 
   // Step 1: require auth. If not authed, open modal once on mount.
@@ -88,46 +102,61 @@ export function CheckoutPage() {
 
   if (!authHydrated || !cartHydrated) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-10 lg:px-8">
-        <div className="h-8 w-56 animate-pulse rounded bg-slate-200" />
-        <div className="mt-6 h-40 animate-pulse rounded-2xl bg-slate-200" />
-      </div>
+      <CheckoutFrame title="Menyiapkan checkout…">
+        <div className="space-y-4">
+          <div className="h-12 w-full max-w-md animate-pulse rounded-xl bg-surface-muted" />
+          <div className="h-72 animate-pulse rounded-2xl border border-line bg-surface-muted" />
+        </div>
+      </CheckoutFrame>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="mx-auto grid w-full max-w-md place-items-center px-4 py-16 text-center">
-        <ShieldCheck className="h-10 w-10 text-brand-600" />
-        <h1 className="mt-3 text-lg font-bold text-ink">Login diperlukan</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Silakan masuk atau daftar untuk melanjutkan checkout. Keranjang Anda
-          akan tetap ada.
-        </p>
-        <Button
-          className="mt-5"
-          onClick={() => openAuth({ kind: "checkout" })}
-        >
-          Masuk / Daftar
-        </Button>
-        <ButtonLink href="/cart" variant="ghost" className="mt-2">
-          Kembali ke keranjang
-        </ButtonLink>
-      </div>
+      <CheckoutFrame
+        title="Login diperlukan"
+        description="Silakan masuk atau daftar untuk melanjutkan checkout. Keranjang Anda akan tetap ada."
+        centered
+      >
+        <div className="rounded-2xl border border-line bg-surface p-8 text-center shadow-soft-sm">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-50 text-brand-700">
+            <ShieldCheck className="h-7 w-7" />
+          </span>
+          <p className="mt-4 text-sm leading-relaxed text-ink-muted">
+            Masuk atau daftar untuk melanjutkan checkout.
+          </p>
+          <div className="mt-6 space-y-2">
+            <Button
+              className="w-full"
+              onClick={() => openAuth({ kind: "checkout" })}
+            >
+              Masuk / Daftar
+            </Button>
+            <ButtonLink href="/cart" variant="ghost" className="w-full">
+              Kembali ke keranjang
+            </ButtonLink>
+          </div>
+        </div>
+      </CheckoutFrame>
     );
   }
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto grid w-full max-w-md place-items-center px-4 py-16 text-center">
-        <h1 className="text-lg font-bold text-ink">Keranjang kosong</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Tambahkan produk dulu sebelum checkout.
-        </p>
-        <ButtonLink href="/catalog" className="mt-5">
-          Telusuri katalog
-        </ButtonLink>
-      </div>
+      <CheckoutFrame
+        title="Keranjang kosong"
+        description="Tambahkan produk dulu sebelum checkout."
+        centered
+      >
+        <div className="rounded-2xl border border-line bg-surface p-8 text-center shadow-soft-sm">
+          <p className="text-sm leading-relaxed text-ink-muted">
+            Belum ada produk di keranjang Anda.
+          </p>
+          <ButtonLink href="/catalog" className="mt-5 w-full sm:w-auto">
+            Telusuri katalog
+          </ButtonLink>
+        </div>
+      </CheckoutFrame>
     );
   }
 
@@ -136,17 +165,21 @@ export function CheckoutPage() {
 
   if (!session || !profileFieldsComplete) {
     return (
-      <div className="mx-auto w-full max-w-2xl px-4 py-8 lg:px-8">
-        <header className="mb-5">
-          <Badge tone="brand">Langkah 1 dari 3</Badge>
-          <h1 className="mt-2 text-2xl font-bold text-ink">
-            Lengkapi profil perusahaan
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Data ini dipakai untuk faktur, quotation, dan pengiriman.
-          </p>
-        </header>
-
+      <CheckoutFrame
+        step={1}
+        title="Lengkapi profil perusahaan"
+        description="Data ini dipakai untuk faktur, quotation, dan pengiriman."
+        aside={
+          <CondensedSummary
+            items={items}
+            subtotal={subtotal}
+            discountTotal={discountTotal}
+            tax={tax}
+            total={total}
+            promotionCode={appliedPromotion?.code}
+          />
+        }
+      >
         {profileSaved && (
           <div
             role="status"
@@ -157,12 +190,12 @@ export function CheckoutPage() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-line bg-surface p-5">
+        <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
           <CompanyProfileForm
             onSuccess={() => setProfileSaved(true)}
           />
         </div>
-      </div>
+      </CheckoutFrame>
     );
   }
 
@@ -176,20 +209,25 @@ export function CheckoutPage() {
 
   if (!selectedAddress) {
     return (
-      <div className="mx-auto w-full max-w-2xl px-4 py-8 lg:px-8">
-        <header className="mb-5">
-          <Badge tone="brand">Langkah 2 dari 3</Badge>
-          <h1 className="mt-2 text-2xl font-bold text-ink">
-            Tambah alamat pengiriman
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Anda belum punya alamat. Tambahkan satu untuk lanjut.
-          </p>
-        </header>
-        <div className="rounded-2xl border border-line bg-surface p-5">
+      <CheckoutFrame
+        step={2}
+        title="Tambah alamat pengiriman"
+        description="Anda belum punya alamat. Tambahkan satu untuk lanjut."
+        aside={
+          <CondensedSummary
+            items={items}
+            subtotal={subtotal}
+            discountTotal={discountTotal}
+            tax={tax}
+            total={total}
+            promotionCode={appliedPromotion?.code}
+          />
+        }
+      >
+        <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
           <AddressAddInline />
         </div>
-      </div>
+      </CheckoutFrame>
     );
   }
 
@@ -207,6 +245,7 @@ export function CheckoutPage() {
       body: JSON.stringify({
         companyId: session.company.id,
         userId: session.user.id,
+        promotionCode: appliedPromotion?.code ?? null,
         items: items.map((item) => ({
           productId: item.productId,
           selectedColor: item.color,
@@ -220,11 +259,15 @@ export function CheckoutPage() {
       ok: boolean;
       cartId?: string;
       subtotal?: number;
+      discountTotal?: number;
       message?: string;
     };
     if (!response.ok || !result.cartId) throw new Error(result.message);
     if (typeof result.subtotal === "number") {
       setBackendSubtotal(result.subtotal);
+    }
+    if (typeof result.discountTotal === "number") {
+      setBackendDiscount(result.discountTotal);
     }
     return result.cartId;
   }
@@ -326,34 +369,103 @@ export function CheckoutPage() {
 
   // Step 4: review.
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8 lg:px-8">
-      <header className="mb-5">
-        <Badge tone="brand">Langkah 3 dari 3</Badge>
-        <h1 className="mt-2 text-2xl font-bold text-ink">Review pesanan</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Periksa detail, pilih ongkir, lalu lanjutkan pembayaran atau quotation.
-        </p>
-      </header>
+    <CheckoutFrame
+      step={3}
+      title="Review pesanan"
+      description="Periksa detail, pilih ongkir, lalu lanjutkan pembayaran atau quotation."
+      aside={
+        <div className="rounded-2xl border border-line bg-surface p-5 shadow-soft-sm">
+          <h2 className="text-sm font-bold text-ink">Ringkasan</h2>
+          <dl className="mt-3 space-y-2 text-sm">
+            <Row label="Subtotal" value={formatIDR(subtotal)} />
+            {discountTotal > 0 ? (
+              <Row
+                label={`Promo ${appliedPromotion?.code ?? ""}`.trim()}
+                value={`- ${formatIDR(discountTotal)}`}
+              />
+            ) : null}
+            <Row label="PPN 11%" value={formatIDR(tax)} muted />
+            <Row
+              label="Ongkos kirim"
+              value={
+                selectedShippingRate
+                  ? selectedShippingRate.price === 0
+                    ? "Gratis"
+                    : formatIDR(selectedShippingRate.price)
+                  : "Belum dipilih"
+              }
+              muted={!selectedShippingRate}
+              italic={!selectedShippingRate}
+            />
+          </dl>
+          <div className="mt-4 flex items-end justify-between border-t border-line pt-3">
+            <span className="text-sm font-semibold text-ink">Total</span>
+            <span className="text-2xl font-extrabold tracking-tight text-ink-strong tabular-nums">
+              {formatIDR(total)}
+            </span>
+          </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
-        {/* Left: items + address */}
-        <div className="space-y-4">
+          <div className="mt-4 space-y-2">
+            <Button
+              className="w-full"
+              onClick={requiresEmbroideryConsultation ? handleRequestQuote : handlePayment}
+              disabled={submitting}
+              aria-busy={submitting}
+            >
+              {submitting
+                ? "Memproses..."
+                : requiresEmbroideryConsultation
+                  ? "Minta Estimasi Bordir"
+                  : "Lanjut Pembayaran"}
+            </Button>
+            {!requiresEmbroideryConsultation ? <Button
+              className="w-full"
+              variant="outline"
+              onClick={handleRequestQuote}
+              disabled={submitting}
+            >
+              Request Quotation
+            </Button> : null}
+          </div>
+
+          {checkoutMessage && (
+            <p
+              role="alert"
+              className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800"
+            >
+              {checkoutMessage}
+            </p>
+          )}
+
+          <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-[11px] leading-snug text-brand-800">
+            {requiresEmbroideryConsultation
+              ? "Produk dengan bordir perlu estimasi supervisor sebelum harga, jadwal, dan pembayaran dikonfirmasi."
+              : "Total final dihitung ulang oleh backend. Development memakai payment mock sampai konfigurasi iPaymu resmi diaktifkan."}
+          </p>
+        </div>
+      }
+    >
+      {/* Items + address + shipping */}
+      <div className="space-y-4">
           <section className="rounded-2xl border border-line bg-surface p-5">
             <h2 className="text-sm font-bold text-ink">Item pesanan</h2>
             <ul className="mt-3 divide-y divide-line">
               {items.map((it) => (
                 <li key={it.id} className="flex items-start justify-between gap-3 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">
-                      {it.productName}
-                    </p>
-                    <p className="text-[11px] text-ink-muted">
-                      {it.color} · {it.totalQty} pcs · {formatIDR(it.finalUnitPrice ?? it.unitPrice)}/pcs
-                      {it.quantityTierApplied && it.quantityTierLabel ? ` · Tier ${it.quantityTierLabel}` : ""}
-                    </p>
-                    {(it.embroideryLines?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Bordir {formatIDR(it.embroideryTotal)}</p> : null}
+                  <div className="flex min-w-0 items-start gap-3">
+                    <ProductThumb src={it.image} alt={it.productName} className="h-16 w-16 sm:h-20 sm:w-20" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {it.productName}
+                      </p>
+                      <p className="text-[11px] text-ink-muted">
+                        {it.color} · {it.totalQty} pcs · {formatIDR(it.finalUnitPrice ?? it.unitPrice)}/pcs
+                        {it.quantityTierApplied && it.quantityTierLabel ? ` · Tier ${it.quantityTierLabel}` : ""}
+                      </p>
+                      {(it.embroideryLines?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Bordir {formatIDR(it.embroideryTotal)}</p> : null}
+                    </div>
                   </div>
-                  <p className="text-sm font-bold">{formatIDR(it.finalEstimatedTotal ?? it.estimatedPrice)}</p>
+                  <p className="text-sm font-bold text-ink tabular-nums">{formatIDR(it.finalEstimatedTotal ?? it.estimatedPrice)}</p>
                 </li>
               ))}
             </ul>
@@ -492,7 +604,7 @@ export function CheckoutPage() {
                           {rate.estimatedDays}
                         </span>
                       </span>
-                      <span className="text-sm font-bold text-ink">
+                      <span className="text-sm font-bold text-ink tabular-nums">
                         {rate.price === 0 ? "Gratis" : formatIDR(rate.price)}
                       </span>
                     </label>
@@ -501,69 +613,8 @@ export function CheckoutPage() {
               </fieldset>
             )}
           </section>
-        </div>
-
-        {/* Right: summary + actions */}
-        <aside className="lg:sticky lg:top-20 lg:self-start">
-          <div className="rounded-2xl border border-line bg-surface p-5">
-            <h2 className="text-sm font-bold text-ink">Ringkasan</h2>
-            <dl className="mt-3 space-y-2 text-sm">
-              <Row label="Subtotal" value={formatIDR(subtotal)} />
-              <Row label="PPN 11%" value={formatIDR(tax)} muted />
-              <Row
-                label="Ongkos kirim"
-                value={
-                  selectedShippingRate
-                    ? selectedShippingRate.price === 0
-                      ? "Gratis"
-                      : formatIDR(selectedShippingRate.price)
-                    : "Belum dipilih"
-                }
-                muted={!selectedShippingRate}
-                italic={!selectedShippingRate}
-              />
-            </dl>
-            <div className="mt-4 flex items-center justify-between border-t border-line pt-3">
-              <span className="text-sm font-semibold text-ink">Total</span>
-              <span className="text-xl font-bold text-ink">{formatIDR(total)}</span>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <Button
-                className="w-full"
-                onClick={handlePayment}
-                disabled={submitting}
-                aria-busy={submitting}
-              >
-                {submitting ? "Memproses..." : "Lanjut Pembayaran"}
-              </Button>
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={handleRequestQuote}
-                disabled={submitting}
-              >
-                Request Quotation
-              </Button>
-            </div>
-
-            {checkoutMessage && (
-              <p
-                role="alert"
-                className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800"
-              >
-                {checkoutMessage}
-              </p>
-            )}
-
-            <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-[11px] leading-snug text-brand-800">
-              Total final dihitung ulang oleh backend. Development memakai
-              payment mock sampai konfigurasi iPaymu resmi diaktifkan.
-            </p>
-          </div>
-        </aside>
       </div>
-    </div>
+    </CheckoutFrame>
   );
 }
 
@@ -584,11 +635,57 @@ function Row({
       <dd
         className={
           (muted ? "text-ink-muted " : "font-semibold text-ink ") +
-          (italic ? "italic text-xs" : "")
+          (italic ? "italic text-xs" : " tabular-nums")
         }
       >
         {value}
       </dd>
+    </div>
+  );
+}
+
+/**
+ * Condensed order summary for steps 1–2. Desktop-only aside — renders the
+ * totals already derived in CheckoutPage, adds no logic of its own.
+ */
+function CondensedSummary({
+  items,
+  subtotal,
+  discountTotal,
+  tax,
+  total,
+  promotionCode,
+}: {
+  items: CartLineItem[];
+  subtotal: number;
+  discountTotal: number;
+  tax: number;
+  total: number;
+  promotionCode?: string;
+}) {
+  const totalQty = items.reduce((a, it) => a + it.totalQty, 0);
+  return (
+    <div className="hidden rounded-2xl border border-line bg-surface p-5 shadow-soft-sm lg:block">
+      <h2 className="text-sm font-bold text-ink">Ringkasan pesanan</h2>
+      <dl className="mt-3 space-y-2 text-sm">
+        <Row label={`Subtotal (${totalQty} pcs)`} value={formatIDR(subtotal)} />
+        {discountTotal > 0 ? (
+          <Row
+            label={`Promo ${promotionCode ?? ""}`.trim()}
+            value={`- ${formatIDR(discountTotal)}`}
+          />
+        ) : null}
+        <Row label="PPN 11% (estimasi)" value={formatIDR(tax)} muted />
+      </dl>
+      <div className="mt-4 flex items-end justify-between border-t border-line pt-3">
+        <span className="text-sm font-semibold text-ink">Estimasi total</span>
+        <span className="text-xl font-extrabold tracking-tight text-ink-strong tabular-nums">
+          {formatIDR(total)}
+        </span>
+      </div>
+      <p className="mt-3 text-[11px] leading-snug text-ink-muted">
+        Ongkos kirim dihitung pada langkah terakhir setelah alamat dipilih.
+      </p>
     </div>
   );
 }

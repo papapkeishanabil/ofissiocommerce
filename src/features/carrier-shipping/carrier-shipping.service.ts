@@ -129,6 +129,31 @@ export async function createCarrierShipment(input: {
       403,
     );
   }
+  if (!order.processStatus || order.processStatus === "not_started") {
+    throw createApiError(
+      "VALIDATION_ERROR",
+      "Pesanan belum diteruskan ke Perintah Kerja. Selesaikan alur pengerjaan sebelum membuat shipment.",
+      400,
+    );
+  }
+  if (order.processStatus !== "completed") {
+    throw createApiError(
+      "VALIDATION_ERROR",
+      "Perintah Kerja belum selesai. Shipment hanya dapat dibuat setelah produksi/QC/packing selesai.",
+      400,
+    );
+  }
+  if (
+    order.processRoute === "production" &&
+    order.paymentTerms?.mode === "deposit_balance" &&
+    order.paymentTerms.balanceStatus !== "paid"
+  ) {
+    throw createApiError(
+      "FORBIDDEN",
+      "Pelunasan production belum diterima. Shipment belum dapat dibuat.",
+      403,
+    );
+  }
   const existing = await getCarrierShipmentByOrder({ orderId: order.id, companyId: order.companyId });
   if (existing) {
     return {
@@ -139,6 +164,7 @@ export async function createCarrierShipment(input: {
   }
   const quote = await getShippingQuote({ id: input.quoteId, orderId: order.id, companyId: order.companyId });
   if (!quote) throw createApiError("NOT_FOUND", "Quote pengiriman tidak ditemukan.", 404);
+  assertQuoteMatchesCheckoutSelection(order, quote);
   if (quote.expiresAt && Date.parse(quote.expiresAt) <= Date.now()) {
     throw createApiError("VALIDATION_ERROR", "Quote ongkir sudah kedaluwarsa. Cek ulang ongkir.", 400);
   }
@@ -172,6 +198,8 @@ export async function createCarrierShipment(input: {
       quotedPrice: quote.shippingPrice,
       providerPrice: result.price || quote.shippingPrice,
       currency: "IDR",
+      checkoutSelection: order.selectedShippingRate ?? null,
+      checkoutSelectionMatched: true,
     },
     originSnapshot: quote.originSnapshot,
     destinationSnapshot: quote.destinationSnapshot,
@@ -205,6 +233,39 @@ export async function createCarrierShipment(input: {
     metadata: { provider: saved.provider, orderId: order.id, idempotent: false },
   });
   return { idempotent: false, shipment: saved, events: [event] };
+}
+
+function normalizeShippingKey(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function assertQuoteMatchesCheckoutSelection(
+  order: PaymentOrderRecord,
+  quote: ShippingQuoteRecord,
+) {
+  const selection = order.selectedShippingRate;
+  if (!selection) {
+    throw createApiError(
+      "VALIDATION_ERROR",
+      "Pilihan pengiriman customer tidak tersimpan pada pesanan ini. Konfirmasi ulang kepada customer sebelum membuat shipment.",
+      400,
+    );
+  }
+  const courierMatches =
+    normalizeShippingKey(quote.courierCompany) === normalizeShippingKey(selection.courierCode);
+  const serviceMatches = [quote.courierType, quote.courierService].some(
+    (value) =>
+      normalizeShippingKey(value) === normalizeShippingKey(selection.serviceCode) ||
+      normalizeShippingKey(value) === normalizeShippingKey(selection.serviceName),
+  );
+  const priceMatches = quote.shippingPrice === selection.price;
+  if (!courierMatches || !serviceMatches || !priceMatches) {
+    throw createApiError(
+      "VALIDATION_ERROR",
+      "Layanan carrier berbeda dari pilihan customer saat checkout. Jangan mengganti kurir, layanan, atau biaya tanpa persetujuan customer.",
+      400,
+    );
+  }
 }
 
 export async function refreshCarrierShipment(input: {

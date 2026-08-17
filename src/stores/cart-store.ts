@@ -21,6 +21,7 @@ import { calculateEmbroideryPricing, normalizeEmbroideryZoneId, type EmbroideryP
 
 interface CartState {
   items: CartLineItem[];
+  appliedPromotion: { code: string; discountTotal: number; subtotalAtApply: number } | null;
   hydrated: boolean;
   /** Marks store as hydrated after rehydration (avoids SSR mismatch). */
   setHydrated: () => void;
@@ -35,6 +36,7 @@ interface CartState {
   updateLineSizes: (lineId: string, sizes: SizeMatrix) => void;
   removeLine: (lineId: string) => void;
   clear: () => void;
+  setAppliedPromotion: (promotion: CartState["appliedPromotion"]) => void;
   totalQty: () => number;
   totalEstimatedPrice: () => number;
   /** Returns a snapshot of the current cart (for checkout/quote conversion). */
@@ -45,6 +47,7 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      appliedPromotion: null,
       hydrated: false,
       setHydrated: () => set({ hydrated: true }),
 
@@ -100,6 +103,7 @@ export const useCartStore = create<CartState>()(
           });
           next[idx] = {
             ...cur,
+            image: product.mainImage ?? cur.image,
             sizes: mergedSizes,
             totalQty: mergedQty,
             unitPrice: mergedPrice.unitPrice,
@@ -209,7 +213,9 @@ export const useCartStore = create<CartState>()(
       removeLine: (lineId) =>
         set((s) => ({ items: s.items.filter((it) => it.id !== lineId) })),
 
-      clear: () => set({ items: [] }),
+      clear: () => set({ items: [], appliedPromotion: null }),
+
+      setAppliedPromotion: (appliedPromotion) => set({ appliedPromotion }),
 
       totalQty: () => get().items.reduce((acc, it) => acc + it.totalQty, 0),
 
@@ -224,7 +230,7 @@ export const useCartStore = create<CartState>()(
         state?.setHydrated();
       },
       // Only persist the data, not the methods.
-      partialize: ({ items }) => ({ items }),
+      partialize: ({ items, appliedPromotion }) => ({ items, appliedPromotion }),
     },
   ),
 );

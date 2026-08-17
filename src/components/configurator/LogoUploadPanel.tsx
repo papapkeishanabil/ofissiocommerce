@@ -40,6 +40,8 @@ export function LogoUploadPanel({
   const [uploading, setUploading] = useState(false);
   const uploadAllowed =
     !session ||
+    session.user.role === "customer_admin" ||
+    session.user.role === "customer_user" ||
     session.user.role === "company_admin" ||
     session.user.role === "purchasing";
 
@@ -49,13 +51,6 @@ export function LogoUploadPanel({
     previewUrl: string;
     aspectRatio: number;
   }) {
-    if (!session) {
-      setError(
-        "Preview lokal aktif. Masuk dulu agar logo tersimpan privat dan bisa dipakai di checkout.",
-      );
-      return;
-    }
-
     setUploading(true);
     onUploadStateChange?.(true);
     try {
@@ -65,7 +60,8 @@ export function LogoUploadPanel({
       formData.set("metadata", JSON.stringify({ label: input.file.name }));
       const response = await fetch("/api/files/upload", {
         method: "POST",
-        headers: authHeaders(session),
+        headers: session ? authHeaders(session) : undefined,
+        credentials: "same-origin",
         body: formData,
       });
       const result = (await response.json()) as {
@@ -74,7 +70,11 @@ export function LogoUploadPanel({
         message?: string;
       };
       if (!response.ok || !result.file?.id) {
-        throw new Error(result.message ?? "Logo belum berhasil disimpan.");
+        throw new Error(
+          response.status === 401
+            ? "Sesi login telah berakhir. Silakan masuk kembali lalu unggah ulang logo."
+            : result.message ?? "Logo belum berhasil disimpan.",
+        );
       }
       onUploaded({
         file: input.file,
@@ -96,7 +96,7 @@ export function LogoUploadPanel({
   function handleFile(file: File) {
     setError(null);
     if (!uploadAllowed) {
-      setError("Upload logo hanya tersedia untuk Company Admin dan Purchasing.");
+      setError("Role akun Anda belum memiliki izin untuk mengunggah logo bordir.");
       return;
     }
     const v = validateLogoFile(file);
@@ -196,7 +196,7 @@ export function LogoUploadPanel({
             <span className="text-[10px] text-ink-muted">
               {uploadAllowed
                 ? LOGO_UPLOAD_CONSTRAINTS.recommended
-                : "Hanya Company Admin dan Purchasing yang bisa upload logo."}
+                : "Role akun Anda belum memiliki izin upload logo bordir."}
             </span>
           </button>
         </>

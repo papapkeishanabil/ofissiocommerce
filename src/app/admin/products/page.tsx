@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, Box, ExternalLink, FileBox, Pencil, Plus } from "lucide-react";
+import { Boxes, Box, ExternalLink, FileBox, Pencil, Plus, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 
 import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { AdminBadge } from "@/features/admin/components/AdminBadge";
@@ -24,9 +24,19 @@ import {
 import { listAdminWooCommerceProducts } from "@/features/products/woocommerce/woocommerce-product-admin.service";
 import type { AdminWooCommerceProduct } from "@/features/products/woocommerce/woocommerce-product-admin.types";
 
-export default async function AdminProductsPage() {
+interface AdminProductsPageProps {
+  searchParams: Promise<{
+    q?: string;
+    wooStatus?: string;
+    readiness?: string;
+    model3d?: string;
+  }>;
+}
+
+export default async function AdminProductsPage({ searchParams }: AdminProductsPageProps) {
   await requireInternalAdminServer("admin:catalog:view");
   try {
+    const filters = await searchParams;
     const products = await listAdminWooCommerceProducts();
     const validCount = products.filter(
       (product) => product.readiness.isVisibleInOfissio,
@@ -34,6 +44,31 @@ export default async function AdminProductsPage() {
     const missingGlbCount = products.filter(
       (product) => product.readiness.model3DStatus === "glb_missing",
     ).length;
+    const query = filters.q?.trim().toLocaleLowerCase("id-ID") ?? "";
+    const wooStatus = filters.wooStatus ?? "all";
+    const readiness = filters.readiness ?? "all";
+    const model3d = filters.model3d ?? "all";
+    const filteredProducts = products.filter((product) => {
+      const searchable = [
+        product.name,
+        product.sku,
+        product.slug,
+        String(product.id),
+        ...product.categories.map((item) => item.name),
+        ...product.industries,
+      ].join(" ").toLocaleLowerCase("id-ID");
+      const matchesQuery = !query || searchable.includes(query);
+      const matchesWoo = wooStatus === "all" || product.status === wooStatus;
+      const matchesReadiness = readiness === "all"
+        || (readiness === "visible" && product.readiness.isVisibleInOfissio)
+        || (readiness === "incomplete" && !product.readiness.isVisibleInOfissio);
+      const model3dReady = !["glb_missing", "glb_invalid"].includes(product.readiness.model3DStatus);
+      const matchesModel3d = model3d === "all"
+        || (model3d === "ready" && model3dReady)
+        || (model3d === "missing" && !model3dReady);
+      return matchesQuery && matchesWoo && matchesReadiness && matchesModel3d;
+    });
+    const hasFilters = Boolean(query || wooStatus !== "all" || readiness !== "all" || model3d !== "all");
 
     return (
       <div className="space-y-6">
@@ -64,12 +99,68 @@ export default async function AdminProductsPage() {
           <SummaryCard label="GLB belum ada" value={missingGlbCount} icon={FileBox} tone="warning" />
         </section>
 
+        <AdminCard className="!p-4 sm:!p-5">
+          <form method="get" className="space-y-4" aria-label="Cari dan filter produk">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-brand-700" aria-hidden="true" />
+              <h2 className="text-sm font-bold text-ink">Cari dan filter produk</h2>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(260px,1.5fr)_repeat(3,minmax(160px,1fr))_auto]">
+              <label className="relative block">
+                <span className="sr-only">Cari nama, SKU, ID, kategori, atau industri</span>
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle" aria-hidden="true" />
+                <input
+                  type="search"
+                  name="q"
+                  defaultValue={filters.q ?? ""}
+                  placeholder="Cari nama, SKU, atau ID produk"
+                  className="min-h-11 w-full rounded-xl border border-line bg-white py-2.5 pl-10 pr-3 text-sm text-ink outline-none transition placeholder:text-ink-subtle focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                />
+              </label>
+              <FilterSelect name="wooStatus" label="Status WooCommerce" value={wooStatus} options={[
+                ["all", "Semua status Woo"], ["publish", "Published"], ["draft", "Draft"], ["pending", "Pending"], ["private", "Private"],
+              ]} />
+              <FilterSelect name="readiness" label="Kesiapan Ofissio" value={readiness} options={[
+                ["all", "Semua kesiapan"], ["visible", "Tampil di Ofissio"], ["incomplete", "Perlu dilengkapi"],
+              ]} />
+              <FilterSelect name="model3d" label="Status model 3D" value={model3d} options={[
+                ["all", "Semua status 3D"], ["ready", "3D siap"], ["missing", "3D belum siap"],
+              ]} />
+              <button type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-bold text-white transition hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+                <Search className="h-4 w-4" aria-hidden="true" /> Terapkan
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-sm">
+              <p className="font-medium text-ink-muted" aria-live="polite">
+                Menampilkan <strong className="text-ink">{filteredProducts.length}</strong> dari {products.length} produk.
+              </p>
+              {hasFilters ? (
+                <Link href="/admin/products" className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 font-semibold text-brand-700 transition hover:bg-brand-50">
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset filter
+                </Link>
+              ) : null}
+            </div>
+          </form>
+        </AdminCard>
+
         {products.length === 0 ? (
           <AdminCard>
             <AdminEmptyState
               title="Produk WooCommerce belum tersedia"
               description="Tambahkan produk di WooCommerce atau periksa konfigurasi staging."
             />
+          </AdminCard>
+        ) : filteredProducts.length === 0 ? (
+          <AdminCard>
+            <AdminEmptyState
+              title="Produk tidak ditemukan"
+              description="Tidak ada produk yang sesuai dengan pencarian dan filter saat ini. Ubah kata kunci atau reset filter."
+            />
+            <div className="mt-4 flex justify-center">
+              <Link href="/admin/products" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-bold text-brand-700 hover:bg-brand-50">
+                <RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset filter
+              </Link>
+            </div>
           </AdminCard>
         ) : (
           <>
@@ -92,7 +183,7 @@ export default async function AdminProductsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((product) => (
+                  {filteredProducts.map((product) => (
                     <ProductTableRow key={product.id} product={product} />
                   ))}
                 </tbody>
@@ -100,7 +191,7 @@ export default async function AdminProductsPage() {
             </AdminTableShell>
 
             <div className="grid gap-4 lg:hidden">
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <ProductMobileCard key={product.id} product={product} />
               ))}
             </div>
@@ -123,6 +214,34 @@ export default async function AdminProductsPage() {
       </div>
     );
   }
+}
+
+function FilterSelect({
+  name,
+  label,
+  value,
+  options,
+}: {
+  name: string;
+  label: string;
+  value: string;
+  options: Array<[string, string]>;
+}) {
+  return (
+    <label className="block">
+      <span className="sr-only">{label}</span>
+      <select
+        name={name}
+        defaultValue={value}
+        aria-label={label}
+        className="min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm font-semibold text-ink outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+      >
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>{optionLabel}</option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 function ProductTableRow({ product }: { product: AdminWooCommerceProduct }) {

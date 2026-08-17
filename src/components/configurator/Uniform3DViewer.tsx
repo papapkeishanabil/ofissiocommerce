@@ -243,7 +243,9 @@ interface GLBModelProps {
 }
 
 function GLBModel({ url, placements = [], highlightZone, onModelReady, onSurfaceClick }: GLBModelProps) {
-  const { scene } = useGLTF(url);
+  // Keep Draco decoding same-origin. Production CSP intentionally does not
+  // allow third-party decoder scripts from the default Google CDN.
+  const { scene } = useGLTF(url, "/draco/");
   const [, forceTick] = useState(0);
 
   // Clone + auto-fit SYNCHRONOUSLY so transform applied before first render.

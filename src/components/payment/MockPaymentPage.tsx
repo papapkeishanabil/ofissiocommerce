@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { ProductThumb } from "@/components/ui/ProductThumb";
 import { cacheClientTrackingOrders } from "@/features/tracking/tracking.service";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,6 +44,7 @@ export function MockPaymentPage({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
+  const [orderItems, setOrderItems] = useState<CustomerTrackingOrder["items"] | null>(null);
   const { session, hydrated } = useAuth();
 
   const scopedQuery = useCallback(() => {
@@ -80,6 +82,7 @@ export function MockPaymentPage({
         if (!response.ok || !result.order) return;
         cacheClientTrackingOrders([result.order]);
         setTrackingOrderId(result.order.id);
+        setOrderItems(result.order.items);
       } catch {
         // Tracking remains available through dashboard API; cache is best effort.
       }
@@ -107,9 +110,9 @@ export function MockPaymentPage({
         throw new Error(result.message);
       }
       setPayment(result.payment);
-      if (result.payment.status === "paid") {
-        void cacheTrackingOrder(result.payment.orderId);
-      }
+      // Fetch the order items up front so the customer sees what they are
+      // paying for — not only after the payment succeeds.
+      void cacheTrackingOrder(result.payment.orderId);
       setMessage(null);
     } catch {
       setMessage("Status pembayaran belum dapat diverifikasi.");
@@ -244,6 +247,34 @@ export function MockPaymentPage({
                   </div>
                 </dl>
               </div>
+
+              {orderItems && orderItems.length > 0 ? (
+                <div className="rounded-2xl border border-line p-4">
+                  <p className="text-sm font-bold text-ink">Item pesanan</p>
+                  <ul className="mt-3 space-y-4">
+                    {orderItems.map((item) => (
+                      <li key={item.id} className="flex items-center gap-4">
+                        <ProductThumb
+                          src={item.image}
+                          alt={item.productName}
+                          className="h-16 w-16 sm:h-20 sm:w-20"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-ink">
+                            {item.productName}
+                          </p>
+                          <p className="mt-1 text-xs text-ink-muted">
+                            {item.selectedColor} · {item.totalQty} pcs ·{" "}
+                            <span className="tabular-nums">
+                              {formatIDR(item.estimatedPrice)}
+                            </span>
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               {!paid && (
                 <div className="grid gap-2 sm:grid-cols-2">

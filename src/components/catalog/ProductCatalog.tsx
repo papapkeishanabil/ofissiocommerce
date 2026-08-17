@@ -12,6 +12,7 @@ import { ArrowRight, Factory, PackageOpen } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Breadcrumbs, type Crumb } from "@/components/ui/Breadcrumbs";
+import { CatalogFilterBar } from "./CatalogFilterBar";
 import { ProductCard } from "./ProductCard";
 
 interface ProductCatalogProps {
@@ -22,9 +23,25 @@ interface ProductCatalogProps {
   category?: string;
   industryLabel?: string;
   categoryLabel?: string;
+  /** filter warna (slug dari available_colors) */
+  color?: string;
   categoryStrict?: boolean;
+  /** Kategori taxonomy (urutan + label resmi) untuk mode landing. */
+  taxonomyCategories?: Array<{ name: string; slug: string }>;
+  /** Industri taxonomy (label resmi) untuk filter berdasarkan industri. */
+  taxonomyIndustries?: Array<{ name: string; slug: string }>;
   alternativeCategories?: Array<{ name: string; slug: string }>;
   alternativeIndustries?: Array<{ name: string; slug: string }>;
+}
+
+/** Preview maksimum per kategori di mode landing. */
+const PREVIEW_PER_CATEGORY = 3;
+
+function categoryLabelFromSlug(slug: string) {
+  return slug
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 export function ProductCatalog({
@@ -33,7 +50,10 @@ export function ProductCatalog({
   category,
   industryLabel,
   categoryLabel,
+  color,
   categoryStrict = true,
+  taxonomyCategories = [],
+  taxonomyIndustries = [],
   alternativeCategories = [],
   alternativeIndustries = [],
 }: ProductCatalogProps) {
@@ -67,8 +87,111 @@ export function ProductCatalog({
         },
       );
     }
+    if (color) {
+      list = list.filter((p) =>
+        p.available_colors?.some(
+          (c) =>
+            slugifyTaxonomy(c) === color || c.toLowerCase() === color.toLowerCase(),
+        ),
+      );
+    }
     return list;
-  }, [products, industry, category, categoryStrict]);
+  }, [products, industry, category, color, categoryStrict]);
+
+  // Mode landing (tanpa filter): kelompokkan produk per kategori nyata —
+  // hanya kategori yang punya produk, urut mengikuti taxonomy. Customer
+  // melihat preview beberapa produk per kategori, lalu mengeksplorasi
+  // kategori penuh via tombol "Lihat produk lainnya".
+  const categoryGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      { slug: string; label: string; items: OfissioProduct[] }
+    >();
+    for (const p of products) {
+      const slugs =
+        p.categorySlugs?.length && p.categorySlugs.some(Boolean)
+          ? p.categorySlugs
+          : p.category
+            ? [slugifyTaxonomy(p.category)]
+            : [];
+      for (const slug of slugs) {
+        if (!slug) continue;
+        const known = taxonomyCategories.find((c) => c.slug === slug);
+        const group =
+          groups.get(slug) ??
+          {
+            slug,
+            label: known?.name ?? p.category ?? categoryLabelFromSlug(slug),
+            items: [] as OfissioProduct[],
+          };
+        group.items.push(p);
+        groups.set(slug, group);
+      }
+    }
+    const order = new Map(taxonomyCategories.map((c, i) => [c.slug, i]));
+    return [...groups.values()].sort(
+      (a, b) => (order.get(a.slug) ?? 999) - (order.get(b.slug) ?? 999),
+    );
+  }, [products, taxonomyCategories]);
+
+  const isLanding = !industry && !category && !color;
+
+  // Warna yang benar-benar tersedia pada produk — basis chip filter "Warna".
+  const presentColors = useMemo(() => {
+    const map = new Map<
+      string,
+      { slug: string; label: string; count: number }
+    >();
+    for (const p of products) {
+      for (const raw of p.available_colors ?? []) {
+        const label = raw.trim();
+        if (!label) continue;
+        const slug = slugifyTaxonomy(label);
+        const entry =
+          map.get(slug) ??
+          {
+            slug,
+            label: label.charAt(0).toUpperCase() + label.slice(1),
+            count: 0,
+          };
+        entry.count += 1;
+        map.set(slug, entry);
+      }
+    }
+    return [...map.values()].sort((a, b) => b.count - a.count);
+  }, [products]);
+
+  const activeColor = color
+    ? presentColors.find((c) => c.slug === color)?.label ?? color
+    : undefined;
+
+  // Industri yang benar-benar punya produk — basis chip filter "Industri".
+  const presentIndustries = useMemo(() => {
+    const groups = new Map<string, { slug: string; label: string; count: number }>();
+    for (const p of products) {
+      const slugs =
+        p.industrySlugs?.length && p.industrySlugs.some(Boolean)
+          ? p.industrySlugs
+          : p.industries.map(normalizeIndustrySlug);
+      for (const slug of new Set(slugs)) {
+        if (!slug) continue;
+        const known = taxonomyIndustries.find((i) => i.slug === slug);
+        const group =
+          groups.get(slug) ??
+          {
+            slug,
+            label: known?.name ?? categoryLabelFromSlug(slug),
+            count: 0,
+          };
+        group.count += 1;
+        groups.set(slug, group);
+      }
+    }
+    const order = new Map(taxonomyIndustries.map((i, idx) => [i.slug, idx]));
+    return [...groups.values()].sort(
+      (a, b) => (order.get(a.slug) ?? 999) - (order.get(b.slug) ?? 999),
+    );
+  }, [products, taxonomyIndustries]);
 
   const activeIndustry = industry ? industryLabel ?? industry : undefined;
   const activeCategory = category ? categoryLabel ?? category : undefined;
@@ -86,11 +209,11 @@ export function ProductCatalog({
           Katalog Produk
         </h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {activeIndustry || activeCategory
+          {activeIndustry || activeCategory || activeColor
             ? "Hasil filter:"
             : "Temukan seragam kerja untuk setiap industri."}
         </p>
-        {(activeIndustry || activeCategory) && (
+        {(activeIndustry || activeCategory || activeColor) && (
           <div className="mt-3 flex flex-wrap gap-2">
             {activeIndustry && (
               <Badge tone="brand" className="px-3 py-1">
@@ -102,9 +225,31 @@ export function ProductCatalog({
                 Kategori: {activeCategory}
               </Badge>
             )}
+            {activeColor && (
+              <Badge tone="brand" className="px-3 py-1">
+                Warna: {activeColor}
+              </Badge>
+            )}
           </div>
         )}
       </header>
+
+      {(categoryGroups.length > 0 ||
+        presentIndustries.length > 0 ||
+        presentColors.length > 0) && (
+        <CatalogFilterBar
+          industry={industry}
+          category={category}
+          color={color}
+          industries={presentIndustries}
+          categories={categoryGroups.map((g) => ({
+            slug: g.slug,
+            label: g.label,
+            count: g.items.length,
+          }))}
+          colors={presentColors}
+        />
+      )}
 
       <aside className="mb-6 flex flex-col gap-4 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50 to-white p-4 shadow-soft-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="flex min-w-0 items-start gap-3">
@@ -129,7 +274,51 @@ export function ProductCatalog({
         </Link>
       </aside>
 
-      {filteredProducts.length === 0 ? (
+      {isLanding ? (
+        categoryGroups.length === 0 ? (
+          <div className="grid place-items-center rounded-2xl border border-dashed border-line bg-surface px-6 py-16 text-center">
+            <PackageOpen className="mb-3 h-12 w-12 text-slate-300" />
+            <p className="text-sm font-semibold text-ink">
+              Belum ada produk published dengan model 3D yang valid.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-12">
+            {categoryGroups.map((group) => (
+              <section key={group.slug} aria-labelledby={`kategori-${group.slug}`}>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2
+                      id={`kategori-${group.slug}`}
+                      className="text-xl font-bold text-ink-strong"
+                    >
+                      {group.label}
+                    </h2>
+                    <p className="mt-0.5 text-sm text-ink-muted">
+                      {group.items.length} produk
+                    </p>
+                  </div>
+                  <Link
+                    href={`/catalog?kategori=${encodeURIComponent(group.slug)}`}
+                    className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-sm font-bold text-white shadow-soft-md transition-colors duration-200 hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                  >
+                    Lihat produk lainnya
+                    <ArrowRight
+                      className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                </div>
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {group.items.slice(0, PREVIEW_PER_CATEGORY).map((p) => (
+                    <ProductCard key={`${group.slug}-${p.id}`} product={p} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )
+      ) : filteredProducts.length === 0 ? (
         <div className="grid place-items-center rounded-2xl border border-dashed border-line bg-surface px-6 py-16 text-center">
           <PackageOpen className="mb-3 h-12 w-12 text-slate-300" />
           <p className="text-sm font-semibold text-ink">

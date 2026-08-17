@@ -1,4 +1,5 @@
 import type { ValidatedCheckoutCartItem } from "@/features/checkout/checkout-cart.types";
+import type { ShippingRate } from "@/features/shipping/shipping.types";
 import type {
   OrderCustomizationType,
   OrderProcessRoute,
@@ -28,6 +29,7 @@ export interface PaymentRecord {
   providerPaymentId: string | null;
   providerTransactionId: string | null;
   amount: number;
+  paymentPurpose?: "full" | "deposit" | "balance";
   currency: "IDR";
   status: PaymentStatus;
   paymentUrl: string | null;
@@ -74,6 +76,9 @@ export interface CreatePaymentResult {
 
 export interface PaymentCalculation {
   itemSubtotal: number;
+  promotionCode?: string | null;
+  discountTotal?: number;
+  netItemSubtotal?: number;
   customizationFee: number;
   shippingFee: number;
   tax: number;
@@ -81,6 +86,19 @@ export interface PaymentCalculation {
   taxRate?: number;
   taxLabel?: string;
   grandTotal: number;
+}
+
+export interface OrderPaymentTerms {
+  mode: "full" | "deposit_balance";
+  contractTotal: number;
+  depositPercent: number;
+  depositAmount: number;
+  balanceAmount: number;
+  amountDueNow: number;
+  balanceDueStage: "after_production_before_shipping" | null;
+  balanceStatus: "not_required" | "pending" | "due" | "paid";
+  depositPaidAt?: string | null;
+  balancePaidAt?: string | null;
 }
 
 export type PaymentOrderStatus =
@@ -97,7 +115,10 @@ export interface PaymentOrderRecord {
   userId: string;
   items: ValidatedCheckoutCartItem[];
   shippingRateId: string | null;
+  /** Immutable checkout snapshot. Never resolve an order's courier from the temporary rate cache. */
+  selectedShippingRate?: ShippingRate | null;
   calculation: PaymentCalculation;
+  paymentTerms?: OrderPaymentTerms;
   status: PaymentOrderStatus;
   quotationId?: string | null;
   processRoute?: OrderProcessRoute;

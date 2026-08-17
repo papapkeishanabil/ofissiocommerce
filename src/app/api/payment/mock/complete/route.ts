@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     }
     requireCompanyAccess(session, currentPayment.companyId, request, "payment", parsed.paymentId);
 
-    const result = completeMockPayment(
+    const result = await completeMockPayment(
       parsed.paymentId,
       parsed.status,
     );

@@ -45,6 +45,35 @@ export interface WooCommerceTag {
   slug: string;
 }
 
+export interface WooCommerceCoupon {
+  id: number;
+  code: string;
+  amount: string;
+  discount_type: "percent" | "fixed_cart" | "fixed_product" | string;
+  description?: string;
+  date_expires?: string | null;
+  individual_use?: boolean;
+  usage_count?: number;
+  usage_limit?: number | null;
+  usage_limit_per_user?: number | null;
+  minimum_amount?: string;
+  maximum_amount?: string;
+  product_ids?: number[];
+  excluded_product_ids?: number[];
+  product_categories?: number[];
+  excluded_product_categories?: number[];
+  exclude_sale_items?: boolean;
+  email_restrictions?: string[];
+}
+
+export type WooCommerceCouponWritePayload = Partial<Omit<WooCommerceCoupon, "id" | "usage_count">> & {
+  code: string;
+  amount: string;
+  discount_type: "percent" | "fixed_cart" | "fixed_product";
+};
+
+export type WooCommerceCouponUpdatePayload = Partial<Omit<WooCommerceCoupon, "id" | "usage_count">>;
+
 export interface WooCommerceProduct {
   id: number;
   name: string;
@@ -56,6 +85,12 @@ export interface WooCommerceProduct {
   price: string;
   regular_price: string;
   sale_price: string;
+  weight?: string;
+  dimensions?: {
+    length?: string;
+    width?: string;
+    height?: string;
+  };
   type?: "simple" | "variable" | "variation" | string;
   manage_stock?: boolean;
   stock_quantity?: number | null;
@@ -93,6 +128,12 @@ export interface WooCommerceProductWritePayload {
   description?: string;
   short_description?: string;
   regular_price?: string;
+  weight?: string;
+  dimensions?: {
+    length: string;
+    width: string;
+    height: string;
+  };
   categories?: Array<{ id: number }>;
   images?: Array<{
     id?: number;
@@ -156,6 +197,7 @@ export interface WooCommerceCreateOrderInput {
   billing?: WooCommerceBilling;
   line_items: WooCommerceOrderLineItem[];
   shipping_lines?: WooCommerceShippingLine[];
+  coupon_lines?: Array<{ code: string }>;
   meta_data?: WooCommerceOrderMeta[];
 }
 

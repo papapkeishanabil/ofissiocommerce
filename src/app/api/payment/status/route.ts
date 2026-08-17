@@ -30,6 +30,13 @@ export async function GET(request: Request) {
       companyId: session.companyId,
     });
     if (!payment) {
+      // The customer tracking page checks by orderId before a payment link may
+      // exist. That is a valid "not created yet" state, not a missing API
+      // resource. Keep a true paymentId lookup strict so invalid links remain
+      // distinguishable as 404 responses.
+      if (parsed.orderId && !parsed.paymentId) {
+        return NextResponse.json({ ok: true, payment: null });
+      }
       throw createApiError(
         "NOT_FOUND",
         "Status pembayaran belum dapat diverifikasi.",

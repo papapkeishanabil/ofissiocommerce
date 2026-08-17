@@ -21,6 +21,7 @@ export interface CheckoutCartItemInput {
 export interface SyncCheckoutCartInput {
   companyId: string;
   userId: string;
+  promotionCode?: string | null;
   items: CheckoutCartItemInput[];
 }
 
@@ -32,6 +33,8 @@ export interface ValidatedCheckoutCartItem {
   productSlug: string;
   productName: string;
   sku: string;
+  /** catalog main image snapshot — rides inside order_json, no schema column */
+  image?: string | null;
   selectedColor: string;
   sizeMatrix: SizeMatrix;
   totalQty: number;
@@ -66,6 +69,9 @@ export interface CheckoutCartRecord {
   userId: string;
   items: ValidatedCheckoutCartItem[];
   subtotal: number;
+  promotionCode: string | null;
+  discountTotal: number;
+  netSubtotal: number;
   totalQty: number;
   createdAt: string;
   expiresAt: string;

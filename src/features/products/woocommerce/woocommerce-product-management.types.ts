@@ -33,6 +33,10 @@ export interface AdminWooProductInput {
   slug?: string;
   sku: string;
   regularPrice: number;
+  weightGram: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
   status: (typeof WOO_PRODUCT_STATUSES)[number];
   description: string;
   shortDescription: string;

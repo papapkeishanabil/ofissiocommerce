@@ -14,8 +14,14 @@ export interface ShippingRuntimeConfig {
 }
 
 export function getShippingRuntimeConfig(): ShippingRuntimeConfig {
+  const requestedProvider = getOptionalServerEnv("SHIPPING_PROVIDER");
   return {
-    provider: getOptionalServerEnv("SHIPPING_PROVIDER") === "manual" ? "manual" : "mock",
+    provider:
+      requestedProvider === "biteship"
+        ? "biteship"
+        : requestedProvider === "manual"
+          ? "manual"
+          : "mock",
     defaultOrigin: {
       city: getOptionalServerEnv("DEFAULT_ORIGIN_CITY", "Bandung"),
       postalCode: getOptionalServerEnv("DEFAULT_ORIGIN_POSTAL_CODE", "40115"),

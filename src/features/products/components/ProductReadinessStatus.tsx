@@ -169,7 +169,7 @@ function shortIssueLabel(issue: ProductReadinessIssue) {
     model_3d_filename: "Nama file model",
     moq: "MOQ",
     lead_time: "Lead time",
-    fulfillment_type: "Fulfillment",
+  fulfillment_type: "Ketersediaan produk",
     transaction_mode: "Transaction mode",
     images: "Foto utama",
     embroidery_zones: "Zona bordir",

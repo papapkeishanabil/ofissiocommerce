@@ -5,11 +5,15 @@ import { Buffer } from "node:buffer";
 import { getCommerceRuntimeConfig } from "@/features/commerce/commerce.config";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
+import { SecurityApiError } from "@/lib/security/security.types";
 
 import type {
   WooCommerceAttribute,
   WooCommerceAttributeTerm,
   WooCommerceCategory,
+  WooCommerceCoupon,
+  WooCommerceCouponWritePayload,
+  WooCommerceCouponUpdatePayload,
   WooCommerceCreateOrderInput,
   WooCommerceListParams,
   WooCommerceOrder,
@@ -33,6 +37,9 @@ export const woocommerceClient = {
   createProduct,
   updateProduct,
   getCategories,
+  getCoupons,
+  createCoupon,
+  updateCoupon,
   createCategory,
   updateCategory,
   getAttributes,
@@ -44,6 +51,28 @@ export const woocommerceClient = {
   updateOrderStatus,
   getOrderById,
 };
+
+async function getCoupons(params: { code?: string; page?: number; per_page?: number } = {}) {
+  return wcFetch<WooCommerceCoupon[]>("/coupons", {
+    per_page: String(params.per_page ?? 100),
+    page: String(params.page ?? 1),
+    ...(params.code ? { code: params.code.toLowerCase() } : {}),
+  });
+}
+
+async function createCoupon(payload: WooCommerceCouponWritePayload) {
+  return wcFetch<WooCommerceCoupon>("/coupons", undefined, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+async function updateCoupon(id: string | number, payload: WooCommerceCouponUpdatePayload) {
+  return wcFetch<WooCommerceCoupon>(`/coupons/${encodeURIComponent(String(id))}`, undefined, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
 
 async function createAttribute(input: {
   name: string;
@@ -231,10 +260,23 @@ async function wcFetch<T>(
       allowSelfSignedTls: allowSelfSignedTlsForWooUrl(url),
     });
     if (!response.ok) {
+      const payload = response.data as { code?: string; message?: string } | null;
+      if (response.status >= 400 && response.status < 500) {
+        const duplicate = payload?.code === "woocommerce_rest_coupon_code_already_exists";
+        throw createApiError(
+          "BAD_REQUEST",
+          duplicate
+            ? "Kode promo sudah terdaftar di WooCommerce. Gunakan kode lain atau edit promo yang sudah ada."
+            : payload?.message?.slice(0, 240) || "Data ditolak oleh WooCommerce.",
+          response.status,
+          { wooCode: payload?.code ?? "unknown" },
+        );
+      }
       throw new Error(`WooCommerce responded ${response.status}`);
     }
     return response.data;
   } catch (error) {
+    if (error instanceof SecurityApiError) throw error;
     logAuditEvent({
       action: "woocommerce_request_failed",
       entityType: "woocommerce",

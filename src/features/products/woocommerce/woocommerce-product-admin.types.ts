@@ -22,6 +22,10 @@ export interface AdminWooCommerceProduct {
 export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
   description: string;
   shortDescription: string;
+  weightGram: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
   imageCount: number;
   imageUrls: string[];
   images: AdminProductImage[];

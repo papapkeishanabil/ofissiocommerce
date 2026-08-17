@@ -47,6 +47,9 @@ export async function POST(request: Request) {
       ok: true,
       cartId: cart.id,
       subtotal: cart.subtotal,
+      promotionCode: cart.promotionCode,
+      discountTotal: cart.discountTotal,
+      netSubtotal: cart.netSubtotal,
       totalQty: cart.totalQty,
       expiresAt: cart.expiresAt,
     });

@@ -12,15 +12,16 @@ import { CartSummary } from "./CartSummary";
 export function CartPage() {
   const items = useCartItems();
   const hydrated = useCartHydrated();
+  const totalQty = items.reduce((a, it) => a + it.totalQty, 0);
 
   // SSR-safe: render skeleton until hydration complete
   if (!hydrated) {
     return (
       <div className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-8">
-        <div className="h-24 w-full animate-pulse rounded-3xl bg-slate-200" />
+        <div className="h-10 w-64 animate-pulse rounded-xl bg-surface-muted" />
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
-          <div className="h-40 animate-pulse rounded-2xl bg-slate-200" />
-          <div className="h-40 animate-pulse rounded-2xl bg-slate-200" />
+          <div className="h-40 animate-pulse rounded-2xl border border-line bg-surface-muted" />
+          <div className="h-40 animate-pulse rounded-2xl border border-line bg-surface-muted" />
         </div>
       </div>
     );
@@ -52,28 +53,21 @@ export function CartPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-8 lg:py-8">
-      <section className="animate-fade-in-up relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 px-6 py-6 shadow-glow-brand lg:px-8">
-        <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-brand-400/20 blur-3xl" />
-        <div className="relative flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <p className="type-eyebrow text-brand-200">Keranjang</p>
-            <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-white lg:text-[1.75rem]">
-              Tinjau pilihan Anda
-            </h1>
-            <p className="mt-1.5 text-sm text-brand-100">
-              {items.length} produk · edit quantity per ukuran kapan saja.
-            </p>
-          </div>
-          <ButtonLink
-            href="/catalog"
-            className="border border-white/25 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
-            size="sm"
-          >
-            <Sparkles className="h-4 w-4" />
-            Tambah produk
-          </ButtonLink>
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+            Tinjau pilihan Anda
+          </h1>
+          <p className="mt-1.5 text-sm text-ink-muted">
+            {items.length} produk · {totalQty} pcs · edit quantity per ukuran
+            kapan saja.
+          </p>
         </div>
-      </section>
+        <ButtonLink href="/catalog" variant="outline" size="sm">
+          <Sparkles className="h-4 w-4" />
+          Tambah produk
+        </ButtonLink>
+      </header>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
         <div className="space-y-3">

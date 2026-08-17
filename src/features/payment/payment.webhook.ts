@@ -15,6 +15,7 @@ import {
   findPaymentOrder,
   savePaymentEventOnce,
   updateOrderAfterPaymentPersisted,
+  updateOrderPaymentTermsPersisted,
   updatePaymentRecordPersisted,
   updatePaymentStatusPersisted,
 } from "./payment.store";
@@ -158,10 +159,28 @@ export async function processIpaymuCallback(
   );
 
   if (targetStatus === "paid") {
-    const updatedOrder = await updateOrderAfterPaymentPersisted(
+    let updatedOrder = await updateOrderAfterPaymentPersisted(
       payment.orderId,
       "payment_received",
     );
+    if (updatedOrder?.paymentTerms?.mode === "deposit_balance") {
+      const isBalance = updatedPayment.paymentPurpose === "balance";
+      updatedOrder = await updateOrderPaymentTermsPersisted(
+        updatedOrder.id,
+        {
+          ...updatedOrder.paymentTerms,
+          amountDueNow: isBalance ? 0 : updatedOrder.paymentTerms.balanceAmount,
+          balanceStatus: isBalance ? "paid" : updatedOrder.paymentTerms.balanceStatus,
+          depositPaidAt: isBalance
+            ? updatedOrder.paymentTerms.depositPaidAt
+            : new Date().toISOString(),
+          balancePaidAt: isBalance
+            ? new Date().toISOString()
+            : updatedOrder.paymentTerms.balancePaidAt,
+        },
+        "payment_received",
+      );
+    }
     if (updatedOrder) {
       const { tracking } = await upsertTrackingFromPaymentOrderPersisted({
         payment: updatedPayment,

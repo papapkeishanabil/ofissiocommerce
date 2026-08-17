@@ -16,6 +16,7 @@ export const checkoutSizeMatrixSchema = z.object({
 export const syncCheckoutCartSchema = z.object({
   companyId: z.string().trim().min(1).max(100),
   userId: z.string().trim().min(1).max(100),
+  promotionCode: z.string().trim().min(3).max(50).nullable().optional(),
   items: z
     .array(
       z.object({

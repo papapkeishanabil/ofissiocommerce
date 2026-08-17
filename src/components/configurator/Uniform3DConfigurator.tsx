@@ -191,7 +191,7 @@ export function Uniform3DConfigurator({
   }
 
   return (
-    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(288px,360px)] xl:gap-6">
+    <div className="grid min-w-0 grid-cols-1 items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] 2xl:gap-6">
       {/* LEFT: 3D viewer + camera controls */}
       <div className="space-y-3 rounded-3xl border border-white/80 bg-white/90 p-3 shadow-soft-sm backdrop-blur sm:p-4">
         <div className="flex items-center justify-between px-1">
@@ -201,7 +201,7 @@ export function Uniform3DConfigurator({
           </div>
           <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-bold text-brand-700">Live 3D</span>
         </div>
-        <div className="relative h-[490px] overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-inner sm:h-[550px] lg:h-[600px]">
+        <div className="relative h-[clamp(360px,58dvh,600px)] min-h-0 overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-cool-100 via-surface to-cool-200 shadow-inner">
           {effectiveModel.depth3DQuad ? (
             <Depth3DViewer
               colorImageSrc={effectiveModel.depth3DQuad.front.colorImage}

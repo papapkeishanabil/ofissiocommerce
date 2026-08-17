@@ -3,6 +3,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatIDR } from "@/types/product";
@@ -130,6 +131,7 @@ function productColorSwatch(colorName: string) {
 }
 
 export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetailProps) {
+  const router = useRouter();
   const [color, setColor] = useState<string>(product.colors[0] ?? "Default");
   const [sizes, setSizes] = useState<SizeMatrix>(() => emptySizeMatrix());
   const [customization, setCustomization] = useState<string>("");
@@ -194,7 +196,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
       const { useGLTF } = await import("@react-three/drei");
       const resolvedUrl = await resolveProduct3DUrl(product3DModel.glbUrl!);
       if (cancelled) return;
-      useGLTF.preload(resolvedUrl);
+        useGLTF.preload(resolvedUrl, "/draco/");
       // Keep the module reference alive through this task so bundlers do not
       // treat the viewer import as an unused speculative request.
       void viewerModule;
@@ -318,33 +320,34 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
 
   return (
     <div className="w-full px-4 py-6 sm:px-6 lg:px-6 lg:py-8 xl:px-8">
-      <Breadcrumbs
-        items={[
-          { label: "Beranda", href: "/" },
-          { label: "Katalog", href: "/catalog" },
-          ...(product.industries[0]
-            ? [
-                {
-                  label: product.industries[0],
-                  href: `/catalog?industri=${encodeURIComponent(product.industries[0])}`,
-                },
-              ]
-            : []),
-          { label: product.name },
-        ]}
-        className="px-4 pt-4 lg:px-8"
-      />
-      <ButtonLink
-        href="/catalog"
-        variant="ghost"
-        size="sm"
-        className="mb-4 mt-2 -ml-2 lg:hidden"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Kembali ke katalog
-      </ButtonLink>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-4 lg:px-8">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Kembali
+        </Button>
+        <Breadcrumbs
+          items={[
+            { label: "Beranda", href: "/" },
+            { label: "Katalog", href: "/catalog" },
+            ...(product.industries[0]
+              ? [
+                  {
+                    label: product.industries[0],
+                    href: `/catalog?industri=${encodeURIComponent(product.industries[0])}`,
+                  },
+                ]
+              : []),
+            { label: product.name },
+          ]}
+        />
+      </div>
 
-      <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,440px)] lg:gap-6 xl:gap-8">
+      <div className="grid w-full min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(350px,420px)] xl:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(380px,440px)] 2xl:gap-8">
         {/* Left: gallery + info */}
         <div className="space-y-4">
           <div ref={heroRef} className="space-y-4">
@@ -681,7 +684,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
                   variant="outline"
                   className="w-full"
                 >
-                  Request Quotation (placeholder)
+                  Tinjau keranjang
                 </ButtonLink>
               </div>
 
@@ -696,7 +699,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
 
             {/* Kept inside the purchase card so it never slides underneath
                 the CTA when the product workspace scrolls. */}
-            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-4 text-center text-[11px] text-ink-muted">
+            <div className="mt-4 grid grid-cols-1 gap-3 border-t border-line pt-4 sm:grid-cols-3">
               <TrustItem icon={<Truck className="h-4 w-4" />} text="Tracking produksi & kirim" />
               <TrustItem icon={<Shirt className="h-4 w-4" />} text="Bordir logo kustom" />
               <TrustItem icon={<Layers className="h-4 w-4" />} text="Size matrix fleksibel" />
@@ -729,7 +732,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
 
       {show3D && (
         <div
-          className="fixed inset-0 z-[70] flex flex-col bg-slate-100 lg:left-[400px]"
+          className="fixed inset-0 z-[70] flex min-w-0 flex-col bg-slate-100 xl:left-[clamp(320px,21vw,400px)]"
           role="dialog"
           aria-modal="true"
           aria-label="Konfigurator 3D bordir"
@@ -755,7 +758,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,_#eef4ff,_#f8fafc_42%,_#eef2f8)] p-3 sm:p-5 lg:p-7">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_#eef4ff,_#f8fafc_42%,_#eef2f8)] p-3 sm:p-5 lg:p-6 2xl:p-7">
             <div className="w-full">
               <Uniform3DConfigurator
                 product={product}
@@ -796,9 +799,13 @@ function Stat({
 
 function TrustItem({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-lg border border-line bg-surface px-2 py-2">
-      <span className="text-brand-700">{icon}</span>
-      <span className="leading-tight">{text}</span>
+    <div className="flex items-start gap-2.5">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700">
+        {icon}
+      </span>
+      <span className="pt-0.5 text-[11px] font-semibold leading-snug text-ink-muted">
+        {text}
+      </span>
     </div>
   );
 }

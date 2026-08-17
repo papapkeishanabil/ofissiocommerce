@@ -206,13 +206,17 @@ export function mapWooCommerceProductToOfissioProduct(
       ]),
     quantityPricing,
     legacyEmbroideryPricing,
+    shippingWeightGram: getMetaNumber(meta, "ofissio_weight_gram", Number(raw.weight) * 1000),
+    shippingLengthCm: getMetaNumber(meta, "ofissio_length_cm", Number(raw.dimensions?.length)),
+    shippingWidthCm: getMetaNumber(meta, "ofissio_width_cm", Number(raw.dimensions?.width)),
+    shippingHeightCm: getMetaNumber(meta, "ofissio_height_cm", Number(raw.dimensions?.height)),
     mainImage: images[0]?.src ?? null,
     images,
   };
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
   if (!product.model_3d) throw new Error("Produk tanpa GLB tidak dapat dipetakan ke cart.");
-  return { source: product.source, sourceId: product.source_id, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing };
+  return { source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing };
 }
 
 function stripHtml(value = "") {

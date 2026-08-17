@@ -16,7 +16,13 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ industri?: string; kategori?: string }>;
+  searchParams: Promise<{
+    industri?: string;
+    kategori?: string;
+    warna?: string;
+    /** Alias lama dari konten homepage ("?category=") — diperlakukan sama. */
+    category?: string;
+  }>;
 }
 
 export default async function Page({ searchParams }: PageProps) {
@@ -26,13 +32,14 @@ export default async function Page({ searchParams }: PageProps) {
     getPublicCatalogTaxonomy(),
   ]);
   const searchTaxonomy = withCatalogSearchVocabulary(taxonomy);
+  const rawKategori = search.kategori ?? search.category;
   const normalizedIndustry = search.industri
     ? normalizeCatalogSearch(search.industri, searchTaxonomy).industrySlugs[0] ??
       normalizeIndustrySlug(search.industri)
     : undefined;
-  const normalizedCategory = search.kategori
-    ? normalizeCatalogSearch(search.kategori, searchTaxonomy).categorySlugs[0] ??
-      slugifyTaxonomy(search.kategori)
+  const normalizedCategory = rawKategori
+    ? normalizeCatalogSearch(rawKategori, searchTaxonomy).categorySlugs[0] ??
+      slugifyTaxonomy(rawKategori)
     : undefined;
   const industry = taxonomy.industries.find(
     (item) =>
@@ -40,7 +47,7 @@ export default async function Page({ searchParams }: PageProps) {
   );
   const activeCategory = taxonomy.categories.find(
     (item) =>
-      item.slug === normalizedCategory || item.name === search.kategori,
+      item.slug === normalizedCategory || item.name === rawKategori,
   );
   const category =
     activeCategory ??
@@ -53,7 +60,10 @@ export default async function Page({ searchParams }: PageProps) {
       category={category?.slug}
       industryLabel={industry?.name}
       categoryLabel={category?.name}
+      color={search.warna}
       categoryStrict={Boolean(activeCategory)}
+      taxonomyCategories={taxonomy.categories}
+      taxonomyIndustries={taxonomy.industries}
       alternativeCategories={taxonomy.categories.filter(
         (item) => item.slug !== category?.slug,
       )}

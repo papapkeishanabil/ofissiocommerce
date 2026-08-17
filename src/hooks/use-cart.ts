@@ -4,7 +4,7 @@
 import { useCartStore } from "@/stores/cart-store";
 
 export function useCartCount(): number {
-  return useCartStore((s) => s.items.reduce((acc, it) => acc + it.totalQty, 0));
+  return useCartStore((s) => s.items.length);
 }
 
 export function useCartHydrated(): boolean {

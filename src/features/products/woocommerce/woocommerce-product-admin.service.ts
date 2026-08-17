@@ -65,6 +65,10 @@ export async function getAdminWooCommerceProduct(
     ...summary,
     description: product.description ?? "",
     shortDescription: product.short_description ?? "",
+    weightGram: shippingNumber(meta, "ofissio_weight_gram", Number(product.weight) * 1000),
+    lengthCm: shippingNumber(meta, "ofissio_length_cm", Number(product.dimensions?.length)),
+    widthCm: shippingNumber(meta, "ofissio_width_cm", Number(product.dimensions?.width)),
+    heightCm: shippingNumber(meta, "ofissio_height_cm", Number(product.dimensions?.height)),
     imageCount: product.images?.length ?? 0,
     imageUrls: (product.images ?? []).map((image) => image.src).filter(Boolean),
     images: (product.images ?? [])
@@ -274,6 +278,10 @@ function buildWritePayload(
     ["sleeve_type", payload.sleeveType],
     ["safety_features", JSON.stringify(unique(payload.safetyFeatures))],
     ["quantity_pricing_enabled", payload.quantityPricingEnabled],
+    ["ofissio_weight_gram", payload.weightGram],
+    ["ofissio_length_cm", payload.lengthCm],
+    ["ofissio_width_cm", payload.widthCm],
+    ["ofissio_height_cm", payload.heightCm],
     ["quantity_pricing_mode", payload.quantityPricingMode],
     ["quantity_basis", payload.quantityBasis],
     [
@@ -287,6 +295,14 @@ function buildWritePayload(
     ...(payload.slug ? { slug: payload.slug } : {}),
     sku: payload.sku,
     regular_price: String(payload.regularPrice),
+    // WooCommerce standard weight uses kilograms and dimensions use centimetres
+    // in this store. Canonical Ofissio values are also persisted as metadata.
+    weight: String(payload.weightGram / 1000),
+    dimensions: {
+      length: String(payload.lengthCm),
+      width: String(payload.widthCm),
+      height: String(payload.heightCm),
+    },
     status: payload.status,
     description: payload.description,
     short_description: payload.shortDescription,
@@ -305,6 +321,16 @@ function buildWritePayload(
     ]),
     meta_data: entries.map(([key, value]) => metaEntry(meta, key, value)),
   };
+}
+
+function shippingNumber(
+  meta: WooCommerceMetaData[],
+  key: string,
+  standardValue: number,
+) {
+  const canonical = getMetaNumber(meta, key, 0);
+  if (canonical > 0) return canonical;
+  return Number.isFinite(standardValue) && standardValue > 0 ? standardValue : 0;
 }
 
 function managedAttribute(

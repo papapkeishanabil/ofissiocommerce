@@ -10,7 +10,9 @@ import {
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { deriveOrderProcessRouting } from "@/features/orders/order-routing.service";
 import { shippingService } from "@/features/shipping/shipping.service";
-import { upsertTrackingFromPaymentOrder } from "@/features/tracking/tracking-payment.integration";
+import {
+  upsertTrackingFromPaymentOrderPersisted,
+} from "@/features/tracking/tracking-payment.integration";
 import { createApiError } from "@/lib/security/safe-error-response";
 
 import { getPaymentRuntimeConfig } from "./payment.config";
@@ -25,6 +27,7 @@ import {
   savePaymentPersisted,
   savePaymentEvent,
   updateOrderAfterPayment,
+  updateOrderPaymentTerms,
   updatePaymentOrderSync,
   updatePaymentRecord,
   updatePaymentStatus,
@@ -104,13 +107,17 @@ export async function createPaymentFromCart(input: {
 
   const calculation: PaymentCalculation = {
     itemSubtotal: cart.subtotal,
+    promotionCode: cart.promotionCode,
+    discountTotal: cart.discountTotal,
+    netItemSubtotal: cart.netSubtotal,
     customizationFee: 0,
     shippingFee: shippingRate?.price ?? 0,
-    tax: Math.round(cart.subtotal * TAX_RATE),
+    tax: Math.round(cart.netSubtotal * TAX_RATE),
     grandTotal: 0,
   };
   calculation.grandTotal =
-    calculation.itemSubtotal +
+    calculation.itemSubtotal -
+    (calculation.discountTotal ?? 0) +
     calculation.customizationFee +
     calculation.shippingFee +
     calculation.tax;
@@ -128,6 +135,7 @@ export async function createPaymentFromCart(input: {
     userId: cart.userId,
     items: cart.items,
     shippingRateId: input.shippingRateId,
+    selectedShippingRate: shippingRate ? { ...shippingRate } : null,
     calculation,
     status: "waiting_payment",
     quotationId: null,
@@ -225,7 +233,10 @@ async function createPaymentForOrderUnlocked(input: {
     companyId: order.companyId,
     orderId: order.id,
   });
-  if (order.status === "payment_received" || existing?.status === "paid") {
+  const balanceIsDue =
+    order.paymentTerms?.mode === "deposit_balance" &&
+    order.paymentTerms.balanceStatus === "due";
+  if ((order.status === "payment_received" || existing?.status === "paid") && !balanceIsDue) {
     if (!existing) {
       throw createApiError("BAD_REQUEST", "Order sudah lunas.", 409);
     }
@@ -299,7 +310,7 @@ export async function getPaymentEventsForOrder(input: {
   return listPaymentEvents(input);
 }
 
-export function completeMockPayment(
+export async function completeMockPayment(
   paymentId: string,
   status: "paid" | "failed",
 ) {
@@ -311,7 +322,7 @@ export function completeMockPayment(
     const order = findPaymentOrder(payment.orderId);
     const tracking =
       status === "paid" && order
-        ? upsertTrackingFromPaymentOrder({ payment, order }).tracking
+        ? (await upsertTrackingFromPaymentOrderPersisted({ payment, order })).tracking
         : null;
     return { payment, idempotent: true, tracking };
   }
@@ -320,10 +331,24 @@ export function completeMockPayment(
     mode: "mock",
     simulatedStatus: status,
   });
-  const order = updateOrderAfterPayment(
+  let order = updateOrderAfterPayment(
     payment.orderId,
     status === "paid" ? "payment_received" : "payment_failed",
   );
+  if (status === "paid" && order?.paymentTerms?.mode === "deposit_balance") {
+    const isBalance = payment.paymentPurpose === "balance";
+    order = updateOrderPaymentTerms(
+      order.id,
+      {
+        ...order.paymentTerms,
+        amountDueNow: isBalance ? 0 : order.paymentTerms.balanceAmount,
+        balanceStatus: isBalance ? "paid" : order.paymentTerms.balanceStatus,
+        depositPaidAt: isBalance ? order.paymentTerms.depositPaidAt : new Date().toISOString(),
+        balancePaidAt: isBalance ? new Date().toISOString() : order.paymentTerms.balancePaidAt,
+      },
+      "payment_received",
+    );
+  }
   if (updated) {
     recordPaymentEvent(updated, status === "paid" ? "payment_paid" : "payment_failed", {
       oldStatus: previousStatus,
@@ -332,7 +357,7 @@ export function completeMockPayment(
   }
   const tracking =
     status === "paid" && updated && order
-      ? upsertTrackingFromPaymentOrder({ payment: updated, order }).tracking
+      ? (await upsertTrackingFromPaymentOrderPersisted({ payment: updated, order })).tracking
       : null;
   void syncPaymentStatusToWooCommerce({
     payment: updated,
@@ -379,7 +404,7 @@ async function createPaymentForPreparedOrder(
     paymentId,
     orderId: order.id,
     referenceId,
-    amount: order.calculation.grandTotal,
+    amount: order.paymentTerms?.amountDueNow ?? order.calculation.grandTotal,
     currency: "IDR",
     order,
     customer: {
@@ -472,6 +497,12 @@ function buildPaymentRecord(input: {
   providerResult: ProviderCreatePaymentOutput;
   now: string;
 }): PaymentRecord {
+  const paymentPurpose =
+    input.order.paymentTerms?.mode !== "deposit_balance"
+      ? "full"
+      : input.order.paymentTerms.balanceStatus === "due"
+        ? "balance"
+        : "deposit";
   return {
     id: input.paymentId,
     orderId: input.order.id,
@@ -480,7 +511,8 @@ function buildPaymentRecord(input: {
     referenceId: input.referenceId,
     providerPaymentId: input.providerResult.providerPaymentId ?? null,
     providerTransactionId: input.providerResult.providerTransactionId ?? null,
-    amount: input.order.calculation.grandTotal,
+    amount: input.order.paymentTerms?.amountDueNow ?? input.order.calculation.grandTotal,
+    paymentPurpose,
     currency: "IDR",
     status: "waiting_payment",
     paymentUrl: input.providerResult.paymentUrl,
@@ -507,13 +539,11 @@ function buildPaymentRecord(input: {
 }
 
 async function getPaymentOrderGlobal(orderId: string) {
-  const cached = findPaymentOrder(orderId);
-  if (cached) return cached;
   const orders = (await repositoryRegistry.orders.listAll?.()) ?? [];
   const order =
     orders.find((item) => item.id === orderId || item.orderNumber === orderId) ?? null;
   if (order) cachePaymentOrder(order);
-  return order;
+  return order ?? findPaymentOrder(orderId);
 }
 
 function publicPaymentStatus(
@@ -527,6 +557,7 @@ function publicPaymentStatus(
     userId: order?.userId ?? null,
     provider: payment.provider,
     amount: payment.amount,
+    paymentPurpose: payment.paymentPurpose ?? "full",
     currency: payment.currency,
     status: payment.status,
     paymentUrl: payment.paymentUrl,
@@ -535,6 +566,7 @@ function publicPaymentStatus(
     invoiceDocumentId: payment.invoiceDocumentId ?? order?.invoicePdfDocumentId ?? null,
     orderStatus: order?.status ?? null,
     calculation: order?.calculation ?? null,
+    paymentTerms: order?.paymentTerms ?? null,
     updatedAt: payment.updatedAt,
   };
 }

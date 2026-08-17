@@ -50,6 +50,11 @@ export interface OfissioProduct extends Product {
   quantityPricing?: QuantityPricing;
   /** Deprecated WooCommerce metadata retained for migration visibility only. */
   legacyEmbroideryPricing?: EmbroideryPricing;
+  /** Canonical shipping measurements managed from Admin Ofissio. */
+  shippingWeightGram?: number;
+  shippingLengthCm?: number;
+  shippingWidthCm?: number;
+  shippingHeightCm?: number;
   /** WooCommerce image order: index 0 is the catalog/main image. */
   mainImage?: string | null;
   images?: ProductImageReference[];

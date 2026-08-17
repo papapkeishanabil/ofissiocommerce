@@ -10,6 +10,7 @@ import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing
 import { calculateEmbroideryPricing } from "@/features/products/embroidery-pricing";
 import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global-embroidery-pricing.service";
 import { createApiError } from "@/lib/security/safe-error-response";
+import { validatePromotionCode } from "@/features/promotions/promotion.service";
 
 import type {
   CheckoutCartRecord,
@@ -75,6 +76,7 @@ async function validateAndPriceItem(
     productSlug: product.slug,
     productName: product.name,
     sku: product.sku,
+    image: product.mainImage ?? null,
     selectedColor: input.selectedColor,
     sizeMatrix: input.sizeMatrix,
     totalQty,
@@ -173,12 +175,20 @@ export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<Ch
     parsed.items.map((item) => validateAndPriceItem(item, parsed.companyId)),
   );
   const now = new Date();
+  const subtotal = items.reduce((total, item) => total + item.finalEstimatedTotal, 0);
+  const promotion = parsed.promotionCode
+    ? await validateCheckoutPromotion(parsed.promotionCode, items)
+    : null;
+  const discountTotal = promotion?.discountTotal ?? 0;
   const record: CheckoutCartRecord = {
     id: `cart_${randomUUID()}`,
     companyId: parsed.companyId,
     userId: parsed.userId,
     items,
-    subtotal: items.reduce((total, item) => total + item.finalEstimatedTotal, 0),
+    subtotal,
+    promotionCode: promotion?.code ?? null,
+    discountTotal,
+    netSubtotal: Math.max(0, subtotal - discountTotal),
     totalQty: items.reduce((total, item) => total + item.totalQty, 0),
     createdAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + CART_TTL_MS).toISOString(),
@@ -215,10 +225,33 @@ export async function getValidatedCheckoutCart(
       }, stored.companyId),
     ),
   );
+  const subtotal = items.reduce((total, item) => total + item.finalEstimatedTotal, 0);
+  const promotion = stored.promotionCode
+    ? await validateCheckoutPromotion(stored.promotionCode, items)
+    : null;
+  const discountTotal = promotion?.discountTotal ?? 0;
   return {
     ...stored,
     items,
-    subtotal: items.reduce((total, item) => total + item.finalEstimatedTotal, 0),
+    subtotal,
+    promotionCode: promotion?.code ?? null,
+    discountTotal,
+    netSubtotal: Math.max(0, subtotal - discountTotal),
     totalQty: items.reduce((total, item) => total + item.totalQty, 0),
   };
+}
+
+async function validateCheckoutPromotion(code: string, items: ValidatedCheckoutCartItem[]) {
+  const result = await validatePromotionCode({
+    code,
+    lines: items.map((item) => ({
+      productId: item.productId,
+      quantity: item.totalQty,
+      subtotal: item.finalEstimatedTotal,
+    })),
+  });
+  if (!result.valid) {
+    throw createApiError("VALIDATION_ERROR", result.message, 400);
+  }
+  return result;
 }

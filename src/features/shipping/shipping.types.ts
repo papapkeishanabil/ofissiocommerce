@@ -1,4 +1,4 @@
-export type ShippingProvider = "mock" | "manual";
+export type ShippingProvider = "mock" | "manual" | "biteship";
 
 export interface ShippingRate {
   id: string;

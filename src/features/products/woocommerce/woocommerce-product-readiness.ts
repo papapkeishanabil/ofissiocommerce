@@ -190,6 +190,16 @@ function getRawWooCommerceReadiness(
   if ((product.images?.length ?? 0) === 1) {
     warnings.push(warning("gallery", "Foto tambahan belum diisi", "Lengkapi foto"));
   }
+  if (getMetaNumber(meta, "ofissio_weight_gram", Number(product.weight) * 1000) <= 0) {
+    warnings.push(warning("shipping_weight", "Berat pengiriman belum diisi", "Isi Logistik & Pengiriman"));
+  }
+  if (
+    getMetaNumber(meta, "ofissio_length_cm", Number(product.dimensions?.length)) <= 0 ||
+    getMetaNumber(meta, "ofissio_width_cm", Number(product.dimensions?.width)) <= 0 ||
+    getMetaNumber(meta, "ofissio_height_cm", Number(product.dimensions?.height)) <= 0
+  ) {
+    warnings.push(warning("shipping_dimensions", "Dimensi pengiriman belum lengkap", "Isi Logistik & Pengiriman"));
+  }
   pushAttributeWarning(warnings, product.attributes, ["warna", "color"], "colors", "Atribut warna belum lengkap");
   pushAttributeWarning(warnings, product.attributes, ["bahan", "material"], "material", "Atribut bahan belum lengkap");
   pushAttributeWarning(warnings, product.attributes, ["ukuran", "size"], "sizes", "Atribut ukuran belum lengkap");
@@ -259,6 +269,12 @@ function getMappedProductReadiness(product: OfissioProduct): ProductReadiness {
 
   if (!product.description.trim()) warnings.push(warning("description", "Deskripsi panjang belum diisi", "Lengkapi deskripsi"));
   if ((product.images?.length ?? 0) === 1) warnings.push(warning("gallery", "Foto tambahan belum diisi", "Lengkapi foto"));
+  if (!(Number(product.shippingWeightGram) > 0)) warnings.push(warning("shipping_weight", "Berat pengiriman belum diisi", "Isi Logistik & Pengiriman"));
+  if (
+    !(Number(product.shippingLengthCm) > 0) ||
+    !(Number(product.shippingWidthCm) > 0) ||
+    !(Number(product.shippingHeightCm) > 0)
+  ) warnings.push(warning("shipping_dimensions", "Dimensi pengiriman belum lengkap", "Isi Logistik & Pengiriman"));
   if (!product.available_colors.length) warnings.push(warning("colors", "Atribut warna belum lengkap", "Lengkapi atribut"));
   if (!product.material.trim()) warnings.push(warning("material", "Atribut bahan belum lengkap", "Lengkapi atribut"));
   if (!product.available_sizes.length) warnings.push(warning("sizes", "Atribut ukuran belum lengkap", "Lengkapi atribut"));

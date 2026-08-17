@@ -243,6 +243,21 @@ async function testCarrierServiceFlow() {
       actorId: "shipping-check-admin",
     });
     assert.ok(quotes.length > 0, "paid order harus memperoleh quote server-side");
+    paidOrder.processStatus = "completed";
+    paidOrder.shippingRateId = quotes[0]!.providerQuoteId;
+    paidOrder.selectedShippingRate = {
+      id: quotes[0]!.providerQuoteId,
+      provider: quotes[0]!.provider,
+      courierCode: quotes[0]!.courierCompany,
+      courierName: quotes[0]!.courierCompany.toUpperCase(),
+      serviceCode: quotes[0]!.courierType,
+      serviceName: quotes[0]!.courierService,
+      price: quotes[0]!.shippingPrice,
+      currency: "IDR",
+      estimatedDays: quotes[0]!.duration ?? "",
+      isAvailable: true,
+    };
+    await repositoryRegistry.orders.saveOrder?.({ paymentOrder: paidOrder });
     const first = await createCarrierShipment({
       orderId: paidOrder.id,
       quoteId: quotes[0]!.id,

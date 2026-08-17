@@ -7,8 +7,15 @@ import type {
 } from "../carrier-shipping.types";
 import type { CarrierShippingProviderAdapter } from "./carrier-shipping.provider";
 import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
+import type { BiteshipCourierService } from "@/features/shipping-settings/shipping-settings.types";
 
 type JsonObject = Record<string, unknown>;
+
+export async function getBiteshipCourierCatalog(): Promise<BiteshipCourierService[]> {
+  const response = await biteshipFetch("/v1/couriers", { method: "GET" });
+  const rows = Array.isArray(response.couriers) ? response.couriers : [];
+  return rows.map(mapCourierService).filter((row): row is BiteshipCourierService => Boolean(row));
+}
 
 export const biteshipCarrierShippingProvider: CarrierShippingProviderAdapter = {
   async getRates(request) {
@@ -106,6 +113,24 @@ function requireBiteshipConfig() {
   return config;
 }
 
+function mapCourierService(value: unknown): BiteshipCourierService | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as JsonObject;
+  const courierCode = stringValue(row.courier_code).toLowerCase();
+  const serviceCode = stringValue(row.courier_service_code).toLowerCase();
+  if (!courierCode || !serviceCode) return null;
+  return {
+    key: `${courierCode}:${serviceCode}`,
+    courierCode,
+    courierName: stringValue(row.courier_name) || courierCode.toUpperCase(),
+    serviceCode,
+    serviceName: stringValue(row.courier_service_name) || serviceCode.toUpperCase(),
+    serviceType: stringValue(row.service_type) || null,
+    shippingType: stringValue(row.shipping_type) || null,
+    description: stringValue(row.description) || null,
+  };
+}
+
 async function biteshipFetch(path: string, init: RequestInit): Promise<JsonObject> {
   const config = requireBiteshipConfig();
   let response: Response;
@@ -142,24 +167,58 @@ function mapRate(value: unknown): ProviderRateResult | null {
   if (!value || typeof value !== "object") return null;
   const row = value as JsonObject;
   const company = stringValue(row.company ?? row.courier_company);
-  const type = stringValue(row.type ?? row.courier_type);
+  const type = stringValue(
+    row.courier_service_code ?? row.type ?? row.courier_type,
+  );
   const price = numberValue(row.price);
   if (!company || !type || !Number.isFinite(price) || price < 0) return null;
+  const rawServiceName =
+    stringValue(row.courier_service_name ?? row.service_name) ||
+    type.toUpperCase();
+  const serviceName = cargoServiceLabel(rawServiceName, type, row);
   return {
     providerQuoteId: stringValue(row.id) || `${company}:${type}:${price}`,
     courierCompany: company,
     courierType: type,
-    courierService: stringValue(row.courier_name ?? row.service_name) || `${company.toUpperCase()} ${type.toUpperCase()}`,
+    courierService: serviceName,
     price,
     duration: stringValue(row.duration) || null,
     safeSnapshot: {
       company,
       type,
-      service: stringValue(row.courier_name ?? row.service_name) || null,
+      service: serviceName,
+      serviceType: stringValue(row.service_type) || null,
+      shippingType: stringValue(row.shipping_type) || null,
       duration: stringValue(row.duration) || null,
       price,
     },
   };
+}
+
+function cargoServiceLabel(name: string, type: string, row: JsonObject) {
+  const cargoCodes = new Set([
+    "jtr",
+    "gokil",
+    "cargo",
+    "idtruck",
+    "bigpack",
+    "trc",
+    "kargo_std",
+    "land",
+    "air",
+  ]);
+  const classification = [
+    type,
+    stringValue(row.service_type),
+    stringValue(row.shipping_type),
+    name,
+  ]
+    .join(" ")
+    .toLowerCase();
+  const cargo =
+    cargoCodes.has(type.toLowerCase()) ||
+    /cargo|kargo|truck|trucking|gokil|\bjtr\b/.test(classification);
+  return cargo && !/cargo|kargo|truck/i.test(name) ? `${name} (Cargo)` : name;
 }
 
 function mapShipment(row: JsonObject, fallbackPrice: number): ProviderCreateShipmentResult {

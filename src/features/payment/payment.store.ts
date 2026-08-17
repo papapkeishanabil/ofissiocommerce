@@ -98,13 +98,64 @@ export async function findPaymentByOrderPersisted(input: {
   companyId: string;
   orderId: string;
 }) {
-  const cached = [...state.payments.values()].find(
-    (payment) => payment.companyId === input.companyId && payment.orderId === input.orderId,
-  );
+  const cached = [...state.payments.values()]
+    .filter(
+      (payment) => payment.companyId === input.companyId && payment.orderId === input.orderId,
+    )
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
   if (cached) return cached;
   const persisted = await repositoryRegistry.payments.getPaymentByOrderId?.(input);
   if (persisted) state.payments.set(persisted.id, persisted);
   return persisted ?? null;
+}
+
+export async function updateOrderPaymentTermsPersisted(
+  orderId: string,
+  paymentTerms: NonNullable<PaymentOrderRecord["paymentTerms"]>,
+  status?: PaymentOrderRecord["status"],
+) {
+  const order = state.orders.get(orderId);
+  if (!order) return undefined;
+  const updated = {
+    ...order,
+    status: status ?? order.status,
+    paymentTerms,
+    updatedAt: new Date().toISOString(),
+  };
+  const persisted = await repositoryRegistry.orders.updateOrderPaymentTerms?.({
+    companyId: updated.companyId,
+    orderId,
+    status,
+    paymentTerms,
+  });
+  const next = persisted ?? updated;
+  state.orders.set(orderId, next);
+  return next;
+}
+
+export function updateOrderPaymentTerms(
+  orderId: string,
+  paymentTerms: NonNullable<PaymentOrderRecord["paymentTerms"]>,
+  status?: PaymentOrderRecord["status"],
+) {
+  const order = state.orders.get(orderId);
+  if (!order) return undefined;
+  const updated = {
+    ...order,
+    status: status ?? order.status,
+    paymentTerms,
+    updatedAt: new Date().toISOString(),
+  };
+  state.orders.set(orderId, updated);
+  void repositoryRegistry.orders.updateOrderPaymentTerms?.({
+    companyId: updated.companyId,
+    orderId,
+    status,
+    paymentTerms,
+  }).catch(() => {
+    // Persistence failure must not break a verified payment callback.
+  });
+  return updated;
 }
 
 export function updatePaymentStatus(

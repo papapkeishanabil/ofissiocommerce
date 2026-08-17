@@ -386,6 +386,42 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       </FormSection>
 
       <FormSection
+        icon={FileBox}
+        title="Logistik & Pengiriman"
+        description="Sumber tunggal berat dan dimensi produk untuk perhitungan ongkir Biteship. Nilai disimpan ke WooCommerce saat produk disimpan."
+      >
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <ShippingNumberField
+            label="Berat per pcs"
+            unit="gram"
+            value={form.weightGram}
+            onChange={(value) => set("weightGram", value)}
+          />
+          <ShippingNumberField
+            label="Panjang paket"
+            unit="cm"
+            value={form.lengthCm}
+            onChange={(value) => set("lengthCm", value)}
+          />
+          <ShippingNumberField
+            label="Lebar paket"
+            unit="cm"
+            value={form.widthCm}
+            onChange={(value) => set("widthCm", value)}
+          />
+          <ShippingNumberField
+            label="Tinggi paket"
+            unit="cm"
+            value={form.heightCm}
+            onChange={(value) => set("heightCm", value)}
+          />
+        </div>
+        <p className="mt-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-900">
+          Isi ukuran paket untuk satu produk setelah dilipat dan dikemas. Checkout mengalikan berat per pcs dengan jumlah pesanan; Biteship menentukan tarif berdasarkan data ini.
+        </p>
+      </FormSection>
+
+      <FormSection
         icon={ImageIcon}
         title="Foto Produk"
         description="Upload foto utama dan gallery langsung ke Supabase Storage; urutannya otomatis disinkronkan ke WooCommerce."
@@ -551,9 +587,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <NumberField label="MOQ" value={form.moq} onChange={(value) => set("moq", value)} />
           <NumberField label="Lead time (hari)" value={form.leadTimeDays} onChange={(value) => set("leadTimeDays", value)} />
-          <SelectField label="Fulfillment type" value={form.fulfillmentType} values={WOO_FULFILLMENT_TYPES} onChange={(value) => set("fulfillmentType", value as AdminWooProductInput["fulfillmentType"])} />
+          <SelectField label="Ketersediaan produk" value={form.fulfillmentType} values={WOO_FULFILLMENT_TYPES} labels={{ READY_STOCK: "Ready Stock", MADE_TO_ORDER: "Dibuat setelah dipesan" }} onChange={(value) => set("fulfillmentType", value as AdminWooProductInput["fulfillmentType"])} />
           <SelectField label="Transaction mode" value={form.transactionMode} values={WOO_TRANSACTION_MODES} onChange={(value) => set("transactionMode", value as AdminWooProductInput["transactionMode"])} />
-          <SelectField label="Process route" value={form.processRoute} values={WOO_PROCESS_ROUTES} onChange={(value) => set("processRoute", value as AdminWooProductInput["processRoute"])} />
+          <SelectField label="Rute pengerjaan" value={form.processRoute} values={WOO_PROCESS_ROUTES} labels={{ fulfillment: "Ready Stock (STK)", customization: "Custom (CUS)", production: "Production (PRO)" }} onChange={(value) => set("processRoute", value as AdminWooProductInput["processRoute"])} />
           <SelectField label="Replenishment policy" value={form.replenishmentPolicy} values={WOO_REPLENISHMENT_POLICIES} onChange={(value) => set("replenishmentPolicy", value as AdminWooProductInput["replenishmentPolicy"])} />
         </div>
         <div className="mt-4"><Toggle label="Selalu dapat dipesan" description="Customer tidak melihat status out of stock; warning replenishment hanya untuk admin." checked={form.alwaysOrderable} onChange={(value) => set("alwaysOrderable", value)} /></div>
@@ -631,6 +667,10 @@ function initialForm(product?: AdminWooCommerceProductDetail): AdminWooProductIn
     slug: product?.slug ?? "",
     sku: product?.sku ?? "",
     regularPrice: product?.price || 0,
+    weightGram: product?.weightGram || 0,
+    lengthCm: product?.lengthCm || 0,
+    widthCm: product?.widthCm || 0,
+    heightCm: product?.heightCm || 0,
     status: product?.status === "publish" ? "publish" : "draft",
     description: product?.description ?? "",
     shortDescription: product?.shortDescription ?? "",
@@ -711,8 +751,40 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
   return <Field label={label} required><input className={INPUT} type="number" min={1} step={1} value={value} onChange={(event) => onChange(Number(event.target.value))} required /></Field>;
 }
 
-function SelectField({ label, value, values, onChange }: { label: string; value: string; values: readonly string[]; onChange: (value: string) => void }) {
-  return <Field label={label} required><select className={INPUT} value={value} onChange={(event) => onChange(event.target.value)}>{values.map((item) => <option key={item} value={item}>{item.replace(/_/g, " ")}</option>)}</select></Field>;
+function ShippingNumberField({
+  label,
+  unit,
+  value,
+  onChange,
+}: {
+  label: string;
+  unit: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <Field label={label} required>
+      <div className="relative">
+        <input
+          className={`${INPUT} pr-16`}
+          type="number"
+          min="0.01"
+          step="0.01"
+          value={value || ""}
+          placeholder="0"
+          onChange={(event) => onChange(Number(event.target.value))}
+          required
+        />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">
+          {unit}
+        </span>
+      </div>
+    </Field>
+  );
+}
+
+function SelectField({ label, value, values, labels, onChange }: { label: string; value: string; values: readonly string[]; labels?: Record<string, string>; onChange: (value: string) => void }) {
+  return <Field label={label} required><select className={INPUT} value={value} onChange={(event) => onChange(event.target.value)}>{values.map((item) => <option key={item} value={item}>{labels?.[item] ?? item.replace(/_/g, " ")}</option>)}</select></Field>;
 }
 
 function ListField({ label, value, onChange, suggestions }: { label: string; value: string[]; onChange: (value: string[]) => void; suggestions: string[] }) {

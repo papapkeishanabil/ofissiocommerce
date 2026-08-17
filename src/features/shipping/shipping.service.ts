@@ -6,6 +6,7 @@ import { productServerService } from "@/features/products/product.server-service
 
 import { manualShippingProvider } from "./providers/manual-shipping.provider";
 import { mockShippingProvider } from "./providers/mock-shipping.provider";
+import { biteshipCheckoutShippingProvider } from "./providers/biteship-checkout-shipping.provider";
 import { getShippingRuntimeConfig } from "./shipping.config";
 import type {
   CreateShipmentInput,
@@ -74,9 +75,10 @@ async function getCanonicalWeight(request: ShippingRateRequest) {
 }
 
 function provider(): ShippingProviderAdapter {
-  return getShippingRuntimeConfig().provider === "manual"
-    ? manualShippingProvider
-    : mockShippingProvider;
+  const configured = getShippingRuntimeConfig().provider;
+  if (configured === "biteship") return biteshipCheckoutShippingProvider;
+  if (configured === "manual") return manualShippingProvider;
+  return mockShippingProvider;
 }
 
 async function getRates(
@@ -106,15 +108,7 @@ async function getRates(
   const cached = state.cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.rates;
 
-  let rates: ShippingRate[];
-  try {
-    rates = await activeProvider.getRates({ request, canonicalWeightGram });
-  } catch {
-    rates = await manualShippingProvider.getRates({
-      request,
-      canonicalWeightGram,
-    });
-  }
+  const rates = await activeProvider.getRates({ request, canonicalWeightGram });
   const safeRates = rates.filter(
     (rate) => rate.isAvailable && rate.price >= 0,
   );

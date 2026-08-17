@@ -21,6 +21,8 @@ export interface CartLineItem {
   productSlug: string;
   productName: string;
   sku: string;
+  /** catalog main image snapshot (index 0 of the product images) */
+  image?: string | null;
   /** immutable purchasing snapshot from the canonical product service */
   priceFrom?: number;
   moq?: number;
@@ -71,4 +73,16 @@ export function sumSizeMatrix(m: SizeMatrix): number {
 
 export function lineItemId(productId: string, color: string): string {
   return `${productId}__${color.toLowerCase()}`;
+}
+
+/** One canonical check for every cart representation of embroidery/custom work. */
+export function hasCartCustomization(item: CartLineItem): boolean {
+  return (
+    (item.uniform3DConfig?.placements.length ?? 0) > 0 ||
+    (item.embroideryPlacements?.length ?? 0) > 0 ||
+    (item.selectedEmbroideryZones?.length ?? 0) > 0 ||
+    (item.embroideryLines?.length ?? 0) > 0 ||
+    (item.embroideryTotal ?? 0) > 0 ||
+    Boolean(item.customization?.trim())
+  );
 }
