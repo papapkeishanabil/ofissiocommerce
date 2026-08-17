@@ -163,6 +163,49 @@ export async function registerWithSupabase(input: {
   return { requiresEmailVerification: false, tokens, session };
 }
 
+export async function requestSupabasePasswordRecovery(
+  email: string,
+  redirectTo: string,
+) {
+  const config = requireSupabaseAuthConfig();
+  const url = new URL(`${config.url}/auth/v1/recover`);
+  url.searchParams.set("redirect_to", redirectTo);
+  const response = await safeFetch(url.toString(), {
+    method: "POST",
+    headers: authHeaders(config.anonKey),
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    throw createApiError(
+      "PROVIDER_UNAVAILABLE",
+      "Email pemulihan belum dapat dikirim. Coba lagi beberapa saat.",
+      503,
+    );
+  }
+}
+
+export async function updateSupabasePassword(
+  recoveryAccessToken: string,
+  password: string,
+) {
+  const config = requireSupabaseAuthConfig();
+  const response = await safeFetch(`${config.url}/auth/v1/user`, {
+    method: "PUT",
+    headers: {
+      ...authHeaders(config.anonKey),
+      Authorization: `Bearer ${recoveryAccessToken}`,
+    },
+    body: JSON.stringify({ password }),
+  });
+  if (!response.ok) {
+    throw createApiError(
+      "UNAUTHORIZED",
+      "Tautan pemulihan tidak valid atau sudah kedaluwarsa.",
+      401,
+    );
+  }
+}
+
 export async function readSupabaseRequestSession(request: Request) {
   const config = requireSupabaseAuthConfig();
   const accessToken = readCookie(request, AUTH_ACCESS_COOKIE);

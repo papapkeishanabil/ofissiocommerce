@@ -41,3 +41,17 @@ export const registerProductionSchema = z.object({
   companyName: z.string().trim().min(2).max(180).optional(),
   quotationId: quotationIdSchema.optional(),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email().max(254),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: z.string().min(8).max(200),
+    confirmPassword: z.string().min(8).max(200),
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Konfirmasi password tidak cocok.",
+  });

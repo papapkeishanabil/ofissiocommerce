@@ -113,8 +113,11 @@ export function requireFileUploadRole(
   session: MockSession,
   fileType: StorageFileType,
 ) {
-  if (fileType === "company_logo" || fileType === "embroidery_logo") {
+  if (fileType === "company_logo") {
     return requireCompanyLogoWriteRole(session);
+  }
+  if (fileType === "embroidery_logo") {
+    return requireRole(session, "file:write");
   }
   return requireRole(session, "file:write");
 }

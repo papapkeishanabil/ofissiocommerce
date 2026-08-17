@@ -20,6 +20,22 @@ export const loginSchema = z.object({
 });
 export type LoginForm = z.infer<typeof loginSchema>;
 
+export const forgotPasswordFormSchema = z.object({
+  email: emailId,
+});
+export type ForgotPasswordForm = z.infer<typeof forgotPasswordFormSchema>;
+
+export const resetPasswordFormSchema = z
+  .object({
+    password: z.string().min(8, "Password minimal 8 karakter"),
+    confirmPassword: z.string().min(8, "Konfirmasi password wajib diisi"),
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Konfirmasi password tidak cocok",
+  });
+export type ResetPasswordForm = z.infer<typeof resetPasswordFormSchema>;
+
 export const registerSchema = z
   .object({
     fullName: z.string().min(2, "Nama lengkap minimal 2 karakter"),

@@ -2,8 +2,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { Info } from "lucide-react";
 
 import {
   registerSchema,
@@ -83,92 +85,108 @@ export function RegisterForm({
       {quotationId ? (
         <input type="hidden" name="quotationId" value={quotationId} />
       ) : null}
-      <div className="rounded-lg bg-brand-50 px-3 py-2 text-[11px] leading-snug text-brand-800">
-        {quotationId ? (
-          <>Gunakan <strong>email penerima penawaran</strong> agar akun terhubung ke quotation dan perusahaan yang benar.</>
-        ) : (
-          <>Pengguna pertama yang mendaftar otomatis menjadi <strong>Admin Perusahaan</strong>.</>
-        )}
+
+      <div className="flex gap-2 rounded-xl border border-brand-100 bg-brand-50/60 px-3.5 py-2.5 text-[11px] leading-snug text-brand-800">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" />
+        <span>
+          {quotationId ? (
+            <>
+              Gunakan <strong>email penerima penawaran</strong> agar akun otomatis
+              terhubung ke quotation dan perusahaan yang benar.
+            </>
+          ) : (
+            <>
+              Pengguna pertama yang mendaftar otomatis menjadi{" "}
+              <strong>Admin Perusahaan</strong>.
+            </>
+          )}
+        </span>
       </div>
 
-      <Field
-        label="Nama Lengkap"
-        htmlFor="reg-name"
-        required
-        error={errors.fullName?.message}
-      >
-        <Input
-          id="reg-name"
-          autoComplete="name"
-          placeholder="cth: Budi Santoso"
-          {...field("fullName")}
-        />
-      </Field>
+      {/* Identitas */}
+      <div className="space-y-4">
+        <Field
+          label="Nama Lengkap"
+          htmlFor="reg-name"
+          required
+          error={errors.fullName?.message}
+        >
+          <Input
+            id="reg-name"
+            autoComplete="name"
+            placeholder="cth: Budi Santoso"
+            {...field("fullName")}
+          />
+        </Field>
 
-      <Field
-        label="Email"
-        htmlFor="reg-email"
-        required
-        error={errors.email?.message}
-      >
-        <Input
-          id="reg-email"
-          type="email"
-          autoComplete="email"
-          placeholder="nama@perusahaan.com"
-          {...field("email")}
-        />
-      </Field>
+        <Field
+          label="Email"
+          htmlFor="reg-email"
+          required
+          error={errors.email?.message}
+        >
+          <Input
+            id="reg-email"
+            type="email"
+            autoComplete="email"
+            placeholder="nama@perusahaan.com"
+            {...field("email")}
+          />
+        </Field>
 
-      <Field
-        label="WhatsApp"
-        htmlFor="reg-wa"
-        required
-        error={errors.whatsapp?.message}
-      >
-        <Input
-          id="reg-wa"
-          type="tel"
-          autoComplete="tel"
-          placeholder="0812xxxx1234"
-          {...field("whatsapp")}
-        />
-      </Field>
+        <Field
+          label="WhatsApp"
+          htmlFor="reg-wa"
+          required
+          error={errors.whatsapp?.message}
+        >
+          <Input
+            id="reg-wa"
+            type="tel"
+            autoComplete="tel"
+            placeholder="0812xxxx1234"
+            {...field("whatsapp")}
+          />
+        </Field>
+      </div>
 
-      <Field
-        label="Password"
-        htmlFor="reg-password"
-        required
-        hint="Minimal 8 karakter (standar B2B)."
-        error={errors.password?.message}
-      >
-        <PasswordInput
-          id="reg-password"
-          autoComplete="new-password"
-          placeholder="••••••••"
-          {...field("password")}
-        />
-      </Field>
+      {/* Keamanan */}
+      <div className="space-y-4 border-t border-line pt-4">
+        <Field
+          label="Password"
+          htmlFor="reg-password"
+          required
+          hint="Minimal 8 karakter (standar B2B)."
+          error={errors.password?.message}
+        >
+          <PasswordInput
+            id="reg-password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            {...field("password")}
+          />
+        </Field>
 
-      <Field
-        label="Konfirmasi Password"
-        htmlFor="reg-confirm"
-        required
-        error={errors.confirmPassword?.message}
-      >
-        <PasswordInput
-          id="reg-confirm"
-          autoComplete="new-password"
-          placeholder="••••••••"
-          {...field("confirmPassword")}
-        />
-      </Field>
+        <Field
+          label="Konfirmasi Password"
+          htmlFor="reg-confirm"
+          required
+          error={errors.confirmPassword?.message}
+        >
+          <PasswordInput
+            id="reg-confirm"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            {...field("confirmPassword")}
+          />
+        </Field>
+      </div>
 
       {serverError ? (
         <div
           role="alert"
           aria-live="assertive"
-          className="rounded-lg bg-red-50 px-3 py-3 text-xs leading-5 text-red-700"
+          className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-5 text-red-700"
         >
           <p>{serverError}</p>
           {onSwitchToLogin && serverError.includes("sudah terdaftar") ? (
@@ -186,7 +204,7 @@ export function RegisterForm({
         <div
           role="status"
           aria-live="polite"
-          className="space-y-2 rounded-lg bg-emerald-50 px-3 py-3 text-xs leading-5 text-emerald-800"
+          className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-xs leading-5 text-emerald-800"
         >
           <p>{serverSuccess}</p>
           {onSwitchToLogin ? (
@@ -205,18 +223,23 @@ export function RegisterForm({
         {submitting ? "Memproses..." : "Daftar"}
       </Button>
 
-      {onSwitchToLogin && (
-        <p className="text-center text-xs text-ink-muted">
-          Sudah punya akun?{" "}
-          <button
-            type="button"
-            onClick={onSwitchToLogin}
-            className="font-semibold text-brand-700 hover:underline"
-          >
-            Masuk
-          </button>
-        </p>
-      )}
+      <p className="text-center text-[11px] leading-relaxed text-ink-subtle">
+        Dengan mendaftar, Anda menyetujui{" "}
+        <Link
+          href="/legal/terms-of-service"
+          className="font-semibold text-brand-700 underline underline-offset-2 hover:text-brand-800"
+        >
+          Syarat &amp; Ketentuan
+        </Link>{" "}
+        dan{" "}
+        <Link
+          href="/legal/privacy-policy"
+          className="font-semibold text-brand-700 underline underline-offset-2 hover:text-brand-800"
+        >
+          Kebijakan Privasi
+        </Link>
+        .
+      </p>
     </form>
   );
 }
