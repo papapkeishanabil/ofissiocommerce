@@ -27,21 +27,21 @@ export function DashboardSummaryCards({
     {
       href: "/cart",
       icon: <ShoppingCart className="h-5 w-5" />,
-      label: "Item di cart",
+      label: "Di keranjang",
       value: String(cartCount),
       tone: "brand" as Tone,
     },
     {
       href: "#active-orders",
       icon: <PackageCheck className="h-5 w-5" />,
-      label: "Active orders",
+      label: "Order aktif",
       value: String(activeOrderCount),
       tone: "ochre" as Tone,
     },
     {
       href: "#quotations",
       icon: <FileText className="h-5 w-5" />,
-      label: "Quotation",
+      label: "Penawaran",
       value: String(quotationCount),
       tone: "brand" as Tone,
     },
@@ -55,7 +55,7 @@ export function DashboardSummaryCards({
   ];
 
   return (
-    <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
       {cards.map((card, index) => (
         <SummaryCard key={card.label} {...card} index={index} />
       ))}
@@ -82,12 +82,12 @@ function SummaryCard({
     <Link
       href={href}
       style={{ animationDelay: `${60 + index * 70}ms` }}
-      className="hover-lift animate-fade-in-up group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-soft-sm hover:border-brand-200 hover:shadow-soft-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+      className="hover-lift animate-fade-in-up group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface p-5 shadow-soft-sm hover:border-brand-200 hover:shadow-soft-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
     >
       <div className="flex items-center justify-between">
         <span
           className={cn(
-            "grid h-10 w-10 place-items-center rounded-xl transition-transform duration-200 group-hover:scale-110",
+            "grid h-11 w-11 place-items-center rounded-xl transition-transform duration-200 group-hover:scale-110",
             CHIP[tone],
           )}
         >
@@ -95,10 +95,10 @@ function SummaryCard({
         </span>
         <ArrowUpRight className="h-4 w-4 text-ink-subtle opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
       </div>
-      <span className="mt-3 block text-2xl font-extrabold tracking-tight text-ink">
+      <span className="mt-4 block text-3xl font-extrabold tracking-tight tabular-nums text-ink">
         {value}
       </span>
-      <span className="text-[11px] font-bold uppercase tracking-wide text-ink-subtle">
+      <span className="mt-0.5 text-xs font-bold uppercase tracking-wide text-ink-subtle">
         {label}
       </span>
     </Link>

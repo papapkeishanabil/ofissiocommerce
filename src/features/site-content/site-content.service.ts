@@ -23,6 +23,7 @@ import { unstable_cache } from "next/cache";
 
 import {
   SECTION_REGISTRY,
+  SITE_CONTENT_SECTION_KEYS,
   getSectionEntry,
   type PublicSiteContent,
   type SectionKey,
@@ -39,6 +40,21 @@ import type { SiteContentPayload } from "./site-content.validation";
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+/**
+ * Stable signature of the registry's DEFAULT payloads. Object-literal key order
+ * is deterministic for a given build, so this changes exactly when a section's
+ * default data (or its field set, through defaulted fields) changes — used as a
+ * unstable_cache keyPart so shape changes invalidate stale cached results.
+ */
+function siteContentDefaultsSignature(): string {
+  const serialized = JSON.stringify(SECTION_REGISTRY.map((entry) => [entry.key, entry.default]));
+  let hash = 0;
+  for (let i = 0; i < serialized.length; i++) {
+    hash = (Math.imul(31, hash) + serialized.charCodeAt(i)) | 0;
+  }
+  return (hash >>> 0).toString(36);
 }
 
 /**
@@ -107,7 +123,17 @@ export const getPublicSiteContent = unstable_cache(
     // PublicSiteContent's keys mirror SectionKey. Validation guarantees shape.
     return assembled as unknown as PublicSiteContent;
   },
-  ["site-content"],
+  // The keyParts MUST carry a registry-shape signature. The function body above
+  // is shape-agnostic (it iterates SECTION_REGISTRY generically), so its source
+  // hash is unchanged when sections are added or removed — which means a result
+  // persisted under the old key (e.g. a 3-section Phase-1 object) would keep
+  // being served after the registry grew, silently missing every new section.
+  // The section count covers membership changes; the defaults signature below
+  // additionally covers FIELD/shape changes to a section (e.g. IndustriTile
+  // gaining `photo`), which leave the count untouched but change what a fresh
+  // fallback computes — without it, a pre-change entry keeps being served in
+  // both dev and production until a manual revalidateTag.
+  ["site-content", `sections:${SITE_CONTENT_SECTION_KEYS.length}`, `shape:${siteContentDefaultsSignature()}`],
   { tags: ["site-content"] },
 );
 

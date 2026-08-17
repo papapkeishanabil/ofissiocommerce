@@ -6,7 +6,7 @@ const PATHS = [
     title: "Produk katalog",
     description:
       "Pilih produk yang sudah tersedia, tentukan jumlah dan ukuran, lalu tambahkan bordir bila diperlukan.",
-    detail: "Cocok untuk Fulfillment atau Customization",
+    detail: "Cocok untuk Ready Stock (STK) atau Custom (CUS)",
     href: "/catalog",
     action: "Pilih produk",
     Icon: PackageCheck,

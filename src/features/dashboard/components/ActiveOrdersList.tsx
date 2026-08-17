@@ -21,7 +21,7 @@ export function ActiveOrdersList({ orders }: ActiveOrdersListProps) {
   if (orders.length === 0) {
     return (
       <EmptyState
-        title="Belum ada active order"
+        title="Belum ada order aktif"
         description="Order yang sudah checkout atau masuk produksi akan tampil di sini."
       />
     );
@@ -86,7 +86,7 @@ export function ActiveOrdersList({ orders }: ActiveOrdersListProps) {
                 aria-label={`Progress ${progress}%`}
               >
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-brand-600 to-brand-400 transition-[width] duration-700 ease-out"
+                  className="h-full rounded-full bg-brand-600 transition-[width] duration-700 ease-out"
                   style={{ width: `${progress}%` }}
                 />
               </div>

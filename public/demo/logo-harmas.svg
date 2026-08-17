@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 128" role="img" aria-labelledby="title desc">
+  <title id="title">Logo demo Harmas</title>
+  <desc id="desc">Logo contoh untuk data order demonstrasi</desc>
+  <rect width="320" height="128" rx="20" fill="#ffffff"/>
+  <path d="M38 92V36h15v21h23V36h15v56H76V70H53v22H38Z" fill="#112b67"/>
+  <text x="108" y="76" fill="#112b67" font-family="Arial, sans-serif" font-size="32" font-weight="700" letter-spacing="2">HARMAS</text>
+  <path d="M108 88h164" stroke="#d62828" stroke-width="6" stroke-linecap="round"/>
+</svg>

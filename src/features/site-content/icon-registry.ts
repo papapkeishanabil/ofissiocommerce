@@ -55,6 +55,9 @@ import {
   UtensilsCrossed,
   Wrench,
   Zap,
+  Gift,
+  PackageCheck,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -106,6 +109,10 @@ export const HOMEPAGE_ICON_KEYS = [
   "ShoppingBag",
   "Star",
   "Zap",
+  // Hero slide icons (eyebrow + trust chips).
+  "Gift",
+  "PackageCheck",
+  "Shield",
 ] as const;
 
 export type HomepageIconKey = (typeof HOMEPAGE_ICON_KEYS)[number];
@@ -156,6 +163,9 @@ export const HOMEPAGE_ICONS: Record<HomepageIconKey, LucideIcon> = {
   UtensilsCrossed,
   Wrench,
   Zap,
+  Gift,
+  PackageCheck,
+  Shield,
 };
 
 /** Icon used when a stored key is somehow missing from the map. */

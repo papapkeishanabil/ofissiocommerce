@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   description:
     "Platform conversational commerce B2B untuk pengadaan seragam kerja perusahaan. Dibantu Ofistant, asisten pengadaan digital.",
   applicationName: "Ofissio",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
   authors: [{ name: "Ofissio" }],
   keywords: [
     "seragam kerja",

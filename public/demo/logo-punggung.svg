@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 128" role="img" aria-labelledby="title desc">
+  <title id="title">Logo punggung demo</title>
+  <desc id="desc">Logo contoh untuk posisi bordir punggung pada data demonstrasi</desc>
+  <rect width="320" height="128" rx="20" fill="#112b67"/>
+  <circle cx="62" cy="64" r="30" fill="#ffffff"/>
+  <path d="M48 78V50h8v10h12V50h8v28h-8V67H56v11h-8Z" fill="#112b67"/>
+  <text x="110" y="73" fill="#ffffff" font-family="Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="1">HARMAS</text>
+  <text x="111" y="94" fill="#f7b32b" font-family="Arial, sans-serif" font-size="12" letter-spacing="3">UNIFORM</text>
+</svg>

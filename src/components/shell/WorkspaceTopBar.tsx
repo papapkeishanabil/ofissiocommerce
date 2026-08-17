@@ -14,8 +14,18 @@ export function WorkspaceTopBar() {
   const togglePin = useChromeStore((s) => s.togglePin);
 
   return (
-    <div onMouseEnter={topEnter} onMouseLeave={topLeave} className="group fixed left-0 right-0 top-0 z-30 hidden shrink-0 transition-transform duration-300 ease-out lg:block" style={{ transform: open ? "translateY(0)" : "translateY(-100%)" }}>
-      <div className="h-14">
+    <div
+      onMouseEnter={topEnter}
+      onMouseLeave={topLeave}
+      className={cn(
+        "group fixed left-0 right-0 top-0 z-30 hidden shrink-0 transition-[transform,padding-left] duration-300 ease-out lg:block",
+        // Saat chrome terbuka di xl+, geser konten bar melewati rail Ofistant
+        // supaya menu tidak pernah tertutup panel — sejajar kolom konten.
+        open && "xl:pl-[clamp(320px,21vw,400px)]",
+      )}
+      style={{ transform: open ? "translateY(0)" : "translateY(-100%)" }}
+    >
+      <div className="h-16">
         <WorkspaceHeader />
       </div>
       {!locked && (

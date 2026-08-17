@@ -6,12 +6,13 @@
 import { useEffect, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, LogOut, UserRound } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useCartCount, useCartHydrated } from "@/hooks/use-cart";
 import { useUIStore } from "@/stores/ui-store";
 import { roleLabel } from "@/types/account";
+import { ofistantFont } from "@/components/ofistant/ofistant-font";
 
 function scrollToHashId(id: string): boolean {
   if (!id) return false;
@@ -32,27 +33,32 @@ export function WorkspaceHeader() {
   // not the window, so native hash scrolling never reaches them. After a
   // cross-page navigation, bring the URL hash target into view — but a hard
   // refresh must always land on the hero, never jump to a persisted section.
+  //
+  // On reload, cancel any hash the browser may be jumping to and park the
+  // nested scroller at the very top so the hero is what loads. This must run
+  // ONCE for the load that actually was a reload: the performance navigation
+  // entry keeps its "reload" type for the whole SPA session, so re-checking it
+  // on every pathname change would also strip the hash of later client-side
+  // section navigations (e.g. product page → "Industri" landing on the hero).
   useEffect(() => {
     const navEntry = performance.getEntriesByType(
       "navigation",
     )[0] as PerformanceNavigationTiming | undefined;
-    // On reload, cancel any hash the browser may be jumping to and park the
-    // nested scroller at the very top so the hero is what loads. Also drop a
-    // persisted section hash so the NEXT refresh has nothing to natively
-    // scroll to — the flash self-heals after one refresh.
-    if (navEntry?.type === "reload") {
-      const scroller = document.querySelector("[data-workspace-scroll]");
-      if (scroller) scroller.scrollTop = 0;
-      if (window.location.hash) {
-        window.history.replaceState(
-          null,
-          "",
-          window.location.pathname + window.location.search,
-        );
-      }
-      return;
+    if (navEntry?.type !== "reload") return;
+    const scroller = document.querySelector("[data-workspace-scroll]");
+    if (scroller) scroller.scrollTop = 0;
+    if (window.location.hash) {
+      // Drop a persisted section hash so the NEXT refresh has nothing to
+      // natively scroll to — the flash self-heals after one refresh.
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
     }
+  }, []);
 
+  useEffect(() => {
     const id = window.location.hash.replace(/^#/, "");
     if (!id) return;
     const raf = requestAnimationFrame(() => {
@@ -78,48 +84,55 @@ export function WorkspaceHeader() {
     }
   };
 
+  const navLink =
+    "rounded-full px-3.5 py-2 text-sm font-semibold text-ink-muted transition-colors hover:bg-cool-100 hover:text-ink-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
+
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-line bg-white px-4 lg:px-6">
+    <header className={`sticky top-0 z-30 border-b border-line bg-white/85 backdrop-blur-xl ${ofistantFont.className}`}>
+      <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:gap-4 lg:px-8">
       <Link
         href="/"
-        className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80"
+        className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80"
       >
-        <span className="type-display grid h-9 w-9 place-items-center rounded-lg bg-brand-700 text-base text-white">
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-700 text-lg font-extrabold text-white shadow-soft-sm">
           O
         </span>
-        <span className="type-display text-lg tracking-tight text-ink">
+        <span className="text-lg font-extrabold tracking-tight text-ink">
           Ofissio<span className="text-ochre-500">.</span>
         </span>
       </Link>
 
-      <nav className="hidden items-center gap-5 md:flex lg:gap-6" aria-label="Navigasi utama">
-        <Link href="/#paket" onClick={(e) => handleSectionNav(e, "paket")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
+      {/* Menu diposisikan di kiri, tepat setelah brand — dekat dengan rail
+          Ofistant, bukan mengambang di tengah. */}
+      <span aria-hidden="true" className="hidden h-6 w-px shrink-0 bg-line md:block" />
+      <nav className="hidden items-center gap-1 md:flex" aria-label="Navigasi utama">
+        <Link href="/#paket" onClick={(e) => handleSectionNav(e, "paket")} className={navLink}>
           Paket
         </Link>
-        <Link href="/#usaha" onClick={(e) => handleSectionNav(e, "usaha")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
+        <Link href="/#usaha" onClick={(e) => handleSectionNav(e, "usaha")} className={navLink}>
           Industri
         </Link>
-        <Link href="/#cara" onClick={(e) => handleSectionNav(e, "cara")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
+        <Link href="/#cara" onClick={(e) => handleSectionNav(e, "cara")} className={navLink}>
           Cara Order
         </Link>
-        <Link href="/#produk" onClick={(e) => handleSectionNav(e, "produk")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
+        <Link href="/catalog" className={navLink}>
           Produk
         </Link>
-        <Link href="/#cta" onClick={(e) => handleSectionNav(e, "cta")} className="text-sm font-medium text-ink-muted transition-colors hover:text-ink-strong">
-          Konsultasi
+        <Link href="/promo" className={navLink}>
+          Promo
         </Link>
       </nav>
 
-      <div className="flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-1.5">
         {/* Account entry */}
         {authHydrated && session ? (
           <div className="flex items-center gap-1">
             <Link
               href="/dashboard"
-              className="hidden items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface-muted sm:flex"
+              className="hidden items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-cool-100 sm:flex"
               title={roleLabel(session.user.role)}
             >
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
                 {session.user.fullName.charAt(0).toUpperCase()}
               </span>
               <span className="max-w-[120px] truncate">
@@ -130,7 +143,7 @@ export function WorkspaceHeader() {
               type="button"
               onClick={logout}
               aria-label="Logout"
-              className="grid h-9 w-9 place-items-center rounded-lg text-ink-muted hover:bg-surface-muted"
+              className="grid h-9 w-9 place-items-center rounded-full text-ink-muted transition-colors hover:bg-cool-100 hover:text-ink"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -139,7 +152,7 @@ export function WorkspaceHeader() {
           <button
             type="button"
             onClick={() => openAuth({ kind: "none" }, "login")}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink hover:bg-surface-muted"
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-700 px-4 text-sm font-bold text-white shadow-soft-sm transition-colors hover:bg-brand-800"
           >
             <LogIn className="h-4 w-4" />
             <span className="hidden sm:inline">Masuk</span>
@@ -149,11 +162,9 @@ export function WorkspaceHeader() {
         {/* Cart */}
         <Link
           href="/cart"
-          className="relative inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-ink hover:bg-surface-muted"
-          aria-label="Lihat keranjang"
+          className="relative inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-semibold text-ink transition-colors hover:bg-cool-100"
+          aria-label={cartHydrated ? `Lihat keranjang, ${cartCount} produk` : "Lihat keranjang"}
         >
-          <UserRound className="hidden" />
-          {/* cart icon */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -173,12 +184,13 @@ export function WorkspaceHeader() {
           {cartHydrated && cartCount > 0 && (
             <span
               aria-hidden
-              className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand-600 px-1 text-[11px] font-bold text-white"
+              className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand-600 px-1 text-[11px] font-bold text-white ring-2 ring-white"
             >
               {cartCount > 99 ? "99+" : cartCount}
             </span>
           )}
         </Link>
+      </div>
       </div>
     </header>
   );

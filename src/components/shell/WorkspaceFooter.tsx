@@ -2,7 +2,7 @@
 // Minimal footer: hanya link essential sebagai jalan pintas.
 // Ofistant (panel kiri) tetap menjadi entry point utama untuk discover &
 // rekomendasi. Footer ini hanya untuk hal yang tidak efisien lewat chat:
-// balik ke beranda, ke katalog, pahami cara order, hubungi sales.
+// balik ke beranda, ke katalog, pahami cara order, hubungi CS Ofissio.
 
 import Link from "next/link";
 import { Headset, Mail, MapPin } from "lucide-react";

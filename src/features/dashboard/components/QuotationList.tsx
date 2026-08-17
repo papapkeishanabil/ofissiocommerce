@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import type { CustomerQuotationTracking } from "@/features/tracking/tracking.types";
 import { calculateOrderProgress } from "@/features/tracking/tracking-utils";
 import { formatTrackingDate } from "@/features/tracking/tracking.service";
+import { formatCustomerRequestNumber } from "@/features/quotation/quotation.utils";
 
 interface QuotationListProps {
   quotations: CustomerQuotationTracking[];
@@ -23,7 +24,7 @@ export function QuotationList({ quotations }: QuotationListProps) {
   if (quotations.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-line bg-surface px-4 py-8 text-center text-sm text-ink-muted">
-        Belum ada quotation.
+        Belum ada penawaran.
       </div>
     );
   }
@@ -35,6 +36,10 @@ export function QuotationList({ quotations }: QuotationListProps) {
         const currentLabel =
           quotation.timeline.find((s) => s.state === "current")?.label ??
           "Quotation";
+        const isRequest = quotation.isOfficialQuotation === false;
+        const displayNumber = isRequest
+          ? formatCustomerRequestNumber(quotation.quotationNumber, quotation.requestedProcessRoute ?? "fulfillment")
+          : quotation.quotationNumber;
         return (
           <li
             key={quotation.id}
@@ -47,14 +52,14 @@ export function QuotationList({ quotations }: QuotationListProps) {
                   <FileClock className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <p className="font-bold text-ink">{quotation.quotationNumber}</p>
+                  <p className="font-bold text-ink">{displayNumber}</p>
                   <p className="mt-1 text-xs text-ink-muted">
                     {quotation.items.length} item - submitted{" "}
                     {formatTrackingDate(quotation.submittedAt)}
                   </p>
                 </div>
               </div>
-              <Badge tone="brand">{STATUS_LABEL[quotation.status]}</Badge>
+              <Badge tone="brand">{isRequest ? "Menunggu review Ofissio" : STATUS_LABEL[quotation.status]}</Badge>
             </div>
 
             <div className="mt-3">
@@ -70,7 +75,7 @@ export function QuotationList({ quotations }: QuotationListProps) {
                 aria-valuemax={100}
               >
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-ochre-500 to-ochre-400 transition-[width] duration-700 ease-out"
+                  className="h-full rounded-full bg-ochre-500 transition-[width] duration-700 ease-out"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -81,7 +86,7 @@ export function QuotationList({ quotations }: QuotationListProps) {
                 href={`/quotes/${quotation.id}`}
                 className="inline-flex h-9 items-center rounded-full border border-line-strong px-3 text-xs font-semibold text-ink transition hover:border-brand-700 hover:text-brand-700"
               >
-                {quotation.status === "sent" ? "Lihat Penawaran" : "Lihat quotation"}
+                {isRequest ? "Lihat permintaan" : "Lihat penawaran"}
               </Link>
               {quotation.convertedOrderId ? (
                 <Link

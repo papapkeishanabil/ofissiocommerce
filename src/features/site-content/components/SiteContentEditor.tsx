@@ -55,13 +55,51 @@ function cloneRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
-/** Build a fresh blank item from its field descriptors (icon -> Sparkles, text -> ""). */
+/** A sensible blank value for one field kind — so a freshly added item has the
+ *  right SHAPE (the editor renders it; zod still catches empty required fields
+ *  on save). icon -> Sparkles, text/textarea -> "", enum -> first option,
+ *  segments -> one empty fragment, list/stringList -> [], boolean -> false,
+ *  discriminated -> first variant seeded with blanks for that variant. */
+function blankFromDescriptor(f: FieldDescriptor): unknown {
+  switch (f.kind) {
+    case "text":
+    case "textarea":
+      return "";
+    case "icon":
+      return "Sparkles";
+    case "boolean":
+      return false;
+    case "enum":
+      return f.options[0]?.value ?? "";
+    case "segments":
+      return [{ text: "" }];
+    case "stringList":
+      return [];
+    case "list":
+      return [];
+    case "discriminated":
+      return blankDiscriminated(f.discriminator, f.variants, Object.keys(f.variants)[0] ?? "");
+  }
+}
+
+/** Build a blank object for one discriminator value: the discriminator key set,
+ *  plus a blank for each of that variant's sub-descriptors. Switching the
+ *  discriminator in the editor replaces the whole object with a fresh blank of
+ *  the new variant (no stale fields from the old one leak through). */
+function blankDiscriminated(
+  discriminator: string,
+  variants: { [value: string]: FieldDescriptor[] },
+  activeKey: string,
+): Record<string, unknown> {
+  const item: Record<string, unknown> = { [discriminator]: activeKey };
+  for (const f of variants[activeKey] ?? []) item[f.key] = blankFromDescriptor(f);
+  return item;
+}
+
+/** Build a fresh blank item from its field descriptors. */
 function blankItem(itemFields: FieldDescriptor[]): Record<string, unknown> {
   const item: Record<string, unknown> = {};
-  for (const f of itemFields) {
-    if (f.kind === "icon") item[f.key] = "Sparkles";
-    else if (f.kind === "text" || f.kind === "textarea") item[f.key] = "";
-  }
+  for (const f of itemFields) item[f.key] = blankFromDescriptor(f);
   return item;
 }
 
@@ -299,54 +337,236 @@ function FieldRenderer({
     );
   }
 
-  // list
-  const items = Array.isArray(value) ? (value as unknown[]) : [];
-  return (
-    <Field label={field.label} hint={field.help}>
-      <div className="space-y-3">
-        {items.map((item, index) => (
-          <div
-            key={index}
-            className="rounded-xl border border-line bg-slate-50/60 p-4"
-          >
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="text-xs font-bold uppercase tracking-[0.08em] text-ink-muted">
-                {field.itemLabel} #{index + 1}
-              </span>
+  if (field.kind === "boolean") {
+    return (
+      <Field label={field.label} htmlFor={id} hint={field.help}>
+        <label className="inline-flex min-h-10 cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-white px-3.5 text-sm font-semibold text-ink transition hover:bg-slate-50">
+          <input
+            id={id}
+            suppressHydrationWarning
+            type="checkbox"
+            checked={Boolean(value)}
+            onChange={(event) => onChange(event.target.checked)}
+            className="h-4 w-4 accent-brand-700"
+          />
+          {field.toggleLabel ?? "Aktif"}
+        </label>
+      </Field>
+    );
+  }
+
+  if (field.kind === "enum") {
+    return (
+      <Field label={field.label} htmlFor={id} hint={field.help}>
+        <Select id={id} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)}>
+          {field.options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+    );
+  }
+
+  if (field.kind === "stringList") {
+    const lines = Array.isArray(value) ? (value as unknown[]).map((l) => String(l ?? "")) : [];
+    return (
+      <Field label={field.label} hint={field.help}>
+        <div className="space-y-2">
+          {lines.map((line, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                suppressHydrationWarning
+                value={line}
+                maxLength={field.maxLength}
+                placeholder={field.itemLabel ? `${field.itemLabel}…` : "Teks…"}
+                onChange={(event) =>
+                  onChange(lines.map((s, i) => (i === index ? event.target.value : s)))
+                }
+                className="flex-1"
+              />
               <button
                 type="button"
-                onClick={() => onChange(items.filter((_, i) => i !== index))}
-                disabled={field.min ? items.length <= field.min : false}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => onChange(lines.filter((_, i) => i !== index))}
+                disabled={field.min ? lines.length <= field.min : false}
+                className="inline-flex min-h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-red-600 transition hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={`Hapus ${field.itemLabel ?? "baris"}`}
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                Hapus
               </button>
             </div>
-            <div className="space-y-3">
-              {field.itemFields.map((f) => (
-                <FieldRenderer
-                  key={f.key}
-                  field={f}
-                  value={(item as Record<string, unknown>)[f.key]}
-                  onChange={(v) =>
+          ))}
+          {!field.max || lines.length < field.max ? (
+            <button
+              type="button"
+              onClick={() => onChange([...lines, ""])}
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-dashed border-line-strong bg-white px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Tambah {field.itemLabel ?? "baris"}
+            </button>
+          ) : null}
+        </div>
+      </Field>
+    );
+  }
+
+  if (field.kind === "discriminated") {
+    const obj =
+      value && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    return (
+      <Field label={field.label} hint={field.help}>
+        <div className="space-y-3 rounded-xl border border-line bg-slate-50/60 p-4">
+          <DiscriminatedFields
+            discriminator={field.discriminator}
+            variants={field.variants}
+            value={obj}
+            onChange={onChange}
+          />
+        </div>
+      </Field>
+    );
+  }
+
+  if (field.kind === "segments") {
+    const segs = Array.isArray(value)
+      ? (value as { text?: string; highlight?: boolean }[])
+      : [];
+    return (
+      <Field
+        label={field.label}
+        hint={field.help ?? "Bagian berwarna akan ditebalkan dengan warna aksen pada halaman publik."}
+      >
+        <div className="space-y-2">
+          {segs.map((seg, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                suppressHydrationWarning
+                value={String(seg?.text ?? "")}
+                maxLength={140}
+                placeholder="Teks potongan…"
+                onChange={(event) =>
+                  onChange(
+                    segs.map((s, i) =>
+                      i === index ? { ...s, text: event.target.value } : s,
+                    ),
+                  )
+                }
+                className="flex-1"
+              />
+              <label className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-line bg-white px-3 text-xs font-semibold text-ink">
+                <input
+                  suppressHydrationWarning
+                  type="checkbox"
+                  checked={Boolean(seg?.highlight)}
+                  onChange={(event) =>
                     onChange(
-                      items.map((it, i) =>
-                        i === index
-                          ? { ...(it as Record<string, unknown>), [f.key]: v }
-                          : it,
+                      segs.map((s, i) =>
+                        i === index ? { ...s, highlight: event.target.checked } : s,
                       ),
                     )
                   }
+                  className="h-4 w-4 accent-brand-700"
                 />
-              ))}
+                Tekan
+              </label>
+              <button
+                type="button"
+                onClick={() => onChange(segs.filter((_, i) => i !== index))}
+                disabled={segs.length <= 1}
+                className="inline-flex min-h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-red-600 transition hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Hapus potongan teks"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              </button>
             </div>
-          </div>
-        ))}
+          ))}
+          {!field.max || segs.length < field.max ? (
+            <button
+              type="button"
+              onClick={() => onChange([...segs, { text: "" }])}
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-dashed border-line-strong bg-white px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Tambah potongan teks
+            </button>
+          ) : null}
+        </div>
+      </Field>
+    );
+  }
+
+  // list
+  const items = Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+  const useDiscriminated = Boolean(field.itemDiscriminator && field.itemVariants);
+  const blankRow = () =>
+    useDiscriminated && field.itemDiscriminator && field.itemVariants
+      ? blankDiscriminated(field.itemDiscriminator, field.itemVariants, Object.keys(field.itemVariants)[0] ?? "")
+      : blankItem(field.itemFields ?? []);
+  return (
+    <Field label={field.label} hint={field.help}>
+      <div className="space-y-3">
+        {items.map((item, index) => {
+          const obj =
+            item && typeof item === "object" && !Array.isArray(item)
+              ? item
+              : {};
+          return (
+            <div
+              key={index}
+              className="rounded-xl border border-line bg-slate-50/60 p-4"
+            >
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-[0.08em] text-ink-muted">
+                  {field.itemLabel} #{index + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onChange(items.filter((_, i) => i !== index))}
+                  disabled={field.min ? items.length <= field.min : false}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  Hapus
+                </button>
+              </div>
+              <div className="space-y-3">
+                {useDiscriminated && field.itemDiscriminator && field.itemVariants ? (
+                  <DiscriminatedFields
+                    discriminator={field.itemDiscriminator}
+                    variants={field.itemVariants}
+                    value={obj}
+                    onChange={(next) =>
+                      onChange(items.map((it, i) => (i === index ? next : it)))
+                    }
+                  />
+                ) : (
+                  (field.itemFields ?? []).map((f) => (
+                    <FieldRenderer
+                      key={f.key}
+                      field={f}
+                      value={obj[f.key]}
+                      onChange={(v) =>
+                        onChange(
+                          items.map((it, i) =>
+                            i === index ? { ...obj, [f.key]: v } : it,
+                          ),
+                        )
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
         {!field.max || items.length < field.max ? (
           <button
             type="button"
-            onClick={() => onChange([...items, blankItem(field.itemFields)])}
+            onClick={() => onChange([...items, blankRow()])}
             className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-dashed border-line-strong bg-white px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
           >
             <Plus className="h-4 w-4" aria-hidden />
@@ -355,6 +575,53 @@ function FieldRenderer({
         ) : null}
       </div>
     </Field>
+  );
+}
+
+/** Renders a discriminated object: a Select for the discriminator key, then the
+ *  active variant's sub-descriptors. Switching the Select replaces the whole
+ *  object with a fresh blank of the new variant. Shared by the top-level
+ *  `discriminated` field (e.g. hero panel) and `list` rows whose items are
+ *  discriminated (e.g. hero CTAs). */
+function DiscriminatedFields({
+  discriminator,
+  variants,
+  value,
+  onChange,
+}: {
+  discriminator: string;
+  variants: { [value: string]: FieldDescriptor[] };
+  value: Record<string, unknown>;
+  onChange: (next: Record<string, unknown>) => void;
+}) {
+  const variantKeys = Object.keys(variants);
+  const activeKey = String(value[discriminator] ?? variantKeys[0] ?? "");
+  const subFields = variants[activeKey] ?? [];
+  return (
+    <>
+      <Select
+        value={activeKey}
+        onChange={(event) =>
+          onChange(blankDiscriminated(discriminator, variants, event.target.value))
+        }
+      >
+        {variantKeys.map((k) => (
+          <option key={k} value={k}>
+            {k.charAt(0).toUpperCase() + k.slice(1)}
+          </option>
+        ))}
+      </Select>
+      <div className="space-y-3">
+        {subFields.map((f) => (
+          <FieldRenderer
+            key={f.key}
+            field={f}
+            value={value[f.key]}
+            onChange={(v) => onChange({ ...value, [discriminator]: activeKey, [f.key]: v })}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 

@@ -26,7 +26,7 @@ export function CartButton({ className, label = "Keranjang" }: CartButtonProps) 
         "relative inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-ink hover:bg-slate-100",
         className,
       )}
-      aria-label="Lihat keranjang"
+      aria-label={hydrated ? `Lihat keranjang, ${count} produk` : "Lihat keranjang"}
     >
       <ShoppingCart className="h-5 w-5" />
       <span>{label}</span>
