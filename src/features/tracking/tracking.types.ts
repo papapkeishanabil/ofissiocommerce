@@ -10,6 +10,7 @@ export type TrackingFulfillmentType =
 
 export type TrackingPaymentStatus =
   | "waiting_payment"
+  | "deposit_paid"
   | "paid"
   | "verified"
   | "failed"
@@ -56,6 +57,8 @@ export interface OrderItemProgress {
   productSlug: string;
   productName: string;
   sku: string;
+  /** catalog main image snapshot for thumbnails (order/tracking views) */
+  image?: string | null;
   selectedColor: string;
   sizeMatrix: SizeMatrix;
   totalQty: number;
@@ -161,6 +164,8 @@ export interface CustomerQuotationTracking {
   notes?: string | null;
   grandTotal?: number | null;
   convertedOrderId?: string | null;
+  requestedProcessRoute?: "fulfillment" | "customization" | "production";
+  isOfficialQuotation?: boolean;
 }
 
 export interface DashboardTrackingSnapshot {

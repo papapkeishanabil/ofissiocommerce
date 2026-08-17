@@ -278,6 +278,12 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         <AdminSectionCard icon={Calculator} tone="neutral" title="Nilai order">
           <dl className="divide-y divide-line text-sm">
             <SummaryRow label="Subtotal barang" value={formatRupiah(order.calculation.itemSubtotal)} />
+            {(order.calculation.discountTotal ?? 0) > 0 ? (
+              <SummaryRow
+                label={`Promo ${order.calculation.promotionCode ?? ""}`.trim()}
+                value={`- ${formatRupiah(order.calculation.discountTotal ?? 0)}`}
+              />
+            ) : null}
             <SummaryRow label="Biaya custom" value={formatRupiah(order.calculation.customizationFee)} />
             <SummaryRow label="Pengiriman" value={formatRupiah(order.calculation.shippingFee)} />
             <SummaryRow
@@ -297,6 +303,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         <AdminCarrierShippingPanel
           orderId={order.id}
           paymentReceived={paymentReceived}
+          selectedShippingRate={order.selectedShippingRate ?? null}
           provider={carrierConfig.provider}
           providerConfigured={
             carrierConfig.isRuntimeAllowed &&
@@ -405,7 +412,7 @@ function deriveNextAction(input: {
       tone: "success",
       title: "Order legacy sudah selesai dikirim",
       description:
-        "Shipment berstatus delivered. Process order tidak dibuat karena order ini berasal dari flow lama; tidak perlu membuat proses baru.",
+        "Pengiriman sudah selesai. Perintah Kerja tidak dibuat karena pesanan ini berasal dari alur lama; tidak perlu membuat pekerjaan baru.",
     };
   }
   if (!input.processOrder) {
@@ -424,7 +431,7 @@ function deriveNextAction(input: {
       .find((task) => task.status !== "completed");
     return {
       tone: input.processOrder.processStatus === "waiting_replenishment" ? "warning" : "brand",
-      title: activeTask ? `Kerjakan: ${activeTask.taskName}` : "Lanjutkan process order",
+      title: activeTask ? `Kerjakan: ${activeTask.taskName}` : "Lanjutkan Perintah Kerja",
       description:
         input.processOrder.processStatus === "waiting_replenishment"
           ? "Order menunggu replenishment internal. Customer tetap melihat order sebagai tersedia."
@@ -437,7 +444,7 @@ function deriveNextAction(input: {
     return {
       tone: "success",
       title: "Order selesai dan sudah diterima customer",
-      description: "Process order serta pengiriman telah selesai. Tidak ada tindakan wajib berikutnya.",
+      description: "Perintah Kerja serta pengiriman telah selesai. Tidak ada tindakan wajib berikutnya.",
     };
   }
   const shipmentStarted =
@@ -454,9 +461,9 @@ function deriveNextAction(input: {
 }
 
 function processOrderLabel(route: OrderProcessRoute) {
-  if (route === "customization") return "Customization Order";
-  if (route === "production") return "Production Order";
-  return "Fulfillment Order";
+  if (route === "customization") return "Perintah Kerja Custom (CUS)";
+  if (route === "production") return "Perintah Kerja Production (PRO)";
+  return "Perintah Kerja Ready Stock (STK)";
 }
 
 function SummaryRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {

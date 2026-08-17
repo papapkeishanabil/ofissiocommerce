@@ -13,6 +13,7 @@ import {
   upsertTrackingOrderPersisted,
 } from "./tracking.server-store";
 import type { CustomerTrackingOrder } from "./tracking.types";
+import { repositoryRegistry } from "@/features/repositories/repository.factory";
 
 export function createTrackingFromPaidOrder(input: {
   payment: PaymentRecord;
@@ -34,7 +35,7 @@ export function upsertTrackingFromPaymentOrder(input: {
     order: input.order,
     paymentStatus:
       input.payment.status === "paid"
-        ? "paid"
+        ? input.order.paymentTerms?.mode === "deposit_balance" ? "deposit_paid" : "paid"
         : input.payment.status === "failed"
           ? "failed"
           : "waiting_payment",
@@ -58,7 +59,7 @@ export async function upsertTrackingFromPaymentOrderPersisted(input: {
     order: input.order,
     paymentStatus:
       input.payment.status === "paid"
-        ? "paid"
+        ? input.order.paymentTerms?.mode === "deposit_balance" ? "deposit_paid" : "paid"
         : input.payment.status === "failed"
           ? "failed"
           : "waiting_payment",
@@ -66,7 +67,21 @@ export async function upsertTrackingFromPaymentOrderPersisted(input: {
     selectedShippingRate,
     companyName: input.companyName,
   });
-  const result = await upsertTrackingOrderPersisted(tracking);
+  const existing = await repositoryRegistry.tracking.getTrackingByOrderId({
+    companyId: input.order.companyId,
+    orderId: input.order.id,
+  });
+  const shouldPreserveProductionProgress =
+    input.payment.paymentPurpose === "balance" && existing !== null;
+  const next = shouldPreserveProductionProgress
+    ? {
+        ...existing,
+        paymentStatus: "paid" as const,
+        paymentReferenceId: input.payment.referenceId,
+        updatedAt: new Date().toISOString(),
+      }
+    : tracking;
+  const result = await upsertTrackingOrderPersisted(next);
   return { tracking: result.order, created: result.created };
 }
 

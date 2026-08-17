@@ -21,10 +21,12 @@ import { summarizeSizeMatrix } from "@/features/tracking/tracking-utils";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ created?: string }>;
 }
 
-export default async function AdminProcessOrderDetailPage({ params }: PageProps) {
+export default async function AdminProcessOrderDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const created = (await searchParams)?.created;
   const [detail, actor, documents] = await Promise.all([
     getAdminProcessOrderDetail(id),
     requireInternalAdminServer("admin:process-order:view"),
@@ -45,13 +47,19 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
 
   return (
     <div className="space-y-5">
+      {created ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-950" role="status">
+          <p className="font-bold">{created === "new" ? "Perintah Kerja berhasil dibuat" : "Perintah Kerja sudah tersedia"}</p>
+          <p className="mt-1">Pesanan telah diteruskan kepada tim terkait. Lanjutkan pekerjaan dari checklist di halaman ini.</p>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/admin/process-orders" className="text-sm font-bold text-brand-700">
-          ← Back to process orders
+          ← Kembali ke Perintah Kerja
         </Link>
         <span className="text-xs font-semibold text-ink-muted">/</span>
         <Link href={`/admin/orders/${processOrder.ofissioOrderId}`} className="text-sm font-bold text-brand-700">
-          Related order
+          Buka Pesanan Customer
         </Link>
       </div>
 
@@ -153,7 +161,7 @@ export default async function AdminProcessOrderDetailPage({ params }: PageProps)
       <section className="rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-soft-md ring-1 ring-slate-950/[0.03]">
         <h3 className="text-lg font-black text-ink">Items & customization snapshot</h3>
         {items.length === 0 ? (
-          <AdminEmptyState title="Item process order belum tersedia" />
+          <AdminEmptyState title="Item Perintah Kerja belum tersedia" />
         ) : (
           <div className="mt-4 space-y-3">
             {items.map((item) => (

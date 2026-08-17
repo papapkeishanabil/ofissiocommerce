@@ -41,7 +41,7 @@ export function OrderDocuments({ orderId, documents }: OrderDocumentsProps) {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
       <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
         <FileText className="h-4 w-4 text-brand-700" />
         Dokumen order
@@ -50,7 +50,7 @@ export function OrderDocuments({ orderId, documents }: OrderDocumentsProps) {
         {documents.map((doc) => (
           <li
             key={doc.id}
-            className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 text-sm"
+            className="flex items-center justify-between gap-3 rounded-xl border border-white/60 bg-white/45 px-3 py-2 text-sm"
           >
             <div className="min-w-0">
               <p className="truncate font-semibold text-ink">{doc.label}</p>

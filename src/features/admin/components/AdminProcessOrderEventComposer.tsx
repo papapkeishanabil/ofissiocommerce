@@ -58,7 +58,7 @@ export function AdminProcessOrderEventComposer({
       }
 
       setNote("");
-      setMessage("Aktivitas tersimpan di timeline process order.");
+      setMessage("Aktivitas tersimpan di timeline Perintah Kerja.");
       router.refresh();
     });
   }

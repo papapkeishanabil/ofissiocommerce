@@ -16,6 +16,7 @@ import {
   createQuotationRequestedNotification,
 } from "@/features/admin-notifications/admin-notification.service";
 import { getGlobalTaxSettings } from "@/features/tax/tax.service";
+import { validatePromotionCode } from "@/features/promotions/promotion.service";
 import { storageService } from "@/features/storage/storage.service";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
@@ -38,7 +39,11 @@ import type {
   QuotationPricingInput,
   QuotationRequestRecord,
   QuotationStatus,
+  EmbroideryConsultationEstimate,
+  ProductionPlan,
 } from "./quotation.types";
+import type { EmbroideryEstimatePayload } from "./embroidery-estimate.validation";
+import type { ProductionPlanPayload } from "./production-plan.validation";
 import { buildCustomProductionItem } from "./custom-quotation";
 import {
   buildQuotationItems,
@@ -73,6 +78,20 @@ export async function createQuotationRequest(
     })),
   });
   const now = new Date().toISOString();
+  const promotion = input.couponCode
+    ? await validatePromotionCode({
+        code: input.couponCode,
+        email: input.userEmail,
+        lines: cart.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.totalQty,
+          subtotal: item.finalEstimatedTotal,
+        })),
+      })
+    : null;
+  if (promotion && !promotion.valid) {
+    throw createApiError("BAD_REQUEST", promotion.message, 400);
+  }
   const id = `quo_${randomUUID()}`;
   const requirement = resolveQuotationRequirement({
     requestedType: input.requirementType,
@@ -152,7 +171,8 @@ export async function createQuotationRequest(
     salesNotes: null,
     customerMessage: null,
     subtotal: null,
-    discountTotal: 0,
+    discountTotal: promotion?.valid ? promotion.discountTotal : 0,
+    couponCode: promotion?.valid ? promotion.code : null,
     taxEnabled: taxState.settings.enabled,
     taxRate: taxState.settings.rate,
     taxLabel: taxState.settings.label,
@@ -484,6 +504,86 @@ export async function getQuotationEventsById(id: string, companyId: string) {
   return quotationRepository.getEvents?.(id) ?? [];
 }
 
+export async function updateEmbroideryConsultationEstimate(input: {
+  id: string;
+  payload: EmbroideryEstimatePayload;
+  actorId: string;
+  request?: Request;
+}) {
+  const current = await quotationRepository.getById(input.id);
+  if (!current) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  const now = new Date().toISOString();
+  const { publishToCustomer, ...estimatePayload } = input.payload;
+  const estimate: EmbroideryConsultationEstimate = {
+    ...estimatePayload,
+    status: publishToCustomer ? "sent_to_customer" : "estimate_ready",
+    estimatedBy: input.actorId,
+    estimatedAt: now,
+  };
+  const updated = await quotationRepository.update(input.id, { embroideryEstimate: estimate });
+  if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  await quotationRepository.addEvent?.({
+    id: `qev_${randomUUID()}`,
+    quotationId: current.id,
+    companyId: current.companyId,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "internal_note_added",
+    oldStatus: current.status,
+    newStatus: current.status,
+    note: publishToCustomer ? "Estimasi bordir dikirim ke customer." : "Estimasi bordir disimpan sebagai draft.",
+    metadata: { supervisorName: estimate.supervisorName, estimatedCompletionDate: estimate.estimatedCompletionDate, courierService: estimate.courierService },
+    createdAt: now,
+  });
+  logAuditEvent({ request: input.request, actorId: input.actorId, actorType: "internal", companyId: current.companyId, action: "embroidery_estimate_updated", entityType: "quotation", entityId: current.id, metadata: { published: publishToCustomer } });
+  return updated;
+}
+
+export async function updateProductionPlan(input: {
+  id: string;
+  payload: ProductionPlanPayload;
+  actorId: string;
+  request?: Request;
+}) {
+  const current = await quotationRepository.getById(input.id);
+  if (!current) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  if (current.requirementType !== "custom_production") {
+    throw createApiError("BAD_REQUEST", "Rencana produksi hanya berlaku untuk quotation production.", 400);
+  }
+  if (!current.grandTotal || current.grandTotal <= 0) {
+    throw createApiError("BAD_REQUEST", "Lengkapi harga final sebelum menyusun termin DP.", 400);
+  }
+  const now = new Date().toISOString();
+  const { publishToCustomer, ...payload } = input.payload;
+  const depositAmount = Math.round(current.grandTotal * payload.depositPercent / 100);
+  const plan: ProductionPlan = {
+    ...payload,
+    status: publishToCustomer ? "sent_to_customer" : "plan_ready",
+    depositAmount,
+    balanceAmount: Math.max(0, current.grandTotal - depositAmount),
+    balanceDueStage: "after_production_before_shipping",
+    plannedBy: input.actorId,
+    plannedAt: now,
+  };
+  const updated = await quotationRepository.update(input.id, { productionPlan: plan });
+  if (!updated) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  await quotationRepository.addEvent?.({
+    id: `qev_${randomUUID()}`,
+    quotationId: current.id,
+    companyId: current.companyId,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "internal_note_added",
+    oldStatus: current.status,
+    newStatus: current.status,
+    note: publishToCustomer ? "Rencana produksi dan termin DP dikirim ke customer." : "Draft rencana produksi disimpan.",
+    metadata: { estimatedCompletionDate: plan.estimatedCompletionDate, depositPercent: plan.depositPercent, depositAmount: plan.depositAmount },
+    createdAt: now,
+  });
+  logAuditEvent({ request: input.request, actorId: input.actorId, actorType: "internal", companyId: current.companyId, action: "production_plan_updated", entityType: "quotation", entityId: current.id, metadata: { published: publishToCustomer, depositPercent: plan.depositPercent } });
+  return normalizeQuotationRecord(updated);
+}
+
 export async function updateSalesAssistedBriefApproval(input: {
   id: string;
   companyId: string;
@@ -779,6 +879,26 @@ export async function sendQuotationReadyToCustomer(input: {
     throw createApiError(
       "BAD_REQUEST",
       "Quotation belum dapat dikirim karena brief Full Custom belum disetujui customer.",
+      400,
+    );
+  }
+  if (
+    quotation.requirementType === "standard_customization" &&
+    quotation.embroideryEstimate?.status !== "sent_to_customer"
+  ) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Quotation belum dapat dikirim karena estimasi supervisor bordir belum dipublikasikan.",
+      400,
+    );
+  }
+  if (
+    quotation.requirementType === "custom_production" &&
+    quotation.productionPlan?.status !== "sent_to_customer"
+  ) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Quotation belum dapat dikirim karena rencana produksi dan termin DP belum dipublikasikan.",
       400,
     );
   }
@@ -1093,6 +1213,19 @@ export async function convertQuotationToOrder(input: {
     items: orderItems,
     requestedProcessRoute: quotation.requestedProcessRoute,
   });
+  const productionPaymentTerms =
+    quotation.requirementType === "custom_production" && quotation.productionPlan
+      ? {
+          mode: "deposit_balance" as const,
+          contractTotal: safeMoney(quotation.grandTotal),
+          depositPercent: quotation.productionPlan.depositPercent,
+          depositAmount: quotation.productionPlan.depositAmount,
+          balanceAmount: quotation.productionPlan.balanceAmount,
+          amountDueNow: quotation.productionPlan.depositAmount,
+          balanceDueStage: "after_production_before_shipping" as const,
+          balanceStatus: "pending" as const,
+        }
+      : undefined;
   const order: PaymentOrderRecord = {
     id: orderId,
     orderNumber: referenceId,
@@ -1120,6 +1253,7 @@ export async function convertQuotationToOrder(input: {
       taxLabel: quotation.taxLabel,
       grandTotal: safeMoney(quotation.grandTotal),
     },
+    paymentTerms: productionPaymentTerms,
     status: "waiting_payment",
     quotationId: quotation.id,
     ...processRouting,
@@ -1141,7 +1275,7 @@ export async function convertQuotationToOrder(input: {
     referenceId,
     providerPaymentId: null,
     providerTransactionId: null,
-    amount: order.calculation.grandTotal,
+    amount: productionPaymentTerms?.amountDueNow ?? order.calculation.grandTotal,
     currency: "IDR",
     status: "waiting_payment",
     paymentUrl: null,
@@ -1206,10 +1340,15 @@ export async function convertQuotationToOrder(input: {
     })),
     nextStep:
       order.items.some((item) => item.fulfillmentType === "MADE_TO_ORDER")
-        ? "Menunggu pembayaran / approval desain"
+        ? productionPaymentTerms
+          ? `Menunggu DP ${productionPaymentTerms.depositPercent}% dan approval desain`
+          : "Menunggu pembayaran / approval desain"
         : "Menunggu pembayaran",
-    statusNote:
-      "Quotation sudah disetujui dan dikonversi menjadi order Ofissio. Payment masih mock/foundation.",
+    statusNote: productionPaymentTerms
+      ? `Quotation disetujui. Produksi dimulai setelah DP ${productionPaymentTerms.depositPercent}% diterima; pelunasan ditagihkan setelah produksi selesai sebelum pengiriman.`
+      : "Quotation sudah disetujui dan dikonversi menjadi order Ofissio. Payment masih mock/foundation.",
+    estimatedCompletionDate: quotation.productionPlan?.estimatedCompletionDate ?? tracking.estimatedCompletionDate,
+    estimatedDeliveryDate: quotation.productionPlan?.estimatedArrivalEnd ?? tracking.estimatedDeliveryDate,
     documents: [
       {
         id: `${order.id}-quotation`,

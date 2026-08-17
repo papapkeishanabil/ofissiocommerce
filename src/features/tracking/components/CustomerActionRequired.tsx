@@ -17,7 +17,7 @@ export function CustomerActionRequired({ order }: CustomerActionRequiredProps) {
   const actions = order.actionRequired;
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-bold text-ink">Action required</h2>
         <Badge tone={actions.some((action) => action.required) ? "amber" : "neutral"}>
@@ -43,7 +43,7 @@ function ActionRow({
 }) {
   if (action.type === "REPEAT_ORDER") {
     return (
-      <div className="rounded-xl border border-brand-100 bg-brand-50/60 p-3">
+      <div className="rounded-xl border border-brand-100 bg-brand-50/70 p-3">
         <ActionText action={action} />
         <div className="mt-3">
           <RepeatOrderButton order={order} compact />
@@ -53,9 +53,9 @@ function ActionRow({
   }
 
   return (
-    <div className="rounded-xl border border-line p-3">
+    <div className="rounded-xl border border-white/60 bg-white/45 p-3">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-muted text-brand-700">
+        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700">
           {iconForAction(action.type)}
         </span>
         <div className="min-w-0 flex-1">

@@ -69,8 +69,8 @@ const INITIAL_FORM: FormState = {
 const REQUIRED_TOTAL = 4;
 const STEPS: Array<{ n: string; label: string }> = [
   { n: "1", label: "Isi brief" },
-  { n: "2", label: "Review sales" },
-  { n: "3", label: "Penawaran & approval" },
+  { n: "2", label: "Konsultasi & review teknis" },
+  { n: "3", label: "Quotation resmi & DP" },
   { n: "4", label: "Production Order" },
 ];
 
@@ -471,7 +471,7 @@ export function CustomRequestPage() {
                   ))}
                 </ul>
               ) : null}
-              <Field label="Catatan tambahan" htmlFor="custom-customerNotes" hint="Opsional; tulis informasi komersial atau teknis lain yang perlu diketahui sales.">
+              <Field label="Catatan tambahan" htmlFor="custom-customerNotes" hint="Opsional; tulis informasi komersial atau teknis lain yang perlu diketahui CS Ofissio.">
                 <textarea id="custom-customerNotes" rows={3} value={form.customerNotes} onChange={(event) => update("customerNotes", event.target.value)} maxLength={1000} className={textareaClass} placeholder="Contoh: perlu sample approval sebelum produksi massal." />
               </Field>
             </FormSection>
@@ -499,7 +499,7 @@ export function CustomRequestPage() {
 
               <div className="p-5">
                 <p className="text-sm leading-6 text-ink-muted">
-                  Request ini langsung masuk ke tim sales sebagai quotation dengan rute Production / SPK.
+                  Permintaan ini masuk ke Tim Ofissio untuk konsultasi kebutuhan dan penyusunan rencana produksi. Quotation resmi dikirim setelah spesifikasi, jadwal, harga, dan termin disepakati.
                 </p>
                 <dl className="mt-4 space-y-2.5 text-sm">
                   <SummaryRow label="Proyek" value={form.projectName || "Belum diisi"} />

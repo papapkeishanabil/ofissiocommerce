@@ -14,6 +14,7 @@ import { CustomerActionRequired } from "./components/CustomerActionRequired";
 import { CustomerPaymentPanel } from "./components/CustomerPaymentPanel";
 import { OrderDocuments } from "./components/OrderDocuments";
 import { OrderItemProgressList } from "./components/OrderItemProgressList";
+import { OrderStageStepper } from "./components/OrderStageStepper";
 import { OrderStatusTimeline } from "./components/OrderStatusTimeline";
 import { ProductionProgressCard } from "./components/ProductionProgressCard";
 import { RepeatOrderButton } from "./components/RepeatOrderButton";
@@ -105,9 +106,9 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
 
   if (!hydrated || (!order && fetchingOrder)) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-10 lg:px-8">
-        <div className="h-8 w-56 animate-pulse rounded bg-slate-200" />
-        <div className="mt-6 h-72 animate-pulse rounded-2xl bg-slate-200" />
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
+        <div className="h-8 w-56 animate-pulse rounded-lg bg-cool-200" />
+        <div className="mt-6 h-72 animate-pulse rounded-2xl bg-cool-100" />
       </div>
     );
   }
@@ -130,7 +131,19 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
   const status = trackingOrderStatusLabel(order);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-8">
+    <div className="relative isolate">
+      {/* Wash warna lembut di belakang kartu glass — navy, ochre, dan sky
+          samar agar transparansi kartu terbaca, tanpa mengganggu teks. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-cool-100/70 via-white/10 to-brand-50/60" />
+        <div className="absolute -top-24 left-[-8%] h-[26rem] w-[26rem] rounded-full bg-brand-300/30 blur-3xl" />
+        <div className="absolute top-1/3 right-[-6%] h-[30rem] w-[30rem] rounded-full bg-ochre-200/50 blur-3xl" />
+        <div className="absolute bottom-[-4rem] left-1/3 h-96 w-96 rounded-full bg-cool-200/60 blur-3xl" />
+      </div>
+      <main className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
       <Link
         href="/dashboard"
         className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-ink-muted hover:text-brand-700"
@@ -139,14 +152,13 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
         Dashboard
       </Link>
 
-      <header className="rounded-2xl border border-line bg-surface p-5 shadow-soft-xs">
+      <header className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
-            <p className="type-eyebrow text-brand-700">Order Tracking</p>
-            <h1 className="mt-2 text-2xl font-bold text-ink lg:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight text-ink lg:text-3xl">
               {order.orderNumber}
             </h1>
-            <p className="mt-1 text-sm text-ink-muted">
+            <p className="mt-1.5 text-sm text-ink-muted">
               {order.companyName} - {formatTrackingDate(order.orderDate)}
             </p>
           </div>
@@ -156,10 +168,10 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
         </div>
 
         <dl className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <HeaderStat label="Status" value={status} />
-          <HeaderStat label="Progress" value={`${progress}%`} />
-          <HeaderStat label="Fulfillment" value={fulfillmentLabel(order.fulfillmentType)} />
-          <HeaderStat label="Pembayaran" value={paymentStatusLabel(order.paymentStatus)} />
+          <HeaderStat label="Status" value={status} tone="brand" />
+          <HeaderStat label="Progress" value={`${progress}%`} tone="ochre" />
+          <HeaderStat label="Jenis pesanan" value={fulfillmentLabel(order.fulfillmentType)} tone="cool" />
+          <HeaderStat label="Pembayaran" value={paymentStatusLabel(order.paymentStatus)} tone="plain" />
         </dl>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -180,12 +192,14 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
         </div>
       </header>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <OrderStageStepper stages={order.productionTimeline} />
+
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
           <ProductionProgressCard order={order} />
           <OrderItemProgressList items={order.items} />
           <OrderStatusTimeline
-            title="Production timeline"
+            title="Tahapan produksi"
             stages={order.productionTimeline}
           />
         </div>
@@ -201,13 +215,31 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
           <CustomerActionRequired order={order} />
         </aside>
       </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
-function HeaderStat({ label, value }: { label: string; value: string }) {
+type HeaderStatTone = "brand" | "ochre" | "cool" | "plain";
+
+const HEADER_STAT_TONE: Record<HeaderStatTone, string> = {
+  brand: "border border-brand-100 bg-brand-50/80",
+  ochre: "border border-ochre-100 bg-ochre-50/80",
+  cool: "border border-cool-200 bg-cool-100/70",
+  plain: "border border-white/60 bg-white/55",
+};
+
+function HeaderStat({
+  label,
+  value,
+  tone = "plain",
+}: {
+  label: string;
+  value: string;
+  tone?: HeaderStatTone;
+}) {
   return (
-    <div className="rounded-xl bg-surface-muted px-3 py-2">
+    <div className={`rounded-xl px-3 py-2 ${HEADER_STAT_TONE[tone]}`}>
       <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
         {label}
       </dt>

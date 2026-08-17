@@ -95,6 +95,9 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
             },
           ]
         : [],
+    coupon_lines: order.calculation.promotionCode
+      ? [{ code: order.calculation.promotionCode }]
+      : [],
     meta_data: compactMeta([
       ["source", "ofissio"],
       ["ofissio_source", "ofissio"],
@@ -107,6 +110,8 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
       ["quotation_id", input.quotationId ?? order.quotationId],
       ["payment_provider", payment.provider],
       ["payment_reference", payment.referenceId],
+      ["promotion_code", order.calculation.promotionCode],
+      ["discount_total", String(order.calculation.discountTotal ?? 0)],
       ["fulfillment_type", order.items[0]?.fulfillmentType],
       ["transaction_mode", order.items[0]?.transactionMode],
       ["process_route", order.processRoute],

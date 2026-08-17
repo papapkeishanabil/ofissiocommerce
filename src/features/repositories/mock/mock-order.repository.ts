@@ -38,6 +38,18 @@ export const mockOrderRepository: OrderRepository = {
     orders.set(next.id, next);
     return next;
   },
+  async updateOrderPaymentTerms(input) {
+    const order = orders.get(input.orderId);
+    if (!order || order.companyId !== input.companyId) return null;
+    const next = {
+      ...order,
+      status: input.status ?? order.status,
+      paymentTerms: input.paymentTerms,
+      updatedAt: new Date().toISOString(),
+    };
+    orders.set(next.id, next);
+    return next;
+  },
   async updateOrderWooSync(input) {
     const order = orders.get(input.orderId);
     if (!order || order.companyId !== input.companyId) return null;

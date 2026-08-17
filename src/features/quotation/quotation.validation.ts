@@ -67,6 +67,7 @@ export const quotationRequestBodySchema = z
     picName: z.string().trim().min(1).max(120).nullable().optional(),
     picEmail: emailAddressSchema.nullable().optional(),
     picWhatsapp: z.string().trim().min(3).max(40).nullable().optional(),
+    couponCode: z.string().trim().min(3).max(50).regex(/^[A-Za-z0-9_-]+$/).nullable().optional(),
   })
   .superRefine((value, ctx) => {
     if (

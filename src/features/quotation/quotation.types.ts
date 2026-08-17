@@ -12,6 +12,64 @@ export type QuotationRequirementType =
 
 export type QuotationSource = "web_cart" | "custom_request";
 
+export type EmbroideryEstimateStatus =
+  | "not_required"
+  | "waiting_consultation"
+  | "estimate_ready"
+  | "sent_to_customer";
+
+export interface EmbroideryConsultationEstimate {
+  status: EmbroideryEstimateStatus;
+  complexity: "easy" | "medium" | "hard";
+  estimatedStitchCount: number | null;
+  supervisorName: string;
+  supervisorNotes: string | null;
+  estimatedStartDate: string;
+  estimatedCompletionDate: string;
+  qcPackingDays: number;
+  estimatedHandoverDate: string;
+  courierCode: string;
+  courierService: string;
+  courierDurationMinDays: number;
+  courierDurationMaxDays: number;
+  estimatedArrivalStart: string;
+  estimatedArrivalEnd: string;
+  validUntil: string;
+  estimatedBy: string;
+  estimatedAt: string;
+}
+
+export type ProductionPlanStatus =
+  | "waiting_consultation"
+  | "plan_ready"
+  | "sent_to_customer";
+
+export interface ProductionPlan {
+  status: ProductionPlanStatus;
+  ppicName: string;
+  productionNotes: string | null;
+  estimatedStartDate: string;
+  materialReadyDate: string;
+  cuttingStartDate: string;
+  sewingStartDate: string;
+  estimatedCompletionDate: string;
+  qcPackingDays: number;
+  estimatedHandoverDate: string;
+  depositPercent: number;
+  depositAmount: number;
+  balanceAmount: number;
+  balanceDueStage: "after_production_before_shipping";
+  courierCode: string;
+  courierService: string;
+  courierDurationMinDays: number;
+  courierDurationMaxDays: number;
+  estimatedArrivalStart: string;
+  estimatedArrivalEnd: string;
+  validUntil: string;
+  plannedBy: string;
+  plannedAt: string;
+}
+
 export interface ProductionReferenceFile {
   fileId: string;
   filename: string;
@@ -216,6 +274,7 @@ export interface QuotationRequestRecord {
   customerMessage: string | null;
   subtotal: number | null;
   discountTotal: number;
+  couponCode?: string | null;
   taxEnabled: boolean;
   taxRate: number;
   taxLabel: string;
@@ -231,6 +290,8 @@ export interface QuotationRequestRecord {
   requirementType: QuotationRequirementType;
   requestedProcessRoute: OrderProcessRoute;
   productionBrief: ProductionRequestBrief | null;
+  productionPlan?: ProductionPlan | null;
+  embroideryEstimate?: EmbroideryConsultationEstimate | null;
   customerNotes: string | null;
   shippingDestination: string | null;
   emailStatus: EmailStatus;
@@ -263,6 +324,7 @@ export interface CreateQuotationRequestInput {
   productionBrief?: ProductionRequestBrief | null;
   customerNotes: string | null;
   shippingDestination: string | null;
+  couponCode?: string | null;
   items: Array<{
     productId: string;
     selectedColor: string;

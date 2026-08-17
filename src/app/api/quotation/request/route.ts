@@ -56,6 +56,7 @@ export async function POST(request: Request) {
         productionBrief: payload.productionBrief ?? null,
         customerNotes: payload.customerNotes ?? null,
         shippingDestination: payload.shippingDestination ?? null,
+        couponCode: payload.couponCode ?? null,
         items: payload.items,
       },
       request,

@@ -53,11 +53,11 @@ export function requirementTypeLabel(type: QuotationRequirementType) {
 export function processRouteCustomerLabel(route: OrderProcessRoute) {
   switch (route) {
     case "fulfillment":
-      return "Fulfillment";
+      return "Ready Stock (STK)";
     case "customization":
-      return "Customization";
+      return "Custom (CUS)";
     case "production":
-      return "Production / SPK";
+      return "Production (PRO) / SPK";
   }
 }
 

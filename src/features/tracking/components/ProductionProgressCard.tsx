@@ -19,12 +19,13 @@ export function ProductionProgressCard({ order }: ProductionProgressCardProps) {
   const status = trackingOrderStatusLabel(order);
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="type-eyebrow text-brand-700">Current Status</p>
-          <h2 className="mt-2 text-2xl font-bold text-ink">{status}</h2>
-          <p className="mt-1 text-sm text-ink-muted">{order.statusNote}</p>
+          <h2 className="text-2xl font-bold tracking-tight text-ink">{status}</h2>
+          {order.statusNote && (
+            <p className="mt-1 text-sm text-ink-muted">{order.statusNote}</p>
+          )}
           {order.nextStep && (
             <p className="mt-2 text-sm font-semibold text-brand-700">
               Tahap berikutnya: {order.nextStep}
@@ -48,7 +49,7 @@ export function ProductionProgressCard({ order }: ProductionProgressCardProps) {
           <span className="text-xl font-bold text-brand-700">{progress}%</span>
         </div>
         <div
-          className="h-3 overflow-hidden rounded-full bg-slate-100"
+          className="h-3 overflow-hidden rounded-full bg-white/70"
           aria-label={`Progress order ${progress}%`}
         >
           <div
@@ -84,7 +85,7 @@ export function ProductionProgressCard({ order }: ProductionProgressCardProps) {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-surface-muted px-3 py-2">
+    <div className="rounded-xl border border-white/60 bg-white/55 px-3 py-2">
       <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
         {label}
       </dt>

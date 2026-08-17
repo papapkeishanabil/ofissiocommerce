@@ -54,7 +54,7 @@ const ATTENTION_STATUSES: QuotationStatus[] = [
   "cancelled",
 ];
 
-export function AdminQuotationProgress({ status }: { status: QuotationStatus }) {
+export function AdminQuotationProgress({ status, requestMode = false }: { status: QuotationStatus; requestMode?: boolean }) {
   const currentStep = STATUS_STEP[status];
   const attention = ATTENTION_STATUSES.includes(status);
 
@@ -66,10 +66,12 @@ export function AdminQuotationProgress({ status }: { status: QuotationStatus }) 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 id="quotation-progress-title" className="text-lg font-black tracking-tight">
-            Progres quotation
+            {requestMode ? "Progres permintaan customer" : "Progres quotation"}
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-brand-100">
-            {NEXT_ACTION[status]}
+            {requestMode && ["submitted", "emailed", "under_review"].includes(status)
+              ? "Review kebutuhan dan konsultasikan jadwal, spesifikasi, serta biaya sebelum menerbitkan quotation resmi."
+              : NEXT_ACTION[status]}
           </p>
         </div>
         <div

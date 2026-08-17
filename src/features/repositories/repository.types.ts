@@ -69,6 +69,14 @@ export interface OrderRepository {
   updateOrderAfterPayment?(
     input: { companyId: string; orderId: string; status: PaymentOrderRecord["status"] },
   ): Promise<PaymentOrderRecord | null>;
+  updateOrderPaymentTerms?(
+    input: {
+      companyId: string;
+      orderId: string;
+      status?: PaymentOrderRecord["status"];
+      paymentTerms: NonNullable<PaymentOrderRecord["paymentTerms"]>;
+    },
+  ): Promise<PaymentOrderRecord | null>;
   updateOrderWooSync?(
     input: {
       companyId: string;

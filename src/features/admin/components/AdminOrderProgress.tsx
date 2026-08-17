@@ -275,7 +275,7 @@ export function AdminOrderProgress({
 }
 
 function processOrderLabel(route: OrderProcessRoute) {
-  if (route === "customization") return "Customization Order";
-  if (route === "production") return "Production Order";
-  return "Fulfillment Order";
+  if (route === "customization") return "Perintah Kerja Custom (CUS)";
+  if (route === "production") return "Perintah Kerja Production (PRO)";
+  return "Perintah Kerja Ready Stock (STK)";
 }

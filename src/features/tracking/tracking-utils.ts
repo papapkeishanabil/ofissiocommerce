@@ -169,6 +169,8 @@ export function paymentStatusLabel(status: TrackingPaymentStatus): string {
       return "Menunggu pembayaran";
     case "paid":
       return "Lunas";
+    case "deposit_paid":
+      return "DP diterima";
     case "verified":
       return "Terverifikasi";
     case "failed":

@@ -38,15 +38,15 @@ export const PROCESS_ORDER_PRIORITIES = [
 ] as const satisfies readonly ProcessOrderPriority[];
 
 export const PROCESS_ROUTE_PREFIX = {
-  fulfillment: "FUL",
+  fulfillment: "STK",
   customization: "CUS",
-  production: "PROD",
+  production: "PRO",
 } as const satisfies Record<ProcessOrderRoute, string>;
 
 export const PROCESS_ROUTE_LABEL = {
-  fulfillment: "Fulfillment Order",
-  customization: "Customization Order",
-  production: "Production Order / SPK",
+  fulfillment: "Ready Stock Order (STK)",
+  customization: "Custom Order (CUS)",
+  production: "Production Order (PRO) / SPK",
 } as const satisfies Record<ProcessOrderRoute, string>;
 
 export const PROCESS_ROUTE_DESCRIPTION = {

@@ -25,13 +25,18 @@ import {
 } from "@/features/admin/components/AdminQuotationStatusActions";
 import { AdminQuotationNotificationRead } from "@/features/admin-notifications/components/AdminQuotationNotificationRead";
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
+import { AdminEmbroideryEstimateForm } from "@/features/admin/components/AdminEmbroideryEstimateForm";
+import { AdminProductionPlanForm } from "@/features/admin/components/AdminProductionPlanForm";
 import { getAdminQuotationDetail } from "@/features/admin/admin.service";
 import { resolveAdminProductImages } from "@/features/admin/admin-product-images";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
 import { getEmailRuntimeConfig } from "@/features/email/email.config";
 import { getWooCommerceOrderAdminUrl } from "@/features/orders/woocommerce-order-sync.service";
 import { getGlobalTaxSettings } from "@/features/tax/tax.service";
-import { quotationTaxLabel } from "@/features/quotation/quotation.utils";
+import {
+  getCourierPlanningOptions,
+} from "@/features/shipping-settings/shipping-settings.service";
+import { formatCustomerRequestNumber, quotationTaxLabel } from "@/features/quotation/quotation.utils";
 import {
   getBriefApprovalStatus,
   requirementTypeLabel,
@@ -47,9 +52,10 @@ interface PageProps {
 
 export default async function AdminQuotationDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const [detail, taxState] = await Promise.all([
+  const [detail, taxState, courierOptions] = await Promise.all([
     getAdminQuotationDetail(id),
     getGlobalTaxSettings(),
+    getCourierPlanningOptions().catch(() => []),
   ]);
   if (!detail) notFound();
   const {
@@ -79,16 +85,21 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
   );
   const briefApprovalStatus = getBriefApprovalStatus(quotation.productionBrief);
   const briefApprovalPending = requiresCustomerBriefApproval(quotation);
+  const isOfficialQuotation = Boolean(
+    ["quoted", "revision_requested", "accepted", "rejected", "expired", "converted_to_order", "cancelled"].includes(
+        quotation.status,
+      ),
+  );
 
   return (
     <div className="space-y-5">
       <AdminQuotationNotificationRead notification={acceptedNotification} />
       <Link
-        href="/admin/quotations"
+        href={isOfficialQuotation ? "/admin/quotations" : "/admin/requests"}
         className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-700 transition hover:text-brand-800"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back to quotations
+        {isOfficialQuotation ? "Kembali ke quotation" : "Kembali ke permintaan customer"}
       </Link>
 
       {briefApprovalPending ? (
@@ -114,20 +125,38 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
           </div>
         </section>
       ) : (
-        <AdminQuotationProgress status={quotation.status} />
+        <AdminQuotationProgress status={quotation.status} requestMode={!isOfficialQuotation} />
       )}
 
       <AdminQuotationProcessControl quotation={quotation} />
+
+      {quotation.requirementType === "standard_customization" ? (
+        <AdminEmbroideryEstimateForm
+          quotationId={quotation.id}
+          initialEstimate={quotation.embroideryEstimate}
+          courierOptions={courierOptions}
+        />
+      ) : null}
+      {quotation.requirementType === "custom_production" ? (
+        <AdminProductionPlanForm
+          quotationId={quotation.id}
+          grandTotal={quotation.grandTotal ?? 0}
+          initialPlan={quotation.productionPlan}
+          courierOptions={courierOptions}
+        />
+      ) : null}
 
       {/* Page header */}
       <header className="overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-white to-slate-50/60 p-5 shadow-soft-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="type-eyebrow text-brand-700">
-              {briefApprovalPending ? "Draft brief Full Custom" : "Quotation detail"}
+              {briefApprovalPending ? "Draft brief Full Custom" : isOfficialQuotation ? "Detail quotation" : "Detail permintaan customer"}
             </p>
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink lg:text-3xl">
-              {quotation.quotationNumber}
+              {isOfficialQuotation
+                ? quotation.quotationNumber
+                : formatCustomerRequestNumber(quotation.quotationNumber, quotation.requestedProcessRoute)}
             </h1>
             <p className="mt-1 text-sm text-ink-muted">
               {quotation.companyName} · {formatAdminDate(quotation.createdAt)}
@@ -158,7 +187,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
       <AdminSectionCard
         icon={FileText}
         eyebrow="Overview"
-        title="Ringkasan quotation"
+        title={isOfficialQuotation ? "Ringkasan quotation" : "Ringkasan permintaan"}
       >
         <dl className="grid gap-3 text-sm md:grid-cols-3">
           <div className="rounded-2xl bg-slate-50 p-4">
@@ -482,7 +511,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         )}
       </AdminSectionCard>
 
-      <AdminSectionCard icon={History} tone="neutral" title="Quotation events">
+      <AdminSectionCard icon={History} tone="neutral" title={isOfficialQuotation ? "Riwayat quotation" : "Riwayat permintaan"}>
         {events.length === 0 ? (
           <p className="text-sm text-ink-muted">
             Event table belum tersedia atau belum ada event Phase 17.

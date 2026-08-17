@@ -1,7 +1,6 @@
 // src/components/quote/RequestQuotationPage.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/hooks/use-auth";
@@ -11,6 +10,7 @@ import { useUIStore } from "@/stores/ui-store";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
 import type { AuthSession } from "@/types/account";
 import { formatIDR } from "@/types/product";
+import { hasCartCustomization } from "@/types/cart";
 import {
   ArrowLeft,
   CalendarDays,
@@ -25,6 +25,7 @@ import {
 
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { ProductThumb } from "@/components/ui/ProductThumb";
 import type {
   ProductionRequestBrief,
   QuotationRequirementType,
@@ -39,11 +40,11 @@ const EMPTY_PRODUCTION_BRIEF: ProductionRequestBrief = {
 };
 
 export function RequestQuotationPage() {
-  const router = useRouter();
   const { session, hydrated: authHydrated, isAuthenticated } = useAuth();
   const cartHydrated = useCartHydrated();
   const items = useCartItems();
   const clearCart = useCartStore((s) => s.clear);
+  const appliedPromotion = useCartStore((s) => s.appliedPromotion);
   const openAuth = useUIStore((s) => s.openAuth);
 
   const [notes, setNotes] = useState("");
@@ -59,12 +60,7 @@ export function RequestQuotationPage() {
     [items],
   );
   const cartHasCustomization = useMemo(
-    () =>
-      items.some(
-        (item) =>
-          (item.embroideryPlacements?.length ?? 0) > 0 ||
-          Boolean(item.customization?.trim()),
-      ),
+    () => items.some(hasCartCustomization),
     [items],
   );
 
@@ -164,6 +160,7 @@ export function RequestQuotationPage() {
           picName: session.company.picName || session.user.fullName,
           picEmail: session.company.picEmail || session.user.email,
           picWhatsapp: session.company.picWhatsapp || session.user.whatsapp,
+          couponCode: appliedPromotion?.code ?? null,
         }),
       });
       const result = (await response.json()) as {
@@ -180,7 +177,7 @@ export function RequestQuotationPage() {
         JSON.stringify(notification),
       );
       clearCart();
-      router.push(`/quotes/${result.quotation.id}?new=1`);
+      window.location.assign(`/quotes/${result.quotation.id}?new=1`);
     } catch (error) {
       setSubmitMessage(
         error instanceof Error
@@ -197,14 +194,15 @@ export function RequestQuotationPage() {
       <section className="animate-fade-in-up relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 px-6 py-6 shadow-glow-brand lg:px-8">
         <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-ochre-500/20 blur-3xl" />
         <div className="relative">
-          <p className="type-eyebrow text-brand-200">Request Quotation</p>
           <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-white lg:text-[1.75rem]">
-            Ajukan quotation dari keranjang
+            {cartHasCustomization
+              ? "Ajukan jadwal pengerjaan & penawaran bordir"
+              : "Ajukan quotation dari keranjang"}
           </h1>
           <p className="mt-1.5 max-w-2xl text-sm text-brand-100">
-            Tim Ofissio akan meninjau kebutuhan Anda dan mengirim penawaran harga
-            resmi. Tentukan dulu apakah kebutuhan Anda berupa produk standar,
-            customization ringan, atau produksi khusus.
+            {cartHasCustomization
+              ? "Admin Ofissio akan meninjau logo dan quantity, berkonsultasi dengan supervisor bordir, lalu mengirim estimasi tanggal selesai, jadwal pengiriman, dan konfirmasi biaya."
+              : "Tim Ofissio akan meninjau kebutuhan Anda dan mengirim penawaran harga resmi. Tentukan apakah kebutuhan Anda berupa produk standar atau produksi khusus."}
           </p>
         </div>
       </section>
@@ -230,18 +228,25 @@ export function RequestQuotationPage() {
               {items.map((it) => (
                 <li
                   key={it.id}
-                  className="flex items-start justify-between gap-3 py-3 transition-colors hover:bg-surface-muted/40"
+                  className="flex items-start justify-between gap-4 py-4 transition-colors hover:bg-surface-muted/40"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-ink">
-                      {it.productName}
-                    </p>
-                    <p className="text-[11px] text-ink-muted">
-                      {it.color} · {it.totalQty} pcs
-                      {it.customization ? ` · ${it.customization}` : ""}
-                    </p>
-                    {(it.embroideryLines?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Bordir {formatIDR(it.embroideryTotal)} · {it.embroideryLines.map((line) => line.label.replace("Bordir ", "")).join(", ")}</p> : null}
-                    {(it.missingEmbroideryPricingZones?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Harga bordir perlu dikonfirmasi admin.</p> : null}
+                  <div className="flex min-w-0 items-start gap-4">
+                    <ProductThumb
+                      src={it.image}
+                      alt={it.productName}
+                      className="h-16 w-16 sm:h-20 sm:w-20"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-ink">
+                        {it.productName}
+                      </p>
+                      <p className="mt-1 text-[11px] text-ink-muted">
+                        {it.color} · {it.totalQty} pcs
+                        {it.customization ? ` · ${it.customization}` : ""}
+                      </p>
+                      {(it.embroideryLines?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Bordir {formatIDR(it.embroideryTotal)} · {it.embroideryLines.map((line) => line.label.replace("Bordir ", "")).join(", ")}</p> : null}
+                      {(it.missingEmbroideryPricingZones?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Harga bordir perlu dikonfirmasi admin.</p> : null}
+                    </div>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-extrabold text-ink">
@@ -272,7 +277,7 @@ export function RequestQuotationPage() {
             <Field
               label="Catatan untuk tim Ofissio"
               htmlFor="quote-notes"
-              hint="Informasi tambahan untuk sales yang belum tercakup pada pilihan di atas."
+              hint="Informasi tambahan untuk tim Ofissio yang belum tercakup pada pilihan di atas."
             >
               <textarea
                 id="quote-notes"
@@ -297,9 +302,9 @@ export function RequestQuotationPage() {
             </div>
             <div className="p-5">
               <p className="text-xs leading-relaxed text-ink-muted">
-                Setelah dikirim, quotation berstatus <strong>submitted</strong>.
-                Notifikasi email dikirim jika provider email server sudah
-                dikonfigurasi.
+                {cartHasCustomization
+                  ? "Setelah permintaan dikirim, Admin Ofissio akan meminta estimasi pengerjaan kepada supervisor bordir. Anda belum melakukan pembayaran pada tahap ini."
+                  : "Setelah dikirim, tim Ofissio akan meninjau permintaan dan mengirim penawaran resmi kepada Anda."}
               </p>
               <div className="mt-4 rounded-xl bg-surface-muted p-3 text-xs text-ink-muted">
                 <p className="font-bold text-ink">Rute yang diajukan</p>
@@ -312,7 +317,11 @@ export function RequestQuotationPage() {
                 aria-busy={submitting}
               >
                 <Send className="h-4 w-4" />
-                {submitting ? "Memproses..." : "Kirim Request Quotation"}
+                {submitting
+                  ? "Mengirim permintaan..."
+                  : cartHasCustomization
+                    ? "Kirim Permintaan Jadwal & Penawaran"
+                    : "Kirim Request Quotation"}
               </Button>
               {submitMessage && (
                 <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800">
@@ -354,7 +363,7 @@ function RequirementTypeSelector({
       value: "standard_product" as const,
       title: "Produk standar",
       description: "Tanpa bordir atau perubahan produk.",
-      route: "Fulfillment",
+      route: "Ready Stock (STK)",
       Icon: PackageCheck,
       disabled: cartHasCustomization,
     },
@@ -362,7 +371,7 @@ function RequirementTypeSelector({
       value: "standard_customization" as const,
       title: "Produk + customization",
       description: "Produk standar dengan bordir, sablon, DTF, atau nama.",
-      route: "Customization",
+      route: "Custom (CUS)",
       Icon: Scissors,
       disabled: false,
     },
@@ -370,7 +379,7 @@ function RequirementTypeSelector({
       value: "custom_production" as const,
       title: "Produksi khusus",
       description: "Desain, model, bahan, pola, atau ukuran dibuat khusus.",
-      route: "Production / SPK",
+      route: "Production (PRO) / SPK",
       Icon: Factory,
       disabled: false,
     },
@@ -475,7 +484,7 @@ function ProductionBriefFields({
         <div>
           <h2 className="text-base font-bold text-ink">Brief produksi khusus</h2>
           <p className="mt-1 text-sm text-amber-950/75">
-            Data ini membantu sales menilai desain, bahan, pola, estimasi biaya, dan
+            Data ini membantu CS Ofissio menilai desain, bahan, pola, estimasi biaya, dan
             lead time sebelum membuat penawaran.
           </p>
         </div>
@@ -576,7 +585,7 @@ function ProductionTextInput({
 function requirementSummary(type: QuotationRequirementType) {
   switch (type) {
     case "standard_product":
-      return "Fulfillment — picking, packing, dan shipping produk standar.";
+      return "Ready Stock (STK) — picking, packing, dan pengiriman produk standar.";
     case "standard_customization":
       return "Customization — produk standar diproses bordir/sablon/custom ringan sebelum QC dan packing.";
     case "custom_production":

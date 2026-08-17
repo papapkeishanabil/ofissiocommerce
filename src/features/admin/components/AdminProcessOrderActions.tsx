@@ -69,7 +69,7 @@ export function AdminProcessOrderActions({
       };
       if (!response.ok || !result.ok) {
         setHasError(true);
-        setMessage(result.message ?? "Pengaturan process order belum dapat disimpan.");
+        setMessage(result.message ?? "Pengaturan Perintah Kerja belum dapat disimpan.");
         return;
       }
       setMessage(successMessage);
@@ -204,18 +204,18 @@ export function AdminProcessOrderActions({
               onClick={() =>
                 patchProcessOrder(
                   { processStatus: "completed" },
-                  "Process order ditandai selesai.",
+                  "Perintah Kerja ditandai selesai.",
                 )
               }
               disabled={!canUpdate || isPending || !allTasksCompleted}
             >
-              Tandai process order selesai
+              Tandai Perintah Kerja selesai
             </Button>
           ) : null}
         </div>
         {!allTasksCompleted && processOrder.processStatus !== "completed" ? (
           <p className="mt-2 text-xs font-semibold text-ink-muted">
-            Selesaikan seluruh checklist sebelum menutup process order.
+            Selesaikan seluruh checklist sebelum menutup Perintah Kerja.
           </p>
         ) : null}
         {!canUpdate ? (

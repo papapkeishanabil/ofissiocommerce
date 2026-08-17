@@ -21,7 +21,7 @@ export default async function AdminShipmentsPage() {
         </p>
         <h1 className="mt-1 text-2xl font-black text-ink">Shipments</h1>
         <p className="mt-1 max-w-2xl text-sm text-ink-muted">
-          Foundation pengiriman manual: buat shipment dari order/process order,
+          Kelola pengiriman yang dibuat dari Pesanan Customer atau Perintah Kerja,
           input resi, update status, lalu customer tracking ikut berubah.
         </p>
       </section>

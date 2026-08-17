@@ -73,6 +73,7 @@ export function normalizeQuotationRecord(
     customerMessage: quotation.customerMessage ?? null,
     subtotal: pricingSubtotal,
     discountTotal,
+    couponCode: quotation.couponCode?.trim().toUpperCase() || null,
     taxEnabled,
     taxRate,
     taxLabel,
@@ -106,6 +107,8 @@ export function normalizeQuotationRecord(
       requestedProcessRoute === "production"
         ? normalizeProductionBrief(quotation.productionBrief)
         : null,
+    embroideryEstimate: quotation.embroideryEstimate ?? null,
+    productionPlan: quotation.productionPlan ?? null,
     updatedAt: now,
   };
 }
@@ -159,6 +162,7 @@ export function normalizeQuotationItem(input: {
       productSlug: item.productSlug,
       productName: item.productName,
       sku: item.sku,
+      image: item.image ?? null,
       selectedColor: item.selectedColor,
       sizeMatrix: item.sizeMatrix,
       totalQty: item.totalQty,
@@ -375,6 +379,18 @@ export function getQuotationAcceptDisabledReason(
   if (quotation.status !== "quoted") {
     return "Penawaran resmi belum dikirim oleh tim Ofissio.";
   }
+  if (
+    quotation.requirementType === "standard_customization" &&
+    quotation.embroideryEstimate?.status !== "sent_to_customer"
+  ) {
+    return "Estimasi supervisor bordir belum dikirim.";
+  }
+  if (
+    quotation.requirementType === "custom_production" &&
+    quotation.productionPlan?.status !== "sent_to_customer"
+  ) {
+    return "Rencana produksi dan termin DP belum dikirim.";
+  }
   if (!quotation.validUntil) {
     return "Masa berlaku penawaran belum tersedia.";
   }
@@ -423,8 +439,27 @@ export function isSuccessfulQuotationEmailStatus(status: string) {
 export function sanitizeQuotationForCustomer(
   quotation: QuotationRequestRecord,
 ): QuotationRequestRecord {
+  const customerEmbroideryEstimate = quotation.embroideryEstimate
+    ? {
+        ...quotation.embroideryEstimate,
+        supervisorName: "Tim Bordir Ofissio",
+        supervisorNotes: null,
+        estimatedBy: "",
+      }
+    : null;
+  const customerProductionPlan = quotation.productionPlan
+    ? {
+        ...quotation.productionPlan,
+        ppicName: "Tim PPIC Ofissio",
+        productionNotes: null,
+        plannedBy: "",
+      }
+    : null;
+
   return {
     ...quotation,
+    embroideryEstimate: customerEmbroideryEstimate,
+    productionPlan: customerProductionPlan,
     internalNotes: [],
     salesNotes: null,
     salesEmail: null,
@@ -444,6 +479,31 @@ export function normalizeTaxRate(value: unknown) {
   const rate = Number(value ?? 0);
   if (!Number.isFinite(rate)) return 0;
   return Math.min(100, Math.max(0, Math.round(rate * 100) / 100));
+}
+
+/** Display-only reference for the intake stage; the canonical DB number stays unchanged. */
+export function formatCustomerRequestNumber(
+  quotationNumber: string,
+  processRoute: "fulfillment" | "customization" | "production" | string,
+) {
+  const routeCode = processRoute === "production" ? "PRO" : processRoute === "customization" ? "CUS" : "STK";
+
+  if (/^QUO-(STK|CUS|PRO)-\d{4}-\d+$/i.test(quotationNumber)) {
+    return quotationNumber.replace(/^QUO-/i, "REQ-");
+  }
+  if (/^QUO\/OFS\/[A-Z]+\//i.test(quotationNumber)) {
+    const match = quotationNumber.match(/^QUO\/OFS\/[A-Z]+\/(\d{4})\/(\d{2})\/(\d+)$/i);
+    if (match) {
+      const year = match[1] ?? "0000";
+      const month = match[2] ?? "00";
+      const sequence = match[3] ?? "1";
+      return `REQ-${routeCode}-${year.slice(-2)}${month}-${String(Number(sequence)).padStart(3, "0")}`;
+    }
+  }
+  if (/^OF-QUO-/i.test(quotationNumber)) {
+    return quotationNumber.replace(/^OF-QUO-/i, `REQ-${routeCode}-`);
+  }
+  return `REQ-${routeCode}-${quotationNumber}`;
 }
 
 export function calculateTaxAmount(taxableBase: number, rate: number) {

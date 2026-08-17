@@ -90,9 +90,9 @@ export function ensureOrderProcessRouting(order: PaymentOrderRecord): PaymentOrd
 export function processButtonLabel(route: OrderProcessRoute) {
   switch (route) {
     case "fulfillment":
-      return "Buat Fulfillment Order";
+      return "Buat Ready Stock Order";
     case "customization":
-      return "Buat Customization Order";
+      return "Buat Custom Order";
     case "production":
       return "Buat Production Order";
   }
@@ -101,11 +101,11 @@ export function processButtonLabel(route: OrderProcessRoute) {
 export function processRouteLabel(route: OrderProcessRoute) {
   switch (route) {
     case "fulfillment":
-      return "Fulfillment Order";
+      return "Ready Stock Order (STK)";
     case "customization":
-      return "Customization Order";
+      return "Custom Order (CUS)";
     case "production":
-      return "Production Order";
+      return "Production Order (PRO)";
   }
 }
 
@@ -191,10 +191,10 @@ function firstByPriority(types: OrderCustomizationType[]): OrderCustomizationTyp
 
 function reasonForRoute(route: OrderProcessRoute, type: OrderCustomizationType) {
   if (route === "fulfillment") {
-    return "Produk standar tanpa custom diproses sebagai fulfillment order.";
+    return "Produk standar tanpa custom diproses melalui rute Ready Stock (STK).";
   }
   if (route === "customization") {
-    return `Produk standar dengan custom ringan (${type}) diproses sebagai customization order.`;
+    return `Produk standar dengan custom ringan (${type}) diproses melalui rute Custom (CUS).`;
   }
-  return "Custom design/model/bahan khusus diproses sebagai production order/SPK.";
+  return "Desain, model, atau bahan khusus diproses melalui rute Production (PRO)/SPK.";
 }

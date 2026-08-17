@@ -14,7 +14,7 @@ interface OrderStatusTimelineProps {
 
 export function OrderStatusTimeline({ title, stages }: OrderStatusTimelineProps) {
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
       <h2 className="text-sm font-bold text-ink">{title}</h2>
       <ol className="mt-4 space-y-3">
         {stages.map((stage) => (
@@ -23,7 +23,7 @@ export function OrderStatusTimeline({ title, stages }: OrderStatusTimelineProps)
             <div className="min-w-0 flex-1 border-b border-line pb-3 last:border-0">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-semibold text-ink">{stage.label}</p>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-ink-muted">
+                <span className="rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-semibold text-ink-muted">
                   {stageStateLabel(stage.state)}
                 </span>
               </div>
@@ -68,7 +68,7 @@ function iconForState(state: OrderTimelineStage["state"]) {
       );
     case "pending":
       return (
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-slate-50 text-slate-400 ring-1 ring-slate-200">
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-cool-50 text-ink-subtle ring-1 ring-cool-200">
           <Circle className="h-3 w-3" />
         </span>
       );

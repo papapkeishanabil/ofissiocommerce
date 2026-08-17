@@ -4,11 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button, ButtonLink } from "@/components/ui/Button";
-import {
-  processButtonLabel,
-  processRouteLabel,
-  processRouteSteps,
-} from "@/features/orders/order-routing.service";
+import { processRouteLabel, processRouteSteps } from "@/features/orders/order-routing.service";
 import type {
   OrderCustomizationType,
   OrderProcessRoute,
@@ -18,6 +14,15 @@ import type {
 
 import { AdminBadge, adminStatusTone } from "./AdminBadge";
 import { AdminProcessRouteBadge } from "./AdminProcessRouteBadge";
+
+// Pengadaan stok (replenishment) — label internal admin; nilai mentah tetap
+// dipakai untuk tone badge supaya warna status tidak berubah.
+const REPLENISHMENT_LABEL: Record<OrderReplenishmentStatus, string> = {
+  not_required: "Stok cukup",
+  needed: "Perlu pengadaan",
+  in_progress: "Pengadaan berjalan",
+  completed: "Pengadaan selesai",
+};
 
 interface AdminOrderProcessPanelProps {
   orderId: string;
@@ -50,12 +55,14 @@ export function AdminOrderProcessPanel({
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const steps = processRouteSteps(processRoute);
-  const buttonLabel = processButtonLabel(processRoute);
   const isCompleted = processStatus === "completed";
   const isInProgress =
     processStatus === "in_progress" || processStatus === "waiting_replenishment";
 
   function startProcess() {
+    if (!window.confirm("Teruskan pesanan ini ke pengerjaan dan buat Perintah Kerja untuk tim terkait?")) {
+      return;
+    }
     setMessage(null);
     startTransition(async () => {
       const response = await fetch(`/api/admin/orders/${orderId}/process`, {
@@ -77,11 +84,11 @@ export function AdminOrderProcessPanel({
         setMessage(result.message ?? "Order belum dapat diproses.");
         return;
       }
-      setMessage(
-        `${result.idempotent ? "Process order sudah ada" : "Process order dibuat"}: ${
-          result.processOrderNumber ?? result.processOrderId ?? processRouteLabel(processRoute)
-        }.`,
-      );
+      if (result.processOrderId) {
+        router.push(`/admin/process-orders/${encodeURIComponent(result.processOrderId)}?created=${result.idempotent ? "existing" : "new"}`);
+        return;
+      }
+      setMessage("Perintah Kerja berhasil dibuat. Silakan buka menu Perintah Kerja.");
       router.refresh();
     });
   }
@@ -102,32 +109,32 @@ export function AdminOrderProcessPanel({
         <div className="flex flex-wrap gap-2">
           <AdminBadge tone={adminStatusTone(processStatus)}>{processStatus}</AdminBadge>
           <AdminBadge tone={adminStatusTone(replenishmentStatus)}>
-            replenishment: {replenishmentStatus}
+            Pengadaan: {REPLENISHMENT_LABEL[replenishmentStatus]}
           </AdminBadge>
         </div>
       </div>
 
       {replenishmentStatus !== "not_required" ? (
         <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm font-bold text-amber-800">
-          Replenishment needed — ini warning internal admin, bukan status “stok habis” untuk customer.
+          Perlu pengadaan stok — ini peringatan internal admin, bukan status “stok habis” untuk customer.
         </p>
       ) : null}
 
       {!paymentReceived && !processOrderId ? (
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950">
-          Pembayaran belum terverifikasi. Process order akan aktif setelah status pembayaran menjadi paid.
+          Pembayaran belum terverifikasi. Pesanan dapat diteruskan setelah pembayaran memenuhi ketentuan.
         </p>
       ) : null}
 
       <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-        <Info label="has_customization" value={hasCustomization ? "true" : "false"} />
-        <Info label="customization_type" value={customizationType} />
-        <Info label="process_route" value={processRoute} />
+        <Info label="Memerlukan custom" value={hasCustomization ? "Ya" : "Tidak"} />
+        <Info label="Jenis custom" value={customizationType === "none" ? "Tidak ada" : customizationType} />
+        <Info label="Rute pengerjaan" value={processRouteLabel(processRoute)} />
       </dl>
 
       <div className="mt-4 rounded-2xl border border-line/70 bg-slate-50/80 p-4">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">
-          Flow foundation
+          Tahapan pengerjaan
         </p>
         <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((step, index) => (
@@ -148,7 +155,7 @@ export function AdminOrderProcessPanel({
       <div className="mt-4 flex flex-wrap gap-2">
         {processOrderId ? (
           <ButtonLink href={`/admin/process-orders/${processOrderId}`} size="sm">
-            Buka {processOrderNumber ?? "Process Order"}
+            Buka Perintah Kerja{processOrderNumber ? ` · ${processOrderNumber}` : ""}
           </ButtonLink>
         ) : (
           <Button
@@ -164,14 +171,14 @@ export function AdminOrderProcessPanel({
               : isCompleted
                 ? "Selesai"
                 : isInProgress
-                  ? "Buat / buka process order"
-                  : buttonLabel}
+                  ? "Buat / buka Perintah Kerja"
+                  : "Teruskan ke Pengerjaan"}
           </Button>
         )}
         <p className="self-center text-xs font-semibold text-ink-muted">
           {canUpdate
-            ? "Dokumen kerja dibuat dari snapshot order tanpa input ulang."
-            : "Role Anda memiliki akses lihat saja untuk process order."}
+            ? "Tindakan ini membuat Perintah Kerja dari data pesanan tanpa input ulang."
+            : "Role Anda hanya memiliki akses melihat Perintah Kerja."}
         </p>
       </div>
     </section>
@@ -184,7 +191,7 @@ function Info({ label, value }: { label: string; value: string }) {
       <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
         {label}
       </dt>
-      <dd className="mt-1 break-all font-mono text-xs font-bold text-ink">{value}</dd>
+      <dd className="mt-1 break-words text-sm font-bold text-ink">{value}</dd>
     </div>
   );
 }

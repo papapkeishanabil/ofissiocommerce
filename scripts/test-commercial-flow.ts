@@ -338,14 +338,42 @@ assert.equal(
   "Penawaran resmi belum dikirim oleh tim Ofissio.",
 );
 const quoted = { ...quotation, status: "quoted" as const };
-assert.equal(canCustomerAcceptQuotation(quoted, quotationReadinessNow), true);
-assert.equal(getQuotationAcceptDisabledReason(quoted, quotationReadinessNow), null);
+assert.equal(canCustomerAcceptQuotation(quoted, quotationReadinessNow), false);
 assert.equal(
-  canCustomerAcceptQuotation({ ...quoted, grandTotal: 0 }, quotationReadinessNow),
+  getQuotationAcceptDisabledReason(quoted, quotationReadinessNow),
+  "Estimasi supervisor bordir belum dikirim.",
+);
+const quotedWithEmbroideryEstimate = {
+  ...quoted,
+  embroideryEstimate: {
+    status: "sent_to_customer" as const,
+    complexity: "medium" as const,
+    estimatedStitchCount: 12000,
+    supervisorName: "Supervisor Bordir",
+    supervisorNotes: null,
+    estimatedStartDate: "2026-08-03",
+    estimatedCompletionDate: "2026-08-04",
+    qcPackingDays: 1,
+    estimatedHandoverDate: "2026-08-05",
+    courierCode: "jne",
+    courierService: "Reguler",
+    courierDurationMinDays: 1,
+    courierDurationMaxDays: 2,
+    estimatedArrivalStart: "2026-08-06",
+    estimatedArrivalEnd: "2026-08-07",
+    validUntil: "2026-08-08",
+    estimatedBy: "internal-test",
+    estimatedAt: "2026-08-01T12:00:00.000Z",
+  },
+};
+assert.equal(canCustomerAcceptQuotation(quotedWithEmbroideryEstimate, quotationReadinessNow), true);
+assert.equal(getQuotationAcceptDisabledReason(quotedWithEmbroideryEstimate, quotationReadinessNow), null);
+assert.equal(
+  canCustomerAcceptQuotation({ ...quotedWithEmbroideryEstimate, grandTotal: 0 }, quotationReadinessNow),
   false,
 );
 const finalizedForCustomer = finalizeQuotationForCustomer(
-  { ...quotation, validUntil: null },
+  { ...quotation, embroideryEstimate: quotedWithEmbroideryEstimate.embroideryEstimate, validUntil: null },
   new Date("2026-08-01T12:00:00.000Z"),
 );
 assert.equal(finalizedForCustomer.status, "quoted");
@@ -444,6 +472,10 @@ function runLifecycleSmoke() {
     successfulDeliveryStatuses.every(isSuccessfulQuotationEmailStatus),
     true,
   );
+  flow = {
+    ...flow,
+    embroideryEstimate: quotedWithEmbroideryEstimate.embroideryEstimate,
+  };
   flow = finalizeQuotationForCustomer(flow);
   assert.equal(flow.status, "quoted");
   assert.equal(canCustomerAcceptQuotation(flow), true);

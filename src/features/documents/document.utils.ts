@@ -110,19 +110,20 @@ export function safeDocumentNumber(input: {
   const date = input.date ?? new Date();
   const year = String(date.getUTCFullYear());
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const period = `${year.slice(-2)}${month}`;
   const source = input.sourceNumber?.trim();
   if (input.documentType === "quotation_pdf") {
     if (source) return source;
-    return `QUO/OFS/${processRouteCode(input.processRoute)}/${year}/${month}/${formatSequence(input.sequence)}`;
+    return `QUO-${processRouteCode(input.processRoute)}-${period}-${formatSequence(input.sequence)}`;
   }
   if (input.documentType === "invoice_pdf") {
-    return `INV/OFS/${processRouteCode(input.processRoute)}/${year}/${month}/${formatSequence(input.sequence)}`;
+    return `INV-${processRouteCode(input.processRoute)}-${period}-${formatSequence(input.sequence)}`;
   }
   if (input.documentType === "embroidery_work_order_pdf") {
-    return `BWO/OFS/CUS/${year}/${month}/${formatSequence(input.sequence)}`;
+    return `BWO-CUS-${period}-${formatSequence(input.sequence)}`;
   }
   if (input.documentType === "production_work_order_pdf") {
-    return `PWO/OFS/PRO/${year}/${month}/${formatSequence(input.sequence)}`;
+    return `PWO-PRO-${period}-${formatSequence(input.sequence)}`;
   }
   return `DOC-${year}-${shortId()}`;
 }
@@ -132,7 +133,7 @@ export function processRouteCode(
 ) {
   if (route === "customization") return "CUS";
   if (route === "production") return "PRO";
-  return "FUL";
+  return "STK";
 }
 
 export function nextMonthlyDocumentSequence(input: {
@@ -142,17 +143,27 @@ export function nextMonthlyDocumentSequence(input: {
   date?: Date;
 }) {
   const date = input.date ?? new Date();
-  const stem = `${input.prefix}/OFS/${processRouteCode(input.processRoute)}/${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, "0")}/`;
+  const routeCode = processRouteCode(input.processRoute);
+  const year = String(date.getUTCFullYear());
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const stem = `${input.prefix}-${routeCode}-${year.slice(-2)}${month}-`;
+  const legacyRouteCode = routeCode === "STK" ? "FUL" : routeCode;
+  const legacyStem = `${input.prefix}/OFS/${legacyRouteCode}/${year}/${month}/`;
   const highest = input.existingNumbers.reduce((max, number) => {
-    if (!number.startsWith(stem)) return max;
-    const sequence = Number(number.slice(stem.length));
+    const matchedStem = number.startsWith(stem)
+      ? stem
+      : number.startsWith(legacyStem)
+        ? legacyStem
+        : null;
+    if (!matchedStem) return max;
+    const sequence = Number(number.slice(matchedStem.length));
     return Number.isInteger(sequence) && sequence > max ? sequence : max;
   }, 0);
   return highest + 1;
 }
 
 function formatSequence(sequence: number | undefined) {
-  return String(Math.max(1, sequence ?? 1)).padStart(4, "0");
+  return String(Math.max(1, sequence ?? 1)).padStart(3, "0");
 }
 
 export function buildDocumentStorageKey(input: {

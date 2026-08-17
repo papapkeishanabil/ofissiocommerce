@@ -3,6 +3,7 @@ import {
   ArrowRight,
   BellRing,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   PackageCheck,
   PackagePlus,
@@ -37,11 +38,11 @@ export default async function AdminOrdersPage() {
         <div className="flex flex-col gap-5 px-5 py-6 md:px-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <h1 className="text-2xl font-bold tracking-[-0.025em] text-ink md:text-3xl">
-              Order & antrean proses
+              Pesanan Customer
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
-              Pembayaran yang baru diterima diprioritaskan agar tim dapat langsung
-              menjalankan fulfillment, customization, atau production.
+              Periksa transaksi dan kelengkapannya, lalu teruskan pesanan yang siap
+              menjadi Perintah Kerja untuk tim terkait.
             </p>
             <div className="mt-4">
               <AdminProcessRouteLegend />
@@ -90,7 +91,7 @@ export default async function AdminOrdersPage() {
                 </div>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-emerald-100">
                   Order yang sudah dibayar namun belum dimulai ditempatkan paling atas.
-                  Highlight hilang otomatis setelah proses order berjalan.
+                  Sorotan hilang otomatis setelah perintah kerja dibuat.
                 </p>
               </div>
             </div>
@@ -98,7 +99,7 @@ export default async function AdminOrdersPage() {
               href={`/admin/orders/${firstPriorityOrder.id}`}
               className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-emerald-950 transition hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
-              Proses order teratas
+              Teruskan pesanan teratas
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
@@ -112,10 +113,10 @@ export default async function AdminOrdersPage() {
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 id="order-queue-title" className="text-lg font-bold tracking-tight text-ink">
-                Antrean operasional
+                Antrean pesanan
               </h2>
               <p className="mt-1 text-sm text-ink-muted">
-                Urutan: pembayaran baru, order lunas yang belum diproses, lalu order terbaru.
+                Urutan: pembayaran baru, order lunas yang belum diproses, lalu order terbaru. Gunakan kolom tindakan berikutnya sebagai daftar kerja harian.
               </p>
             </div>
             <p className="text-xs font-medium text-ink-subtle">
@@ -130,7 +131,7 @@ export default async function AdminOrdersPage() {
           </div>
 
           <AdminTableShell className="hidden lg:block">
-            <table className="w-full min-w-[1080px] text-left text-sm">
+            <table className="w-full min-w-[1320px] text-left text-sm">
               <caption className="sr-only">
                 Daftar order berdasarkan prioritas pembayaran dan proses
               </caption>
@@ -140,6 +141,8 @@ export default async function AdminOrdersPage() {
                   <th className="px-4 py-3.5">Pembayaran</th>
                   <th className="px-4 py-3.5">Rute proses</th>
                   <th className="px-4 py-3.5">Progres</th>
+                  <th className="px-4 py-3.5">Tindakan berikutnya</th>
+                  <th className="px-4 py-3.5">Tim</th>
                   <th className="px-4 py-3.5">Operasional</th>
                   <th className="px-5 py-3.5 text-right">Tindakan</th>
                 </tr>
@@ -182,6 +185,7 @@ function OrderMetric({
 function DesktopOrderRow({ order }: { order: AdminOrderRow }) {
   const paid = isPaid(order);
   const priority = order.attentionType === "payment_received";
+  const action = orderNextAction(order);
   return (
     <tr
       className={cn(
@@ -241,6 +245,14 @@ function DesktopOrderRow({ order }: { order: AdminOrderRow }) {
         </div>
       </td>
       <td className="px-4 py-4">
+        <p className={cn("max-w-52 font-bold", action.urgent ? "text-red-700" : action.needsAction ? "text-amber-800" : "text-ink")}>{action.label}</p>
+        <p className="mt-1 text-xs text-ink-muted">{ageLabel(order.updatedAt)}</p>
+      </td>
+      <td className="px-4 py-4">
+        <p className="font-semibold text-ink">{orderTeam(order)}</p>
+        <p className="mt-1 text-xs text-ink-muted">{order.processRoute === "production" ? "Produksi khusus" : order.processRoute === "customization" ? "Bordir / custom ringan" : "Ready stock"}</p>
+      </td>
+      <td className="px-4 py-4">
         <div className="space-y-1 text-xs text-ink-muted">
           <p>
             Tracking: <span className="font-semibold text-ink">{trackingLabel(order.trackingStatus)}</span>
@@ -260,14 +272,14 @@ function DesktopOrderRow({ order }: { order: AdminOrderRow }) {
         <Link
           href={`/admin/orders/${order.id}`}
           className={cn(
-            "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3.5 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2",
+            "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2",
             priority
               ? "bg-emerald-700 text-white hover:bg-emerald-800 focus-visible:outline-emerald-700"
-              : "bg-brand-700 text-white hover:bg-brand-800 focus-visible:outline-brand-700",
+              : "border border-line bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50 focus-visible:outline-brand-600",
           )}
         >
-          {priority ? "Proses order" : "Lihat detail"}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          {priority ? "Teruskan ke Pengerjaan" : "Lihat detail"}
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       </td>
     </tr>
@@ -321,14 +333,14 @@ function MobileOrderCard({ order }: { order: AdminOrderRow }) {
         <Link
           href={`/admin/orders/${order.id}`}
           className={cn(
-            "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2",
+            "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2",
             priority
-              ? "bg-emerald-700 hover:bg-emerald-800 focus-visible:outline-emerald-700"
-              : "bg-brand-700 hover:bg-brand-800 focus-visible:outline-brand-700",
+              ? "bg-emerald-700 text-white hover:bg-emerald-800 focus-visible:outline-emerald-700"
+              : "border border-line bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50 focus-visible:outline-brand-600",
           )}
         >
-          {priority ? "Proses order" : "Lihat detail"}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          {priority ? "Teruskan ke Pengerjaan" : "Lihat detail"}
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       </div>
     </article>
@@ -430,4 +442,29 @@ function customizationLabel(type: string) {
 
 function trackingLabel(status: string) {
   return status === "-" ? "Belum tersedia" : status.replaceAll("_", " ");
+}
+
+function orderNextAction(order: AdminOrderRow) {
+  if (["failed", "expired", "cancelled"].includes(order.paymentStatus)) return { label: "Periksa masalah pembayaran", needsAction: true, urgent: true };
+  if (!isPaid(order)) return { label: "Menunggu pembayaran customer", needsAction: false, urgent: false };
+  if (order.needsProcessing) return { label: "Teruskan ke pengerjaan", needsAction: true, urgent: ageInHours(order.updatedAt) >= 24 };
+  if (order.processStatus === "waiting_replenishment") return { label: "Tindak lanjuti kebutuhan stok", needsAction: true, urgent: true };
+  if (order.processStatus === "in_progress") return { label: "Pantau tahapan dan target selesai", needsAction: false, urgent: false };
+  if (order.processStatus === "completed" && !["delivered", "completed"].includes(order.trackingStatus)) return { label: "Siapkan atau pantau pengiriman", needsAction: true, urgent: false };
+  return { label: "Selesai", needsAction: false, urgent: false };
+}
+
+function orderTeam(order: AdminOrderRow) {
+  if (order.processRoute === "production") return "CS + Tim Produksi";
+  if (order.processRoute === "customization") return "Admin + Tim Bordir";
+  return "Admin Ofissio / Logistik";
+}
+
+function ageInHours(value: string) {
+  return Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 3_600_000));
+}
+
+function ageLabel(value: string) {
+  const hours = ageInHours(value);
+  return hours < 24 ? `${hours} jam sejak pembaruan` : `${Math.floor(hours / 24)} hari sejak pembaruan`;
 }

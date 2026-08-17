@@ -64,7 +64,7 @@ export async function createProcessOrderFromOrder(input: {
 
   if (existing) {
     const detail = await getProcessOrderDetail(existing.id, existing.companyId);
-    if (!detail) throw createApiError("NOT_FOUND", "Process order tidak ditemukan.", 404);
+    if (!detail) throw createApiError("NOT_FOUND", "Perintah Kerja tidak ditemukan.", 404);
     await syncTrackingFromProcessOrder(detail.processOrder, detail.sourceOrder ?? input.order);
     return {
       ...detail,
@@ -163,6 +163,33 @@ export async function createProcessOrderFromOrder(input: {
     };
 
   await syncTrackingFromProcessOrder(processOrder, order);
+  await createAdminNotification({
+    type: "system_warning",
+    title: "Perintah Kerja Baru",
+    message: `${processOrder.processOrderNumber} dibuat dari pesanan ${order.orderNumber ?? order.id} dan siap dikerjakan oleh ${processOrder.assignedTeam ?? "tim terkait"}.`,
+    entityType: "process_order",
+    entityId: processOrder.id,
+    entityNumber: processOrder.processOrderNumber,
+    severity: "info",
+    recipientRole: processOrderRecipientRole(processRoute),
+    metadata: {
+      source: "process_order_created",
+      processOrderId: processOrder.id,
+      processOrderNumber: processOrder.processOrderNumber,
+      orderId: order.id,
+      orderNumber: order.orderNumber ?? order.id,
+      processRoute,
+      assignedTeam: processOrder.assignedTeam,
+      adminUrl: `/admin/process-orders/${processOrder.id}`,
+    },
+    emailStatus: "not_required",
+  }).catch((error) => {
+    logInternalError(error, {
+      area: "process_order",
+      operation: "notify_created",
+      processOrderId: processOrder.id,
+    });
+  });
   logAuditEvent({
     request: input.request,
     actorId: input.actorId ?? null,
@@ -258,7 +285,7 @@ export async function updateProcessOrderStatus(input: {
     companyId: current.companyId,
     patch,
   });
-  if (!updated) throw createApiError("NOT_FOUND", "Process order tidak ditemukan.", 404);
+  if (!updated) throw createApiError("NOT_FOUND", "Perintah Kerja tidak ditemukan.", 404);
   await afterProcessOrderUpdated({
     current,
     updated,
@@ -266,7 +293,7 @@ export async function updateProcessOrderStatus(input: {
     actorId: input.actorId ?? null,
     actorType: input.actorType ?? "internal",
     request: input.request,
-    note: "Status process order diperbarui.",
+    note: "Status Perintah Kerja diperbarui.",
   });
   return getRequiredProcessOrderDetail(updated.id);
 }
@@ -288,7 +315,7 @@ export async function updateProcessOrderStage(input: {
       processStatus: current.processStatus === "not_started" ? "in_progress" : current.processStatus,
     },
   });
-  if (!updated) throw createApiError("NOT_FOUND", "Process order tidak ditemukan.", 404);
+  if (!updated) throw createApiError("NOT_FOUND", "Perintah Kerja tidak ditemukan.", 404);
   await afterProcessOrderUpdated({
     current,
     updated,
@@ -296,7 +323,7 @@ export async function updateProcessOrderStage(input: {
     actorId: input.actorId ?? null,
     actorType: input.actorType ?? "internal",
     request: input.request,
-    note: "Stage process order diperbarui.",
+    note: "Tahap Perintah Kerja diperbarui.",
   });
   return getRequiredProcessOrderDetail(updated.id);
 }
@@ -316,7 +343,7 @@ export async function updateProcessOrder(input: {
   ) {
     throw createApiError(
       "BAD_REQUEST",
-      "Seluruh checklist harus selesai sebelum process order ditutup.",
+      "Seluruh checklist harus selesai sebelum Perintah Kerja ditutup.",
       409,
     );
   }
@@ -339,7 +366,7 @@ export async function updateProcessOrder(input: {
     companyId: current.companyId,
     patch: { ...input.patch, progress, completedAt },
   });
-  if (!updated) throw createApiError("NOT_FOUND", "Process order tidak ditemukan.", 404);
+  if (!updated) throw createApiError("NOT_FOUND", "Perintah Kerja tidak ditemukan.", 404);
 
   const eventType: ProcessOrderEventType =
     input.patch.replenishmentStatus && input.patch.replenishmentStatus !== current.replenishmentStatus
@@ -358,7 +385,7 @@ export async function updateProcessOrder(input: {
     request: input.request,
     note: eventType === "replenishment_updated"
       ? "Replenishment internal diperbarui."
-      : "Process order diperbarui.",
+      : "Perintah Kerja diperbarui.",
   });
   return getRequiredProcessOrderDetail(updated.id);
 }
@@ -374,7 +401,7 @@ export async function completeProcessTask(input: {
   const detail = await getRequiredProcessOrderDetail(input.processOrderId);
   const current = detail.processOrder;
   const task = detail.tasks.find((candidate) => candidate.id === input.taskId);
-  if (!task) throw createApiError("NOT_FOUND", "Task process order tidak ditemukan.", 404);
+  if (!task) throw createApiError("NOT_FOUND", "Tugas Perintah Kerja tidak ditemukan.", 404);
   if (task.status === "completed") {
     return detail;
   }
@@ -443,7 +470,7 @@ export async function completeProcessTask(input: {
       completedAt: nextStatus === "completed" ? new Date().toISOString() : current.completedAt,
     },
   });
-  if (!updated) throw createApiError("NOT_FOUND", "Process order tidak ditemukan.", 404);
+  if (!updated) throw createApiError("NOT_FOUND", "Perintah Kerja tidak ditemukan.", 404);
 
   await repository.addProcessOrderEvent({
     event: createProcessEvent({
@@ -537,7 +564,7 @@ export function getCustomerTrackingStatusFromProcessOrder(processOrder: ProcessO
 
 async function getRequiredProcessOrderDetail(processOrderId: string) {
   const detail = await getProcessOrderDetail(processOrderId);
-  if (!detail) throw createApiError("NOT_FOUND", "Process order tidak ditemukan.", 404);
+  if (!detail) throw createApiError("NOT_FOUND", "Perintah Kerja tidak ditemukan.", 404);
   return detail;
 }
 
@@ -620,6 +647,17 @@ function defaultAssignedTeam(route: ProcessOrderRoute) {
   }
 }
 
+function processOrderRecipientRole(route: ProcessOrderRoute) {
+  switch (route) {
+    case "fulfillment":
+      return "logistics" as const;
+    case "customization":
+      return "production_admin" as const;
+    case "production":
+      return "ppic" as const;
+  }
+}
+
 function createProcessEvent(input: {
   processOrder: ProcessOrder;
   actorId: string | null;
@@ -679,6 +717,25 @@ async function afterProcessOrderUpdated(input: {
     orderId: input.updated.ofissioOrderId,
   });
   if (sourceOrder) {
+    let orderForTracking = sourceOrder;
+    if (
+      input.current.processStatus !== "completed" &&
+      input.updated.processStatus === "completed" &&
+      sourceOrder.paymentTerms?.mode === "deposit_balance" &&
+      sourceOrder.paymentTerms.balanceStatus === "pending"
+    ) {
+      orderForTracking =
+        (await repositoryRegistry.orders.updateOrderPaymentTerms?.({
+          companyId: sourceOrder.companyId,
+          orderId: sourceOrder.id,
+          status: "payment_received",
+          paymentTerms: {
+            ...sourceOrder.paymentTerms,
+            amountDueNow: sourceOrder.paymentTerms.balanceAmount,
+            balanceStatus: "due",
+          },
+        })) ?? sourceOrder;
+    }
     await repositoryRegistry.orders.updateOrderProcess?.({
       companyId: sourceOrder.companyId,
       orderId: sourceOrder.id,
@@ -691,12 +748,12 @@ async function afterProcessOrderUpdated(input: {
         processRouteReason: sourceOrder.processRouteReason ?? input.updated.notes,
       },
     });
-    await syncTrackingFromProcessOrder(input.updated, sourceOrder);
+    await syncTrackingFromProcessOrder(input.updated, orderForTracking);
     if (
       input.current.processStatus !== "completed" &&
       input.updated.processStatus === "completed"
     ) {
-      await notifyProcessReadyToShip(input.updated, sourceOrder, input.request);
+      await notifyProcessReadyToShip(input.updated, orderForTracking, input.request);
     }
   }
   logAuditEvent({
@@ -737,7 +794,9 @@ async function syncTrackingFromProcessOrder(
   const status = getCustomerTrackingStatusFromProcessOrder(processOrder);
   const base = existing ?? mapPaymentOrderToTracking({
     order,
-    paymentStatus: order.status === "payment_received" ? "paid" : "waiting_payment",
+    paymentStatus: order.status === "payment_received"
+      ? order.paymentTerms?.mode === "deposit_balance" ? "deposit_paid" : "paid"
+      : "waiting_payment",
     paymentReferenceId: order.orderNumber ?? null,
     companyName: null,
   });

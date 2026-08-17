@@ -8,11 +8,13 @@ import type {
   CarrierShippingEventRecord,
   ShippingQuoteRecord,
 } from "@/features/carrier-shipping/carrier-shipping.types";
+import type { ShippingRate } from "@/features/shipping/shipping.types";
 import { carrierStatusLabel } from "@/features/carrier-shipping/carrier-shipping.status";
 
 interface AdminCarrierShippingPanelProps {
   orderId: string;
   paymentReceived: boolean;
+  selectedShippingRate: ShippingRate | null;
   provider: "mock" | "biteship";
   providerConfigured: boolean;
   initialQuotes: ShippingQuoteRecord[];
@@ -47,7 +49,8 @@ export function AdminCarrierShippingPanel(props: AdminCarrierShippingPanelProps)
       if (!response.ok || !result.ok || !result.quotes?.length) throw new Error(result.message || "Ongkir belum tersedia.");
       const returnedQuotes = result.quotes;
       setQuotes(returnedQuotes);
-      setSelectedQuoteId(returnedQuotes[0]?.id ?? "");
+      const matchingQuote = findCustomerSelection(returnedQuotes, props.selectedShippingRate);
+      setSelectedQuoteId(matchingQuote?.id ?? "");
       setMessage(`${returnedQuotes.length} layanan pengiriman ditemukan.`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Ongkir belum dapat diperiksa.");
@@ -125,7 +128,7 @@ export function AdminCarrierShippingPanel(props: AdminCarrierShippingPanelProps)
             <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-blue-200">Carrier shipping</p>
             <h2 className="mt-1 flex items-center gap-2 text-xl font-extrabold">
               <Truck className="h-5 w-5" aria-hidden="true" />
-              Biteship fulfillment
+              Pengiriman carrier
             </h2>
             <p className="mt-1 max-w-2xl text-sm text-blue-100">
               Ongkir, booking, resi, dan status berasal dari server Ofissio. Nominal tidak dapat diketik manual.
@@ -138,6 +141,28 @@ export function AdminCarrierShippingPanel(props: AdminCarrierShippingPanelProps)
       </div>
 
       <div className="space-y-5 p-5">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-brand-700">
+            Pilihan pengiriman customer saat checkout
+          </p>
+          {props.selectedShippingRate ? (
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="font-extrabold text-ink">
+                  {props.selectedShippingRate.courierName} · {props.selectedShippingRate.serviceName}
+                </p>
+                <p className="text-sm text-ink-muted">
+                  {props.selectedShippingRate.serviceCode.toUpperCase()} · {props.selectedShippingRate.estimatedDays || "Estimasi mengikuti carrier"}
+                </p>
+              </div>
+              <p className="font-extrabold text-brand-800">{formatIDR(props.selectedShippingRate.price)}</p>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm font-semibold text-amber-800">
+              Pesanan lama/tanpa pilihan kurir. Shipment otomatis tidak boleh dibuat sebelum pilihan pengiriman dikonfirmasi.
+            </p>
+          )}
+        </div>
         {disabledReason ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900" role="status">
             {disabledReason}. Cek ongkir dan pembuatan shipment dinonaktifkan.
@@ -195,6 +220,7 @@ export function AdminCarrierShippingPanel(props: AdminCarrierShippingPanelProps)
                 <legend className="sr-only">Pilih quote pengiriman</legend>
                 {latestBatch.map((quote) => {
                   const selected = selectedQuoteId === quote.id;
+                  const matchesCustomer = quoteMatchesCustomerSelection(quote, props.selectedShippingRate);
                   return (
                     <label key={quote.id} className={`cursor-pointer rounded-2xl border p-4 transition ${selected ? "border-brand-600 bg-brand-50 ring-2 ring-brand-100" : "border-line bg-slate-50 hover:border-brand-300"}`}>
                       <input
@@ -212,6 +238,9 @@ export function AdminCarrierShippingPanel(props: AdminCarrierShippingPanelProps)
                         </span>
                         <span className="whitespace-nowrap font-extrabold text-brand-800">{formatIDR(quote.shippingPrice)}</span>
                       </span>
+                      <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-extrabold ${matchesCustomer ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                        {matchesCustomer ? "Sesuai pilihan customer" : "Berbeda dari pilihan customer"}
+                      </span>
                     </label>
                   );
                 })}
@@ -224,11 +253,11 @@ export function AdminCarrierShippingPanel(props: AdminCarrierShippingPanelProps)
             <button
               type="button"
               onClick={createShipment}
-              disabled={Boolean(disabledReason) || !selectedQuoteId || busy !== null}
+              disabled={Boolean(disabledReason) || !selectedQuoteId || busy !== null || !quoteMatchesCustomerSelection(latestBatch.find((quote) => quote.id === selectedQuoteId), props.selectedShippingRate)}
               className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#061a56] px-5 py-3 text-sm font-extrabold text-white transition hover:bg-[#0b2a78] disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
             >
               <PackageCheck className="h-4 w-4" aria-hidden="true" />
-              {busy === "create" ? "Membuat shipment..." : "Buat shipment"}
+              {busy === "create" ? "Membuat shipment..." : "Buat shipment sesuai checkout"}
             </button>
           </>
         )}
@@ -252,6 +281,28 @@ export function AdminCarrierShippingPanel(props: AdminCarrierShippingPanelProps)
       </div>
     </section>
   );
+}
+
+function normalized(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function quoteMatchesCustomerSelection(
+  quote: ShippingQuoteRecord | undefined,
+  selection: ShippingRate | null,
+) {
+  if (!quote || !selection) return false;
+  return (
+    normalized(quote.courierCompany) === normalized(selection.courierCode) &&
+    [quote.courierType, quote.courierService].some(
+      (value) => normalized(value) === normalized(selection.serviceCode) || normalized(value) === normalized(selection.serviceName),
+    ) &&
+    quote.shippingPrice === selection.price
+  );
+}
+
+function findCustomerSelection(quotes: ShippingQuoteRecord[], selection: ShippingRate | null) {
+  return quotes.find((quote) => quoteMatchesCustomerSelection(quote, selection));
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

@@ -125,7 +125,7 @@ export function CustomBriefApprovalPage({ id }: { id: string }) {
             {productionBrief.projectName ?? "Brief seragam Full Custom"}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-brand-100">
-            Brief ini dicatat oleh sales berdasarkan percakapan Anda. Periksa spesifikasi sebelum tim Ofissio menghitung dan mengirim quotation.
+            Brief ini dicatat oleh CS Ofissio berdasarkan percakapan Anda. Periksa spesifikasi sebelum tim Ofissio menghitung dan mengirim quotation.
           </p>
         </header>
 

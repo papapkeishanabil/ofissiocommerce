@@ -145,6 +145,7 @@ export function getAllQuotationTracking(
 export function getOfistantOrderStatusText(
   scope?: TrackingScope,
   externalOrders: CustomerTrackingOrder[] = [],
+  customerQuestion = "",
 ): { order: CustomerTrackingOrder | null; text: string } {
   const order = scope?.currentOrderId
     ? getTrackingOrder(scope.currentOrderId, scope, externalOrders) ??
@@ -154,7 +155,7 @@ export function getOfistantOrderStatusText(
     return {
       order: null,
       text:
-        "Saya belum menemukan data order untuk akun ini. Jika order dibuat di channel lain, tim sales bisa bantu cek manual.",
+        "Maaf, saya belum menemukan pesanan di akun ini. Kalau pesanannya dibuat melalui sales atau channel lain, saya bisa bantu arahkan ke tim Ofissio untuk pengecekan manual.",
     };
   }
 
@@ -164,25 +165,69 @@ export function getOfistantOrderStatusText(
     order.currentStageId,
     order.paymentStatus,
   );
-  const estimate = order.estimatedCompletionDate
-    ? ` Estimasi selesai ${formatDate(order.estimatedCompletionDate)}.`
-    : "";
-  const nextStep = order.nextStep
-    ? ` Tahap berikutnya adalah ${order.nextStep}.`
-    : "";
-  const shipment =
-    order.shippingTrackingNumber
-      ? ` Resi pengiriman yang tercatat: ${order.shippingTrackingNumber}${
-          order.shippingProviderLabel ? ` via ${order.shippingProviderLabel}` : ""
-        }.`
-      : order.shipmentStatus
-        ? " Pengiriman sudah masuk workbench logistik, tetapi nomor resi belum tersedia."
-        : " Nomor resi belum tersedia; saya tidak akan mengarang data kurir.";
+  if (isDelayQuestion(customerQuestion)) {
+    return { order, text: buildDelayAnswer(order, status, progress) };
+  }
+
+  const estimate = order.estimatedDeliveryDate
+    ? ` Perkiraan tiba ${formatDate(order.estimatedDeliveryDate)}.`
+    : order.estimatedCompletionDate
+      ? ` Estimasi pengerjaan selesai ${formatDate(order.estimatedCompletionDate)}.`
+      : "";
+  const nextStep = order.nextStep ? ` Berikutnya, ${lowerFirst(order.nextStep)}.` : "";
+  const shipment = order.shippingTrackingNumber
+    ? ` Paket dikirim melalui ${order.shippingProviderLabel ?? "kurir yang dipilih"}${
+        order.shippingServiceName ? ` layanan ${order.shippingServiceName}` : ""
+      }, dengan nomor resi ${order.shippingTrackingNumber}.`
+    : order.shipmentStatus
+      ? " Paket sudah masuk proses pengiriman, tetapi nomor resinya belum tercatat."
+      : " Paket belum diserahkan ke kurir, jadi nomor resi memang belum tersedia.";
 
   return {
     order,
-    text: `Pesanan ${order.orderNumber} saat ini berstatus ${status} dengan progress sekitar ${progress}%.${nextStep}${estimate}${shipment} Saya buka detail tracking di sebelah kanan.`,
+    text: `Saya cek dulu ya. Pesanan ${order.orderNumber} saat ini ${lowerFirst(status)}, dengan progres sekitar ${progress}%.${nextStep}${estimate}${shipment}`,
   };
+}
+
+function isDelayQuestion(question: string) {
+  return /belum sampai|terlambat|telat|melewati|lewat.*(estimasi|target|jadwal)|tidak sesuai.*(estimasi|target|jadwal)/i.test(
+    question,
+  );
+}
+
+function buildDelayAnswer(
+  order: CustomerTrackingOrder,
+  status: string,
+  progress: number,
+) {
+  const target = order.estimatedDeliveryDate ?? order.estimatedCompletionDate;
+  const targetPassed = Boolean(
+    target &&
+      Number.isFinite(Date.parse(target)) &&
+      Date.parse(target) < Date.now() &&
+      order.currentStageId !== "delivered" &&
+      order.shipmentStatus?.toLowerCase() !== "delivered",
+  );
+  const latestShipment = [...order.shipmentTimeline]
+    .filter((entry) => entry.timestamp)
+    .sort((left, right) => Date.parse(right.timestamp ?? "") - Date.parse(left.timestamp ?? ""))[0];
+  const lastUpdate = latestShipment
+    ? `Pembaruan terakhir: ${latestShipment.label}${latestShipment.location ? ` di ${latestShipment.location}` : ""}, ${formatDate(latestShipment.timestamp!)}.`
+    : order.shipmentUpdatedAt
+      ? `Status pengiriman terakhir diperbarui ${formatDate(order.shipmentUpdatedAt)}.`
+      : `Status terakhir yang tercatat adalah ${lowerFirst(status)} dengan progres sekitar ${progress}%.`;
+  const targetText = target
+    ? `${targetPassed ? "Benar, target" : "Target"} yang tercatat adalah ${formatDate(target)}.`
+    : "Saat ini belum ada target tiba yang tersimpan di sistem.";
+  const confirmedReason = latestShipment?.description?.trim() || order.statusNote?.trim();
+  const reasonText = confirmedReason
+    ? `Catatan yang kami terima: ${confirmedReason}`
+    : "Belum ada penyebab keterlambatan yang terkonfirmasi di sistem, jadi saya tidak ingin menebak-nebak.";
+  return `Maaf ya, keterlambatan ini tentu tidak nyaman. ${targetText} ${lastUpdate} ${reasonText} Saya sarankan tim Ofissio segera melakukan pengecekan lanjutan dan mengabari Anda setelah ada informasi yang terkonfirmasi.`;
+}
+
+function lowerFirst(value: string) {
+  return value ? value.charAt(0).toLowerCase() + value.slice(1) : value;
 }
 
 export function isHistoryOrder(order: CustomerTrackingOrder): boolean {
@@ -274,9 +319,9 @@ export function mapPaymentOrderToTracking(input: {
         id: `${input.order.id}-invoice`,
         label: "Invoice",
         type: "invoice",
-        status: input.paymentStatus === "paid" ? "available" : "pending",
+        status: ["paid", "deposit_paid"].includes(input.paymentStatus) ? "available" : "pending",
         fileName:
-          input.paymentStatus === "paid"
+          ["paid", "deposit_paid"].includes(input.paymentStatus)
             ? `${input.paymentReferenceId ?? input.order.id}-invoice.pdf`
             : null,
       },
@@ -478,7 +523,7 @@ function stageForPaymentOrder(
     return fulfillmentType === "MADE_TO_ORDER" ? "order_received" : "waiting_payment";
   }
 
-  if (paymentStatus !== "paid" && paymentStatus !== "verified") {
+  if (!["paid", "deposit_paid", "verified"].includes(paymentStatus)) {
     return fulfillmentType === "MADE_TO_ORDER" ? "order_received" : "waiting_payment";
   }
 
@@ -562,6 +607,7 @@ function mapCheckoutOrderItemToTracking(input: {
     productSlug: product?.slug ?? input.item.productId,
     productName: input.item.productName,
     sku: input.item.sku,
+    image: input.item.image ?? product?.mainImage ?? null,
     selectedColor: input.item.selectedColor,
     sizeMatrix: input.item.sizeMatrix,
     totalQty: input.item.totalQty,

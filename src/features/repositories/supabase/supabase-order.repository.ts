@@ -60,6 +60,28 @@ export const supabaseOrderRepository: OrderRepository = {
     return next;
   },
 
+  async updateOrderPaymentTerms(input) {
+    const current = await this.getOrderById(input);
+    if (!current) return null;
+    const next = {
+      ...current,
+      status: input.status ?? current.status,
+      paymentTerms: input.paymentTerms,
+      updatedAt: new Date().toISOString(),
+    };
+    await getSupabaseAdminClient()?.update(
+      "orders",
+      {
+        status: next.status,
+        payment_status: mapOrderStatusToPaymentStatus(next.status),
+        order_json: next,
+        updated_at: next.updatedAt,
+      },
+      { id: input.orderId, company_id: input.companyId },
+    );
+    return next;
+  },
+
   async updateOrderWooSync(input) {
     const current = await this.getOrderById(input);
     if (!current) return null;
@@ -130,7 +152,14 @@ function rowToOrder(row: Record<string, unknown>) {
     companyId: String(row.company_id),
     userId: String(row.user_id),
     items: [],
-    shippingRateId: null,
+    shippingRateId:
+      row.selected_shipping_rate_json && typeof row.selected_shipping_rate_json === "object"
+        ? String((row.selected_shipping_rate_json as { id?: unknown }).id ?? "") || null
+        : null,
+    selectedShippingRate:
+      row.selected_shipping_rate_json && typeof row.selected_shipping_rate_json === "object"
+        ? (row.selected_shipping_rate_json as PaymentOrderRecord["selectedShippingRate"])
+        : null,
     calculation: {
       itemSubtotal: Number(row.subtotal ?? 0),
       customizationFee: 0,
@@ -191,6 +220,7 @@ function orderToRow(order: PaymentOrderRecord) {
     shipping_total: order.calculation.shippingFee,
     tax_total: order.calculation.tax,
     grand_total: order.calculation.grandTotal,
+    selected_shipping_rate_json: order.selectedShippingRate ?? null,
     order_json: order,
     created_at: order.createdAt,
     updated_at: order.updatedAt,

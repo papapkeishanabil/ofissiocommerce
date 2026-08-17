@@ -3,10 +3,11 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, Download, FileText } from "lucide-react";
+import { CheckCircle2, Download, FileText, MessageCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { ProductThumb } from "@/components/ui/ProductThumb";
 import type {
   QuotationEventRecord,
   QuotationRequestRecord,
@@ -17,6 +18,7 @@ import {
 } from "@/features/quotation/quotation.mapper";
 import {
   getQuotationAcceptDisabledReason,
+  formatCustomerRequestNumber,
   hasFinalQuotationPricing,
   isQuotationExpired,
   quotationTaxLabel,
@@ -75,9 +77,41 @@ export function QuotationConfirmation({
   const canReject = quotation.status === "quoted" && !isExpired;
   const canRequestRevision =
     quotation.status === "quoted" && !isExpired && hasFinalPricing;
+  const operationalPlanPublished =
+    (quotation.requirementType !== "standard_customization" ||
+      quotation.embroideryEstimate?.status === "sent_to_customer") &&
+    (quotation.requirementType !== "custom_production" ||
+      quotation.productionPlan?.status === "sent_to_customer");
+  const showDecisionControls =
+    quotation.status === "quoted" &&
+    hasFinalPricing &&
+    operationalPlanPublished;
   const reviewCopy = customerQuotationStatusMessage(quotation.status);
+  const whatsappNumber = (process.env.NEXT_PUBLIC_OFISSIO_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
+  const showCustomConsultation = quotation.source === "custom_request" || quotation.requirementType === "custom_production";
+  const whatsappHref = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Halo CS Ofissio, saya ingin melanjutkan konsultasi Full Custom untuk permintaan ${formatCustomerRequestNumber(quotation.quotationNumber, quotation.requestedProcessRoute)}.`)}`
+    : null;
   const isEmailIssue =
     notification?.status === "failed" || notification?.status === "skipped";
+  const isOfficialQuotation = [
+    "quoted",
+    "revision_requested",
+    "accepted",
+    "rejected",
+    "expired",
+    "converted_to_order",
+    "cancelled",
+  ].includes(quotation.status);
+  const displayNumber = isOfficialQuotation
+    ? quotation.quotationNumber
+    : formatCustomerRequestNumber(quotation.quotationNumber, quotation.requestedProcessRoute);
+  const requestTitle =
+    quotation.requirementType === "standard_customization"
+      ? "Detail permintaan jadwal bordir"
+      : quotation.requirementType === "custom_production"
+        ? "Detail permintaan rencana produksi"
+        : "Detail permintaan customer";
 
   function runCustomerAction(
     action: "accept" | "reject" | "request-revision",
@@ -150,7 +184,7 @@ export function QuotationConfirmation({
                 tone={isEmailIssue ? "amber" : "success"}
               >
                 {notification?.status === "sent"
-                  ? "Email terkirim"
+                  ? isOfficialQuotation ? "Penawaran terkirim" : "Permintaan terkirim"
                   : isEmailIssue
                     ? "Email perlu dicek"
                     : notification?.status === "mock"
@@ -160,10 +194,10 @@ export function QuotationConfirmation({
             ) : null}
             <p className="mt-3 flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-brand-700">
               <FileText className="h-4 w-4" aria-hidden="true" />
-              Detail quotation
+              {isOfficialQuotation ? "Detail quotation" : requestTitle}
             </p>
             <h1 className="mt-2 text-2xl font-black text-ink lg:text-3xl">
-              {quotation.quotationNumber}
+              {displayNumber}
             </h1>
             <p className="mt-1 text-sm text-ink-muted">
               {quotation.companyName} - {quotation.totalQty} pcs - {quotation.items.length} item
@@ -175,7 +209,15 @@ export function QuotationConfirmation({
         </div>
 
         <div className="mt-5 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900">
-          <p className="font-bold">{reviewCopy}</p>
+          <p className="font-bold">
+            {isOfficialQuotation
+              ? reviewCopy
+              : quotation.requirementType === "standard_customization"
+                ? "Permintaan jadwal bordir sudah diterima Ofissio. Admin akan mengonfirmasi estimasi pengerjaan sebelum mengirim penawaran resmi."
+                : quotation.requirementType === "custom_production"
+                  ? "Permintaan produksi sudah diterima Ofissio. Tim akan meninjau spesifikasi, kapasitas, jadwal, dan termin pembayaran."
+                  : "Permintaan Anda sudah diterima dan sedang ditinjau tim Ofissio."}
+          </p>
           {quotation.customerMessage && canShowFinalPrice ? (
             <p className="mt-2 border-t border-brand-200 pt-2 text-brand-800">
               {quotation.customerMessage}
@@ -189,13 +231,37 @@ export function QuotationConfirmation({
           ) : null}
         </div>
 
+        {showCustomConsultation ? (
+          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
+            <p className="font-black">Konsultasi langsung dengan CS Ofissio</p>
+            <p className="mt-1 leading-6">
+              CS Ofissio menangani desain, bahan, ukuran, spesifikasi teknis, dan revisi sampai brief siap dibuatkan penawaran.
+            </p>
+            {whatsappHref ? (
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 font-bold text-white transition-colors hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+              >
+                <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                Lanjut konsultasi via WhatsApp
+              </a>
+            ) : (
+              <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
+                Nomor WhatsApp resmi belum dikonfigurasi. Permintaan Anda tetap sudah masuk ke antrean CS Ofissio.
+              </p>
+            )}
+          </div>
+        ) : null}
+
         <div className="mt-4 grid gap-3 rounded-2xl border border-line bg-slate-50 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto]">
           <div className="min-w-0">
             <p className="font-black text-ink">
               {requirementTypeLabel(quotation.requirementType)}
             </p>
             <p className="mt-1 text-ink-muted">
-              Rute setelah quotation diterima: {processRouteCustomerLabel(quotation.requestedProcessRoute)}
+              {isOfficialQuotation ? "Rute setelah quotation diterima" : "Rencana proses setelah permintaan disepakati"}: {processRouteCustomerLabel(quotation.requestedProcessRoute)}
             </p>
           </div>
           <span className="h-fit rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-800 ring-1 ring-line">
@@ -231,6 +297,48 @@ export function QuotationConfirmation({
           ) : null}
         </div>
 
+        {quotation.embroideryEstimate?.status === "sent_to_customer" ? (
+          <section className="mt-5 rounded-2xl border border-brand-200 bg-brand-50 p-4" aria-labelledby="embroidery-estimate-title">
+            <h2 id="embroidery-estimate-title" className="font-black text-brand-950">Estimasi pengerjaan & pengiriman</h2>
+            <p className="mt-1 text-sm text-brand-800">Estimasi ini dicatat Admin Ofissio setelah konsultasi langsung dengan supervisor bordir.</p>
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <BriefSummary label="Mulai pengerjaan" value={formatDate(quotation.embroideryEstimate.estimatedStartDate)} />
+              <BriefSummary label="Selesai bordir" value={formatDate(quotation.embroideryEstimate.estimatedCompletionDate)} />
+              <BriefSummary label="Diserahkan ke kurir" value={formatDate(quotation.embroideryEstimate.estimatedHandoverDate)} />
+              <BriefSummary label="Estimasi tiba" value={`${formatDate(quotation.embroideryEstimate.estimatedArrivalStart)} – ${formatDate(quotation.embroideryEstimate.estimatedArrivalEnd)}`} />
+            </dl>
+            <p className="mt-3 text-xs font-semibold text-brand-800">Rencana kurir: {quotation.embroideryEstimate.courierCode.toUpperCase()} · {quotation.embroideryEstimate.courierService} · estimasi berlaku sampai {formatDate(quotation.embroideryEstimate.validUntil)}</p>
+          </section>
+        ) : quotation.requirementType === "standard_customization" ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-black">Menunggu estimasi supervisor bordir</p>
+            <p className="mt-1">Admin Ofissio sedang mengonfirmasi tingkat kesulitan, jumlah titik, quantity, dan kapasitas internal.</p>
+          </div>
+        ) : null}
+
+        {quotation.productionPlan?.status === "sent_to_customer" ? (
+          <section className="mt-5 rounded-2xl border border-brand-200 bg-brand-50 p-4" aria-labelledby="production-plan-title">
+            <h2 id="production-plan-title" className="font-black text-brand-950">Rencana produksi, pembayaran & pengiriman</h2>
+            <p className="mt-1 text-sm text-brand-800">Produksi dimulai setelah DP diterima. Pelunasan dilakukan setelah produksi selesai dan sebelum barang dikirim.</p>
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <BriefSummary label="Mulai produksi" value={formatDate(quotation.productionPlan.estimatedStartDate)} />
+              <BriefSummary label="Bahan siap" value={formatDate(quotation.productionPlan.materialReadyDate)} />
+              <BriefSummary label="Mulai cutting" value={formatDate(quotation.productionPlan.cuttingStartDate)} />
+              <BriefSummary label="Mulai sewing" value={formatDate(quotation.productionPlan.sewingStartDate)} />
+              <BriefSummary label="Produksi selesai" value={formatDate(quotation.productionPlan.estimatedCompletionDate)} />
+              <BriefSummary label="Diserahkan ke kurir" value={formatDate(quotation.productionPlan.estimatedHandoverDate)} />
+              <BriefSummary label={`DP ${quotation.productionPlan.depositPercent}%`} value={formatIDR(quotation.productionPlan.depositAmount)} />
+              <BriefSummary label="Pelunasan sebelum kirim" value={formatIDR(quotation.productionPlan.balanceAmount)} />
+            </dl>
+            <p className="mt-3 text-xs font-semibold text-brand-800">Rencana kurir: {quotation.productionPlan.courierCode.toUpperCase()} · {quotation.productionPlan.courierService} · estimasi tiba {formatDate(quotation.productionPlan.estimatedArrivalStart)} – {formatDate(quotation.productionPlan.estimatedArrivalEnd)}</p>
+          </section>
+        ) : quotation.requirementType === "custom_production" ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-black">Menunggu rencana produksi dari PPIC</p>
+            <p className="mt-1">Admin Ofissio sedang mengonfirmasi kapasitas, bahan, jadwal produksi, termin DP, dan rencana pengiriman.</p>
+          </div>
+        ) : null}
+
         {canShowFinalPrice ? (
           <dl className="mt-5 grid gap-3 text-sm md:grid-cols-5">
             <PriceCard label="Subtotal" value={quotation.subtotal ?? 0} />
@@ -242,24 +350,25 @@ export function QuotationConfirmation({
         ) : (
           <div className="mt-5 rounded-2xl border border-dashed border-line bg-slate-50 p-5 text-sm text-ink-muted">
             <CheckCircle2 className="mb-2 h-5 w-5 text-emerald-600" />
-            Menunggu review sales. Sistem tidak menampilkan harga final sebelum admin/sales mengisi quotation.
+            {quotation.requirementType === "standard_customization"
+              ? "Menunggu Admin Ofissio mengirim jadwal pengerjaan dan penawaran bordir. Belum ada tindakan yang perlu Anda lakukan."
+              : "Menunggu review tim Ofissio. Harga final akan tampil setelah penawaran resmi dikirim."}
           </div>
         )}
 
-        <div className="mt-5 rounded-2xl border border-line bg-slate-50 p-4 text-sm">
+        {canShowFinalPrice ? (
+          <div className="mt-5 rounded-2xl border border-line bg-slate-50 p-4 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-black text-ink">PDF Penawaran</p>
               <p className="mt-1 text-ink-muted">
-                {canShowFinalPrice
-                  ? "Download PDF penawaran jika dokumen final sudah dibuat tim Ofissio."
-                  : "PDF penawaran akan tersedia setelah penawaran final."}
+                Download PDF penawaran jika dokumen final sudah dibuat tim Ofissio.
               </p>
             </div>
             <Button
               type="button"
               variant="outline"
-              disabled={!canShowFinalPrice || isPending}
+              disabled={isPending}
               onClick={downloadQuotationPdf}
             >
               <Download className="h-4 w-4" />
@@ -271,9 +380,11 @@ export function QuotationConfirmation({
               {documentMessage}
             </p>
           ) : null}
-        </div>
+          </div>
+        ) : null}
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        {showDecisionControls ? (
+          <div className="mt-6 flex flex-wrap gap-2">
           <Button
             type="button"
             disabled={!canAccept || isPending}
@@ -288,7 +399,7 @@ export function QuotationConfirmation({
             onClick={() =>
               runCustomerAction(
                 "reject",
-                "Quotation ditolak. Tim sales akan melihat status ini.",
+                "Quotation ditolak. Tim Ofissio akan melihat status ini.",
                 window.prompt("Catatan penolakan untuk sales (opsional)") ?? null,
               )
             }
@@ -308,13 +419,14 @@ export function QuotationConfirmation({
           >
             Request revision
           </Button>
-          {quotation.convertedOrderId ? (
-            <ButtonLink href={`/orders/${quotation.convertedOrderId}`} variant="secondary">
-              Lihat order
-            </ButtonLink>
-          ) : null}
-        </div>
-        {!canAccept && acceptDisabledReason ? (
+          </div>
+        ) : null}
+        {quotation.convertedOrderId ? (
+          <ButtonLink href={`/orders/${quotation.convertedOrderId}`} variant="secondary" className="mt-6">
+            Lihat order
+          </ButtonLink>
+        ) : null}
+        {showDecisionControls && !canAccept && acceptDisabledReason ? (
           <p className="mt-3 text-sm font-semibold text-amber-800" role="status">
             Accept quotation belum tersedia: {acceptDisabledReason}
           </p>
@@ -345,11 +457,18 @@ export function QuotationConfirmation({
             className="rounded-3xl border border-line bg-surface p-5 shadow-soft-sm"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="text-lg font-black text-ink">{item.productName}</h3>
-                <p className="mt-0.5 text-sm text-ink-muted">
-                  SKU {item.sku} · {item.selectedColor}
-                </p>
+              <div className="flex min-w-0 items-start gap-4">
+                <ProductThumb
+                  src={item.image}
+                  alt={item.productName}
+                  className="h-20 w-20 sm:h-24 sm:w-24"
+                />
+                <div className="min-w-0">
+                  <h3 className="text-lg font-black text-ink">{item.productName}</h3>
+                  <p className="mt-0.5 text-sm text-ink-muted">
+                    SKU {item.sku} · {item.selectedColor}
+                  </p>
+                </div>
               </div>
               <span className="rounded-full bg-brand-50 px-3 py-1.5 text-sm font-black text-brand-800 ring-1 ring-brand-100">
                 {item.totalQty} pcs

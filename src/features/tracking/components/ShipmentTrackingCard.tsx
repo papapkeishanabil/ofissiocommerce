@@ -10,7 +10,7 @@ interface ShipmentTrackingCardProps {
 
 export function ShipmentTrackingCard({ order }: ShipmentTrackingCardProps) {
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
@@ -49,7 +49,7 @@ export function ShipmentTrackingCard({ order }: ShipmentTrackingCardProps) {
       <ol className="mt-4 space-y-3">
         {order.shipmentTimeline.map((entry) => (
           <li key={entry.id} className="flex gap-3">
-            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-50 text-slate-500 ring-1 ring-slate-200">
+            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/60 text-ink-muted ring-1 ring-white/70">
               {entry.state === "completed" ? (
                 <Check className="h-3.5 w-3.5 text-emerald-700" />
               ) : entry.state === "current" ? (

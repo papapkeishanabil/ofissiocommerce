@@ -16,30 +16,30 @@ export default async function AdminProcessOrdersPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Process orders"
-        title="Fulfillment, Customization & SPK foundation"
-        description="Dokumen kerja internal yang dibuat dari Sales Order/WooCommerce Order tanpa input ulang. Route menentukan checklist dan progress customer-friendly."
+        eyebrow="Pelaksanaan pesanan"
+        title="Perintah Kerja"
+        description="Daftar pekerjaan internal yang dibuat dari Pesanan Customer. Setiap perintah kerja berisi rute, tahapan, tim, tenggat, dan progres pengerjaan."
       />
 
       {processOrders.length === 0 ? (
-        <AdminEmptyState title="Belum ada process order" />
+        <AdminEmptyState title="Belum ada Perintah Kerja" />
       ) : (
         <AdminTableShell>
           <table className={`${ADMIN_TABLE_CLASS} min-w-[1180px]`}>
             <thead className="bg-slate-50/80">
               <tr>
-                <th className="px-4 py-3">Process Order</th>
-                <th className="px-4 py-3">Related Order</th>
-                <th className="px-4 py-3">Company</th>
-                <th className="px-4 py-3">Route</th>
+                <th className="px-4 py-3">Perintah Kerja</th>
+                <th className="px-4 py-3">Pesanan Customer</th>
+                <th className="px-4 py-3">Perusahaan</th>
+                <th className="px-4 py-3">Rute</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Replenishment</th>
-                <th className="px-4 py-3">Stage</th>
-                <th className="px-4 py-3">Progress</th>
-                <th className="px-4 py-3">Priority</th>
-                <th className="px-4 py-3">Deadline</th>
-                <th className="px-4 py-3">Created</th>
-                <th className="px-4 py-3">Action</th>
+                <th className="px-4 py-3">Tahap</th>
+                <th className="px-4 py-3">Progres</th>
+                <th className="px-4 py-3">Prioritas</th>
+                <th className="px-4 py-3">Tenggat</th>
+                <th className="px-4 py-3">Dibuat</th>
+                <th className="px-4 py-3">Tindakan</th>
               </tr>
             </thead>
             <tbody>
@@ -88,7 +88,7 @@ export default async function AdminProcessOrdersPage() {
                       href={`/admin/process-orders/${processOrder.id}`}
                       className="font-bold text-brand-700"
                     >
-                      View Detail
+                      Buka Perintah Kerja
                     </Link>
                   </td>
                 </tr>
