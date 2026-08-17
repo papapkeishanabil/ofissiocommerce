@@ -76,6 +76,9 @@ export interface AdminNotificationSummary {
   totalUnread: number;
   ordersUnread: number;
   quotationsUnread: number;
+  requestsUnread: number;
+  officialQuotationsUnread: number;
+  workOrdersUnread: number;
   popupUnread: number;
   latestNotifications: AdminNotification[];
   // Backward-compatible fields used by existing order notification clients.

@@ -45,6 +45,8 @@ import {
 import { getOptionalServerEnv } from "@/lib/security/server-only-secret";
 import { getPublicCatalogTaxonomy } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import type { PublicCatalogTaxonomy } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
+import { listPublishedKnowledgeArticles } from "@/features/ofistant-knowledge/ofistant-knowledge.service";
+import type { OfistantKnowledgeArticle } from "@/features/ofistant-knowledge/ofistant-knowledge.types";
 
 // ---------------------------------------------------------------------------
 // Feature flag / kill switch
@@ -295,24 +297,29 @@ function buildSystemPrompt(
   ctx: OfistantContext,
   cart: CartSnapshot,
   taxonomy: PublicCatalogTaxonomy,
+  knowledge: OfistantKnowledgeArticle[],
 ): string {
   const industryList =
     taxonomy.industries.map((i) => i.name).join(", ") || "(belum ada data)";
   const categoryList =
     taxonomy.categories.map((c) => c.name).join(", ") || "(belum ada data)";
   const pageBlock = formatPageContextBlock(ctx.pageContext);
+  const knowledgeBlock = knowledge.length
+    ? knowledge.slice(0, 40).map((article, index) => `${index + 1}. [${article.category}] ${article.question}\nJawaban resmi: ${article.answer}`).join("\n\n")
+    : "(belum ada artikel Knowledge Base yang diterbitkan)";
   return [
     `Kamu adalah "Ofistant", asisten pengadaan seragam kerja B2B untuk perusahaan Ofissio. Kamu hanya ikut campur saat mesin rule utama tidak menangkap maksud pelanggan — jadi tugasmu adalah memahami bahasa natural dan membantu pelanggan maju.`,
     ``,
     `ATURAN MUTLAK (anti-halusinasi):`,
     `- JANGAN pernah MENGARANG angka harga, biaya bordir, MOQ, lead time, stok, atau resi.`,
     `- Pengecualian penting: bila ada bagian "INFORMASI HALAMAN SAAT INI" di bawah, angka di sana adalah DATA NYATA yang sedang dilihat pelanggan di layarnya. Kamu BOLEH dan wajib bisa menjelaskan & merincinya bila ditanya — mis. "kenapa harga bordir segini" -> uraikan rincian bordir dari data tersebut.`,
-    `- Di luar data halaman itu, untuk harga pasti / kuantitas / bordir / status order, arahkan pelanggan ke "Request quotation" atau "Hubungi sales". Boleh menyebut rentang umum HANYA jika yakin, tetap dorong ke quotation untuk angka final.`,
+    `- Di luar data halaman itu, untuk harga pasti / kuantitas / bordir / status order, arahkan pelanggan ke "Request quotation" atau "Hubungi CS Ofissio". Boleh menyebut rentang umum HANYA jika yakin, tetap dorong ke quotation untuk angka final.`,
+    `- Untuk kebijakan/SOP/FAQ, gunakan hanya bagian KNOWLEDGE BASE RESMI. Jika tidak tercantum, katakan informasinya belum tersedia lalu tawarkan bantuan tim Ofissio.`,
     ``,
     `GAYA:`,
     `- Balas dalam Bahasa Indonesia, singkat, sopan, dan ramah. Sapa "Pak/Bu" bila pantas.`,
-    `- Gunakan TEKS POLOS saja. JANGAN gunakan markdown, asterisk (*), bullet list, atau heading.`,
-    `- Maksimal 2-3 kalimat per balasan.`,
+    `- Gunakan teks polos. Bila merinci daftar (mis. tarif per posisi atau rincian biaya), pecah jadi baris pendek berawalan "- ". JANGAN gunakan asterisk (*), bold, heading, atau markdown lain.`,
+    `- Singkat: 2-3 kalimat untuk jawaban biasa; daftar baris maksimal 5 poin.`,
     `- Format harga umum dalam Rupiah, cth: ${formatIDRCompact(45000)}.`,
     ``,
     `MEMILIH ACTION (isi actionType hanya bila ingin navigasi; kosongkan bila hanya menjawab):`,
@@ -338,6 +345,9 @@ function buildSystemPrompt(
     ``,
     `INDUSTRI TERSEDIA: ${industryList}`,
     `KATEGORI TERSEDIA: ${categoryList}`,
+    ``,
+    `KNOWLEDGE BASE RESMI (hanya artikel Published):`,
+    knowledgeBlock,
   ].join("\n");
 }
 
@@ -380,8 +390,12 @@ export async function generateOfistantReply(
 
   // Inject taxonomy once for the system prompt context.
   let taxonomy: PublicCatalogTaxonomy;
+  let knowledge: OfistantKnowledgeArticle[];
   try {
-    taxonomy = await getPublicCatalogTaxonomy();
+    [taxonomy, knowledge] = await Promise.all([
+      getPublicCatalogTaxonomy(),
+      listPublishedKnowledgeArticles(),
+    ]);
   } catch {
     return { ok: false, reason: "taxonomy-fetch-failed" };
   }
@@ -401,7 +415,7 @@ export async function generateOfistantReply(
     { role: "user", content: message },
   ];
 
-  const system = buildSystemPrompt(context, cart, taxonomy);
+  const system = buildSystemPrompt(context, cart, taxonomy, knowledge);
   const provider = createGoogleGenerativeAI({ apiKey });
 
   try {

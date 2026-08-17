@@ -226,6 +226,6 @@ export function describeActionType(t: ActionType): string {
     case "OPEN_ORDER_TRACKING":
       return "Lacak order";
     case "REQUEST_HUMAN_HANDOFF":
-      return "Hubungi sales";
+      return "Hubungi CS Ofissio";
   }
 }

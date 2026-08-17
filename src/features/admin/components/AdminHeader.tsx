@@ -1,33 +1,30 @@
 import type { InternalAdminUser } from "../admin.types";
-import { AdminBadge } from "./AdminBadge";
 import { AdminNotificationBell } from "@/features/admin-notifications/components/AdminNotificationBell";
+import { AdminPushToggle } from "@/features/admin-notifications/components/AdminPushToggle";
 import { AdminLogoutButton } from "./AdminLogoutButton";
 
 export function AdminHeader({ user }: { user: InternalAdminUser }) {
   return (
-    <header className="sticky top-0 z-20 shrink-0 border-b border-line bg-white/90 px-4 py-3 backdrop-blur md:px-7 lg:px-10">
+    <header className="sticky top-0 z-20 shrink-0 border-b border-slate-200/80 bg-white/85 px-4 py-2.5 backdrop-blur-xl md:px-6 lg:px-7">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="type-eyebrow text-brand-700">Ofissio Internal Command</p>
-          <h1 className="mt-1 text-lg font-bold tracking-tight text-ink md:text-xl">
-            Operations workbench
-          </h1>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-subtle">Ofissio / Internal Operations</p>
+          <h1 className="mt-0.5 text-base font-bold tracking-[-0.025em] text-ink">Operations workbench</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="hidden items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold tracking-[0.04em] text-emerald-700 sm:inline-flex">
+          <div className="hidden min-h-9 items-center gap-2 rounded-lg bg-emerald-50 px-3 text-[11px] font-semibold text-emerald-700 sm:inline-flex">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Staging ready
           </div>
+          <AdminPushToggle />
           <AdminNotificationBell />
           <AdminLogoutButton />
-          <div className="flex items-center gap-3 rounded-lg border border-line bg-white px-3 py-1.5 text-sm">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">
+          <div className="flex min-h-9 items-center gap-2 rounded-lg bg-slate-100 px-1.5 pr-2.5 text-xs">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-800 text-[11px] font-bold text-white">
               {user.name.slice(0, 1).toUpperCase()}
             </span>
             <span className="hidden font-medium text-ink sm:inline">{user.name}</span>
-            <AdminBadge tone={user.isMock ? "warning" : "success"}>
-              {user.isMock ? "Mock" : "Live"} · {user.role}
-            </AdminBadge>
+            <span className="hidden text-[10px] font-semibold uppercase tracking-wide text-ink-subtle md:inline">{user.role.replaceAll("_", " ")}</span>
           </div>
         </div>
       </div>

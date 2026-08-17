@@ -20,11 +20,34 @@ import type {
 } from "./admin-notification.types";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { logInternalError } from "@/lib/security/safe-error-response";
+import { sendAdminWebPush } from "./admin-push.service";
 
 const manager = createAdminNotificationManager(adminNotificationRepository);
 
+async function createNotificationWithPush(input: CreateAdminNotificationInput) {
+  const result = await manager.create(input);
+  if (result.created) {
+    const dispatch = await sendAdminWebPush(result.notification).catch((error) => {
+      logInternalError(error, {
+        area: "admin_web_push_dispatch",
+        notificationId: result.notification.id,
+      });
+      return { status: "failed" as const, eligible: 0, sent: 0, failed: 1 };
+    });
+    const updated = await adminNotificationRepository.update(result.notification.id, {
+      metadata: {
+        ...result.notification.metadata,
+        pushDispatch: dispatch,
+        pushDispatchedAt: new Date().toISOString(),
+      },
+    });
+    if (updated) return { ...result, notification: updated };
+  }
+  return result;
+}
+
 export async function createAdminNotification(input: CreateAdminNotificationInput) {
-  return manager.create(input);
+  return createNotificationWithPush(input);
 }
 
 export async function createOrderCreatedNotification(
@@ -34,7 +57,7 @@ export async function createOrderCreatedNotification(
   const emailEnabled = isOrderNotificationEmailEnabled(
     process.env.ORDER_NOTIFICATION_EMAIL_ENABLED,
   );
-  const result = await manager.create({
+  const result = await createNotificationWithPush({
     type: "order_created",
     title: "Order Baru Masuk",
     message: `Order ${order.orderNumber} dari ${order.companyName} senilai ${formatNotificationMoney(order.total, order.currency)}`,
@@ -125,7 +148,7 @@ export async function createQuotationAcceptedNotification(
   quotation: QuotationAcceptedNotificationInput,
   context: AdminNotificationMutationContext = {},
 ) {
-  const result = await manager.create({
+  const result = await createNotificationWithPush({
     type: "quotation_accepted",
     title: "Quotation Diterima Customer",
     message: `${quotation.customerName} dari ${quotation.companyName} menerima ${quotation.quotationNumber} senilai ${formatNotificationMoney(quotation.total, quotation.currency)}`,
@@ -170,16 +193,31 @@ export async function createQuotationRequestedNotification(
   context: AdminNotificationMutationContext = {},
 ) {
   const isFullCustom = quotation.source === "custom_request";
-  const result = await manager.create({
+  const isCustomization = quotation.requestedProcessRoute === "customization";
+  const isProduction = quotation.requestedProcessRoute === "production";
+  const title = isFullCustom
+    ? "Permintaan Full Custom Baru"
+    : isCustomization
+      ? "Permintaan Jadwal & Penawaran Bordir"
+      : isProduction
+        ? "Permintaan Rencana Produksi & Penawaran"
+        : "Permintaan Quotation Baru";
+  const requestLabel = isFullCustom
+    ? "brief Full Custom"
+    : isCustomization
+      ? "jadwal dan penawaran bordir"
+      : isProduction
+        ? "rencana produksi dan penawaran"
+        : "quotation";
+  const result = await createNotificationWithPush({
     type: "quotation_requested",
-    title: isFullCustom
-      ? "Permintaan Full Custom Baru"
-      : "Permintaan Quotation Baru",
-    message: `${quotation.customerName} dari ${quotation.companyName} mengajukan ${quotation.quotationNumber} untuk ${quotation.totalQty} pcs.`,
+    title,
+    message: `${quotation.customerName} dari ${quotation.companyName} mengajukan ${requestLabel} ${quotation.quotationNumber} untuk ${quotation.totalQty} pcs.`,
     entityType: "quotation",
     entityId: quotation.quotationId,
     entityNumber: quotation.quotationNumber,
     severity: "info",
+    recipientRole: isFullCustom || isProduction ? "support" : "sales_admin",
     metadata: {
       quotationId: quotation.quotationId,
       quotationNumber: quotation.quotationNumber,
@@ -188,6 +226,7 @@ export async function createQuotationRequestedNotification(
       totalQty: quotation.totalQty,
       productSummary: quotation.productSummary,
       requestedProcessRoute: quotation.requestedProcessRoute,
+      requestLabel,
       adminUrl: `/admin/quotations/${quotation.quotationId}`,
       source: quotation.source,
     },
@@ -217,7 +256,7 @@ export async function createPaymentPaidNotification(
   payment: PaymentPaidNotificationInput,
   context: AdminNotificationMutationContext = {},
 ) {
-  const result = await manager.create({
+  const result = await createNotificationWithPush({
     type: "payment_paid",
     title: "Pembayaran Order Diterima",
     message: `Pembayaran ${payment.orderNumber} dari ${payment.companyName} senilai ${formatNotificationMoney(payment.total, payment.currency)} sudah diterima dan siap diproses.`,

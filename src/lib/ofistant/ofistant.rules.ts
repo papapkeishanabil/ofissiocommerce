@@ -119,9 +119,9 @@ function buildEstimateResponse(
     });
     if (embroidery.unsupportedZones.length > 0) {
       return {
-        message: `Zona ${embroidery.unsupportedZones.map(embroideryZoneLabel).join(" dan ")} tidak tersedia untuk ${product.name}. Silakan pilih zona bordir yang didukung pada halaman produk atau hubungi sales untuk kebutuhan khusus.`,
+        message: `Zona ${embroidery.unsupportedZones.map(embroideryZoneLabel).join(" dan ")} tidak tersedia untuk ${product.name}. Silakan pilih zona bordir yang didukung pada halaman produk atau hubungi CS Ofissio untuk kebutuhan khusus.`,
         action: openDetail("Zona bordir tidak didukung"),
-        quickReplies: ["Lihat produk", "Hubungi sales"],
+        quickReplies: ["Lihat produk", "Hubungi CS Ofissio"],
       };
     }
     if (
@@ -139,19 +139,23 @@ function buildEstimateResponse(
       totalQty: qty,
       quantityPricing: product.quantityPricing,
     });
-    const lineText = embroidery.lines
-      .map(
-        (line) =>
-          `${line.label.replace("Bordir ", "")} ${formatIDR(line.unitPrice)}/pcs${line.setupFeeApplied ? ` + setup ${formatIDR(line.setupFee)}` : ""}`,
-      )
-      .join(" dan ");
+    const zoneLines = embroidery.lines.map(
+      (line) =>
+        `- ${line.label.replace("Bordir ", "")}: ${formatIDR(line.unitPrice)}/pcs${line.setupFeeApplied ? ` + setup ${formatIDR(line.setupFee)}` : ""}`,
+    );
     const estimatedTotal = productPrice.subtotal + embroidery.total;
-    const tierText =
+    const priceNote =
       productPrice.tierApplied && productPrice.tierLabel
-        ? ` masuk tier ${productPrice.tierLabel}, yaitu ${formatIDR(productPrice.unitPrice)}/pcs`
-        : ` memakai estimasi harga produk ${formatIDR(productPrice.unitPrice)}/pcs`;
+        ? `tier ${productPrice.tierLabel}`
+        : "harga estimasi";
     return {
-      message: `Untuk ${product.name} ${qty} pcs, estimasi harga produk${tierText}. Bordir ${lineText}. Estimasi total produk + bordir ${formatIDR(estimatedTotal)}. Harga final mengikuti quotation admin.`,
+      message: [
+        `Estimasi ${product.name} ${qty} pcs:`,
+        `- Produk: ${formatIDR(productPrice.unitPrice)}/pcs (${priceNote})`,
+        ...zoneLines,
+        `- Total produk + bordir: ${formatIDR(estimatedTotal)}`,
+        "Harga final mengikuti quotation admin.",
+      ].join("\n"),
       action: openDetail("Hasil kalkulasi harga bordir"),
       quickReplies: ["Request quotation", "Lihat produk"],
     };
@@ -163,7 +167,7 @@ function buildEstimateResponse(
     return {
       message: `Harga quantity untuk ${product.name} perlu dikonfirmasi admin. Saya tidak akan mengarang diskon yang belum tersimpan di data produk.`,
       action: openDetail("Konfirmasi harga quantity"),
-      quickReplies: ["Request quotation", "Hubungi sales"],
+      quickReplies: ["Request quotation", "Hubungi CS Ofissio"],
     };
   }
   const result = calculateQuantityTierPrice({
@@ -177,11 +181,11 @@ function buildEstimateResponse(
       quickReplies: ["Request quotation", "Lihat produk"],
     };
   }
-  const nextTierHint = result.nextTier
-    ? ` Tambah ${result.nextTier.qtyToNextTier} pcs lagi untuk harga ${formatIDR(result.nextTier.potentialUnitPrice)}/pcs.`
+  const nextTierLine = result.nextTier
+    ? `\n- Tambah ${result.nextTier.qtyToNextTier} pcs lagi untuk harga ${formatIDR(result.nextTier.potentialUnitPrice)}/pcs`
     : "";
   return {
-    message: `Untuk ${product.name}, estimasi harga ${qty} pcs masuk tier ${result.tierLabel}, yaitu ${formatIDR(result.unitPrice)}/pcs. Estimasi subtotal produk ${formatIDR(result.subtotal)}.${nextTierHint} Harga final tetap mengikuti quotation admin.`,
+    message: `Estimasi ${product.name} ${qty} pcs:\n- Harga satuan: ${formatIDR(result.unitPrice)}/pcs (tier ${result.tierLabel})\n- Subtotal produk: ${formatIDR(result.subtotal)}${nextTierLine}\nHarga final tetap mengikuti quotation admin.`,
     action: openDetail("Hasil kalkulasi harga quantity"),
     quickReplies: ["Request quotation", "Lihat produk"],
   };
@@ -209,9 +213,9 @@ function estimateNeedsProduct(
     message:
       productReplies.length > 0
         ? "Estimasi butuh produk spesifik. Pilih salah satu produk di bawah, atau ketik namanya:"
-        : "Estimasi butuh produk spesifik. Saat ini belum ada produk aktif yang bisa saya hitungkan — coba buka katalog atau hubungi sales.",
+        : "Estimasi butuh produk spesifik. Saat ini belum ada produk aktif yang bisa saya hitungkan — coba buka katalog atau hubungi CS Ofissio.",
     quickReplies:
-      productReplies.length > 0 ? productReplies : ["Lihat katalog", "Hubungi sales"],
+      productReplies.length > 0 ? productReplies : ["Lihat katalog", "Hubungi CS Ofissio"],
     contextPatch: {
       pendingEstimateRequest: {
         qty: detected.requestedQty ?? 0,
@@ -228,7 +232,7 @@ const humanHandoff: Rule = ({ text, taxonomy }) => {
   if (d.intent !== "ASK_HUMAN") return null;
   return {
     message:
-      "Baik, saya akan teruskan kebutuhan Bapak/Ibu ke tim sales Ofissio. Mereka akan menghubungi Anda secepatnya melalui WhatsApp/email PIC yang terdaftar.",
+      "Baik, saya akan teruskan kebutuhan Bapak/Ibu ke CS Ofissio. CS akan memeriksa data yang tercatat sebelum melanjutkan konsultasi melalui kontak PIC Anda.",
     action: { type: "REQUEST_HUMAN_HANDOFF", payload: { reason: text } },
     quickReplies: ["Lihat katalog", "Buka keranjang"],
     contextPatch: { turnsTaken: 1 },
@@ -247,7 +251,7 @@ const greeting: Rule = ({ text, ctx, taxonomy }) => {
   }
   return {
     message: "Halo kembali! Ada yang bisa saya bantu seputar pengadaan seragam?",
-    quickReplies: ["Lihat katalog", "Lihat keranjang", "Hubungi sales"],
+    quickReplies: ["Lihat katalog", "Lihat keranjang", "Hubungi CS Ofissio"],
   };
 };
 
@@ -284,7 +288,7 @@ const quantityPricing: Rule = ({
         type: "OPEN_PRODUCT_DETAIL",
         payload: { slug: product.slug, reason: "Konfirmasi harga quantity" },
       },
-      quickReplies: ["Request quotation", "Hubungi sales"],
+      quickReplies: ["Request quotation", "Hubungi CS Ofissio"],
     };
   }
   if (!detected.requestedQty) {
@@ -425,9 +429,9 @@ const searchCatalog: Rule = ({
           ...(catalogSearchResult?.alternatives.categories
             .slice(0, 2)
             .map((item) => item.name) ?? []),
-          "Hubungi sales",
+          "Hubungi CS Ofissio",
         ]
-      : ["Lihat kategori lain", "Hubungi sales"],
+      : ["Lihat kategori lain", "Hubungi CS Ofissio"],
     contextPatch: detected.industry
       ? withSelectedIndustry(ctx, detected.industry)
       : undefined,
@@ -462,9 +466,9 @@ const selectIndustry: Rule = ({
           ...(catalogSearchResult?.alternatives.industries
             .slice(0, 2)
             .map((item) => item.name) ?? []),
-          "Hubungi sales",
+          "Hubungi CS Ofissio",
         ]
-      : ["Lihat kategori lain", "Hubungi sales"],
+      : ["Lihat kategori lain", "Hubungi CS Ofissio"],
     contextPatch: withSelectedIndustry(ctx, d.industry),
   };
 };
@@ -571,7 +575,7 @@ const quotation: Rule = ({ text, ctx, taxonomy }) => {
     return {
       message:
         "Untuk quotation yang sudah dibuat, silakan buka Dashboard lalu pilih kartu quotation terkait. Jika statusnya quoted, halaman quotation akan menampilkan harga final dan tombol Accept/Reject. Saya tidak akan menyetujui atau convert order otomatis tanpa aksi di halaman quotation/admin.",
-      quickReplies: ["Buka dashboard", "Hubungi sales", "Lihat katalog"],
+      quickReplies: ["Buka dashboard", "Hubungi CS Ofissio", "Lihat katalog"],
       contextPatch: { journeyStage: "QUOTATION_SUBMITTED" },
     };
   }
@@ -579,7 +583,7 @@ const quotation: Rule = ({ text, ctx, taxonomy }) => {
     return {
       message:
         "Ada dua jalur quotation: pilih produk katalog untuk pesanan standar atau bordir, dan gunakan brief Full Custom jika desain, model, bahan, pola, warna, atau ukurannya dibuat sendiri. Anda ingin jalur yang mana?",
-      quickReplies: ["Buat seragam Full Custom", "Lihat katalog", "Hubungi sales"],
+      quickReplies: ["Buat seragam Full Custom", "Lihat katalog", "Hubungi CS Ofissio"],
     };
   }
   return {
@@ -603,7 +607,7 @@ const fullCustomRequest: Rule = ({ text }) => {
     message:
       "Baik, saya buka brief Seragam Full Custom. Anda tidak perlu memilih produk atau mengisi keranjang. Siapkan gambaran desain/model, bahan, warna, ukuran, jumlah, target waktu, dan file referensi bila ada.",
     action: { type: "OPEN_CUSTOM_REQUEST", payload: {} },
-    quickReplies: ["Hubungi sales", "Lihat katalog"],
+    quickReplies: ["Hubungi CS Ofissio", "Lihat katalog"],
   };
 };
 
@@ -614,7 +618,7 @@ const register: Rule = ({ text, taxonomy }) => {
     message:
       "Tentu, saya buka form pendaftaran akun perusahaan. Hanya butuh 1 menit.",
     action: { type: "OPEN_REGISTER", payload: {} },
-    quickReplies: ["Lihat katalog", "Hubungi sales"],
+    quickReplies: ["Lihat katalog", "Hubungi CS Ofissio"],
   };
 };
 
@@ -632,7 +636,7 @@ const tracking: Rule = ({ text, ctx, taxonomy }) => {
       type: "OPEN_ORDER_TRACKING",
       payload: trackingStatus.order ? { order_id: trackingStatus.order.id } : {},
     },
-    quickReplies: ["Hubungi sales", "Lihat katalog"],
+    quickReplies: ["Hubungi CS Ofissio", "Lihat katalog"],
   };
 };
 
@@ -700,7 +704,7 @@ const open3DConfigurator: Rule = ({ text, ctx, taxonomy }) => {
       type: "OPEN_PRODUCT_DETAIL",
       payload: { slug: ctx.selectedProductSlug, reason: "Membuka tab 3D" },
     },
-    quickReplies: ["Tambah ke keranjang", "Hubungi sales"],
+    quickReplies: ["Tambah ke keranjang", "Hubungi CS Ofissio"],
     contextPatch: { journeyStage: "CONFIGURING_PRODUCT" },
   };
 };
@@ -730,7 +734,7 @@ const exploreMore: Rule = ({ text, ctx }) => {
     return {
       message: `Untuk ${industry}, Anda sudah melihat semua rekomendasi utama. Mau lihat industri lain?`,
       action: { type: "SHOW_PRODUCTS", payload: { industry } },
-      quickReplies: ["Retail", "Perhotelan", "Hubungi sales"],
+      quickReplies: ["Retail", "Perhotelan", "Hubungi CS Ofissio"],
     };
   }
   return {
@@ -752,7 +756,7 @@ const fallback: Rule = ({ text, ctx }) => {
     return {
       message:
         "Maaf, saya belum yakin maksud Anda. Coba sebutkan industri (cth: “seragam untuk tambang”) atau klik salah satu pilihan di bawah.",
-      quickReplies: ["Bengkel", "F&B", "Corporate", "Hubungi sales"],
+      quickReplies: ["Bengkel", "F&B", "Corporate", "Hubungi CS Ofissio"],
     };
   }
   return {
@@ -761,7 +765,7 @@ const fallback: Rule = ({ text, ctx }) => {
     quickReplies: [
       "Lihat katalog",
       "Lihat keranjang",
-      "Hubungi sales",
+      "Hubungi CS Ofissio",
     ],
   };
 };

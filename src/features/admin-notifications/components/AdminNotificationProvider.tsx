@@ -30,6 +30,9 @@ const EMPTY_SUMMARY: AdminNotificationSummary = {
   totalUnread: 0,
   ordersUnread: 0,
   quotationsUnread: 0,
+  requestsUnread: 0,
+  officialQuotationsUnread: 0,
+  workOrdersUnread: 0,
   popupUnread: 0,
   latestNotifications: [],
   orderPopupUnread: 0,
@@ -73,6 +76,9 @@ export function AdminNotificationProvider({
         totalUnread: Number(payload.totalUnread ?? 0),
         ordersUnread: Number(payload.ordersUnread ?? 0),
         quotationsUnread: Number(payload.quotationsUnread ?? 0),
+        requestsUnread: Number(payload.requestsUnread ?? payload.quotationsUnread ?? 0),
+        officialQuotationsUnread: Number(payload.officialQuotationsUnread ?? 0),
+        workOrdersUnread: Number(payload.workOrdersUnread ?? 0),
         popupUnread: Number(payload.popupUnread ?? payload.orderPopupUnread ?? 0),
         latestNotifications: Array.isArray(payload.latestNotifications)
           ? (payload.latestNotifications as AdminNotification[])

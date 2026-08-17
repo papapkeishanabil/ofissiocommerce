@@ -4,6 +4,7 @@ import { logInternalError } from "@/lib/security/safe-error-response";
 
 import { getDatabaseRuntimeConfig } from "./database.config";
 import { DatabaseConfigurationError, SupabaseDatabaseError } from "./database.errors";
+import { getSupabaseProbeColumn } from "./supabase-schema";
 import type { SupabaseQueryOptions } from "./database.types";
 
 type SupabaseRow = Record<string, unknown>;
@@ -234,7 +235,11 @@ export function getSupabaseAdminClient() {
 
       for (const table of tables) {
         try {
-          await fetchRows(table, { select: "id", limit: 1 }, "schema_check");
+          await fetchRows(
+            table,
+            { select: getSupabaseProbeColumn(table), limit: 1 },
+            "schema_check",
+          );
         } catch (error) {
           if (
             error instanceof SupabaseDatabaseError &&

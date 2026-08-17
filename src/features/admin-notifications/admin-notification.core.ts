@@ -10,6 +10,7 @@ import type {
 } from "./admin-notification.types";
 import {
   isNotificationVisibleToScope,
+  isNewWorkOrderNotification,
   isPendingOrderNotification,
   isPendingQuotationNotification,
   isPopupNotification,
@@ -91,6 +92,15 @@ export function createAdminNotificationManager(
       );
       const pendingOrders = rows.filter(isPendingOrderNotification);
       const pendingQuotations = rows.filter(isPendingQuotationNotification);
+      const pendingRequests = rows.filter(
+        (notification) => notification.type === "quotation_requested" && notification.status === "unread",
+      );
+      const pendingOfficialQuotations = rows.filter(
+        (notification) => notification.type === "quotation_accepted" && notification.status === "unread",
+      );
+      const pendingWorkOrders = rows.filter(
+        (notification) => isNewWorkOrderNotification(notification) && notification.status === "unread",
+      );
       const popupOrders = rows
         .filter(isPopupOrderNotification)
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
@@ -101,6 +111,9 @@ export function createAdminNotificationManager(
         totalUnread: rows.filter((notification) => notification.status === "unread").length,
         ordersUnread: pendingOrders.length,
         quotationsUnread: pendingQuotations.length,
+        requestsUnread: pendingRequests.length,
+        officialQuotationsUnread: pendingOfficialQuotations.length,
+        workOrdersUnread: pendingWorkOrders.length,
         popupUnread: popupNotifications.length,
         latestNotifications: popupNotifications.slice(0, 3),
         orderPopupUnread: popupOrders.length,

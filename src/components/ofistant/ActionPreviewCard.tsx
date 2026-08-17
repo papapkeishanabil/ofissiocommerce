@@ -31,30 +31,30 @@ export function ActionPreviewCard({
   );
 
   return (
-    <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-3">
+    <div className="rounded-xl border border-brand-200 bg-brand-50/70 p-3 shadow-soft-xs backdrop-blur">
       <div className="flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-xs font-bold text-brand-800">
-          <ShoppingBag className="h-3.5 w-3.5" />
+        <p className="flex items-center gap-1.5 text-[13px] font-bold text-brand-800">
+          <ShoppingBag className="h-4 w-4" />
           Pratinjau penambahan ke keranjang
         </p>
         <button
           type="button"
           onClick={onCancel}
           aria-label="Batal"
-          className="grid h-6 w-6 place-items-center rounded text-ink-muted hover:bg-white/60"
+          className="grid h-7 w-7 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-white/60"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="mt-2 rounded-lg bg-surface p-2.5 text-xs">
+      <div className="mt-2 rounded-lg border border-white/70 bg-white/80 p-2.5 text-[13px]">
         <p className="font-semibold text-ink">{p.productName}</p>
         <p className="text-ink-muted">Warna: {p.color}</p>
         <div className="mt-1.5 flex flex-wrap gap-1">
           {SIZES.filter((s) => (p.sizeMatrix[s] ?? 0) > 0).map((s) => (
             <span
               key={s}
-              className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-ink"
+              className="rounded-md bg-cool-100 px-1.5 py-0.5 text-[11px] font-semibold text-ink"
             >
               {s}: {p.sizeMatrix[s]}
             </span>
@@ -80,7 +80,7 @@ export function ActionPreviewCard({
         </Button>
       </div>
 
-      <p className="mt-1.5 text-[10px] leading-snug text-ink-muted">
+      <p className="mt-1.5 text-[11px] leading-snug text-ink-muted">
         Harga final & MOQ divalidasi ulang saat checkout. Estimasi dihitung dari
         harga “mulai dari” {formatIDR(0)}.
       </p>

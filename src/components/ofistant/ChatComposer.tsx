@@ -7,7 +7,9 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { ArrowUp, Sparkles } from "lucide-react";
+import { ArrowUp } from "lucide-react";
+
+import { OfistantMark } from "./OfistantMark";
 
 /**
  * Imperative handle the parent uses to pre-fill the input from outside
@@ -56,10 +58,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       <div className="space-y-1.5">
         <form
           onSubmit={handle}
-          className="group relative flex items-end gap-2 rounded-2xl border border-line bg-surface-muted p-1.5 transition-all focus-within:border-brand-400 focus-within:bg-white focus-within:shadow-soft-sm"
+          className="group relative flex items-center gap-2 rounded-2xl border border-line bg-cool-50 p-1.5 transition-all focus-within:border-brand-400 focus-within:bg-white focus-within:shadow-soft-md"
         >
-          <span aria-hidden className="ml-1 mb-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand-700 text-white shadow-soft-xs">
-            <Sparkles className="h-3.5 w-3.5" strokeWidth={2.2} />
+          <span aria-hidden className="ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-xs">
+            <OfistantMark variant="rev" className="h-5 w-5" />
           </span>
 
           <label htmlFor="ofistant-input" className="sr-only">Ketik pesan ke Ofistant</label>
@@ -72,19 +74,19 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
             placeholder="Tanya apapun tentang seragam…"
             disabled={disabled}
             maxLength={300}
-            className="min-w-0 flex-1 border-none bg-transparent px-1 py-1.5 text-[13px] text-ink outline-none placeholder:text-ink-subtle disabled:opacity-60"
+            className="min-w-0 flex-1 border-none bg-transparent px-1 py-2 text-[15px] text-ink outline-none placeholder:text-ink-subtle disabled:opacity-60"
           />
 
           <button
             type="submit"
             disabled={disabled || !value.trim()}
             aria-label="Kirim pesan"
-            className="mb-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-xs transition-all hover:bg-brand-800 active:scale-95 disabled:bg-slate-300 disabled:shadow-none"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-xs transition-all hover:bg-brand-800 active:scale-95 disabled:bg-cool-200 disabled:text-ink-subtle disabled:shadow-none"
           >
             <ArrowUp className="h-4 w-4" strokeWidth={2.2} />
           </button>
         </form>
-        <p className="px-2 text-[9px] text-ink-subtle">
+        <p className="px-2 text-[10px] text-ink-subtle">
           Ofistant bisa menampilkan produk, membuka detail, menambah ke keranjang &amp; lainnya.
         </p>
       </div>

@@ -4,7 +4,11 @@ import Link from "next/link";
 import { BellRing, Check, Clock3, ExternalLink } from "lucide-react";
 
 import type { AdminNotification } from "../admin-notification.types";
-import { formatNotificationMoney } from "../admin-notification.utils";
+import {
+  formatNotificationMoney,
+  notificationEntityDisplayNumber,
+  quotationRequestPresentation,
+} from "../admin-notification.utils";
 import { useAdminNotifications } from "./AdminNotificationProvider";
 
 export function AdminStickyNotifications() {
@@ -60,6 +64,7 @@ function NotificationCard({
     notification.type,
   );
   const isQuotationRequest = notification.type === "quotation_requested";
+  const requestPresentation = quotationRequestPresentation(notification);
   return (
     <article className="overflow-hidden rounded-2xl border border-brand-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.18)]">
       <div className="flex gap-3 border-b border-line bg-gradient-to-r from-brand-50 to-white px-4 py-3.5">
@@ -68,13 +73,15 @@ function NotificationCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <h2 className="font-bold text-ink">{notification.title}</h2>
+            <h2 className="font-bold text-ink">
+              {isQuotationRequest ? requestPresentation.title : notification.title}
+            </h2>
             <span className="shrink-0 rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-red-700">
               Baru
             </span>
           </div>
           <p className="mt-0.5 truncate text-sm font-semibold text-brand-700">
-            {notification.entityNumber ?? notification.entityId}
+            {notificationEntityDisplayNumber(notification)}
           </p>
         </div>
       </div>
@@ -85,8 +92,8 @@ function NotificationCard({
           <strong className="text-ink">
             {isQuotationRequest
               ? totalQty > 0
-                ? `${totalQty} pcs · Menunggu review harga`
-                : "Menunggu review harga"
+                ? `${totalQty} pcs · ${requestPresentation.pendingLabel}`
+                : requestPresentation.pendingLabel
               : formatNotificationMoney(total, currency)}
           </strong>
           <span className="inline-flex items-center gap-1 text-xs text-ink-subtle">
@@ -101,7 +108,11 @@ function NotificationCard({
           onClick={() => void onRead()}
           className="col-span-2 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-3 text-sm font-semibold text-white transition hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
         >
-          {isQuotation ? "Lihat Quotation" : "Lihat Order"}{" "}
+          {isQuotationRequest
+            ? requestPresentation.actionLabel
+            : isQuotation
+              ? "Lihat Quotation"
+              : "Lihat Order"}{" "}
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
         <button
@@ -109,14 +120,18 @@ function NotificationCard({
           onClick={() => void onRead()}
           className="min-h-10 rounded-lg border border-line bg-white px-2 text-xs font-semibold text-ink-muted hover:border-brand-200 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
         >
-          Tandai Dibaca
+          Tutup notifikasi
         </button>
         <button
           type="button"
-          onClick={() => void onAcknowledge()}
+          onClick={() => {
+            void onAcknowledge().then((updated) => {
+              if (updated) window.location.assign(adminUrl);
+            });
+          }}
           className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
         >
-          <Check className="h-3.5 w-3.5" aria-hidden="true" /> Saya Proses
+          <Check className="h-3.5 w-3.5" aria-hidden="true" /> Buka & mulai tinjau
         </button>
       </div>
     </article>

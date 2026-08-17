@@ -6,7 +6,8 @@
 import { useEffect, useState } from "react";
 
 import { OfistantPanel } from "./OfistantPanel";
-import { Sparkles, X } from "lucide-react";
+import { OfistantMark } from "@/components/ofistant/OfistantMark";
+import { X } from "lucide-react";
 
 export function MobileOfistantFab() {
   const [open, setOpen] = useState(false);
@@ -38,9 +39,9 @@ export function MobileOfistantFab() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Buka Ofistant"
-        className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 transition-transform hover:scale-105 active:scale-95 lg:hidden"
+        className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 transition-transform hover:scale-105 active:scale-95 xl:hidden"
       >
-        <Sparkles className="h-6 w-6" />
+        <OfistantMark variant="rev" className="h-8 w-8" />
         <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-emerald-500 px-1 text-[10px] font-bold text-white">
           AI
         </span>
@@ -49,7 +50,7 @@ export function MobileOfistantFab() {
       {/* Bottom sheet overlay */}
       {open && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden"
+          className="fixed inset-0 z-50 flex flex-col justify-end xl:hidden"
           role="dialog"
           aria-modal="true"
           aria-label="Ofistant chat"

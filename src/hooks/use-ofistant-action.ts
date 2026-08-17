@@ -158,7 +158,9 @@ export function useOfistantAction() {
             companyId: session?.company.id,
             companyName: session?.company.companyName,
           });
-          const targetOrderId = requestedOrder?.id ?? fallbackOrder?.id ?? null;
+          // The server has already company-scoped this ID. Local tracking data may
+          // not be hydrated yet, so do not discard a valid server result.
+          const targetOrderId = requestedOrder?.id ?? requestedId ?? fallbackOrder?.id ?? null;
           if (session) {
             void fetch("/api/security/audit", {
               method: "POST",

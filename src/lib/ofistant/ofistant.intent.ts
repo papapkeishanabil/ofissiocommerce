@@ -107,22 +107,24 @@ export function detectIntent(
   const requestedEmbroideryZones = extractRequestedEmbroideryZones(value);
 
   if (
-    /\b(sales (manusia|asli)|hubungi sales|sales ofissio|cs|customer service|agent manusia|human|operator)\b/.test(
+    /\b(sales (manusia|asli)|hubungi sales|sales ofissio|cs|customer service|agent manusia|human|operator|bantuan tim ofissio|bantuan ready stock|bantuan .*bordir|konsultasi (full|ful) (custom|costom|kustom)|(full|ful) (custom|costom|kustom)|konsultasi .*production)\b/.test(
       value,
     )
   ) {
     return { intent: "ASK_HUMAN" };
   }
   if (
-    /\b(tracking|lacak|resi|nomor resi|status (order|pengiriman|produksi)|pengiriman saya|where.*order|pesanan saya)\b/.test(
+    /\b(tracking|lacak|resi(?:nya)?|nomor resi(?:nya)?|status (order|pesanan|pengiriman|produksi)|pengiriman saya|pesanan saya|order saya|tahap apa|sampai mana|kapan (sampai|selesai|dikirim)|sudah (dikirim|sampai)|belum sampai|terlambat|telat|tidak sesuai (target|estimasi|jadwal)|kurir apa|posisi paket)\b/.test(
       value,
     )
   ) {
     return { intent: "ASK_TRACKING" };
   }
   if (
-    requestedEmbroideryZones.length > 0 &&
-    (requestedQty != null || /\b(harga|berapa|biaya|estimasi|ongkos)\b/.test(value))
+    /\b(harga|berapa|biaya|estimasi|ongkos)\b/.test(value) &&
+    /\b(bordir|embroidery)\b/.test(value)
+    || requestedEmbroideryZones.length > 0 &&
+      (requestedQty != null || /\b(harga|berapa|biaya|estimasi|ongkos)\b/.test(value))
   ) {
     return {
       intent: "ASK_EMBROIDERY_PRICE",

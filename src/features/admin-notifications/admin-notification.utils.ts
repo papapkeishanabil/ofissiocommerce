@@ -4,11 +4,13 @@ import type {
   AdminNotificationStatus,
   AdminNotificationType,
 } from "./admin-notification.types";
+import { formatCustomerRequestNumber } from "@/features/quotation/quotation.utils";
 
 export function isNotificationVisibleToScope(
   notification: AdminNotification,
   scope: AdminNotificationScope,
 ) {
+  if (scope.role === "super_admin") return true;
   const roleMatches =
     notification.recipientRole === null || notification.recipientRole === scope.role;
   const userMatches =
@@ -47,9 +49,21 @@ export function isPopupNotification(notification: AdminNotification) {
       "quotation_requested",
       "quotation_accepted",
       "payment_paid",
-    ].includes(notification.type) || isReadyForShipmentNotification(notification)) &&
+    ].includes(notification.type) || isReadyForShipmentNotification(notification) || isNewWorkOrderNotification(notification) || isOfistantSupportNotification(notification)) &&
     notification.status === "unread"
   );
+}
+
+export function isOfistantSupportNotification(notification: AdminNotification) {
+  return notification.type === "system_warning" &&
+    notification.entityType === "support_ticket" &&
+    notification.metadata.source === "ofistant_customer_handoff";
+}
+
+export function isNewWorkOrderNotification(notification: AdminNotification) {
+  return notification.type === "system_warning" &&
+    notification.entityType === "process_order" &&
+    notification.metadata.source === "process_order_created";
 }
 
 function isReadyForShipmentNotification(notification: AdminNotification) {
@@ -97,6 +111,31 @@ export function formatNotificationMoney(value: number, currency = "IDR") {
     currency,
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+export function quotationRequestPresentation(notification: AdminNotification) {
+  if (notification.type !== "quotation_requested") {
+    return { title: notification.title, pendingLabel: "Menunggu review", actionLabel: "Lihat Quotation" };
+  }
+  const route = String(notification.metadata.requestedProcessRoute ?? "fulfillment");
+  const source = String(notification.metadata.source ?? "web_cart");
+  if (source === "custom_request") {
+    return { title: "Permintaan Full Custom Baru", pendingLabel: "Menunggu review brief dan rencana produksi", actionLabel: "Tinjau Permintaan" };
+  }
+  if (route === "customization") {
+    return { title: "Permintaan Jadwal & Penawaran Bordir", pendingLabel: "Menunggu estimasi jadwal dan biaya bordir", actionLabel: "Tinjau Jadwal Bordir" };
+  }
+  if (route === "production") {
+    return { title: "Permintaan Rencana Produksi & Penawaran", pendingLabel: "Menunggu rencana PPIC dan termin pembayaran", actionLabel: "Tinjau Rencana Produksi" };
+  }
+  return { title: "Permintaan Quotation Baru", pendingLabel: "Menunggu review harga", actionLabel: "Lihat Quotation" };
+}
+
+export function notificationEntityDisplayNumber(notification: AdminNotification) {
+  const number = notification.entityNumber ?? notification.entityId;
+  if (notification.type !== "quotation_requested") return number;
+  const route = String(notification.metadata.requestedProcessRoute ?? "fulfillment");
+  return formatCustomerRequestNumber(number, route);
 }
 
 export function safeNotificationMetadata(metadata: Record<string, unknown>) {

@@ -102,8 +102,15 @@ export const REQUIRED_SUPABASE_TABLES = [
   "embroidery_pricing_zones",
   "admin_notifications",
   "site_content",
+  "shipping_settings",
+  "ofistant_knowledge_articles",
 ] as const;
 
 export type RequiredSupabaseTable = (typeof REQUIRED_SUPABASE_TABLES)[number];
 export type Phase23PaymentColumn = (typeof PHASE_23_PAYMENT_COLUMNS)[number];
 export type Phase24ShipmentColumn = (typeof PHASE_24_SHIPMENT_COLUMNS)[number];
+
+/** Column used for a lightweight reachability probe of each required table. */
+export function getSupabaseProbeColumn(table: string) {
+  return table === "site_content" ? "section" : "id";
+}

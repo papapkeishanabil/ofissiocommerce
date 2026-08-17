@@ -195,6 +195,29 @@ async function main() {
   summary = await manager.summary(scope);
   assert.equal(summary.ordersUnread, 0, "shipment dibuat menyelesaikan badge siap kirim");
 
+  const workOrder = await manager.create({
+    type: "system_warning",
+    title: "Perintah Kerja Baru",
+    message: "PK-STK-2608-001 siap dikerjakan.",
+    entityType: "process_order",
+    entityId: "pro_test_001",
+    entityNumber: "PK-STK-2608-001",
+    metadata: {
+      source: "process_order_created",
+      adminUrl: "/admin/process-orders/pro_test_001",
+    },
+  });
+  summary = await manager.summary(scope);
+  assert.equal(summary.workOrdersUnread, 1, "Perintah Kerja baru masuk badge menu");
+  assert.equal(
+    summary.latestNotifications.some((notification) => notification.id === workOrder.notification.id),
+    true,
+    "Perintah Kerja baru harus tampil pada sticky popup",
+  );
+  await manager.transition(workOrder.notification.id, "read");
+  summary = await manager.summary(scope);
+  assert.equal(summary.workOrdersUnread, 0, "badge Perintah Kerja hilang setelah dibaca");
+
   assert.equal(
     orderNotificationEmailIdempotencyKey("ord_test_001"),
     orderNotificationEmailIdempotencyKey("ord_test_001"),
@@ -234,6 +257,7 @@ async function main() {
   console.log("- quotation accepted badge + sticky popup: PASS");
   console.log("- payment paid badge + sticky popup + process resolution: PASS");
   console.log("- process completed ready-to-ship badge + idempotency: PASS");
+  console.log("- work order badge + sticky popup: PASS");
   console.log("- email idempotency key + disabled fallback: PASS");
 }
 

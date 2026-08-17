@@ -6,6 +6,7 @@ import {
   PHASE_23_PAYMENT_COLUMNS,
   PHASE_24_SHIPMENT_COLUMNS,
   REQUIRED_SUPABASE_TABLES,
+  getSupabaseProbeColumn,
 } from "../src/features/database/supabase-schema";
 
 type SupabaseCheckReason =
@@ -211,7 +212,8 @@ async function checkTable(
   serviceRoleKey: string,
   table: string,
 ): Promise<TableCheckResult> {
-  const url = `${baseUrl}/rest/v1/${table}?select=id&limit=1`;
+  const probeColumn = getSupabaseProbeColumn(table);
+  const url = `${baseUrl}/rest/v1/${table}?select=${encodeURIComponent(probeColumn)}&limit=1`;
   let response: Response;
 
   try {

@@ -1,8 +1,9 @@
 "use client";
 
-import { Headset, X } from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChromeOpen, useChromeStore } from "@/stores/chrome-store";
+import { OfistantMark } from "@/components/ofistant/OfistantMark";
 import { OfistantPanel } from "./OfistantPanel";
 
 export function OfistantRail() {
@@ -17,11 +18,11 @@ export function OfistantRail() {
     <div
       onMouseEnter={railEnter}
       onMouseLeave={railLeave}
-      className="group relative z-40 hidden h-dvh shrink-0 lg:block"
+      className="group relative z-40 hidden h-dvh shrink-0 xl:block"
     >
       {/* Push drawer: width transitions 0 ↔ 400 */}
-      <div className={cn("h-dvh overflow-hidden transition-[width] duration-200 ease-out", open ? "w-[400px]" : "w-0")}>
-        <div className="h-full w-[400px]">
+      <div className={cn("h-dvh overflow-hidden transition-[width] duration-200 ease-out", open ? "w-[clamp(320px,21vw,400px)]" : "w-0")}>
+        <div className="h-full w-[clamp(320px,21vw,400px)]">
           <OfistantPanel />
         </div>
       </div>
@@ -35,7 +36,7 @@ export function OfistantRail() {
           aria-expanded={open}
           className="absolute left-full top-1/2 grid h-24 w-7 -translate-y-1/2 place-items-center rounded-r-xl border border-l-0 border-white/10 bg-[#0d1525] text-sky-300 shadow-soft-md transition-colors hover:bg-[#152138] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400"
         >
-          {pinned ? <X className="h-4 w-4" /> : <Headset className="h-4 w-4" />}
+          {pinned ? <X className="h-4 w-4" /> : <OfistantMark variant="rev" className="h-5 w-5" />}
         </button>
       )}
     </div>

@@ -17,26 +17,27 @@ import type {
 } from "../admin-notification.types";
 import { useAdminNotifications } from "./AdminNotificationProvider";
 import { cn } from "@/lib/utils";
+import { quotationRequestPresentation } from "../admin-notification.utils";
 
 const STATUS_FILTERS: Array<{ value: "all" | AdminNotificationStatus; label: string }> = [
   { value: "all", label: "Semua" },
   { value: "unread", label: "Belum Dibaca" },
   { value: "read", label: "Sudah Dibaca" },
-  { value: "acknowledged", label: "Acknowledged" },
-  { value: "resolved", label: "Resolved" },
+  { value: "acknowledged", label: "Sedang ditinjau" },
+  { value: "resolved", label: "Notifikasi selesai" },
 ];
 
 const TYPE_FILTERS: Array<{ value: "all" | AdminNotificationType; label: string }> = [
   { value: "all", label: "Semua tipe" },
   { value: "order_created", label: "Order" },
-  { value: "quotation_requested", label: "Quotation baru" },
+  { value: "quotation_requested", label: "Permintaan customer" },
   { value: "quotation_accepted", label: "Quotation diterima" },
   { value: "payment_paid", label: "Payment" },
   { value: "shipment_created", label: "Shipment" },
   { value: "system_warning", label: "System" },
 ];
 
-export function AdminNotificationCenter() {
+export function AdminNotificationCenter({ initialFocus }: { initialFocus?: string }) {
   const { request, mutate, refresh: refreshSummary } = useAdminNotifications();
   const [status, setStatus] = useState<"all" | AdminNotificationStatus>("all");
   const [type, setType] = useState<"all" | AdminNotificationType>("all");
@@ -61,13 +62,18 @@ export function AdminNotificationCenter() {
         message?: string;
       };
       if (!response.ok) throw new Error(payload.message ?? "Notifikasi belum dapat dimuat.");
-      setNotifications(Array.isArray(payload.notifications) ? payload.notifications : []);
+      const rows = Array.isArray(payload.notifications) ? payload.notifications : [];
+      setNotifications(
+        initialFocus
+          ? [...rows].sort((a, b) => Number(matchesFocus(b, initialFocus)) - Number(matchesFocus(a, initialFocus)))
+          : rows,
+      );
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Notifikasi belum dapat dimuat.");
     } finally {
       setLoading(false);
     }
-  }, [query, request]);
+  }, [initialFocus, query, request]);
 
   useEffect(() => {
     void load();
@@ -79,7 +85,9 @@ export function AdminNotificationCenter() {
   ) {
     if (await mutate(id, action)) {
       await Promise.all([load(), refreshSummary()]);
+      return true;
     }
+    return false;
   }
 
   return (
@@ -92,7 +100,7 @@ export function AdminNotificationCenter() {
             </p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">Notifikasi Admin</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
-              Order baru tetap aktif sampai tim mengakui atau menyelesaikan tindak lanjutnya.
+              Status di halaman ini hanya mengatur notifikasi. Status permintaan dan order diperbarui dari halaman detail masing-masing.
             </p>
           </div>
           <button
@@ -176,6 +184,7 @@ export function AdminNotificationCenter() {
                     <NotificationTableRow
                       key={notification.id}
                       notification={notification}
+                      focused={matchesFocus(notification, initialFocus)}
                       onAction={updateNotification}
                     />
                   ))}
@@ -188,6 +197,7 @@ export function AdminNotificationCenter() {
               <NotificationMobileCard
                 key={notification.id}
                 notification={notification}
+                focused={matchesFocus(notification, initialFocus)}
                 onAction={updateNotification}
               />
             ))}
@@ -201,16 +211,17 @@ export function AdminNotificationCenter() {
 type ActionHandler = (
   id: string,
   action: "read" | "acknowledge" | "resolve",
-) => Promise<void>;
+) => Promise<boolean>;
 
-function NotificationTableRow({ notification, onAction }: { notification: AdminNotification; onAction: ActionHandler }) {
+function NotificationTableRow({ notification, onAction, focused }: { notification: AdminNotification; onAction: ActionHandler; focused: boolean }) {
+  const displayTitle = quotationRequestPresentation(notification).title;
   return (
-    <tr className="align-top hover:bg-slate-50/70">
+    <tr id={`notification-${notification.entityId}`} className={cn("align-top hover:bg-slate-50/70", focused && "bg-amber-50 ring-2 ring-inset ring-amber-300")}>
       <td className="max-w-md px-5 py-4">
         <div className="flex gap-3">
           <SeverityIcon notification={notification} />
           <div>
-            <p className="font-bold text-ink">{notification.title}</p>
+            <p className="font-bold text-ink">{displayTitle}</p>
             <p className="mt-1 line-clamp-2 text-ink-muted">{notification.message}</p>
             <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-ink-subtle">{typeLabel(notification.type)}</p>
           </div>
@@ -224,14 +235,15 @@ function NotificationTableRow({ notification, onAction }: { notification: AdminN
   );
 }
 
-function NotificationMobileCard({ notification, onAction }: { notification: AdminNotification; onAction: ActionHandler }) {
+function NotificationMobileCard({ notification, onAction, focused }: { notification: AdminNotification; onAction: ActionHandler; focused: boolean }) {
+  const displayTitle = quotationRequestPresentation(notification).title;
   return (
-    <article className="rounded-2xl border border-line bg-white p-4 shadow-soft-sm">
+    <article id={`notification-${notification.entityId}`} className={cn("rounded-2xl border bg-white p-4 shadow-soft-sm", focused ? "border-amber-400 ring-2 ring-amber-200" : "border-line")}>
       <div className="flex gap-3">
         <SeverityIcon notification={notification} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3 className="font-bold text-ink">{notification.title}</h3>
+            <h3 className="font-bold text-ink">{displayTitle}</h3>
             <StatusBadge status={notification.status} />
           </div>
           <p className="mt-1 text-sm leading-5 text-ink-muted">{notification.message}</p>
@@ -247,23 +259,29 @@ function NotificationMobileCard({ notification, onAction }: { notification: Admi
 }
 
 function NotificationActions({ notification, onAction, align = "start" }: { notification: AdminNotification; onAction: ActionHandler; align?: "start" | "end" }) {
-  const url = String(notification.metadata.adminUrl ?? `/admin/orders/${notification.entityId}`);
+  const url = notification.entityType === "support_ticket"
+    ? `/admin/support-tickets/${encodeURIComponent(notification.id)}`
+    : String(notification.metadata.adminUrl ?? `/admin/orders/${notification.entityId}`);
   return (
     <div className={cn("flex flex-wrap gap-2", align === "end" && "justify-end")}>
       <Link href={url} onClick={() => notification.status === "unread" && void onAction(notification.id, "read")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-xs font-semibold text-ink hover:border-brand-200 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
         Lihat <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
       </Link>
       {notification.status === "unread" ? (
-        <button type="button" onClick={() => void onAction(notification.id, "read")} className="min-h-9 rounded-lg border border-line bg-white px-3 text-xs font-semibold text-ink-muted hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">Tandai Dibaca</button>
+        <button type="button" onClick={() => void onAction(notification.id, "read")} className="min-h-9 rounded-lg border border-line bg-white px-3 text-xs font-semibold text-ink-muted hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">Tutup notifikasi</button>
       ) : null}
       {notification.status === "unread" || notification.status === "read" ? (
-        <button type="button" onClick={() => void onAction(notification.id, "acknowledge")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"><CheckCheck className="h-3.5 w-3.5" aria-hidden="true" /> Saya Proses</button>
+        <button type="button" onClick={() => void onAction(notification.id, "acknowledge").then((updated) => { if (updated) window.location.assign(url); })} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"><CheckCheck className="h-3.5 w-3.5" aria-hidden="true" /> Buka & mulai tinjau</button>
       ) : null}
       {notification.status !== "resolved" ? (
-        <button type="button" onClick={() => void onAction(notification.id, "resolve")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-600"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Selesai</button>
+        <button type="button" onClick={() => void onAction(notification.id, "resolve")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-600"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Arsipkan notifikasi</button>
       ) : null}
     </div>
   );
+}
+
+function matchesFocus(notification: AdminNotification, focus?: string) {
+  return Boolean(focus && (notification.id === focus || notification.entityId === focus || notification.entityNumber === focus));
 }
 
 function SeverityIcon({ notification }: { notification: AdminNotification }) {
@@ -272,7 +290,7 @@ function SeverityIcon({ notification }: { notification: AdminNotification }) {
 }
 
 function StatusBadge({ status }: { status: AdminNotificationStatus }) {
-  const labels: Record<AdminNotificationStatus, string> = { unread: "Belum Dibaca", read: "Sudah Dibaca", acknowledged: "Sudah Diproses", resolved: "Selesai" };
+  const labels: Record<AdminNotificationStatus, string> = { unread: "Belum Dibaca", read: "Sudah Dibaca", acknowledged: "Sedang Ditinjau", resolved: "Notifikasi Selesai" };
   const tone = status === "unread" ? "bg-red-50 text-red-700 ring-red-100" : status === "read" ? "bg-blue-50 text-blue-700 ring-blue-100" : status === "acknowledged" ? "bg-amber-50 text-amber-700 ring-amber-100" : "bg-emerald-50 text-emerald-700 ring-emerald-100";
   return <span className={cn("inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1", tone)}>{labels[status]}</span>;
 }
