@@ -2,8 +2,10 @@ import { z } from "zod";
 
 import { syncCheckoutCartSchema } from "@/features/checkout/checkout-cart.validation";
 import { emailAddressSchema } from "@/features/email/email.validation";
+import { EMBROIDERY_ZONES } from "@/types/uniform-3d";
 import { QUOTATION_REQUIREMENT_TYPES } from "./quotation-requirement";
 import {
+  BRIEF_GENDERS,
   CUSTOM_REQUEST_INTAKE_CHANNELS,
   TECHNICAL_GARMENT_CATEGORIES,
   TECHNICAL_SPEC_STATUSES,
@@ -19,19 +21,70 @@ const technicalSpecificationValueSchema = z.object({
   option: optionalBriefText(160),
   detail: optionalBriefText(240),
   notes: optionalBriefText(400),
+  measurements: optionalBriefText(120),
 });
 
-const technicalGarmentSpecificationSchema = z.object({
+const technicalEmbroideryAreaSchema = z.object({
+  label: z.string().trim().min(1).max(4),
+  zone: z.enum(EMBROIDERY_ZONES),
+  positionNote: optionalBriefText(160),
+  offsetXCm: z.number().min(-50).max(50).nullish().transform((value) => value ?? null),
+  offsetYCm: z.number().min(-50).max(50).nullish().transform((value) => value ?? null),
+  widthCm: z.number().min(1).max(30),
+  heightCm: z.number().min(1).max(30),
+  technique: z.enum(["embroidery", "print", "patch"]),
+  logoFileId: optionalBriefText(180),
+  logoFileName: optionalBriefText(240),
+  notes: optionalBriefText(240),
+});
+
+const technicalGarmentSpecificationSchema = z
+  .object({
+    id: z.string().trim().min(1).max(100),
+    category: z.enum(TECHNICAL_GARMENT_CATEGORIES),
+    garmentType: z.string().trim().min(2).max(120),
+    templateKey: optionalBriefText(80),
+    quantity: z.number().int().min(1).max(1_000_000),
+    specifications: z.array(technicalSpecificationValueSchema).max(40),
+    sizeBreakdown: z.array(z.object({
+      size: z.string().trim().min(1).max(40),
+      quantity: z.number().int().min(0).max(1_000_000),
+      gender: z.enum(BRIEF_GENDERS).optional(),
+    })).max(30),
+    embroideryAreas: z.array(technicalEmbroideryAreaSchema).max(6).optional(),
+    figureFrontFileId: optionalBriefText(180),
+    figureBackFileId: optionalBriefText(180),
+  })
+  .superRefine((garment, ctx) => {
+    const zones = new Set<string>();
+    const labels = new Set<string>();
+    for (const area of garment.embroideryAreas ?? []) {
+      if (zones.has(area.zone)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["embroideryAreas"],
+          message: `Zona ${area.zone} hanya boleh dipakai satu area.`,
+        });
+      }
+      zones.add(area.zone);
+      const label = area.label.toUpperCase();
+      if (labels.has(label)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["embroideryAreas"],
+          message: `Label area ${label} duplikat.`,
+        });
+      }
+      labels.add(label);
+    }
+  });
+
+const briefCustomAdjustmentSchema = z.object({
   id: z.string().trim().min(1).max(100),
-  category: z.enum(TECHNICAL_GARMENT_CATEGORIES),
-  garmentType: z.string().trim().min(2).max(120),
-  templateKey: optionalBriefText(80),
-  quantity: z.number().int().min(1).max(1_000_000),
-  specifications: z.array(technicalSpecificationValueSchema).max(40),
-  sizeBreakdown: z.array(z.object({
-    size: z.string().trim().min(1).max(40),
-    quantity: z.number().int().min(0).max(1_000_000),
-  })).max(30),
+  size: z.string().trim().min(1).max(40),
+  color: optionalBriefText(80),
+  changeNote: z.string().trim().min(3).max(400),
+  quantity: z.number().int().min(0).max(1_000_000),
 });
 
 const productionBriefSchema = z.object({
@@ -53,6 +106,7 @@ const productionBriefSchema = z.object({
   intakeChannel: z.enum(CUSTOM_REQUEST_INTAKE_CHANNELS).optional(),
   externalReference: optionalBriefText(120),
   technicalSpecifications: z.array(technicalGarmentSpecificationSchema).max(8).optional(),
+  customAdjustments: z.array(briefCustomAdjustmentSchema).max(20).optional(),
 });
 
 export const quotationRequestBodySchema = z
@@ -113,6 +167,8 @@ export const adminSalesAssistedQuotationBodySchema = z.object({
       .max(8),
   }),
   customerNotes: z.string().trim().max(1000).nullable().optional(),
+  /** Minta ttd customer (default) atau buat tanpa persetujuan formal (repeat order). */
+  requireCustomerApproval: z.boolean().optional(),
 });
 
 export const quotationListQuerySchema = z.object({
@@ -138,3 +194,52 @@ export const customBriefApprovalBodySchema = z.discriminatedUnion("action", [
     note: z.string().trim().min(3).max(1000),
   }),
 ]);
+
+/** Klausa persetujuan customer pada lembar approval desain. */
+export const BRIEF_APPROVAL_CONSENT_TEXT =
+  "Dengan menandatangani lembar ini, pemesan menyetujui desain, bahan, warna, posisi bordir, dan jumlah yang tercantum. Perubahan setelah tanda tangan dihitung sebagai revisi baru.";
+
+export const customBriefSignatureBodySchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("approve"),
+    signerName: z.string().trim().min(2).max(120),
+    signerTitle: z.string().trim().min(2).max(120),
+    consentAccepted: z.literal(true, {
+      errorMap: () => ({
+        message: "Klausa persetujuan wajib dicentang sebelum menandatangani.",
+      }),
+    }),
+    note: z.string().trim().max(1000).nullable().optional(),
+  }),
+  z.object({
+    action: z.literal("request_revision"),
+    note: z.string().trim().min(3).max(1000),
+  }),
+]);
+
+const adminBriefPatchSchema = productionBriefSchema.extend({
+  projectName: z.string().trim().min(3).max(120),
+  garmentType: z.string().trim().min(2).max(120),
+  estimatedQuantity: z.number().int().min(1).max(1_000_000),
+  designDescription: z.string().trim().min(10).max(1200),
+  technicalSpecifications: z
+    .array(technicalGarmentSpecificationSchema)
+    .min(1)
+    .max(8),
+});
+
+export const adminBriefUpdateSchema = z.object({
+  productionBrief: adminBriefPatchSchema,
+  note: z.string().trim().max(1000).nullable().optional(),
+  /**
+   * Pilihan per kasus untuk brief asal customer portal: minta ttd customer
+   * (default) atau simpan pengayaan tanpa persetujuan formal.
+   */
+  requireCustomerApproval: z.boolean().optional(),
+});
+
+export const adminBriefSignatureBodySchema = z.object({
+  party: z.enum(["design", "production"]),
+  signerName: z.string().trim().min(2).max(120),
+  signerTitle: z.string().trim().min(2).max(120),
+});

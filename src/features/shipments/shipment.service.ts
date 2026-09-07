@@ -433,7 +433,10 @@ async function syncShipmentTracking(
       stages: productionTimeline.map((stage) => ({ ...stage })),
     })),
     nextStep: customerNextStepForShipment(shipment),
-    estimatedDeliveryDate: shipment.deliveredAt,
+    // Keep the schedule promised by Admin Ofissio. Provider milestones are
+    // recorded separately so a webhook never erases or changes that plan.
+    actualCourierPickupAt: shipment.shippedAt ?? tracking.actualCourierPickupAt,
+    actualDeliveredAt: shipment.deliveredAt ?? tracking.actualDeliveredAt,
     selectedShippingRate: mapShipmentToShippingRate(shipment),
     shipmentTimeline: buildShipmentTimeline(shipment, events),
     statusNote: customerShipmentStatusLabel(shipment.status),

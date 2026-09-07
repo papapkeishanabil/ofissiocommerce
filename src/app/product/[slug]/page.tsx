@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { productServerService } from "@/features/products/product.server-service";
 import { ProductDetail } from "@/components/product/ProductDetail";
 import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global-embroidery-pricing.service";
+import { getMoqSettings } from "@/features/moq-settings/moq-settings.service";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -31,6 +32,15 @@ export default async function Page({ params }: PageProps) {
   const { slug } = await params;
   const product = await productServerService.getProductBySlug(slug);
   if (!product) notFound();
-  const { pricing } = await getGlobalEmbroideryPricing();
-  return <ProductDetail product={product} globalEmbroideryPricing={pricing} />;
+  const [{ pricing }, moqState] = await Promise.all([
+    getGlobalEmbroideryPricing(),
+    getMoqSettings(),
+  ]);
+  return (
+    <ProductDetail
+      product={product}
+      globalEmbroideryPricing={pricing}
+      moqSettings={moqState.settings}
+    />
+  );
 }

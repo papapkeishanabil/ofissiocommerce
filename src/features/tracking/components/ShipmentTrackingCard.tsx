@@ -3,6 +3,10 @@ import { Check, Clock3, ExternalLink, MapPin, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { formatTrackingDate } from "@/features/tracking/tracking.service";
+import { customerShipmentStatusLabel } from "@/features/shipments/shipment.config";
+import type { ShipmentStatus } from "@/features/shipments/shipment.types";
+import { carrierStatusLabel } from "@/features/carrier-shipping/carrier-shipping.status";
+import type { CarrierShipmentStatus } from "@/features/carrier-shipping/carrier-shipping.types";
 
 interface ShipmentTrackingCardProps {
   order: CustomerTrackingOrder;
@@ -30,7 +34,7 @@ export function ShipmentTrackingCard({ order }: ShipmentTrackingCardProps) {
           </p>
         </div>
         <Badge tone={order.shippingTrackingNumber ? "brand" : "neutral"}>
-          {order.shipmentStatus ?? (order.shippingTrackingNumber ? "Terhubung" : "Menunggu")}
+          {shipmentStatusLabel(order)}
         </Badge>
       </div>
 
@@ -75,4 +79,25 @@ export function ShipmentTrackingCard({ order }: ShipmentTrackingCardProps) {
       </ol>
     </section>
   );
+}
+
+function shipmentStatusLabel(order: CustomerTrackingOrder) {
+  if (!order.shipmentStatus) {
+    return order.shippingTrackingNumber ? "Terhubung" : "Menunggu";
+  }
+  const legacyStatuses: ShipmentStatus[] = [
+    "draft",
+    "ready_to_ship",
+    "booked",
+    "picked_up",
+    "in_transit",
+    "delivered",
+    "failed",
+    "returned",
+    "cancelled",
+  ];
+  if (legacyStatuses.includes(order.shipmentStatus as ShipmentStatus)) {
+    return customerShipmentStatusLabel(order.shipmentStatus as ShipmentStatus);
+  }
+  return carrierStatusLabel(order.shipmentStatus as CarrierShipmentStatus);
 }

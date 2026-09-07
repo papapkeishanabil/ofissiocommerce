@@ -22,7 +22,6 @@ import "server-only";
 
 import {
   generateText,
-  isStepCount,
   NoObjectGeneratedError,
   Output,
   type ModelMessage,
@@ -47,6 +46,10 @@ import { getPublicCatalogTaxonomy } from "@/features/catalog-taxonomy/catalog-ta
 import type { PublicCatalogTaxonomy } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 import { listPublishedKnowledgeArticles } from "@/features/ofistant-knowledge/ofistant-knowledge.service";
 import type { OfistantKnowledgeArticle } from "@/features/ofistant-knowledge/ofistant-knowledge.types";
+import {
+  ofistantModelResponseSchema,
+  validateGroundedOfistantMessage,
+} from "@/lib/ofistant/ofistant-response-contract";
 
 // ---------------------------------------------------------------------------
 // Feature flag / kill switch
@@ -66,7 +69,11 @@ export function isOfistantLlmConfigured(): boolean {
   if (enabled === "false" || enabled === "0" || enabled === "off") {
     return false;
   }
-  return Boolean(getOptionalServerEnv("GEMINI_API_KEY"));
+  const provider = getOptionalServerEnv("OFISTANT_AI_PROVIDER", "google")
+    .trim()
+    .toLowerCase();
+  if (provider === "deterministic") return false;
+  return provider === "google" && Boolean(getOptionalServerEnv("GEMINI_API_KEY"));
 }
 
 // ---------------------------------------------------------------------------
@@ -93,14 +100,6 @@ const journeyStageEnum = z.enum(
  * flat pair is reconstructed into a proper discriminated OfistantAction
  * server-side (see buildActionFromFlat).
  */
-const ofistantResponseSchema = z.object({
-  message: z.string().min(1).max(600),
-  actionType: z.string().optional(),
-  actionParam: z.string().optional(),
-  quickReplies: z.array(z.string()).max(6).optional(),
-  selectedIndustry: z.string().optional(),
-});
-
 const pageContextLineSchema = z.object({
   productName: z.string(),
   color: z.string(),
@@ -370,7 +369,7 @@ export interface GenerateOfistantReplyInput {
 }
 
 export type GenerateOfistantReplyResult =
-  | { ok: true; response: OfistantResponse; source: "llm" }
+  | { ok: true; response: OfistantResponse; source: "llm-grounded" }
   | { ok: false; reason: string };
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash-lite";
@@ -387,6 +386,12 @@ export async function generateOfistantReply(
     return { ok: false, reason: "missing-gemini-key" };
   }
   const modelName = getOptionalServerEnv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL);
+  const providerName = getOptionalServerEnv("OFISTANT_AI_PROVIDER", "google")
+    .trim()
+    .toLowerCase();
+  if (providerName !== "google") {
+    return { ok: false, reason: "unsupported-ai-provider" };
+  }
 
   // Inject taxonomy once for the system prompt context.
   let taxonomy: PublicCatalogTaxonomy;
@@ -416,6 +421,14 @@ export async function generateOfistantReply(
   ];
 
   const system = buildSystemPrompt(context, cart, taxonomy, knowledge);
+  const pageEvidence = formatPageContextBlock(context.pageContext);
+  const trustedEvidence = [
+    pageEvidence ?? "",
+    ...knowledge.flatMap((article) => [article.question, article.answer]),
+    context.currentOrderId ?? "",
+    context.selectedIndustry ?? "",
+    context.selectedProductSlug ?? "",
+  ];
   const provider = createGoogleGenerativeAI({ apiKey });
 
   try {
@@ -423,13 +436,21 @@ export async function generateOfistantReply(
       model: provider(modelName),
       system,
       messages,
-      output: Output.object({ schema: ofistantResponseSchema }),
+      output: Output.object({ schema: ofistantModelResponseSchema }),
       temperature: 0.2,
     });
 
     const out = result.output;
     if (!out) {
       return { ok: false, reason: "no-structured-output" };
+    }
+
+    const grounding = validateGroundedOfistantMessage(
+      out.message,
+      trustedEvidence,
+    );
+    if (!grounding.ok) {
+      return { ok: false, reason: "ungrounded-model-facts" };
     }
 
     const action = buildActionFromFlat(out.actionType, out.actionParam);
@@ -448,7 +469,7 @@ export async function generateOfistantReply(
       quickReplies: out.quickReplies,
       contextPatch,
     };
-    return { ok: true, response, source: "llm" };
+    return { ok: true, response, source: "llm-grounded" };
   } catch (error) {
     if (error instanceof NoObjectGeneratedError) {
       return { ok: false, reason: "object-generation-failed" };

@@ -1,0 +1,9 @@
+import { NextResponse } from "next/server";
+import { requireInternalAdmin } from "@/features/admin/admin.service";
+import { getProductImportLimits } from "@/features/product-import/product-import.config";
+import { inspectProductImportRecovery, rehydrateProductImport } from "@/features/product-import/product-import-recovery.service";
+import { createApiError, safeErrorResponse } from "@/lib/security/safe-error-response";
+export const runtime="nodejs";
+export async function GET(request:Request){try{const actor=requireInternalAdmin(request,"admin:catalog:update");const batchId=new URL(request.url).searchParams.get("batchId")??"";const result=await inspectProductImportRecovery({batchId,actorId:actor.id});return NextResponse.json({ok:true,result},{headers:{"Cache-Control":"no-store"}});}catch(error){return safeErrorResponse(error,"Batch import belum dapat dipulihkan.",400);}}
+export async function POST(request:Request){try{const actor=requireInternalAdmin(request,"admin:catalog:update");const form=await request.formData();const batchId=String(form.get("batchId")??"");const woo=optionalCsv(form,"wooCsv");const manifest=optionalCsv(form,"manifestCsv");const result=await rehydrateProductImport({batchId,actorId:actor.id,wooCsv:woo?await woo.text():undefined,manifestCsv:manifest?await manifest.text():undefined});return NextResponse.json({ok:true,result},{headers:{"Cache-Control":"no-store"}});}catch(error){return safeErrorResponse(error,"Batch import belum dapat dipulihkan.",400);}}
+function optionalCsv(form:FormData,key:string){const value=form.get(key);if(value===null)return null;if(!(value instanceof File)||value.size<=0||value.size>getProductImportLimits().maxCsvBytes||!value.name.toLowerCase().endsWith(".csv"))throw createApiError("VALIDATION_ERROR",`File ${key} tidak valid.`,400);return value;}

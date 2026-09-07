@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle2, Clock3, FileText, Send } from "lucide-reac
 import { requireInternalAdminServer, listAdminInvoices } from "@/features/admin/admin.service";
 import { AdminBadge } from "@/features/admin/components/AdminBadge";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
-import { AdminPageHeader, AdminTableShell, ADMIN_TABLE_CLASS } from "@/features/admin/components/AdminSurface";
+import { AdminPageHeader, AdminTableShell, ADMIN_ACTION_LINK_CLASS, ADMIN_TABLE_CLASS } from "@/features/admin/components/AdminSurface";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
 
 export default async function AdminInvoicesPage() {
@@ -57,7 +57,7 @@ export default async function AdminInvoicesPage() {
               <td className="px-4 py-3.5"><span className={`inline-flex items-center gap-1.5 text-xs font-bold ${status.className}`}><Icon className="h-4 w-4" aria-hidden="true" />{status.label}</span>{invoice.filename ? <p className="mt-1 max-w-48 truncate text-xs text-ink-subtle">{invoice.filename}</p> : null}</td>
               <td className="px-4 py-3.5 text-sm font-semibold text-ink">{status.nextAction}</td>
               <td className="px-4 py-3.5 text-sm text-ink-muted">{formatAdminDate(invoice.updatedAt)}<p className="mt-1 text-xs">{ageLabel(invoice.updatedAt)}</p></td>
-              <td className="px-4 py-3.5 text-right"><Link href={`/admin/orders/${invoice.orderId}#invoice`} className="inline-flex min-h-10 items-center rounded-lg border border-line bg-white px-3.5 text-sm font-semibold text-brand-700 hover:bg-brand-50">Buka invoice</Link></td>
+              <td className="px-4 py-3.5 text-right"><Link href={`/admin/orders/${invoice.orderId}#invoice`} className={`${ADMIN_ACTION_LINK_CLASS} border border-line bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50 focus-visible:outline-brand-600`}>Buka invoice</Link></td>
             </tr>;
           })}</tbody>
         </table>

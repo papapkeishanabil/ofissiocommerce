@@ -24,6 +24,7 @@ import type {
 import { mockStorageProvider } from "./providers/mock-storage.provider";
 import { s3StorageProvider } from "./providers/s3-storage.provider";
 import { supabaseStorageProvider } from "./providers/supabase-storage.provider";
+import { getSupabaseResumableUploadEndpoint } from "./providers/supabase-storage.provider";
 
 function activeObjectProvider(): StorageObjectProvider {
   const config = getStorageRuntimeConfig();
@@ -37,6 +38,7 @@ export function getUploadBucketForFileType(fileType: StorageFileType) {
   const rule = getStorageRuleForFileType(fileType, config);
   return config.buckets[rule.bucketPurpose];
 }
+export function getProductImportStagingBucket() { return getStorageRuntimeConfig().buckets.product_imports; }
 
 export function createStorageKey(input: {
   companyId: string;
@@ -362,6 +364,18 @@ export async function deleteManagedStorageObject(input: {
   return activeObjectProvider().deleteObject(input);
 }
 
+export async function createManagedStorageSignedUpload(input: {
+  bucket: string;
+  key: string;
+}) {
+  const provider = activeObjectProvider();
+  if (!provider.createSignedUploadToken || provider.name !== "supabase") {
+    throw new Error("Resumable product import membutuhkan Supabase Storage.");
+  }
+  const signed = await provider.createSignedUploadToken({ ...input, upsert: false });
+  return { ...signed, endpoint: getSupabaseResumableUploadEndpoint() };
+}
+
 export const storageService = {
   validateUploadRequest,
   uploadFile,
@@ -375,8 +389,10 @@ export const storageService = {
   toPublicUploadedFile,
   createStorageKey,
   getUploadBucketForFileType,
+  getProductImportStagingBucket,
   uploadManagedStorageObject,
   getManagedStorageObjectMetadata,
   getManagedStorageObjectSignedUrl,
   deleteManagedStorageObject,
+  createManagedStorageSignedUpload,
 };

@@ -39,17 +39,16 @@
 // Arrival panel is portrait so the uniform sample reads large.
 
 import Link from "next/link";
+import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Check,
   ChevronLeft,
   ChevronRight,
   Clock,
-  Shirt,
   Sparkles,
-  Tag,
 } from "lucide-react";
 import { OfistantOpenButton } from "./OfistantOpenButton";
 import { resolveHomepageIcon } from "@/features/site-content/icon-registry";
@@ -60,6 +59,7 @@ import type {
   HeroPromoPanel,
   HeroSlide,
   TextSegment,
+  TrustStat,
 } from "@/features/site-content/content.schema";
 
 /* The three.js renderer is split into its own client chunk and loaded
@@ -77,22 +77,11 @@ const Product3D = dynamic(() => import("./ProductCategory3D").then((m) => m.Prod
 /* --------------------------------- styles -------------------------------- */
 
 const PRIMARY_CTA =
-  "inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-brand-900 transition-all hover:-translate-y-px hover:bg-slate-100 hover:shadow-lg";
+  "inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-brand-900 transition-all hover:-translate-y-px hover:bg-slate-100 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 const SECONDARY_CTA =
-  "inline-flex items-center gap-2 rounded-xl border border-white/30 bg-brand-950/45 px-7 py-3.5 text-sm font-semibold text-white transition-all hover:border-ochre-300 hover:bg-brand-900/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
-
-/** Frost-glass panel over the hero video: a mid tint (~45%) + real backdrop
- *  blur carry the glass, and a two-layer inherited text-shadow (tight dark edge
- *  + soft glow) keeps copy legible over any frame. backdrop-filter is back by
- *  request — and it is safe here ONLY because the panel column never fades
- *  opacity: opacity is excluded from its transition and snaps 0↔1 in one frame,
- *  so no fractional-opacity frame ever holds a backdrop-filter (that mid-state
- *  is exactly what flickered "clear→frosted" before). See cardLayerClasses. The
- *  copy column has no backdrop-filter and crossfades normally via layerClasses.
- *  Each panel owns its border color; roots cap width to max-w-[24rem] and
- *  center, so every card reads as a compact near-square, not a wide bar. */
-const GLASS_CARD =
-  "rounded-2xl bg-brand-950/45 backdrop-blur-xl shadow-soft-lg [text-shadow:0_1px_2px_rgba(7,13,28,0.85),0_2px_14px_rgba(7,13,28,0.55)]";
+  "inline-flex min-h-12 items-center gap-2.5 rounded-xl border border-white/35 bg-transparent px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-px hover:border-ochre-400 hover:bg-[#07101e]/55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
+const HERO_BENEFIT =
+  "inline-flex min-h-11 items-center gap-2.5 rounded-full border border-white/25 bg-[#07101e]/55 px-4 py-2 text-sm font-bold text-white shadow-[0_8px_24px_rgba(3,9,20,0.16)]";
 
 const AUTO_ADVANCE_MS = 6000;
 
@@ -105,11 +94,20 @@ const AUTO_ADVANCE_MS = 6000;
 function HeroHeadline({ segments }: { segments: TextSegment[] }) {
   return (
     <>
-      {segments.map((segment, index) => (
-        <span key={index} className={segment.highlight ? "text-ochre-300" : undefined}>
-          {segment.text}
-        </span>
-      ))}
+      {segments.map((segment, index) => {
+        const previousText = segments[index - 1]?.text ?? "";
+        const needsLeadingSpace =
+          index > 0 &&
+          !/\s$/.test(previousText) &&
+          !/^[\s.,!?;:)]/.test(segment.text);
+
+        return (
+          <span key={index} className={segment.highlight ? "text-ochre-400" : undefined}>
+            {needsLeadingSpace ? " " : null}
+            {segment.text}
+          </span>
+        );
+      })}
     </>
   );
 }
@@ -141,64 +139,53 @@ function CtaButton({ cta }: { cta: HeroCta }) {
 
 function PackagePanel({ panel }: { panel: HeroPackagePanel }) {
   const Badge = resolveHomepageIcon(panel.badge);
+  const legacyPackageImages = [
+    "/products/hero-polo-staff-navy.png",
+    "/products/kk-006/KK-006-front-nobg.webp",
+  ] as const;
+
   return (
-    <div className="relative mx-auto w-full max-w-[19rem] 2xl:max-w-[20rem]">
-      {/* Floating proof chips — translucent glass pills that read against the video */}
-      <span className="absolute -top-2.5 right-4 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-brand-950/75 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md">
-        <Tag className="h-3.5 w-3.5 text-ochre-300" strokeWidth={2.2} aria-hidden="true" />
-        Siap Logo
-      </span>
-      <div className={`${GLASS_CARD} border border-white/15 p-4`}>
-        {/* Head */}
-        <div className="flex items-center gap-2.5 border-b border-white/10 pb-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-white/10 text-ochre-300">
-            <Badge className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
-          </span>
-          <div>
-            <div className="text-base font-extrabold leading-tight text-white">
-              {panel.title}
-              <span className="font-bold text-white/60"> — contoh</span>
-            </div>
-            <div className="mt-0.5 text-xs font-medium text-white/60">{panel.meta}</div>
-          </div>
-        </div>
-
-        {/* Product sample rows */}
-        {panel.items.map((it, idx) => (
-          <div
-            key={it.name}
-            className={`flex items-center gap-3 py-2.5 ${
-              idx < panel.items.length - 1 ? "border-b border-dashed border-white/10" : ""
-            }`}
-          >
-            <span
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-white ring-1 ring-inset ring-white/15"
-              style={{ background: it.color }}
-            >
-              <Shirt className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
-            </span>
-            <div>
-              <div className="text-sm font-bold leading-tight text-white">{it.name}</div>
-              <div className="mt-0.5 text-[11px] font-medium text-white/60">{it.tag}</div>
-            </div>
-          </div>
-        ))}
-
-        {/* Footer — logo + lead-time promise */}
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-2.5">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-dashed border-ochre-400 text-ochre-300">
-              <Sparkles className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
-            </span>
-            <div>
-              <div className="text-sm font-bold leading-tight text-white">Logo usaha Anda</div>
-              <div className="text-[11px] font-semibold text-white/60">bordir presisi · tahan cucian</div>
-            </div>
-          </div>
-          <span className="shrink-0 rounded-full bg-ochre-400 px-2.5 py-1 text-[11px] font-extrabold text-brand-950">
-            {panel.pill}
-          </span>
-        </div>
+    <div className="min-w-0 text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.8)]">
+      <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-400">
+        <Badge className="h-4 w-4" strokeWidth={2.1} aria-hidden="true" />
+        {panel.title}
+      </div>
+      <div className="mt-2 text-2xl font-extrabold leading-tight">
+        {panel.items.map((item) => item.name).join(" + ")}
+      </div>
+      <p className="mt-1.5 text-[15px] font-semibold leading-relaxed text-white/90">{panel.meta}</p>
+      <div className="mt-3 flex items-end gap-5" aria-label="Contoh produk dalam paket">
+        {panel.items.map((item, index) => {
+          const imageSrc = item.image || legacyPackageImages[index];
+          return (
+            <figure key={item.name} className="flex w-28 min-w-0 flex-col items-center gap-1.5">
+              {imageSrc ? (
+                <Image
+                  src={imageSrc}
+                  alt={item.name}
+                  width={128}
+                  height={136}
+                  className="h-28 w-auto max-w-28 object-contain brightness-110 contrast-105 drop-shadow-[0_10px_18px_rgba(0,0,0,0.5)]"
+                  sizes="112px"
+                  priority
+                />
+              ) : (
+                <span className="grid h-28 w-24 place-items-center rounded-xl border border-dashed border-white/30 bg-[#07101e]/45 text-ochre-400">
+                  <Badge className="h-8 w-8" strokeWidth={1.6} aria-hidden="true" />
+                  <span className="sr-only">Foto {item.name} belum tersedia</span>
+                </span>
+              )}
+              <figcaption className="text-center text-sm font-bold leading-tight text-white">
+                {item.name}
+              </figcaption>
+            </figure>
+          );
+        })}
+      </div>
+      <div className="mt-3 flex items-center gap-2 text-sm font-bold text-ochre-300">
+        <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+        Siap bordir logo
+        <span className="font-semibold text-white/90">· {panel.pill}</span>
       </div>
     </div>
   );
@@ -215,46 +202,23 @@ function ProductPanel({
 }) {
   const Icon = resolveHomepageIcon(panel.icon);
   return (
-    <div className="relative mx-auto w-full max-w-[19rem] 2xl:max-w-[20rem]">
-      <span className="absolute -top-2.5 left-4 z-20 inline-flex items-center gap-1.5 rounded-full border border-ochre-300/40 bg-ochre-400 px-2.5 py-1 text-xs font-extrabold text-brand-950 shadow-soft-md">
-        <Sparkles className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden="true" />
+    <div className="min-w-0 text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.8)]">
+      <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-400">
+        <Sparkles className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
         New Arrival
-      </span>
-
-      {/* Portrait glass card — the uniform renders as a real 3D model so
-          the "New Arrival" example reads large and premium. The stacked grid
-          sizes to this (tallest) panel; shorter panels sit top-aligned in the
-          same cell, so hero height stays stable across slides. The Canvas is
-          transparent and gated — it only spins when this slide is active and
-          motion is allowed, so a hidden slide burns no RAF. An empty `glb`
-          path omits the model and leaves the faint icon motif behind. */}
-      <div className={`${GLASS_CARD} overflow-hidden border border-white/15`}>
-        <div className="relative aspect-[4/3] overflow-hidden bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_68%)] ring-1 ring-inset ring-white/10">
-          {/* Faint icon sits behind the model as a subtle motif + a progressive
-              visual while the 3D chunk/model streams in. */}
-          <Icon
-            className="pointer-events-none absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 text-white/10"
-            strokeWidth={1}
-            aria-hidden="true"
-          />
-          {panel.glb ? (
-            <div className="absolute inset-0">
-              <Product3D url={panel.glb} active={active} autoRotate={!reduce} />
-            </div>
-          ) : null}
+      </div>
+      {panel.glb ? (
+        <div className="relative -ml-4 mt-1 h-48 w-[calc(100%+1rem)] max-w-[18rem] overflow-hidden">
+          <Product3D url={panel.glb} active={active} autoRotate={!reduce} />
         </div>
-        <div className="p-4">
-          <div className="text-base font-extrabold leading-tight text-white">{panel.name}</div>
-          <div className="mt-1 text-xs font-medium text-white/60">{panel.subtitle}</div>
-          <ul className="mt-3 space-y-1">
-            {panel.features.map((f) => (
-              <li key={f} className="flex items-start gap-2 text-[11px] font-medium leading-4 text-white/70">
-                <Check className="mt-0.5 h-3 w-3 shrink-0 text-ochre-300" strokeWidth={2.4} aria-hidden="true" />
-                <span>{f}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      ) : (
+        <Icon className="mt-3 h-12 w-12 text-ochre-400" strokeWidth={1.4} aria-hidden="true" />
+      )}
+      <div className="mt-1 text-xl font-extrabold leading-tight">{panel.name}</div>
+      <p className="mt-1 text-sm font-medium leading-relaxed text-white/90">{panel.subtitle}</p>
+      <div className="mt-2 flex items-start gap-2 text-sm font-semibold text-ochre-300">
+        <Check className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden="true" />
+        {panel.features[0]}
       </div>
     </div>
   );
@@ -262,27 +226,18 @@ function ProductPanel({
 
 function PromoPanel({ panel }: { panel: HeroPromoPanel }) {
   return (
-    <div className="relative mx-auto w-full max-w-[19rem] 2xl:max-w-[20rem]">
-      {/* Ochre-tinted glass edge marks this as the promo card (vs. the white-edged
-          package/product panels) — still translucent so the video reads through. */}
-      <div className={`${GLASS_CARD} border border-ochre-400/30 p-4`}>
-        <div className="inline-flex items-center rounded-full bg-ochre-400/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-ochre-300 ring-1 ring-inset ring-ochre-300/20">
-          {panel.label}
-        </div>
-        <div className="mt-3 text-[clamp(2.75rem,3.5vw,3.5rem)] font-extrabold leading-none tracking-[-0.04em] text-white">
-          {panel.off}
-        </div>
-        <p className="mt-2 text-xs leading-5 text-white/65">{panel.sub}</p>
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] p-2.5">
-          <span className="rounded-lg bg-white/10 px-2.5 py-1.5 text-sm font-extrabold tracking-wide text-white">
-            {panel.code}
-          </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-white/45">kode promo</span>
-        </div>
-        <div className="mt-3 flex items-center gap-1.5 border-t border-white/10 pt-3 text-[11px] font-medium text-white/55">
-          <Clock className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
-          {panel.validity}
-        </div>
+    <div className="min-w-0 text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.8)]">
+      <div className="text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-400">{panel.label}</div>
+      <div className="mt-2 text-[clamp(2.25rem,3vw,3rem)] font-extrabold leading-none tracking-[-0.04em]">
+        {panel.off}
+      </div>
+      <p className="mt-2 text-sm font-medium leading-relaxed text-white/90">{panel.sub}</p>
+      <div className="mt-3 text-sm font-semibold text-white/80">
+        Kode: <strong className="font-extrabold tracking-wide text-ochre-300">{panel.code}</strong>
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-xs font-medium text-white/65">
+        <Clock className="h-3.5 w-3.5 text-ochre-400" strokeWidth={2} aria-hidden="true" />
+        {panel.validity}
       </div>
     </div>
   );
@@ -331,7 +286,82 @@ function cardLayerClasses(active: boolean, reduce: boolean) {
 
 /* -------------------------------- carousel -------------------------------- */
 
-export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
+function HeroTrustRail({
+  items,
+  context,
+  compact = false,
+}: {
+  items: TrustStat[];
+  context: ReactNode;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <div className="border-t border-white/15 pt-5 text-white">
+        <div className="mb-5 border-l-2 border-ochre-400 pl-4">{context}</div>
+        <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+          {items.map((item) => {
+            const Icon = resolveHomepageIcon(item.icon);
+            return (
+              <div key={item.label} className="flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-ochre-400/55 bg-[#07101e]/75 text-ochre-400">
+                  <Icon className="h-4 w-4" strokeWidth={2.4} aria-hidden="true" />
+                </span>
+                <span className="min-w-0 pt-0.5">
+                  <strong className="block text-xl font-bold tabular-nums">{item.value}</strong>
+                  <span className="mt-1 block text-[15px] font-semibold leading-relaxed text-white/90">{item.label}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative flex flex-col justify-center gap-4 text-white">
+      <span aria-hidden="true" className="absolute bottom-7 left-5 top-7 w-px bg-ochre-400/55" />
+      <div className="relative flex items-start gap-4 pb-1">
+        <span className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-ochre-400 bg-[#07101e]/80 text-sm font-extrabold tabular-nums text-ochre-300 shadow-[0_0_0_5px_rgba(7,16,30,0.35)]">
+          01
+        </span>
+        <div className="min-w-0 flex-1 pt-0.5">{context}</div>
+      </div>
+      {items.map((item, index) => {
+        const Icon = resolveHomepageIcon(item.icon);
+        return (
+          <div key={item.label} className="relative flex items-center gap-4">
+            <span className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-ochre-400/70 bg-[#07101e]/80 text-xs font-extrabold tabular-nums text-ochre-300 shadow-[0_0_0_5px_rgba(7,16,30,0.35)]">
+              {String(index + 2).padStart(2, "0")}
+            </span>
+            <span className="flex min-w-0 items-start gap-3 pt-0.5">
+              <Icon className="mt-0.5 h-5 w-5 shrink-0 text-ochre-400" strokeWidth={2.1} aria-hidden="true" />
+              <span>
+                <strong className="block text-xl font-bold text-white tabular-nums [text-shadow:0_2px_12px_rgba(0,0,0,0.9)]">
+                  {item.value}
+                </strong>
+                <span className="mt-1 block text-[15px] font-semibold leading-relaxed text-white/90 [text-shadow:0_2px_12px_rgba(0,0,0,0.95)]">
+                  {item.label}
+                </span>
+              </span>
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function HeroCarousel({
+  slides,
+  trustItems,
+  videoSrc,
+}: {
+  slides: HeroSlide[];
+  trustItems: TrustStat[];
+  videoSrc: string;
+}) {
   const [active, setActive] = useState(0);
   const [reduce, setReduce] = useState(false);
   const paused = useRef(false);
@@ -354,6 +384,30 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
     return () => window.clearInterval(id);
   }, [reduce, slides.length]);
 
+  const contextualRail = (
+    <div className="grid">
+      {slides.map((slide, index) => {
+        const isActive = index === active;
+        return (
+          <div
+            key={index}
+            inert={!isActive ? true : undefined}
+            aria-hidden={isActive ? undefined : "true"}
+            className={cardLayerClasses(isActive, reduce)}
+          >
+            {slide.panel.type === "package" ? (
+              <PackagePanel panel={slide.panel} />
+            ) : slide.panel.type === "product" ? (
+              <ProductPanel panel={slide.panel} active={isActive} reduce={reduce} />
+            ) : (
+              <PromoPanel panel={slide.panel} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <section
       className="relative flex min-h-[min(620px,100svh)] w-full items-center overflow-hidden bg-[#070d1c] sm:min-h-[clamp(620px,88svh,900px)]"
@@ -373,16 +427,25 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
         }
       }}
     >
-      {/* Video background — workers in uniform; darkened overlay for copy contrast */}
-      <video autoPlay loop muted playsInline preload="auto" className="absolute inset-0 h-full w-full object-cover">
-        <source src="/hero-workers.mp4" type="video/mp4" />
+      {/* Video background — kept clear across the product area; contrast is
+          concentrated behind the copy instead of tinting the whole frame. */}
+      <video
+        key={videoSrc || "/hero-workers.mp4"}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 h-full w-full object-cover brightness-[1.08] contrast-[1.04] saturate-[1.04]"
+      >
+        <source
+          src={videoSrc || "/hero-workers.mp4"}
+          type={(videoSrc || "/hero-workers.mp4").toLowerCase().includes(".webm") ? "video/webm" : "video/mp4"}
+        />
       </video>
-      <div className="absolute inset-0 bg-gradient-to-r from-[#070d1c]/70 via-[#070d1c]/30 to-[#070d1c]/35" />
-      {/* Bottom fade — smooth transition to light sections below */}
-      <div className="pointer-events-none absolute -bottom-px left-0 right-0 z-[1] h-40 bg-gradient-to-b from-transparent via-surface/60 to-surface" />
-
+      <div className="absolute inset-y-0 left-0 w-full bg-[linear-gradient(90deg,rgba(3,7,18,0.68)_0%,rgba(3,7,18,0.44)_44%,rgba(3,7,18,0.16)_78%,rgba(3,7,18,0)_100%)] sm:w-[72%] xl:w-[64%]" />
       <div className="relative z-10 mx-auto w-full max-w-[1600px] px-4 py-[clamp(3rem,7vh,5rem)] sm:px-6 lg:px-[clamp(1.5rem,3vw,3rem)]">
-        <div className="grid items-center gap-[clamp(1.5rem,3vw,3rem)] xl:grid-cols-[minmax(0,1.22fr)_minmax(280px,0.78fr)]">
+        <div className="grid items-center gap-[clamp(2rem,4vw,5rem)] xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.38fr)]">
           {/* Left: stacked rotating copy. All slides share one grid cell so the
               column height is constant (= tallest slide); only opacity swaps. */}
           <div className="min-w-0 max-w-3xl">
@@ -398,8 +461,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     aria-hidden={on ? undefined : "true"}
                     className={layerClasses(on, reduce)}
                   >
-                    <span className="mb-[clamp(1rem,2.5vh,1.5rem)] inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white">
+                    <span className="mb-[clamp(1rem,2.5vh,1.5rem)] inline-flex items-center gap-3 text-xs font-extrabold uppercase tracking-[0.14em] text-white">
                       <EyebrowIcon className="h-3.5 w-3.5 text-ochre-300" aria-hidden="true" />
+                      <span aria-hidden="true" className="h-px w-8 bg-ochre-400" />
                       {s.eyebrowText}
                     </span>
 
@@ -418,14 +482,17 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     </div>
 
                     <div className="mt-[clamp(1rem,2.5vh,2rem)] flex flex-wrap gap-2.5">
-                      {s.chips.map((c) => {
+                      {s.chips
+                        .filter((chip) => !/(?:^|\s)8\s*pcs|2\s*[–-]\s*4\s*hari/i.test(chip.label))
+                        .slice(0, 2)
+                        .map((c) => {
                         const ChipIcon = resolveHomepageIcon(c.icon);
                         return (
                           <span
                             key={c.label}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-brand-900/70 px-3.5 py-2 text-xs font-bold text-white shadow-soft-sm"
+                            className={HERO_BENEFIT}
                           >
-                            <ChipIcon className="h-3.5 w-3.5 text-white/70" strokeWidth={2} aria-hidden="true" />
+                            <ChipIcon className="h-4 w-4 shrink-0 text-ochre-400" strokeWidth={2.1} aria-hidden="true" />
                             {c.label}
                           </span>
                         );
@@ -442,9 +509,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 type="button"
                 onClick={() => go(active - 1)}
                 aria-label="Slide sebelumnya"
-                className="grid h-9 w-9 place-items-center rounded-full border border-white/25 bg-white/5 text-white transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="grid h-12 w-12 place-items-center rounded-full border border-white/35 bg-[#07101e]/35 text-white transition-colors hover:border-ochre-400 hover:bg-[#07101e]/65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
               </button>
               <div className="flex items-center gap-1.5">
                 {slides.map((s, i) => (
@@ -454,48 +521,37 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     onClick={() => go(i)}
                     aria-label={`Slide ${i + 1} dari ${slides.length}: ${s.eyebrowText}`}
                     aria-current={i === active ? "true" : undefined}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      i === active ? "w-6 bg-white" : "w-1.5 bg-white/40 hover:bg-white/70"
-                    }`}
-                  />
+                    className="group grid h-11 min-w-8 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        i === active ? "w-7 bg-ochre-400" : "w-2 bg-white/45 group-hover:bg-white/70"
+                      }`}
+                    />
+                  </button>
                 ))}
               </div>
               <button
                 type="button"
                 onClick={() => go(active + 1)}
                 aria-label="Slide berikutnya"
-                className="grid h-9 w-9 place-items-center rounded-full border border-white/25 bg-white/5 text-white transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="grid h-12 w-12 place-items-center rounded-full border border-white/35 bg-[#07101e]/35 text-white transition-colors hover:border-ochre-400 hover:bg-[#07101e]/65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                <ChevronRight className="h-5 w-5" aria-hidden="true" />
               </button>
+            </div>
+
+            <div className="mt-6 xl:hidden">
+              <HeroTrustRail items={trustItems} context={contextualRail} compact />
             </div>
           </div>
 
-          {/* Right: stacked rotating panel (desktop only). Same grid-cell trick
-              keeps the panel column a constant height across slides. */}
-          <div className="hidden min-w-0 xl:block xl:[&>div]:origin-center xl:[&>div]:scale-[0.92] 2xl:[&>div]:scale-100">
-            <div className="grid items-center">
-              {slides.map((s, i) => {
-                const on = i === active;
-                return (
-                  <div
-                    key={i}
-                    inert={!on ? true : undefined}
-                    aria-hidden={on ? undefined : "true"}
-                    className={cardLayerClasses(on, reduce)}
-                  >
-                    {s.panel.type === "package" ? (
-                      <PackagePanel panel={s.panel} />
-                    ) : s.panel.type === "product" ? (
-                      <ProductPanel panel={s.panel} active={on} reduce={reduce} />
-                    ) : (
-                      <PromoPanel panel={s.panel} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {/* The selected Preview 1 system: contextual slide content is step 01,
+              followed by the four persistent trust facts on one open rail. */}
+          <aside className="hidden self-stretch xl:flex xl:items-center" aria-label="Keunggulan Ofissio">
+            <HeroTrustRail items={trustItems} context={contextualRail} />
+          </aside>
         </div>
       </div>
     </section>

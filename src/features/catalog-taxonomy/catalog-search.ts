@@ -5,21 +5,36 @@ import type {
 } from "./catalog-taxonomy.types";
 
 const STOP_WORDS = new Set([
+  "ada",
+  "adakah",
+  "aja",
   "aku",
+  "and",
   "anda",
+  "apa",
+  "apakah",
   "baju",
   "buat",
   "butuh",
   "cari",
   "dan",
   "di",
+  "dong",
+  "gimana",
   "ingin",
+  "ini",
+  "itu",
+  "kah",
   "mau",
+  "pengen",
   "produk",
+  "saja",
   "saya",
   "seragam",
+  "tolong",
   "untuk",
   "yang",
+  "yg",
 ]);
 
 export function normalizeCatalogSearch(
@@ -27,16 +42,36 @@ export function normalizeCatalogSearch(
   taxonomy: PublicCatalogTaxonomy = DEFAULT_PUBLIC_TAXONOMY,
 ): CatalogSearchNormalization {
   const normalizedQuery = normalizePhrase(query);
+  // Order matches by specificity (longest matched alias first) so consumers
+  // taking the first slug — e.g. "seragam toko grosir" — resolve to the most
+  // specific industry (Grosir via "toko grosir") instead of the first
+  // taxonomy entry that happens to share a generic alias (Retail via "toko").
   const categorySlugs = taxonomy.categories
-    .filter((category) =>
-      matchesEntry(normalizedQuery, category.name, category.slug, category.synonyms),
-    )
-    .map((category) => category.slug);
+    .map((category) => ({
+      slug: category.slug,
+      specificity: matchedAliasSpecificity(
+        normalizedQuery,
+        category.name,
+        category.slug,
+        category.synonyms,
+      ),
+    }))
+    .filter((match) => match.specificity > 0)
+    .sort((a, b) => b.specificity - a.specificity)
+    .map((match) => match.slug);
   const industrySlugs = taxonomy.industries
-    .filter((industry) =>
-      matchesEntry(normalizedQuery, industry.name, industry.slug, industry.synonyms),
-    )
-    .map((industry) => industry.slug);
+    .map((industry) => ({
+      slug: industry.slug,
+      specificity: matchedAliasSpecificity(
+        normalizedQuery,
+        industry.name,
+        industry.slug,
+        industry.synonyms,
+      ),
+    }))
+    .filter((match) => match.specificity > 0)
+    .sort((a, b) => b.specificity - a.specificity)
+    .map((match) => match.slug);
   const attributeHints = taxonomy.attributes.flatMap((attribute) =>
     attribute.terms
       .filter((term) =>
@@ -109,6 +144,22 @@ function matchedAliases(
       .map(normalizePhrase)
       .filter((alias) => alias && includesPhrase(query, alias)),
   );
+}
+
+/**
+ * Word count of the longest alias that appears in the query (0 = no match).
+ * Used to rank taxonomy hits so the most specific entry wins.
+ */
+function matchedAliasSpecificity(
+  query: string,
+  name: string,
+  slug: string,
+  synonyms: string[],
+) {
+  return [name, slug.replace(/-/g, " "), ...synonyms]
+    .map(normalizePhrase)
+    .filter((alias) => alias && includesPhrase(query, alias))
+    .reduce((max, alias) => Math.max(max, alias.split(" ").length), 0);
 }
 
 function includesPhrase(query: string, phrase: string) {

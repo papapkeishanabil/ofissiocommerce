@@ -71,6 +71,25 @@ export function sumSizeMatrix(m: SizeMatrix): number {
   return Object.values(m).reduce((acc, n) => acc + (n || 0), 0);
 }
 
+/**
+ * Pembagian MOQ merata ke M/L/XL yang jumlahnya TEPAT `moq` — dipakai quick-add
+ * katalog & Ofistant. (Spread lama `max(1, floor(moq/3))` menghasilkan 2 pcs
+ * saat moq 1.) moq < 3 → semua ke M agar tidak menyebar 1-1-0.
+ */
+export function moqSizeSpread(moq: number): SizeMatrix {
+  const sizes = emptySizeMatrix();
+  const total = Math.max(0, Math.trunc(moq));
+  if (total < 3) {
+    sizes.M = total;
+    return sizes;
+  }
+  const perSize = Math.floor(total / 3);
+  sizes.M = perSize;
+  sizes.L = perSize;
+  sizes.XL = total - perSize * 2;
+  return sizes;
+}
+
 export function lineItemId(productId: string, color: string): string {
   return `${productId}__${color.toLowerCase()}`;
 }

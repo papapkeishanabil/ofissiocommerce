@@ -34,10 +34,12 @@ const rules: EnvRule[] = [
   { name: "STORAGE_BUCKET_ARTWORK" },
   { name: "STORAGE_BUCKET_DOCUMENTS" },
   { name: "STORAGE_BUCKET_3D" },
+  { name: "STORAGE_BUCKET_SITE_VIDEOS" },
   { name: "STORAGE_SIGNED_URL_EXPIRES_SECONDS" },
   { name: "MAX_LOGO_UPLOAD_MB" },
   { name: "MAX_DOCUMENT_UPLOAD_MB" },
   { name: "MAX_GLB_UPLOAD_MB" },
+  { name: "MAX_SITE_VIDEO_UPLOAD_MB" },
   { name: "SUPABASE_STORAGE_MAX_FILE_MB" },
   { name: "PRODUCT_IMAGE_MAX_MB" },
   { name: "WOOCOMMERCE_ENABLED" },
@@ -522,6 +524,7 @@ if (process.env.STORAGE_PROVIDER === "supabase") {
     "STORAGE_BUCKET_ARTWORK",
     "STORAGE_BUCKET_DOCUMENTS",
     "STORAGE_BUCKET_3D",
+    "STORAGE_BUCKET_SITE_VIDEOS",
   ]) {
     if (!process.env[name]?.trim()) {
       problems.push({

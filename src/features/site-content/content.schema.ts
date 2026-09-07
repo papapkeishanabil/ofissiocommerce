@@ -43,6 +43,36 @@ export type FieldDescriptor =
       help?: string;
     }
   | { kind: "icon"; key: string; label: string; help?: string }
+  | {
+      /** URL/path gambar dengan tombol upload (WordPress Media) + pratinjau.
+       *  Nilai tetap string biasa — kompatibel dengan aset lokal
+       *  (cth: /industries/bengkel-model.jpg) maupun URL hasil upload. */
+      kind: "image";
+      key: string;
+      label: string;
+      placeholder?: string;
+      maxLength?: number;
+      help?: string;
+    }
+  | {
+      /** URL/path GLB dengan uploader ke bucket 3D privat Supabase. */
+      kind: "model3d";
+      key: string;
+      label: string;
+      placeholder?: string;
+      maxLength?: number;
+      help?: string;
+    }
+  | {
+      /** URL/path MP4 atau WebM dengan uploader ke bucket video privat Supabase. */
+      kind: "video";
+      key: string;
+      label: string;
+      scope: "hero" | "bordir";
+      placeholder?: string;
+      maxLength?: number;
+      help?: string;
+    }
   | { kind: "boolean"; key: string; label: string; toggleLabel?: string; help?: string }
   | {
       kind: "enum";
@@ -83,6 +113,12 @@ export type FieldDescriptor =
        *  applies (e.g. hero CTAs: kind → link | ofistant). */
       itemDiscriminator?: string;
       itemVariants?: { [value: string]: FieldDescriptor[] };
+      /** render items as collapsed cards whose fields only appear when
+       * opened — for long lists (e.g. §02 groups/tiles). */
+      collapsible?: boolean;
+      /** item field whose value doubles as the collapsed header title
+       * (fallback: `itemLabel #n`). */
+      titleKey?: string;
       min?: number;
       max?: number;
       help?: string;
@@ -228,7 +264,7 @@ export const bordirSectionSchema = z.object({
   eyebrow: nonEmpty(60),
   headline: textSegmentsSchema,
   lede: nonEmpty(400),
-  mediaSrc: nonEmpty(200),
+  mediaSrc: z.string().trim().max(500).default("/KK-006.mp4"),
   capabilities: z
     .array(z.object({ title: nonEmpty(60), desc: nonEmpty(200) }))
     .min(1)
@@ -339,7 +375,7 @@ export const DEFAULT_CTA: CtaSectionData = {
 };
 
 // ---------------------------------------------------------------------------
-// paket (§03 Paket Seragam Populer) — headline + lede + inline labels + cards
+// paket (§03 Paket Seragam Populer) — headline + lede + inline labels + visual selector
 // The catalog `href` is editable copy (a URL, admin-owned like the CTA whatsapp
 // href); the `scale` boolean toggles the "Skala besar" badge.
 // ---------------------------------------------------------------------------
@@ -347,6 +383,7 @@ export const DEFAULT_CTA: CtaSectionData = {
 export interface PaketItem {
   icon: string;
   name: string;
+  photo: string;
   items: string;
   cocokUntuk: string;
   opsiLogo: string;
@@ -379,6 +416,7 @@ export const paketSectionSchema = z.object({
       z.object({
         icon: iconFieldSchema,
         name: nonEmpty(60),
+        photo: z.string().trim().max(500).default(""),
         items: nonEmpty(200),
         cocokUntuk: nonEmpty(200),
         opsiLogo: nonEmpty(200),
@@ -403,12 +441,12 @@ export const DEFAULT_PAKET: PaketSectionData = {
   ctaLabel: "Konsultasikan Paket",
   scaleBadgeLabel: "Skala besar",
   items: [
-    { icon: "Wrench", name: "Paket Bengkel", items: "Polo kerja, kemeja, celana tahan noda", cocokUntuk: "Bengkel motor/mobil & toko sparepart", opsiLogo: "Bordir dada atau dTF tahan panas", href: "/catalog?industri=Bengkel", scale: false },
-    { icon: "Store", name: "Paket Toko & Retail", items: "Kemeja/polo staf + name tag", cocokUntuk: "Toko retail, grosir, kelontong, toko mas", opsiLogo: "Bordir dada + nama pegawai", href: "/catalog?industri=Retail", scale: false },
-    { icon: "Plus", name: "Paket Apotek & Klinik", items: "Seragam medis & jas lab higienis", cocokUntuk: "Apotek, klinik, praktek dokter", opsiLogo: "Bordir halus, kain mudah disterilkan", href: "/catalog?industri=Kesehatan", scale: false },
-    { icon: "Coffee", name: "Paket Cafe & Service", items: "Apron, kemeja pelayan, polo barista", cocokUntuk: "Cafe, restoran, bakery, jasa service", opsiLogo: "Bordir atau dTF tahan cuci panas", href: "/catalog?industri=F%26B", scale: false },
-    { icon: "Building2", name: "Paket Corporate", items: "Kemeja oxford, polo, blazer, identitas divisi", cocokUntuk: "Kantor, koperasi, layanan, hospitality", opsiLogo: "Bordir custom multi-divisi", href: "/catalog?industri=Corporate", scale: true },
-    { icon: "HardHat", name: "Paket Lapangan / Konstruksi", items: "Wearpack, rompi safety, jaket lapangan", cocokUntuk: "Konstruksi, tambang, ekspedisi, lapangan", opsiLogo: "Bordir tahan cuaca & abrasi", href: "/catalog?industri=Konstruksi", scale: true },
+    { icon: "Wrench", name: "Paket Bengkel", photo: "/packages/paket-bengkel.png", items: "Polo kerja, kemeja, celana tahan noda", cocokUntuk: "Bengkel motor/mobil & toko sparepart", opsiLogo: "Bordir dada atau dTF tahan panas", href: "/catalog?industri=Bengkel", scale: false },
+    { icon: "Store", name: "Paket Toko & Retail", photo: "/packages/paket-toko-retail.png", items: "Kemeja/polo staf + name tag", cocokUntuk: "Toko retail, grosir, kelontong, toko mas", opsiLogo: "Bordir dada + nama pegawai", href: "/catalog?industri=Retail", scale: false },
+    { icon: "Plus", name: "Paket Apotek & Klinik", photo: "/packages/paket-apotek-klinik.png", items: "Seragam medis & jas lab higienis", cocokUntuk: "Apotek, klinik, praktek dokter", opsiLogo: "Bordir halus, kain mudah disterilkan", href: "/catalog?industri=Kesehatan", scale: false },
+    { icon: "Coffee", name: "Paket Cafe & Service", photo: "/packages/paket-cafe-service.png", items: "Apron, kemeja pelayan, polo barista", cocokUntuk: "Cafe, restoran, bakery, jasa service", opsiLogo: "Bordir atau dTF tahan cuci panas", href: "/catalog?industri=F%26B", scale: false },
+    { icon: "Building2", name: "Paket Corporate", photo: "/packages/paket-corporate.png", items: "Kemeja oxford, polo, blazer, identitas divisi", cocokUntuk: "Kantor, koperasi, layanan, hospitality", opsiLogo: "Bordir custom multi-divisi", href: "/catalog?industri=Corporate", scale: true },
+    { icon: "HardHat", name: "Paket Lapangan / Konstruksi", photo: "/packages/paket-lapangan-konstruksi.png", items: "Wearpack, rompi safety, jaket lapangan", cocokUntuk: "Konstruksi, tambang, ekspedisi, lapangan", opsiLogo: "Bordir tahan cuaca & abrasi", href: "/catalog?industri=Konstruksi", scale: true },
   ],
 };
 
@@ -497,6 +535,11 @@ export interface IndustriTile {
    * (contoh: tile ringkas tanpa foto).
    */
   caption?: string;
+  /**
+   * true = tile tidak dirender di homepage (data tetap tersimpan, bisa
+   * dimunculkan lagi kapan saja). Default/undefined = tampil.
+   */
+  hidden?: boolean;
 }
 export interface IndustriGroup {
   label: string;
@@ -532,6 +575,7 @@ export const industriSectionSchema = z.object({
               industry: industryFieldSchema,
               photo: z.string().max(200).default(""),
               caption: z.string().max(160).default(""),
+              hidden: z.boolean().default(false),
             }),
           )
           .min(1)
@@ -552,7 +596,7 @@ export const DEFAULT_INDUSTRI: IndustriSectionData = {
   groups: [
     {
       label: "Bisnis Naik Kelas",
-      meta: "Mulai 8 pcs · reorder fleksibel",
+      meta: "Bordir mulai 8 pcs · reorder fleksibel",
       dot: "ochre",
       tiles: [
         { label: "Bengkel Motor & Mobil", icon: "Wrench", industry: "Bengkel", photo: "/industries/bengkel-model.jpg", caption: "Polo kerja & kemeja tahan noda, siap bordir logo." },
@@ -571,7 +615,7 @@ export const DEFAULT_INDUSTRI: IndustriSectionData = {
     },
     {
       label: "Solusi Korporasi",
-      meta: "Mulai 8 pcs · quotation formal · multi-divisi",
+      meta: "Bordir mulai 8 pcs · quotation formal · multi-divisi",
       dot: "brand",
       tiles: [
         { label: "Konstruksi & Infrastruktur", icon: "HardHat", industry: "Konstruksi", photo: "/industries/konstruksi-model.jpg", caption: "Wearpack, rompi safety, dan jaket lapangan tahan cuaca." },
@@ -623,6 +667,7 @@ export interface HeroPkgItem {
   name: string;
   tag: string;
   color: string;
+  image: string;
 }
 export interface HeroPackagePanel {
   type: "package";
@@ -660,6 +705,7 @@ export interface HeroSlide {
   panel: HeroPanel;
 }
 export interface HeroSectionData {
+  videoSrc: string;
   slides: HeroSlide[];
 }
 
@@ -696,6 +742,9 @@ const heroPanelSchema = z.discriminatedUnion("type", [
           name: nonEmpty(60),
           tag: nonEmpty(120),
           color: z.string().trim().min(1).max(20),
+          // Default keeps existing Supabase rows valid until an admin selects
+          // an image for that package item.
+          image: z.string().trim().max(500).default(""),
         }),
       )
       .min(1)
@@ -707,7 +756,7 @@ const heroPanelSchema = z.discriminatedUnion("type", [
     icon: iconFieldSchema,
     // Empty = no 3D model; the icon motif renders instead. (The default keeps
     // the real model so the "New Arrival" example reads large.)
-    glb: z.string().trim().max(200),
+    glb: z.string().trim().max(500),
     name: nonEmpty(60),
     subtitle: nonEmpty(120),
     features: z.array(nonEmpty(120)).min(1).max(6),
@@ -723,6 +772,7 @@ const heroPanelSchema = z.discriminatedUnion("type", [
 ]);
 
 export const heroSectionSchema = z.object({
+  videoSrc: z.string().trim().max(500).default("/hero-workers.mp4"),
   slides: z
     .array(
       z.object({
@@ -740,6 +790,7 @@ export const heroSectionSchema = z.object({
 });
 
 export const DEFAULT_HERO: HeroSectionData = {
+  videoSrc: "/hero-workers.mp4",
   slides: [
     {
       eyebrowIcon: "Sparkles",
@@ -750,13 +801,13 @@ export const DEFAULT_HERO: HeroSectionData = {
         { text: " dalam 2–4 Hari." },
       ],
       subhead:
-        "Tanpa tunggu jahit berminggu-minggu. Ofissio menyediakan seragam kerja ready stock berkualitas — tinggal bordir logo usaha Anda, selesai dan siap kirim dalam 2–4 hari. Mulai 8 pcs untuk bisnis yang sedang tumbuh, hingga pengadaan korporasi ribuan pcs.",
+        "Tanpa tunggu jahit berminggu-minggu. Ofissio menyediakan seragam kerja ready stock berkualitas — tinggal bordir logo usaha Anda, selesai dan siap kirim dalam 2–4 hari. Belanja mulai 1 pcs, bordir logo mulai 8 pcs, hingga pengadaan korporasi ribuan pcs.",
       ctas: [
         { kind: "link", variant: "primary", href: "/catalog", label: "Lihat Paket Seragam" },
         { kind: "ofistant", variant: "secondary", label: "Ofistant" },
       ],
       chips: [
-        { icon: "PackageCheck", label: "Mulai dari 8 Pcs" },
+        { icon: "PackageCheck", label: "Bordir Mulai 8 Pcs" },
         { icon: "Scissors", label: "Siap Bordir Logo" },
         { icon: "Users", label: "Untuk Semua Skala Bisnis" },
         { icon: "RotateCcw", label: "Reorder Mudah" },
@@ -767,8 +818,18 @@ export const DEFAULT_HERO: HeroSectionData = {
         title: "Paket Bengkel",
         meta: "Polo + kemeja kerja · siap bordir",
         items: [
-          { name: "Polo Staff", tag: "Cotton pique · bordir dada", color: "#142766" },
-          { name: "Kemeja Kerja", tag: "Oxford · bordir lengan opsional", color: "#324382" },
+          {
+            name: "Polo Staff",
+            tag: "Cotton pique · bordir dada",
+            color: "#142766",
+            image: "/products/hero-polo-staff-navy.png",
+          },
+          {
+            name: "Kemeja Kerja",
+            tag: "Oxford · bordir lengan opsional",
+            color: "#324382",
+            image: "/products/kk-006/KK-006-front-nobg.webp",
+          },
         ],
         pill: "8 pcs · 48 jam",
       },
@@ -905,6 +966,15 @@ export const SECTION_REGISTRY: SectionEntry[] = [
     default: DEFAULT_HERO,
     fields: [
       {
+        kind: "video",
+        key: "videoSrc",
+        label: "Video latar Hero",
+        scope: "hero",
+        placeholder: "/hero-workers.mp4",
+        maxLength: 500,
+        help: "Unggah MP4/WebM. Video baru aktif setelah Section Hero disimpan.",
+      },
+      {
         kind: "list",
         key: "slides",
         label: "Slide",
@@ -975,13 +1045,28 @@ export const SECTION_REGISTRY: SectionEntry[] = [
                   itemFields: [
                     { kind: "text", key: "name", label: "Nama", maxLength: 60 },
                     { kind: "text", key: "tag", label: "Tag", maxLength: 120 },
+                    {
+                      kind: "image",
+                      key: "image",
+                      label: "Foto produk",
+                      maxLength: 500,
+                      placeholder: "Unggah JPG, PNG, atau WebP",
+                      help: "Gunakan foto produk dengan latar transparan agar tampil paling jelas di hero. Foto diunggah ke WordPress Media dan tersimpan saat Section Hero disimpan.",
+                    },
                     { kind: "text", key: "color", label: "Warna (hex)", placeholder: "cth: #142766", maxLength: 20 },
                   ],
                 },
               ],
               product: [
                 { kind: "icon", key: "icon", label: "Ikon motif (latar)" },
-                { kind: "text", key: "glb", label: "Path model 3D", placeholder: "cth: /3d/kk-006-mini.glb", maxLength: 200, help: "Kosongkan untuk memakai ikon motif saja." },
+                {
+                  kind: "model3d",
+                  key: "glb",
+                  label: "Model 3D",
+                  placeholder: "Unggah file .glb atau masukkan path lama",
+                  maxLength: 500,
+                  help: "Unggah GLB ke Supabase Storage. URL terisi otomatis dan baru tampil di homepage setelah Section Hero disimpan. Kosongkan untuk memakai ikon motif saja.",
+                },
                 { kind: "text", key: "name", label: "Nama produk", maxLength: 60 },
                 { kind: "text", key: "subtitle", label: "Subtitle", maxLength: 120 },
                 {
@@ -1070,6 +1155,8 @@ export const SECTION_REGISTRY: SectionEntry[] = [
         itemLabel: "grup",
         min: 1,
         max: 4,
+        collapsible: true,
+        titleKey: "label",
         itemFields: [
           { kind: "text", key: "label", label: "Nama grup", maxLength: 60 },
           { kind: "text", key: "meta", label: "Meta info", maxLength: 80 },
@@ -1081,11 +1168,15 @@ export const SECTION_REGISTRY: SectionEntry[] = [
             itemLabel: "tile",
             min: 1,
             max: 16,
+            collapsible: true,
+            titleKey: "label",
             itemFields: [
               { kind: "text", key: "label", label: "Label tile", maxLength: 60 },
               { kind: "icon", key: "icon", label: "Ikon" },
               { kind: "enum", key: "industry", label: "Industri (routing katalog)", options: INDUSTRY_OPTIONS, help: "Menentukan filter ?industri= di halaman katalog." },
-              { kind: "text", key: "photo", label: "Path foto (opsional)", maxLength: 200, placeholder: "cth: /industries/bengkel.jpg", help: "Tile dengan foto tampil sebagai kartu foto besar; kosongkan untuk tile ringkas di balik tombol “Lihat semua”." },
+              { kind: "image", key: "photo", label: "Foto tile", maxLength: 200, placeholder: "cth: /industries/bengkel-model.jpg", help: "Unggah foto baru (JPG/PNG/WebP, maks 10 MB) untuk mengganti gambar kartu. Empat tile berfoto teratas per grup tampil sebagai kartu utama; sisanya (termasuk yang berfoto) masuk ke balik tombol “Lihat semua”. Urutan diatur lewat tombol naik/turun." },
+              { kind: "text", key: "caption", label: "Keterangan kartu", maxLength: 160, placeholder: "cth: Polo kerja & kemeja tahan noda, siap bordir logo.", help: "Satu baris keterangan produk yang tampil di bawah judul kartu." },
+              { kind: "boolean", key: "hidden", label: "Status tampil", toggleLabel: "Sembunyikan dari homepage", help: "Tile tidak dirender di homepage sampai dicentang ulang — datanya tetap tersimpan." },
             ],
           },
         ],
@@ -1126,7 +1217,15 @@ export const SECTION_REGISTRY: SectionEntry[] = [
         help: "Tandai potongan yang ingin ditebalkan dengan warna aksen.",
       },
       { kind: "textarea", key: "lede", label: "Paragraf pengantar", rows: 3, maxLength: 400 },
-      { kind: "text", key: "mediaSrc", label: "Path video (asset)", placeholder: "cth: /KK-006.mp4", maxLength: 200 },
+      {
+        kind: "video",
+        key: "mediaSrc",
+        label: "Video Section 04",
+        scope: "bordir",
+        placeholder: "/KK-006.mp4",
+        maxLength: 500,
+        help: "Unggah MP4/WebM. Video baru aktif setelah Section 04 disimpan.",
+      },
       {
         kind: "list",
         key: "capabilities",
@@ -1196,7 +1295,7 @@ export const SECTION_REGISTRY: SectionEntry[] = [
   {
     key: "paket",
     label: "§03 Paket Seragam Populer",
-    description: "Eyebrow, judul, paragraf, label kartu, dan daftar paket (ikon, nama, isi, target, opsi logo, link katalog, badge skala).",
+    description: "Eyebrow, judul, paragraf, label detail, dan daftar paket (ikon, nama, gambar, isi, target, opsi logo, link katalog, badge skala).",
     schema: paketSectionSchema,
     default: DEFAULT_PAKET,
     fields: [
@@ -1224,6 +1323,7 @@ export const SECTION_REGISTRY: SectionEntry[] = [
         itemFields: [
           { kind: "icon", key: "icon", label: "Ikon" },
           { kind: "text", key: "name", label: "Nama paket", placeholder: "cth: Paket Bengkel", maxLength: 60 },
+          { kind: "image", key: "photo", label: "Gambar paket", placeholder: "cth: /packages/paket-bengkel.png", maxLength: 500, help: "Unggah visual produk untuk panel besar di sisi kanan." },
           { kind: "text", key: "items", label: "Isi paket", maxLength: 200 },
           { kind: "text", key: "cocokUntuk", label: "Cocok untuk", maxLength: 200 },
           { kind: "text", key: "opsiLogo", label: "Opsi logo", maxLength: 200 },

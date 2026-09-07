@@ -24,7 +24,7 @@ export type StorageFileStatus = (typeof STORAGE_FILE_STATUSES)[number];
 
 export type StorageProvider = "mock" | "supabase" | "s3";
 
-export type StorageBucketPurpose = "logos" | "artwork" | "documents" | "3d";
+export type StorageBucketPurpose = "logos" | "artwork" | "documents" | "3d" | "product_imports" | "site_videos";
 
 export interface StorageRuntimeConfig {
   requestedProvider: StorageProvider;
@@ -35,6 +35,7 @@ export interface StorageRuntimeConfig {
     logo: number;
     document: number;
     glb: number;
+    video: number;
   };
   supabaseConfigured: boolean;
 }
@@ -105,6 +106,11 @@ export interface StorageObjectProvider {
     bucket: string;
     key: string;
   }): Promise<{ exists: boolean; sizeBytes: number | null; contentType: string | null }>;
+  createSignedUploadToken?(input: {
+    bucket: string;
+    key: string;
+    upsert?: boolean;
+  }): Promise<{ token: string; path: string }>;
 }
 
 export interface SignedFileUrl {

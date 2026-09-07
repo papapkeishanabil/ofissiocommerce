@@ -1,0 +1,7 @@
+ID,Type,SKU,Name,Published,Short description,Description,Regular price,Sale price,Categories,Tags,Parent,Images,Attribute 1 name,Attribute 1 value(s),Attribute 1 visible,Attribute 1 global
+1,variable,KK-007,Kemeja KK-007,1,,,150000,,Kemeja,,,,Warna,"Biru Navy, Merah",1,1
+2,variation,KK-007-MERAH,Kemeja KK-007 Merah,1,,,,,,,id:1,,Warna,Merah,1,1
+3,variable,KK-011-1,Kemeja Kerja KK-017,1,,,160000,,Kemeja,,,,Ukuran,"S, M",1,1
+4,variation,KK-017-S,Kemeja Kerja KK-017 S,1,,,,,,,id:3,,Ukuran,S,1,1
+5,variable,KS-001,Kemeja KS-001,1,,,140000,,Kemeja,,,,Ukuran,"S, M",1,1
+6,variation,,Kemeja KS-001 S,1,,,,,,,id:5,,Ukuran,S,1,1

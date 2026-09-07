@@ -6,7 +6,7 @@
 // Route Cache entry for "/" so the homepage reflects the edit on next request.
 
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { requireInternalAdmin } from "@/features/admin/admin.service";
 import {
@@ -51,7 +51,12 @@ export async function PATCH(request: Request) {
     actorId = actor.id;
     const payload = validateInput(siteContentPayloadSchema, await request.json().catch(() => ({})));
     const result = await updateSiteContent(payload, actorId);
-    revalidateTag("site-content");
+    // This is an admin read-your-write flow. Expire immediately instead of
+    // serving the previous homepage content once via stale-while-revalidate.
+    revalidateTag("site-content", { expire: 0 });
+    // The homepage is prerendered. Invalidating only the data tag can leave its
+    // Full Route Cache serving the previous media path after a content save.
+    revalidatePath("/", "page");
     logAuditEvent({
       request,
       actorId,

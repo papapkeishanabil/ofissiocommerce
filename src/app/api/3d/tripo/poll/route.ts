@@ -7,6 +7,7 @@ import { pollTripoTask } from "@/lib/tripo/tripo-service";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
 import { safeErrorResponse } from "@/lib/security/safe-error-response";
 import { parseQueryParams } from "@/lib/security/validate-input";
+import { requireInternalAdmin } from "@/features/admin/admin.service";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,7 @@ export async function GET(req: Request) {
       limit: 60,
       windowMs: 60_000,
     });
+    requireInternalAdmin(req, "admin:catalog:view");
     const { taskId } = parseQueryParams(pollQuerySchema, req);
 
     const result = await pollTripoTask(taskId);

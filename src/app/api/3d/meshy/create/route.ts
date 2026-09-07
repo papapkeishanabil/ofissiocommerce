@@ -12,6 +12,7 @@ import {
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
 import { safeErrorResponse } from "@/lib/security/safe-error-response";
 import { validateInput } from "@/lib/security/validate-input";
+import { requireInternalAdmin } from "@/features/admin/admin.service";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
       limit: 10,
       windowMs: 60_000,
     });
+    requireInternalAdmin(req, "admin:catalog:update");
     const body = validateInput(createBodySchema, await req.json());
 
     if (Array.isArray(body.imageUrls) && body.imageUrls.length > 0) {
@@ -69,9 +71,7 @@ function safeImageReferenceSchema() {
     .max(400)
     .refine(
       (value) =>
-        value.startsWith("/") ||
-        value.startsWith("https://") ||
-        (process.env.NODE_ENV !== "production" && value.startsWith("http://")),
+        value.startsWith("/products/"),
       "Image reference tidak valid.",
     );
 }

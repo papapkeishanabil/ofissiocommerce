@@ -25,6 +25,7 @@ import {
   WOO_TRANSACTION_MODES,
   type AdminWooProductInput,
 } from "@/features/products/woocommerce/woocommerce-product-management.types";
+import type { MoqSettings } from "@/features/moq-settings/moq-settings.types";
 
 interface AdminProductFormProps {
   mode: "create" | "edit";
@@ -36,6 +37,7 @@ interface AdminProductFormProps {
   };
   productImageMaxMb?: number;
   glbMaxMb?: number;
+  routeMoqDefaults?: MoqSettings;
 }
 
 interface ApiProductResponse {
@@ -71,10 +73,10 @@ const MOCK_INTERNAL_HEADERS = {
   "x-ofissio-internal-user-id": "internal-dev",
 };
 
-export function AdminProductForm({ mode, product, options, productImageMaxMb = 10, glbMaxMb = 50 }: AdminProductFormProps) {
+export function AdminProductForm({ mode, product, options, productImageMaxMb = 10, glbMaxMb = 50, routeMoqDefaults }: AdminProductFormProps) {
   const router = useRouter();
   const imageManagerRef = useRef<ProductImageManagerHandle>(null);
-  const initial = useMemo(() => initialForm(product), [product]);
+  const initial = useMemo(() => initialForm(product, routeMoqDefaults), [product, routeMoqDefaults]);
   const [form, setForm] = useState<AdminWooProductInput>(initial);
   const [glbFile, setGlbFile] = useState<File | null>(null);
   const [glbVersion, setGlbVersion] = useState(product?.ofissioMeta.model3DVersion || "v1");
@@ -89,6 +91,8 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
   const [showPricingValidation, setShowPricingValidation] = useState(false);
+  // MOQ hanya auto-mengikuti rute selama admin belum menyentuhnya manual.
+  const [moqTouched, setMoqTouched] = useState(false);
 
   const pricingValidation = useMemo(
     () => validateQuantityPricing({
@@ -585,12 +589,16 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
 
       <FormSection icon={Box} title="Aturan B2B dan routing" description="Produk standar tetap dapat dipesan; kekurangan stok ditangani sebagai replenishment internal.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <NumberField label="MOQ" value={form.moq} onChange={(value) => set("moq", value)} />
+          <NumberField label="MOQ" value={form.moq} onChange={(value) => { setMoqTouched(true); set("moq", value); }} />
           <NumberField label="Lead time (hari)" value={form.leadTimeDays} onChange={(value) => set("leadTimeDays", value)} />
           <SelectField label="Ketersediaan produk" value={form.fulfillmentType} values={WOO_FULFILLMENT_TYPES} labels={{ READY_STOCK: "Ready Stock", MADE_TO_ORDER: "Dibuat setelah dipesan" }} onChange={(value) => set("fulfillmentType", value as AdminWooProductInput["fulfillmentType"])} />
           <SelectField label="Transaction mode" value={form.transactionMode} values={WOO_TRANSACTION_MODES} onChange={(value) => set("transactionMode", value as AdminWooProductInput["transactionMode"])} />
-          <SelectField label="Rute pengerjaan" value={form.processRoute} values={WOO_PROCESS_ROUTES} labels={{ fulfillment: "Ready Stock (STK)", customization: "Custom (CUS)", production: "Production (PRO)" }} onChange={(value) => set("processRoute", value as AdminWooProductInput["processRoute"])} />
+          <SelectField label="Rute pengerjaan" value={form.processRoute} values={WOO_PROCESS_ROUTES} labels={{ fulfillment: "Ready Stock (STK)", customization: "Custom (CUS)", production: "Production (PRO)" }} onChange={(value) => { set("processRoute", value as AdminWooProductInput["processRoute"]); if (!moqTouched && routeMoqDefaults) set("moq", routeMoqDefaults[value as keyof MoqSettings] ?? form.moq); }} />
           <SelectField label="Replenishment policy" value={form.replenishmentPolicy} values={WOO_REPLENISHMENT_POLICIES} onChange={(value) => set("replenishmentPolicy", value as AdminWooProductInput["replenishmentPolicy"])} />
+        </div>
+        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-brand-200 bg-brand-50 p-4 text-sm text-ink sm:flex-row sm:items-center sm:justify-between">
+          <p className="leading-6"><strong>Default MOQ mengikuti master MOQ per rute</strong> (STK/CUS umumnya 1 pcs, PRO mengikuti kebijakan Full Custom); bordir punya batas minimum sendiri yang berlaku otomatis di keranjang. Ubah nilai MOQ di atas hanya bila produk ini berbeda.</p>
+          <Link href="/admin/settings/moq" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-brand-700 px-4 font-semibold text-white hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">Kelola Master MOQ</Link>
         </div>
         <div className="mt-4"><Toggle label="Selalu dapat dipesan" description="Customer tidak melihat status out of stock; warning replenishment hanya untuk admin." checked={form.alwaysOrderable} onChange={(value) => set("alwaysOrderable", value)} /></div>
       </FormSection>
@@ -660,7 +668,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
 
 const INPUT = "min-h-11 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-[15px] font-medium text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
 
-function initialForm(product?: AdminWooCommerceProductDetail): AdminWooProductInput {
+function initialForm(product?: AdminWooCommerceProductDetail, routeMoqDefaults?: MoqSettings): AdminWooProductInput {
   const attributes = product?.attributes ?? [];
   return {
     name: product?.name ?? "",
@@ -683,7 +691,7 @@ function initialForm(product?: AdminWooCommerceProductDetail): AdminWooProductIn
     gender: product?.ofissioMeta.gender === "men" || product?.ofissioMeta.gender === "women" ? product.ofissioMeta.gender : "unisex",
     sleeveType: product?.ofissioMeta.sleeveType === "long" ? "long" : "short",
     safetyFeatures: product?.ofissioMeta.safetyFeatures ?? [],
-    moq: product?.ofissioMeta.moq || 20,
+    moq: product?.ofissioMeta.moq || routeMoqDefaults?.fulfillment || 20,
     leadTimeDays: Number(product?.ofissioMeta.leadTime.match(/\d+/)?.[0] ?? 14),
     fulfillmentType: normalizeFulfillment(product?.ofissioMeta.fulfillmentType),
     transactionMode: normalizeTransaction(product?.ofissioMeta.transactionMode),
@@ -699,7 +707,7 @@ function initialForm(product?: AdminWooCommerceProductDetail): AdminWooProductIn
     quantityBasis: "total_order_qty",
     quantityPricingTiers: product?.ofissioMeta.quantityPricingTiers?.length
       ? product.ofissioMeta.quantityPricingTiers
-      : [createDefaultQuantityPricingTier(product?.price || 0, product?.ofissioMeta.moq || 20)],
+      : [createDefaultQuantityPricingTier(product?.price || 0, product?.ofissioMeta.moq || routeMoqDefaults?.fulfillment || 20)],
   };
 }
 

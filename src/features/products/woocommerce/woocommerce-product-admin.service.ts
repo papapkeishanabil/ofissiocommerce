@@ -16,7 +16,10 @@ import {
   normalizeQuantityPricing,
   sortQuantityPricingTiers,
 } from "../quantity-pricing";
+import { WOO_PROCESS_ROUTES } from "./woocommerce-product-management.types";
 import { getProductReadiness } from "./woocommerce-product-readiness";
+import { fromSameOriginWordPressMediaUrl } from "./wordpress-media-proxy";
+import { getWordPressMediaRuntimeConfig } from "./wordpress-media-upload.service";
 import type {
   AdminWooCommerceProduct,
   AdminWooCommerceProductDetail,
@@ -248,6 +251,49 @@ export async function updateAdminWooCommerceProduct3DMeta(input: {
   }
 }
 
+/**
+ * Terapkan MOQ default sebuah rute pengerjaan ke SEMUA produk WooCommerce
+ * rute itu (aksi massal dari master MOQ per rute). Menulis meta "moq" per
+ * produk langsung di layer service — bukan lewat route PATCH per-produk yang
+ * dibatasi rate limit.
+ */
+export async function applyMoqDefaultToProcessRoute(input: {
+  processRoute: (typeof WOO_PROCESS_ROUTES)[number];
+  moq: number;
+  actorId: string;
+  request?: Request;
+}): Promise<{ updatedCount: number; productIds: number[] }> {
+  const products: WooCommerceProduct[] = [];
+  for (let page = 1; page <= MAX_ADMIN_PAGES; page += 1) {
+    const rows = await woocommerceClient.getProducts({
+      status: "any",
+      per_page: ADMIN_PAGE_SIZE,
+      page,
+    });
+    products.push(...rows);
+    if (rows.length < ADMIN_PAGE_SIZE) break;
+  }
+  const targets = products.filter(
+    (product) =>
+      (getMetaString(product.meta_data ?? [], "process_route") || "fulfillment") ===
+      input.processRoute,
+  );
+  const productIds: number[] = [];
+  for (const product of targets) {
+    await woocommerceClient.updateProduct(product.id, {
+      meta_data: [metaEntry(product.meta_data ?? [], "moq", input.moq)],
+    });
+    productIds.push(product.id);
+  }
+  logProductAudit("product_meta_updated", null, input, {
+    fields: ["moq"],
+    processRoute: input.processRoute,
+    moq: input.moq,
+    productCount: productIds.length,
+  });
+  return { updatedCount: productIds.length, productIds };
+}
+
 function buildWritePayload(
   payload: AdminWooProductPayload,
   current?: WooCommerceProduct,
@@ -309,7 +355,15 @@ function buildWritePayload(
     categories: payload.categoryIds.map((id) => ({ id })),
     images: payload.imageUrls.map((src) => {
       const existing = current?.images?.find((image) => image.src === src);
-      return existing?.id ? { id: existing.id } : { src };
+      if (existing?.id) return { id: existing.id };
+      // Path proxy same-origin dikembalikan ke URL absolut — WooCommerce
+      // tidak boleh menyimpan `/api/media/...`.
+      return {
+        src: fromSameOriginWordPressMediaUrl(
+          src,
+          getWordPressMediaRuntimeConfig().baseUrl,
+        ),
+      };
     }),
     attributes: mergeManagedAttributes(current?.attributes ?? [], [
       managedAttribute("Warna", "warna", payload.colors, managedAttributes, ["warna", "color"]),

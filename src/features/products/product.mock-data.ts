@@ -62,5 +62,6 @@ export const PRODUCT_MOCK_DATA: OfissioProduct[] = PRODUCTS.map((product) => {
     // Products without their own GLB remain internal drafts and therefore
     // cannot leak into catalog, recommendations, detail, or cart.
     status: model ? "published" : "draft",
+    processRoute: "fulfillment",
   };
 });

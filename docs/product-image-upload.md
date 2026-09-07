@@ -18,6 +18,25 @@ PRODUCT_IMAGE_MAX_MB=10
 
 Tidak ada bucket `ofissio-product-images`. `npm run check:storage` hanya memeriksa bucket Supabase untuk logo, artwork, dokumen, dan GLB.
 
+## Akses LAN (media proxy)
+
+Saat `WORDPRESS_MEDIA_BASE_URL` mengarah ke host loopback/`.local` (LocalWP di mesin yang sama dengan aplikasi), URL gambar yang sampai ke browser otomatis ditulis ulang menjadi path proxy same-origin:
+
+```
+http://localhost:10010/wp-content/uploads/2026/08/polo.jpg
+  → /api/media/wordpress/wp-content/uploads/2026/08/polo.jpg
+```
+
+Tanpa proxy ini, perangkat lain di jaringan LAN akan mencoba mengambil `http://localhost:10010/...` dari localhost-nya sendiri dan semua foto gagal dimuat. Rincian perilaku:
+
+- Route `/api/media/wordpress/[...path]` men-stream berkas dari WordPress sisi server; hanya path di bawah `/wp-content/uploads/` dengan ekstensi yang di-allowlist (png/jpg/jpeg/webp/gif/glb/mp4) yang diizinkan.
+- Rate limit 300 permintaan/menit per IP; cache browser 1 hari untuk gambar dan 1 jam untuk GLB/video (nama berkas WordPress tidak content-hashed).
+- Base media publik (https) tidak pernah diproxy — perilaku staging/produksi tidak berubah.
+- Data WooCommerce tetap menyimpan URL absolut: sebelum menulis ke provider, write-back guard (`fromSameOriginWordPressMediaUrl`) memulihkan path `/api/media/...` menjadi URL absolut.
+- Regresi: `npm run test:wordpress-media-proxy`.
+
+**Troubleshooting:** foto tidak tampil di perangkat lain → buka DevTools Network, pastikan permintaan `/api/media/wordpress/...` berstatus 200 dan tidak ada request tersisa ke `localhost:10010`.
+
 ## Cara mengelola foto
 
 1. Buka `/admin/products/new` atau `/admin/products/woocommerce/[id]`.

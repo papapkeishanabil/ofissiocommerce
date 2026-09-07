@@ -76,6 +76,10 @@ export type WooCommerceCouponUpdatePayload = Partial<Omit<WooCommerceCoupon, "id
 
 export interface WooCommerceProduct {
   id: number;
+  date_created?: string;
+  date_created_gmt?: string;
+  date_modified?: string;
+  date_modified_gmt?: string;
   name: string;
   slug: string;
   sku: string;
@@ -113,6 +117,15 @@ export interface WooCommerceVariationAttribute {
 export interface WooCommerceProductVariation {
   id: number;
   sku: string;
+  displaySku?: string;
+  rawSku?: string;
+  inheritedFromParent?: boolean;
+  status?: "publish" | "private" | string;
+  price?: string;
+  regular_price?: string;
+  sale_price?: string;
+  image?: WooCommerceImage | null;
+  meta_data?: WooCommerceMetaData[];
   manage_stock?: boolean;
   stock_quantity?: number | null;
   stock_status?: "instock" | "outofstock" | "onbackorder" | string;
@@ -120,7 +133,21 @@ export interface WooCommerceProductVariation {
   attributes?: WooCommerceVariationAttribute[];
 }
 
+export interface WooCommerceProductVariationWritePayload {
+  sku?: string;
+  status?: "publish" | "private";
+  regular_price?: string;
+  sale_price?: string;
+  manage_stock?: boolean;
+  stock_quantity?: number | null;
+  stock_status?: "instock" | "outofstock" | "onbackorder";
+  image?: { id?: number; src?: string; name?: string; alt?: string };
+  attributes: WooCommerceVariationAttribute[];
+  meta_data?: WooCommerceMetaData[];
+}
+
 export interface WooCommerceProductWritePayload {
+  type?: "simple" | "variable";
   name?: string;
   slug?: string;
   sku?: string;
@@ -128,6 +155,7 @@ export interface WooCommerceProductWritePayload {
   description?: string;
   short_description?: string;
   regular_price?: string;
+  sale_price?: string;
   weight?: string;
   dimensions?: {
     length: string;
@@ -135,6 +163,7 @@ export interface WooCommerceProductWritePayload {
     height: string;
   };
   categories?: Array<{ id: number }>;
+  tags?: Array<{ id?: number; name?: string }>;
   images?: Array<{
     id?: number;
     src?: string;

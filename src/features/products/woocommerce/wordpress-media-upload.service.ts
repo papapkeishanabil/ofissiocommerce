@@ -14,6 +14,7 @@ import {
   requestWooCommerceJson,
 } from "./woocommerce-http";
 import { normalizeWooCommerceMediaUrl } from "./woocommerce-media-url";
+import { toSameOriginWordPressMediaUrl } from "./wordpress-media-proxy";
 
 const DEFAULT_PRODUCT_IMAGE_MAX_MB = 10;
 // WordPress generates attachment metadata and several thumbnails before the
@@ -23,16 +24,60 @@ const WORDPRESS_MEDIA_UPLOAD_TIMEOUT_MS = 120_000;
 
 interface WordPressMediaResponse {
   id?: unknown;
+  slug?: unknown;
+  mime_type?: unknown;
   source_url?: unknown;
+  media_details?: { file?: unknown; width?: unknown; height?: unknown };
   alt_text?: unknown;
   title?: { rendered?: unknown };
 }
 
 export interface WordPressMediaUploadResult {
   id: number;
+  /** Same-origin/browser-safe URL; never use this as permanent identity. */
   sourceUrl: string;
+  /** Canonical target WordPress URL returned by the provider. */
+  targetMediaUrl?: string;
+  filename?: string;
+  mimeType?: string;
+  extension?: string;
+  slug?: string;
   alt: string;
   title: string;
+}
+
+export async function findWordPressMediaBySearch(search: string): Promise<WordPressMediaUploadResult[]> {
+  const config = getWordPressMediaRuntimeConfig();
+  if (!config.isConfigured || !search.trim()) return [];
+  const url = new URL(`${config.baseUrl}/wp-json/wp/v2/media`);
+  url.searchParams.set("search", search.trim().slice(0, 100));
+  url.searchParams.set("per_page", "20");
+  url.searchParams.set("context", "edit");
+  const response = await requestWordPressMediaRead<WordPressMediaResponse[]>(url, {
+    headers: { Authorization: authorizationHeader(config), Accept: "application/json" },
+    allowSelfSignedTls: allowSelfSignedTlsForWooUrl(url),
+  });
+  if (!response.ok || !Array.isArray(response.data)) return [];
+  return response.data.flatMap((item) => {
+    try { return [normalizeMediaResponse(item, config.baseUrl)]; } catch { return []; }
+  });
+}
+
+export async function getWordPressMediaById(mediaId: number): Promise<WordPressMediaUploadResult> {
+  const config = getWordPressMediaRuntimeConfig();
+  if (!config.isConfigured || !Number.isInteger(mediaId) || mediaId <= 0) {
+    throw new Error("wordpress_media_not_configured");
+  }
+  const url = new URL(
+    `${config.baseUrl}/wp-json/wp/v2/media/${encodeURIComponent(String(mediaId))}`,
+  );
+  url.searchParams.set("context", "edit");
+  const response = await requestWordPressMediaRead<WordPressMediaResponse>(url, {
+    headers: { Authorization: authorizationHeader(config), Accept: "application/json" },
+    allowSelfSignedTls: allowSelfSignedTlsForWooUrl(url),
+  });
+  if (!response.ok) throw new Error(`wordpress_media_readback_${classifyStatus(response.status)}`);
+  return normalizeMediaResponse(response.data, config.baseUrl);
 }
 
 export function getWordPressMediaRuntimeConfig() {
@@ -131,7 +176,7 @@ export async function checkWordPressMediaAccess() {
   url.searchParams.set("per_page", "1");
   url.searchParams.set("context", "edit");
   try {
-    const response = await requestWooCommerceJson<unknown[]>(url, {
+    const response = await requestWordPressMediaRead<unknown[]>(url, {
       headers: {
         Authorization: authorizationHeader(config),
         Accept: "application/json",
@@ -156,6 +201,15 @@ export async function checkWordPressMediaAccess() {
       status: 0,
     } as const;
   }
+}
+
+export async function deleteProductImageFromWordPress(mediaId: number) {
+  const config = getWordPressMediaRuntimeConfig();
+  if (!config.isConfigured) return false;
+  const url = new URL(`${config.baseUrl}/wp-json/wp/v2/media/${encodeURIComponent(String(mediaId))}`);
+  url.searchParams.set("force", "true");
+  const response = await requestWooCommerceJson<unknown>(url, { method: "DELETE", headers: { Authorization: authorizationHeader(config), Accept: "application/json" }, allowSelfSignedTls: allowSelfSignedTlsForWooUrl(url) });
+  return response.ok;
 }
 
 async function updateWordPressMediaMetadata(input: {
@@ -205,24 +259,42 @@ function authorizationHeader(
 function normalizeMediaResponse(
   payload: WordPressMediaResponse,
   configuredBaseUrl: string,
-) {
+): WordPressMediaUploadResult {
   const id = Number(payload.id);
-  const sourceUrl =
+  const absoluteSourceUrl =
     typeof payload.source_url === "string"
       ? normalizeWooCommerceMediaUrl(payload.source_url, configuredBaseUrl)
       : "";
-  if (!Number.isInteger(id) || id <= 0 || !isSafeHttpUrl(sourceUrl)) {
+  if (!Number.isInteger(id) || id <= 0 || !isSafeHttpUrl(absoluteSourceUrl)) {
     throw new Error("wordpress_media_invalid_response");
   }
+  const mediaFile = typeof payload.media_details?.file === "string" ? payload.media_details.file.trim() : "";
+  const filename = basename(mediaFile) || basename(absoluteSourceUrl);
+  const mimeType = typeof payload.mime_type === "string" ? payload.mime_type.trim().toLowerCase() : "";
+  const extension = filename.includes(".") ? filename.split(".").at(-1)!.toLowerCase() : "";
   return {
     id,
-    sourceUrl,
+    // URL absolut divalidasi dulu (isSafeHttpUrl di atas), baru dialihkan ke
+    // proxy same-origin untuk base loopback/`.local` — preview admin dan
+    // site-content baru jadi aman diakses dari perangkat LAN lain.
+    sourceUrl: toSameOriginWordPressMediaUrl(absoluteSourceUrl, configuredBaseUrl),
+    targetMediaUrl: absoluteSourceUrl,
+    filename,
+    mimeType,
+    extension,
+    slug: typeof payload.slug === "string" ? payload.slug.trim() : "",
     alt: typeof payload.alt_text === "string" ? payload.alt_text.trim() : "",
     title:
       typeof payload.title?.rendered === "string"
         ? payload.title.rendered.replace(/<[^>]*>/g, " ").trim()
         : "",
   };
+}
+
+function basename(value: string) {
+  if (!value) return "";
+  try { return decodeURIComponent(new URL(value, "http://wordpress.local").pathname.split("/").at(-1) ?? ""); }
+  catch { return value.replace(/\\/g, "/").split("/").at(-1) ?? ""; }
 }
 
 function normalizeWordPressBaseUrl(value: string) {
@@ -267,4 +339,9 @@ function classifyStatus(status: number) {
   if (status === 413) return "file_too_large";
   if (status === 415) return "mime_rejected";
   return "request_failed";
+}
+
+async function requestWordPressMediaRead<T>(url:URL,init:Parameters<typeof requestWooCommerceJson<T>>[1]){
+  for(let attempt=1;attempt<=3;attempt+=1){const startedAt=Date.now();try{const response=await requestWooCommerceJson<T>(url,init);if(response.ok)return response;const transient=[429,502,503,504].includes(response.status);console.warn("WORDPRESS_MEDIA_PROVIDER_ERROR",{operation:"read_media",method:"GET",path:url.pathname,statusCode:response.status,errorCode:`HTTP_${response.status}`,errorName:"HttpError",elapsedMs:Date.now()-startedAt,attemptNumber:attempt});if(!transient||attempt===3)return response;}catch(error){const value=error as {code?:string;name?:string;cause?:{code?:string}};const code=value.code??value.cause?.code??"UNKNOWN_PROVIDER_ERROR";const transient=["ECONNRESET","ECONNREFUSED","ETIMEDOUT","EPIPE","ECONNABORTED","INVALID_RESPONSE","UND_ERR_CONNECT_TIMEOUT","UND_ERR_HEADERS_TIMEOUT"].includes(code);console.warn("WORDPRESS_MEDIA_PROVIDER_ERROR",{operation:"read_media",method:"GET",path:url.pathname,statusCode:0,errorCode:code,errorName:value.name??"Error",elapsedMs:Date.now()-startedAt,attemptNumber:attempt});if(!transient||attempt===3)throw error;}await new Promise(resolve=>setTimeout(resolve,attempt===1?500:1500));}
+  throw new Error("wordpress_media_unavailable");
 }

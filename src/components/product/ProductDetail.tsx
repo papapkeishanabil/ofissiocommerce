@@ -13,6 +13,8 @@ import { calculateEmbroideryPricing, normalizeEmbroideryZoneId, type EmbroideryP
 import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
+import { hasEmbroideryRequest, resolveLineMoqIssue } from "@/features/products/moq-rules";
+import type { MoqSettings } from "@/features/moq-settings/moq-settings.types";
 import { getModel3DForProduct } from "@/data/uniform-3d";
 import type { SizeMatrix } from "@/types/industry";
 import { useCartStore } from "@/stores/cart-store";
@@ -63,6 +65,7 @@ const Uniform3DConfigurator = dynamic(
 interface ProductDetailProps {
   product: OfissioProduct;
   globalEmbroideryPricing: EmbroideryPricing;
+  moqSettings?: MoqSettings;
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -130,7 +133,7 @@ function productColorSwatch(colorName: string) {
     ?? "#cbd5e1";
 }
 
-export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetailProps) {
+export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }: ProductDetailProps) {
   const router = useRouter();
   const [color, setColor] = useState<string>(product.colors[0] ?? "Default");
   const [sizes, setSizes] = useState<SizeMatrix>(() => emptySizeMatrix());
@@ -272,7 +275,18 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
       : product.priceFrom,
     [product.priceFrom, product.quantityPricing],
   );
-  const meetsMoq = totalQty >= product.moq;
+  // Satu helper MOQ bersama dengan cart-store/checkout: MOQ produk + batas
+  // keras bordir (8 pcs default) bila line ini meminta bordir.
+  const lineHasEmbroidery = hasEmbroideryRequest({
+    uniform3DPlacements: uniform3DConfig?.placements,
+    customization,
+  });
+  const lineMoqIssue = resolveLineMoqIssue({
+    productMoq: product.moq,
+    totalQty,
+    hasEmbroidery: lineHasEmbroidery,
+    embroideryMoq: moqSettings?.embroidery,
+  });
   const snapshotUrl = uniform3DConfig?.snapshots.front ?? Object.values(uniform3DConfig?.snapshots ?? {})[0];
   const floatingPreviewOpen =
     !heroVisible &&
@@ -305,6 +319,7 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
       customization: customization.trim() || null,
       uniform3DConfig: uniform3DConfig ?? null,
       globalEmbroideryPricing,
+      moqSettings,
     });
     if (!result.ok) {
       setError(result.reason ?? "Gagal menambahkan ke keranjang.");
@@ -421,8 +436,8 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
               />
               <Stat
                 icon={<Layers className="h-4 w-4" />}
-                label="MOQ"
-                value={`${product.moq} pcs`}
+                label={product.moq <= 1 ? "Min. Beli" : "MOQ"}
+                value={`${Math.max(1, product.moq)} pcs`}
               />
               <Stat
                 icon={<Truck className="h-4 w-4" />}
@@ -517,6 +532,8 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
                 onChange={setSizes}
                 moq={product.moq}
                 sizeChart={product.sizeChart}
+                embroideryMoq={moqSettings?.embroidery}
+                hasEmbroidery={lineHasEmbroidery}
               />
             </div>
 
@@ -666,16 +683,18 @@ export function ProductDetail({ product, globalEmbroideryPricing }: ProductDetai
                   size="lg"
                   className="w-full"
                   onClick={handleAdd}
-                  disabled={!meetsMoq || totalQty === 0}
+                  disabled={lineMoqIssue != null || totalQty === 0}
                 >
-                  {meetsMoq ? (
+                  {lineMoqIssue == null ? (
                     <>
                       <Plus className="h-4 w-4" /> Tambahkan ke Keranjang
                     </>
                   ) : totalQty === 0 ? (
                     "Pilih quantity dulu"
+                  ) : lineMoqIssue.code === "EMBROIDERY_MOQ" ? (
+                    `Bordir min. ${lineMoqIssue.requiredQty} pcs (kurang ${lineMoqIssue.shortfall})`
                   ) : (
-                    `MOQ belum tercapai (kurang ${product.moq - totalQty})`
+                    `MOQ belum tercapai (kurang ${lineMoqIssue.shortfall})`
                   )}
                 </Button>
                 <ButtonLink

@@ -125,6 +125,9 @@ export function safeDocumentNumber(input: {
   if (input.documentType === "production_work_order_pdf") {
     return `PWO-PRO-${period}-${formatSequence(input.sequence)}`;
   }
+  if (input.documentType === "design_approval_sheet_pdf") {
+    return `DAS-PRO-${period}-${formatSequence(input.sequence)}`;
+  }
   return `DOC-${year}-${shortId()}`;
 }
 
@@ -138,7 +141,7 @@ export function processRouteCode(
 
 export function nextMonthlyDocumentSequence(input: {
   existingNumbers: string[];
-  prefix: "QUO" | "INV" | "BWO" | "PWO";
+  prefix: "QUO" | "INV" | "BWO" | "PWO" | "DAS";
   processRoute: "fulfillment" | "customization" | "production";
   date?: Date;
 }) {
@@ -226,6 +229,10 @@ export function isEmbroideryWorkOrderTemplate(templateId: DocumentTemplateId) {
 
 export function isProductionWorkOrderTemplate(templateId: DocumentTemplateId) {
   return templateId === "production_work_order_ofissio";
+}
+
+export function isDesignApprovalSheetTemplate(templateId: DocumentTemplateId) {
+  return templateId === "design_approval_sheet_ofissio";
 }
 
 function shortId() {

@@ -126,7 +126,16 @@ export interface CustomerTrackingOrder {
   currentStageId: string;
   nextStep?: string | null;
   estimatedCompletionDate?: string | null;
+  /** Planned handover to the courier, set by Admin Ofissio. */
+  plannedCourierHandoverDate?: string | null;
+  /** Planned arrival window, set during customization/production scheduling. */
+  estimatedArrivalStartDate?: string | null;
+  estimatedArrivalEndDate?: string | null;
+  /** Legacy planned arrival date; retained for stored tracking compatibility. */
   estimatedDeliveryDate?: string | null;
+  /** Actual shipment milestones received from the shipment provider. */
+  actualCourierPickupAt?: string | null;
+  actualDeliveredAt?: string | null;
   selectedShippingRate?: ShippingRate | null;
   subtotal: number;
   tax: number;

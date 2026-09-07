@@ -9,7 +9,8 @@ function templateId(value: string | undefined, fallback: DocumentTemplateId) {
     normalized === "invoice_default" ||
     normalized === "invoice_ofissio_custom" ||
     normalized === "embroidery_work_order_ofissio" ||
-    normalized === "production_work_order_ofissio"
+    normalized === "production_work_order_ofissio" ||
+    normalized === "design_approval_sheet_ofissio"
   ) {
     return normalized;
   }
@@ -28,6 +29,7 @@ export function getDocumentRuntimeConfig() {
     ),
     defaultEmbroideryWorkOrderTemplate: "embroidery_work_order_ofissio" as const,
     defaultProductionWorkOrderTemplate: "production_work_order_ofissio" as const,
+    defaultDesignApprovalSheetTemplate: "design_approval_sheet_ofissio" as const,
     companyLocationLabel:
       process.env.OFISSIO_INVOICE_LOCATION?.trim() ||
       "Kabupaten Bandung, Indonesia",

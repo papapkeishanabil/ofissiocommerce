@@ -7,11 +7,12 @@ import { createTripoTask } from "@/lib/tripo/tripo-service";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
 import { safeErrorResponse } from "@/lib/security/safe-error-response";
 import { validateInput } from "@/lib/security/validate-input";
+import { requireInternalAdmin } from "@/features/admin/admin.service";
 
 export const runtime = "nodejs";
 
 const createBodySchema = z.object({
-  imagePath: z.string().trim().min(1).max(300),
+  imagePath: z.string().trim().min(1).max(300).startsWith("/products/"),
 });
 
 export async function POST(req: Request) {
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
       limit: 10,
       windowMs: 60_000,
     });
+    requireInternalAdmin(req, "admin:catalog:update");
     const body = validateInput(createBodySchema, await req.json());
 
     const result = await createTripoTask(body.imagePath);

@@ -1,5 +1,9 @@
 # Quotation Flow
 
+## Gate approval brief Full Custom
+
+Quotation `source=custom_request` dengan brief sales-assisted harus disetujui customer sebelum pricing/PWO terbuka (`requiresCustomerBriefApproval`). Approval = tanda tangan digital di `/briefs/[id]` (nama + jabatan + klausa wajib); revisi menaikkan `revisionNo` dan mencabut semua ttd. Sales dapat memilih per kasus — di semua kanal, termasuk repeat order via WhatsApp — untuk membuat brief tanpa persetujuan formal (`not_required`, gate langsung terbuka). Brief asal customer portal baru memasuki gate ini setelah sales mengambil alih (tombol **Kembangkan brief teknis**) dan memilih minta tanda tangan; tanpa pengayaan, jalur portal tetap tanpa approval desain. Detail: `docs/full-custom-request.md` dan `docs/admin-quotation-workflow.md`.
+
 ## Harga quantity
 
 Quotation request tidak mempercayai harga dari browser. Server mengambil ulang produk dari product service, menjumlahkan seluruh size matrix, memilih quantity tier, lalu menyimpan:

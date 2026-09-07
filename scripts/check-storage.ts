@@ -21,6 +21,7 @@ const REQUIRED_BUCKETS = [
   env("STORAGE_BUCKET_ARTWORK", "ofissio-artwork"),
   env("STORAGE_BUCKET_DOCUMENTS", "ofissio-documents"),
   env("STORAGE_BUCKET_3D", "ofissio-3d-models"),
+  env("STORAGE_BUCKET_SITE_VIDEOS", "ofissio-site-videos"),
 ] as const;
 
 run().catch((error: unknown) => {

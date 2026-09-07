@@ -42,7 +42,13 @@ function isLoopbackHostname(value: string) {
   return value === "localhost" || value === "127.0.0.1" || value === "::1";
 }
 
-function stripApiPath(value: string) {
+/** Host internal (loopback atau domain `.local` LocalWP) — kandidat media proxy. */
+export function isLoopbackOrLocalHostname(hostname: string) {
+  const normalized = normalizeHostname(hostname);
+  return isLoopbackHostname(normalized) || normalized.endsWith(".local");
+}
+
+export function stripApiPath(value: string) {
   return value
     .replace(/\/wp-json\/wc\/v3\/?$/i, "")
     .replace(/\/wp-json\/wp\/v2\/?$/i, "")

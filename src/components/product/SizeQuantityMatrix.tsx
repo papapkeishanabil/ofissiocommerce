@@ -17,6 +17,10 @@ interface SizeQuantityMatrixProps {
   /** show size chart inline (chest/length) */
   sizeChart?: { size: Size; chest: number; length: number }[];
   disabled?: boolean;
+  /** Batas keras bordir (master MOQ); tampil hanya saat line meminta bordir. */
+  embroideryMoq?: number;
+  /** Line ini meminta bordir (placement 3D atau note ber-keyword bordir). */
+  hasEmbroidery?: boolean;
 }
 
 export function SizeQuantityMatrix({
@@ -25,9 +29,15 @@ export function SizeQuantityMatrix({
   moq,
   sizeChart,
   disabled,
+  embroideryMoq,
+  hasEmbroidery,
 }: SizeQuantityMatrixProps) {
   const total = sumSizeMatrix(value);
   const meetsMoq = total >= moq;
+  const effectiveFloor = hasEmbroidery && embroideryMoq != null
+    ? Math.max(moq, embroideryMoq)
+    : moq;
+  const meetsFloor = total >= effectiveFloor;
   const listId = useId();
 
   function setSize(s: Size, qty: unknown) {
@@ -113,15 +123,20 @@ export function SizeQuantityMatrix({
             <AlertTriangle className="h-4 w-4" />
             Pilih jumlah per ukuran untuk memesan.
           </p>
-        ) : meetsMoq ? (
+        ) : hasEmbroidery && embroideryMoq != null && embroideryMoq > moq && total < embroideryMoq ? (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
+            <AlertTriangle className="h-4 w-4" />
+            Bordir min. {embroideryMoq} pcs — tambah {embroideryMoq - total} pcs lagi.
+          </p>
+        ) : meetsFloor ? (
           <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
             <CheckCircle2 className="h-4 w-4" />
-            MOQ terpenuhi ({total} / {moq})
+            MOQ terpenuhi ({total} / {effectiveFloor})
           </p>
         ) : (
           <p className="flex items-center gap-1.5 text-xs font-medium text-red-600">
             <AlertTriangle className="h-4 w-4" />
-            Kurang {moq - total} pcs lagi untuk mencapai MOQ.
+            Kurang {effectiveFloor - total} pcs lagi untuk mencapai MOQ.
           </p>
         )}
       </div>

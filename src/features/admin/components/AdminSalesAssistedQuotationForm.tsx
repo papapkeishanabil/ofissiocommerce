@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -16,7 +16,10 @@ import {
 import { Button } from "@/components/ui/Button";
 import type { AdminCustomerRow } from "@/features/admin/admin.types";
 import type {
+  BriefCustomAdjustment,
+  BriefGender,
   CustomRequestIntakeChannel,
+  TechnicalEmbroideryArea,
   TechnicalGarmentCategory,
   TechnicalGarmentSpecification,
   TechnicalSpecificationValue,
@@ -31,6 +34,58 @@ interface SpecDefinition {
 }
 
 interface GarmentDraft extends TechnicalGarmentSpecification {}
+
+interface DuplicateBriefRow {
+  id: string;
+  quotationNumber: string;
+  source: string;
+  companyId: string;
+  status: string;
+  intakeChannel: string | null;
+  workspace: "request" | "quotation";
+}
+
+const QUOTATION_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  submitted: "Terkirim",
+  under_review: "Direview",
+};
+
+function intakeChannelLabel(channel: string | null) {
+  if (!channel) return "Kanal tidak dicatat";
+  if (channel === "customer_portal") return "Customer portal";
+  return INTAKE_OPTIONS.find((option) => option.value === channel)?.label ?? channel;
+}
+
+const GENDER_OPTIONS: Array<{ value: BriefGender; label: string }> = [
+  { value: "unspecified", label: "Umum" },
+  { value: "men", label: "Pria" },
+  { value: "women", label: "Wanita" },
+  { value: "custom", label: "Custom" },
+];
+
+const EMBROIDERY_ZONE_OPTIONS: Array<{
+  value: TechnicalEmbroideryArea["zone"];
+  label: string;
+  maxWidthCm: number;
+  maxHeightCm: number;
+}> = [
+  { value: "left_chest", label: "Dada kiri", maxWidthCm: 8, maxHeightCm: 8 },
+  { value: "right_chest", label: "Dada kanan", maxWidthCm: 8, maxHeightCm: 8 },
+  { value: "left_sleeve", label: "Lengan kiri", maxWidthCm: 7, maxHeightCm: 7 },
+  { value: "right_sleeve", label: "Lengan kanan", maxWidthCm: 7, maxHeightCm: 7 },
+  { value: "upper_back", label: "Punggung atas", maxWidthCm: 30, maxHeightCm: 8 },
+  { value: "middle_back", label: "Punggung tengah", maxWidthCm: 30, maxHeightCm: 20 },
+];
+
+const EMBROIDERY_TECHNIQUE_OPTIONS: Array<{
+  value: TechnicalEmbroideryArea["technique"];
+  label: string;
+}> = [
+  { value: "embroidery", label: "Bordir" },
+  { value: "print", label: "Sablon" },
+  { value: "patch", label: "Patch" },
+];
 
 const UPPER_SPECS: SpecDefinition[] = [
   { key: "material", label: "Bahan utama", options: ["Maryland Drill", "Japan Drill", "Ripstop", "Twill", "Canvas", "Cotton", "Lainnya"], detailPlaceholder: "Kode bahan / gramasi" },
@@ -95,11 +150,50 @@ export function AdminSalesAssistedQuotationForm({
   const [designDescription, setDesignDescription] = useState("");
   const [targetDate, setTargetDate] = useState("");
   const [customerNotes, setCustomerNotes] = useState("");
+  const [requireApproval, setRequireApproval] = useState(true);
   const [garments, setGarments] = useState<GarmentDraft[]>([
     createGarment("upper", "garment-1"),
   ]);
+  const nextAdjustmentId = useRef(1);
+  const [customAdjustments, setCustomAdjustments] = useState<BriefCustomAdjustment[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [openBriefs, setOpenBriefs] = useState<DuplicateBriefRow[] | null>(null);
+
+  // Cegah brief ganda: bila company terpilih sudah punya permintaan Full Custom
+  // yang belum selesai, arahkan sales untuk mengembangkan brief yang ada.
+  useEffect(() => {
+    if (!companyId) {
+      setOpenBriefs(null);
+      return;
+    }
+    let stale = false;
+    setOpenBriefs(null);
+    fetch(`/api/admin/quotations?search=${encodeURIComponent(companyId)}`, {
+      headers: {
+        "x-ofissio-internal-role": "super_admin",
+        "x-ofissio-internal-user-id": "internal-dev",
+      },
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { quotations?: DuplicateBriefRow[] } | null) => {
+        if (stale || !payload?.quotations) return;
+        setOpenBriefs(
+          payload.quotations.filter(
+            (row) =>
+              row.companyId === companyId &&
+              row.source === "custom_request" &&
+              row.workspace === "request",
+          ),
+        );
+      })
+      .catch(() => {
+        if (!stale) setOpenBriefs(null);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [companyId]);
 
   const selectedCustomer = customers.find((item) => item.companyId === companyId);
   const totalQuantity = useMemo(
@@ -142,18 +236,38 @@ export function AdminSalesAssistedQuotationForm({
     ));
   }
 
-  function updateSize(garmentId: string, index: number, field: "size" | "quantity", value: string) {
+  function updateSize(
+    garmentId: string,
+    index: number,
+    field: "size" | "quantity" | "gender",
+    value: string,
+  ) {
     setGarments((current) => current.map((garment) => {
       if (garment.id !== garmentId) return garment;
       return {
         ...garment,
-        sizeBreakdown: garment.sizeBreakdown.map((entry, entryIndex) =>
-          entryIndex === index
-            ? { ...entry, [field]: field === "quantity" ? Math.max(0, Number(value) || 0) : value }
-            : entry,
-        ),
+        sizeBreakdown: garment.sizeBreakdown.map((entry, entryIndex) => {
+          if (entryIndex !== index) return entry;
+          if (field === "quantity") return { ...entry, quantity: Math.max(0, Number(value) || 0) };
+          if (field === "gender") return { ...entry, gender: value as BriefGender };
+          return { ...entry, size: value };
+        }),
       };
     }));
+  }
+
+  function updateAdjustment(index: number, patch: Partial<BriefCustomAdjustment>) {
+    setCustomAdjustments((current) =>
+      current.map((adjustment, adjustmentIndex) =>
+        adjustmentIndex === index
+          ? {
+              ...adjustment,
+              ...patch,
+              quantity: Math.max(0, Number(patch.quantity ?? adjustment.quantity) || 0),
+            }
+          : adjustment,
+      ),
+    );
   }
 
   async function submit() {
@@ -216,9 +330,16 @@ export function AdminSalesAssistedQuotationForm({
             technicalSpecifications: garments.map((garment) => ({
               ...garment,
               quantity: resolvedGarmentQuantity(garment),
+              embroideryAreas: (garment.embroideryAreas ?? []).filter(
+                (area) => area.widthCm > 0 && area.heightCm > 0,
+              ),
             })),
+            customAdjustments: customAdjustments.filter(
+              (adjustment) => adjustment.changeNote.trim().length >= 3,
+            ),
           },
           customerNotes: customerNotes.trim() || null,
+          requireCustomerApproval: requireApproval,
         }),
       });
       const result = (await response.json().catch(() => ({}))) as {
@@ -265,6 +386,21 @@ export function AdminSalesAssistedQuotationForm({
             <Field label="WhatsApp PIC"><input value={picWhatsapp} onChange={(event) => setPicWhatsapp(event.target.value)} className={inputClass} placeholder="08... atau +62..." /></Field>
             <Field label="Nomor PO / referensi"><input value={externalReference} onChange={(event) => setExternalReference(event.target.value)} className={inputClass} placeholder="Opsional" /></Field>
           </div>
+          {openBriefs && openBriefs.length > 0 ? (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="font-bold">Customer ini sudah punya permintaan Full Custom yang belum selesai:</p>
+              <ul className="mt-2 space-y-1">
+                {openBriefs.map((row) => (
+                  <li key={row.id} className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-bold">{row.quotationNumber}</span>
+                    <span className="text-xs">{intakeChannelLabel(row.intakeChannel)} · {QUOTATION_STATUS_LABELS[row.status] ?? row.status}</span>
+                    <a className="text-xs font-bold text-amber-900 underline" href={`/admin/quotations/${row.id}`}>Buka &amp; kembangkan</a>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs leading-5">Jika ini kebutuhan yang sama, kembangkan brief yang sudah ada alih-alih membuat brief baru agar riwayat approval tidak terpecah.</p>
+            </div>
+          ) : null}
         </FormCard>
 
         <FormCard
@@ -310,6 +446,28 @@ export function AdminSalesAssistedQuotationForm({
           </div>
         </section>
 
+        <FormCard
+          title="Catatan custom per ukuran"
+          description="Perubahan khusus pada ukuran/warna tertentu — muncul sebagai tabel Catatan custom di lembar approval."
+        >
+          {customAdjustments.length > 0 ? (
+            <div className="space-y-2">
+              {customAdjustments.map((adjustment, index) => (
+                <div key={adjustment.id} className="grid gap-2 rounded-xl border border-line bg-slate-50/70 p-3 lg:grid-cols-[6rem_8rem_minmax(0,1fr)_6rem_auto] lg:items-center">
+                  <input aria-label={`Ukuran penyesuaian ${index + 1}`} value={adjustment.size} onChange={(event) => updateAdjustment(index, { size: event.target.value })} className={compactInputClass} placeholder="Ukuran" maxLength={40} />
+                  <input aria-label={`Warna penyesuaian ${index + 1}`} value={adjustment.color ?? ""} onChange={(event) => updateAdjustment(index, { color: event.target.value || null })} className={compactInputClass} placeholder="Warna" maxLength={80} />
+                  <input aria-label={`Perubahan ${index + 1}`} value={adjustment.changeNote} onChange={(event) => updateAdjustment(index, { changeNote: event.target.value })} className={compactInputClass} placeholder="cth: tanpa logo dada, rok bukan celana" maxLength={400} />
+                  <input aria-label={`Qty penyesuaian ${index + 1}`} type="number" min={0} value={adjustment.quantity || ""} onChange={(event) => updateAdjustment(index, { quantity: Number(event.target.value) || 0 })} className={cn(compactInputClass, "text-center")} placeholder="0" />
+                  <Button type="button" variant="ghost" size="sm" className="text-red-600" onClick={() => setCustomAdjustments((current) => current.filter((_, adjustmentIndex) => adjustmentIndex !== index))}><Trash2 className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Hapus penyesuaian {index + 1}</span></Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl bg-slate-100 p-3 text-sm text-ink-muted">Belum ada penyesuaian custom.</p>
+          )}
+          <Button type="button" variant="outline" size="sm" disabled={customAdjustments.length >= 20} onClick={() => setCustomAdjustments((current) => [...current, { id: `adj-${nextAdjustmentId.current++}`, size: "", color: null, changeNote: "", quantity: 0 }])}><Plus className="h-4 w-4" aria-hidden="true" />Tambah baris</Button>
+        </FormCard>
+
         <FormCard title="Catatan percakapan" description="Simpan keputusan customer yang belum masuk ke pilihan teknis di atas.">
           <textarea value={customerNotes} onChange={(event) => setCustomerNotes(event.target.value)} rows={4} className={textareaClass} placeholder="Contoh: customer akan mengirim logo final setelah approval desain." />
         </FormCard>
@@ -330,13 +488,29 @@ export function AdminSalesAssistedQuotationForm({
             <Summary label="Rute" value="Production / SPK" strong />
           </dl>
           <div className="border-t border-line p-5">
-            <div className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-              Brief disimpan sebagai draft dan menunggu persetujuan customer. Pricing serta quotation resmi tetap terkunci sampai customer menyetujuinya.
+            <label className="flex items-start gap-2 text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                checked={requireApproval}
+                onChange={(event) => setRequireApproval(event.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-brand-700"
+              />
+              <span>
+                Minta tanda tangan customer
+                <span className="block text-xs font-normal text-ink-muted">
+                  Hilangkan centang untuk repeat order dengan desain yang sudah disetujui sebelumnya.
+                </span>
+              </span>
+            </label>
+            <div className={`mt-3 rounded-xl p-3 text-xs leading-5 ${requireApproval ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-900"}`}>
+              {requireApproval
+                ? "Brief disimpan sebagai draft dan menunggu persetujuan customer. Pricing serta quotation resmi tetap terkunci sampai customer menyetujuinya."
+                : "Brief disimpan tanpa persetujuan formal. Pricing dan quotation resmi langsung bisa dilanjutkan."}
             </div>
             {message ? <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{message}</p> : null}
             <Button type="button" className="mt-4 w-full" disabled={submitting} aria-busy={submitting} onClick={() => void submit()}>
               {submitting ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
-              {submitting ? "Menyimpan..." : "Simpan brief untuk approval"}
+              {submitting ? "Menyimpan..." : "Simpan brief"}
               {!submitting ? <ArrowRight className="h-4 w-4" aria-hidden="true" /> : null}
             </Button>
           </div>
@@ -361,7 +535,7 @@ function GarmentEditor({
   onRemove: () => void;
   onChange: (patch: Partial<GarmentDraft>) => void;
   onSpecChange: (key: string, patch: Partial<TechnicalSpecificationValue>) => void;
-  onSizeChange: (index: number, field: "size" | "quantity", value: string) => void;
+  onSizeChange: (index: number, field: "size" | "quantity" | "gender", value: string) => void;
 }) {
   const definitions = garment.category === "lower" ? LOWER_SPECS : UPPER_SPECS;
   const sizeTotal = garment.sizeBreakdown.reduce((total, item) => total + item.quantity, 0);
@@ -405,12 +579,13 @@ function GarmentEditor({
                     <option value="recommendation">Minta rekomendasi</option>
                   </select>
                   {specification.status === "specified" ? (
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="grid gap-2 lg:grid-cols-3">
                       <select aria-label={`Pilihan ${definition.label}`} value={specification.option ?? ""} onChange={(event) => onSpecChange(definition.key, { option: event.target.value || null })} className={compactInputClass}>
                         <option value="">Pilih</option>
                         {definition.options.map((option) => <option key={option}>{option}</option>)}
                       </select>
                       <input aria-label={`Detail ${definition.label}`} value={specification.detail ?? ""} onChange={(event) => onSpecChange(definition.key, { detail: event.target.value || null })} className={compactInputClass} placeholder={definition.detailPlaceholder} />
+                      <input aria-label={`Ukuran ${definition.label}`} value={specification.measurements ?? ""} onChange={(event) => onSpecChange(definition.key, { measurements: event.target.value || null })} className={compactInputClass} placeholder="Ukuran, cth: 108 cm" maxLength={120} />
                     </div>
                   ) : (
                     <p className="text-xs text-ink-muted">{specification.status === "recommendation" ? "Tim technical akan menentukan rekomendasi." : "Tidak masuk spesifikasi produksi."}</p>
@@ -431,12 +606,107 @@ function GarmentEditor({
               <div key={`${garment.id}-size-${sizeIndex}`} className="rounded-xl border border-line bg-white p-2">
                 <input aria-label={`Nama size ${sizeIndex + 1}`} value={entry.size} onChange={(event) => onSizeChange(sizeIndex, "size", event.target.value)} className="w-full border-0 bg-transparent text-center text-xs font-bold uppercase text-ink outline-none" />
                 <input aria-label={`Quantity size ${entry.size}`} type="number" min={0} value={entry.quantity || ""} onChange={(event) => onSizeChange(sizeIndex, "quantity", event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-line bg-slate-50 px-2 text-center text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100" placeholder="0" />
+                <select aria-label={`Kelompok gender size ${entry.size}`} value={entry.gender ?? "unspecified"} onChange={(event) => onSizeChange(sizeIndex, "gender", event.target.value)} className="mt-1 h-8 w-full rounded-lg border border-line bg-slate-50 px-1 text-center text-xs font-semibold text-ink-muted outline-none focus:border-brand-500">
+                  {GENDER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
               </div>
             ))}
           </div>
         </div>
+
+        <EmbroideryAreaEditor
+          garmentId={garment.id}
+          areas={garment.embroideryAreas ?? []}
+          onChange={(areas) => onChange({ embroideryAreas: areas })}
+        />
       </div>
     </article>
+  );
+}
+
+function EmbroideryAreaEditor({
+  garmentId,
+  areas,
+  onChange,
+}: {
+  garmentId: string;
+  areas: TechnicalEmbroideryArea[];
+  onChange: (areas: TechnicalEmbroideryArea[]) => void;
+}) {
+  function updateArea(index: number, patch: Partial<TechnicalEmbroideryArea>) {
+    onChange(areas.map((area, areaIndex) => (areaIndex === index ? { ...area, ...patch } : area)));
+  }
+
+  function addArea() {
+    if (areas.length >= 6) return;
+    const usedZones = new Set(areas.map((area) => area.zone));
+    const zone = EMBROIDERY_ZONE_OPTIONS.find((option) => !usedZones.has(option.value));
+    if (!zone) return;
+    onChange([
+      ...areas,
+      {
+        label: String.fromCharCode(65 + areas.length),
+        zone: zone.value,
+        positionNote: null,
+        offsetXCm: null,
+        offsetYCm: null,
+        widthCm: Math.min(8, zone.maxWidthCm),
+        heightCm: Math.min(4, zone.maxHeightCm),
+        technique: "embroidery",
+        logoFileId: null,
+        logoFileName: null,
+        notes: null,
+      },
+    ]);
+  }
+
+  return (
+    <div>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-ink-muted">Bordir &amp; area logo</p>
+          <p className="mt-1 text-xs text-ink-muted">Maksimal 6 area, satu per zona. Label A/B/C muncul di lembar approval.</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={addArea} disabled={areas.length >= 6}><Plus className="h-4 w-4" aria-hidden="true" />Area</Button>
+      </div>
+      {areas.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {areas.map((area, index) => {
+            const zoneOption = EMBROIDERY_ZONE_OPTIONS.find((option) => option.value === area.zone);
+            const overLimit =
+              zoneOption &&
+              (area.widthCm > zoneOption.maxWidthCm || area.heightCm > zoneOption.maxHeightCm);
+            return (
+              <div key={`${garmentId}-area-${index}`} className={cn("grid gap-2 rounded-xl border border-line bg-white p-3 lg:grid-cols-[3rem_11rem_minmax(0,1fr)_6rem_6rem_8rem_auto] lg:items-center", overLimit && "border-red-300 bg-red-50/60")}>
+                <input aria-label={`Label area ${index + 1}`} value={area.label} onChange={(event) => updateArea(index, { label: event.target.value.slice(0, 4) })} className="h-10 rounded-lg border border-line bg-slate-50 px-2 text-center text-sm font-black uppercase text-ink outline-none focus:border-brand-500" maxLength={4} />
+                <select aria-label={`Zona area ${index + 1}`} value={area.zone} onChange={(event) => updateArea(index, { zone: event.target.value as TechnicalEmbroideryArea["zone"] })} className={compactInputClass}>
+                  {EMBROIDERY_ZONE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <input aria-label={`Catatan posisi area ${index + 1}`} value={area.positionNote ?? ""} onChange={(event) => updateArea(index, { positionNote: event.target.value || null })} className={compactInputClass} placeholder="Posisi, cth: 7 cm dari kerah" maxLength={160} />
+                <label className="block">
+                  <span className="sr-only">{`Lebar area ${index + 1} (maks ${zoneOption?.maxWidthCm ?? 30} cm)`}</span>
+                  <input type="number" min={1} max={30} step={0.5} value={area.widthCm} onChange={(event) => updateArea(index, { widthCm: Number(event.target.value) || 0 })} className={cn(compactInputClass, "text-center", overLimit && area.widthCm > (zoneOption?.maxWidthCm ?? 30) && "border-red-400")} placeholder="L cm" />
+                  <span className="mt-0.5 block text-center text-[10px] text-ink-muted">maks {zoneOption?.maxWidthCm ?? 30} cm</span>
+                </label>
+                <label className="block">
+                  <span className="sr-only">{`Tinggi area ${index + 1} (maks ${zoneOption?.maxHeightCm ?? 30} cm)`}</span>
+                  <input type="number" min={1} max={30} step={0.5} value={area.heightCm} onChange={(event) => updateArea(index, { heightCm: Number(event.target.value) || 0 })} className={cn(compactInputClass, "text-center", overLimit && area.heightCm > (zoneOption?.maxHeightCm ?? 30) && "border-red-400")} placeholder="T cm" />
+                  <span className="mt-0.5 block text-center text-[10px] text-ink-muted">maks {zoneOption?.maxHeightCm ?? 30} cm</span>
+                </label>
+                <select aria-label={`Teknik area ${index + 1}`} value={area.technique} onChange={(event) => updateArea(index, { technique: event.target.value as TechnicalEmbroideryArea["technique"] })} className={compactInputClass}>
+                  {EMBROIDERY_TECHNIQUE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <Button type="button" variant="ghost" size="sm" className="text-red-600" onClick={() => onChange(areas.filter((_, areaIndex) => areaIndex !== index))}><Trash2 className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Hapus area {index + 1}</span></Button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-xl bg-slate-100 p-3 text-xs text-ink-muted">Belum ada area bordir ditandai untuk item ini.</p>
+      )}
+    </div>
   );
 }
 
@@ -458,6 +728,9 @@ function createGarment(category: TechnicalGarmentCategory, id: string): GarmentD
       notes: null,
     })),
     sizeBreakdown: (lower ? ["28", "30", "32", "34", "36", "38"] : ["S", "M", "L", "XL", "2XL", "3XL"]).map((size) => ({ size, quantity: 0 })),
+    embroideryAreas: [],
+    figureFrontFileId: null,
+    figureBackFileId: null,
   };
 }
 

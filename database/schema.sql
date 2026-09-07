@@ -354,6 +354,7 @@ create table if not exists documents (
       'invoice_pdf',
       'embroidery_work_order_pdf',
       'production_work_order_pdf',
+      'design_approval_sheet_pdf',
       'production_order_pdf_future',
       'packing_slip_pdf_future'
     )
@@ -362,7 +363,7 @@ create table if not exists documents (
   entity_id text not null,
   document_number text not null,
   template_id text not null check (
-    template_id in ('quotation_default', 'invoice_default', 'invoice_ofissio_custom', 'embroidery_work_order_ofissio', 'production_work_order_ofissio')
+    template_id in ('quotation_default', 'invoice_default', 'invoice_ofissio_custom', 'embroidery_work_order_ofissio', 'production_work_order_ofissio', 'design_approval_sheet_ofissio')
   ),
   file_id text not null,
   storage_bucket text not null,
@@ -899,10 +900,25 @@ insert into embroidery_pricing_zones (id, zone_id, label, enabled, max_width_cm,
   ('embroidery-right-chest','right_chest','Dada Kanan',true,8,8,5000,0,false,'flat_per_piece','Logo atau nama',20),
   ('embroidery-left-sleeve','left_sleeve','Lengan Kiri',true,7,7,6000,0,false,'flat_per_piece','Bordir lengan',30),
   ('embroidery-right-sleeve','right_sleeve','Lengan Kanan',true,7,7,6000,0,false,'flat_per_piece','Bordir lengan',40),
-  ('embroidery-upper-back','upper_back','Punggung Atas',true,20,8,10000,0,false,'flat_per_piece','Logo sedang punggung atas',50),
-  ('embroidery-center-back','center_back','Punggung Tengah',true,25,20,15000,0,false,'flat_per_piece','Logo besar punggung tengah',60)
+  ('embroidery-upper-back','upper_back','Punggung Atas',true,30,8,10000,0,false,'flat_per_piece','Logo sedang punggung atas',50),
+  ('embroidery-center-back','center_back','Punggung Tengah',true,30,20,15000,0,false,'flat_per_piece','Logo besar punggung tengah',60)
 on conflict (zone_id) do nothing;
 alter table embroidery_pricing_zones enable row level security;
+
+-- Migration 029: master MOQ per rute pengerjaan + batas minimum bordir (singleton).
+create table if not exists moq_settings (
+  id text primary key check (id = 'global'),
+  moq_fulfillment integer not null default 1 check (moq_fulfillment >= 1),
+  moq_customization integer not null default 1 check (moq_customization >= 1),
+  moq_production integer not null default 48 check (moq_production >= 1),
+  moq_embroidery integer not null default 8 check (moq_embroidery >= 1),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+insert into moq_settings (id) values ('global') on conflict (id) do nothing;
+
+alter table moq_settings enable row level security;
 
 -- Task A6.1 internal admin notification inbox.
 create table if not exists admin_notifications (

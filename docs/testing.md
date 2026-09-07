@@ -16,6 +16,15 @@ Jika nanti ada test runner:
 npm run test
 ```
 
+Test script regression yang tersedia (tanpa env, jalan di mock repository):
+
+```bash
+npm run test:design-approval   # gate approval brief, revisi, ttd multi-pihak, PDF engine gambar, template DAS
+npm run test:embroidery-pricing
+npm run test:moq-rules
+npm run test:commercial-flow
+```
+
 ## Customer flow
 
 - Buka `/catalog`.

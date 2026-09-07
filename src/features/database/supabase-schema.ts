@@ -81,6 +81,11 @@ export const WOO_STOCK_MONITORING_TABLES = [
   "production_replenishment_requests",
 ] as const;
 
+// Added to schema checks after migration 029 is applied in the target
+// environment (same staging-safety pattern as WOO_STOCK_MONITORING_TABLES).
+export const MOQ_SETTINGS_TABLES = ["moq_settings"] as const;
+export const PRODUCT_IMPORT_TABLES = ["product_import_batches", "product_import_items"] as const;
+
 export const REQUIRED_SUPABASE_TABLES = [
   "companies",
   "user_profiles",
@@ -104,6 +109,7 @@ export const REQUIRED_SUPABASE_TABLES = [
   "site_content",
   "shipping_settings",
   "ofistant_knowledge_articles",
+  ...PRODUCT_IMPORT_TABLES,
 ] as const;
 
 export type RequiredSupabaseTable = (typeof REQUIRED_SUPABASE_TABLES)[number];

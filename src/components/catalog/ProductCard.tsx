@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { formatIDR } from "@/types/product";
 import { fulfillmentLabel } from "@/types/industry";
-import { emptySizeMatrix } from "@/types/cart";
+import { emptySizeMatrix, moqSizeSpread } from "@/types/cart";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { afterConfirmItemAdded } from "@/lib/ofistant/ofistant.rules";
@@ -53,12 +53,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const color = product.colors[0] ?? "Default";
 
   function handleQuickAdd() {
-    // Spread MOQ evenly across M/L/XL as a starting point.
-    const sizes = emptySizeMatrix();
-    const perSize = Math.max(1, Math.floor(product.moq / 3));
-    sizes.M = perSize;
-    sizes.L = perSize;
-    sizes.XL = Math.max(0, product.moq - perSize * 2);
+    // Spread MOQ evenly across M/L/XL as a starting point — total is exactly
+    // the MOQ (1 pcs for ready stock, N for produced lines).
+    const sizes = moqSizeSpread(product.moq);
 
     const result = addToCart({
       product,
@@ -77,7 +74,11 @@ export function ProductCard({ product }: ProductCardProps) {
   }
 
   const specs = [
-    { icon: Layers, label: "MOQ", value: `${product.moq} pcs` },
+    {
+      icon: Layers,
+      label: product.moq <= 1 ? "Min. Beli" : "MOQ",
+      value: `${Math.max(1, product.moq)} pcs`,
+    },
     { icon: Clock, label: "Lead Time", value: `${product.leadTimeDays} hari` },
   ];
 

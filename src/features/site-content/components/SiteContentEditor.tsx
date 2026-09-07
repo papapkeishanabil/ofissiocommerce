@@ -10,7 +10,8 @@
 //   text    -> Input
 //   textarea-> Textarea
 //   icon    -> Select of the icon allowlist + a live preview chip
-//   list    -> repeating cards (one per item) with add/remove
+//   list    -> repeating cards (one per item) with reorder/hide/remove,
+//              optionally collapsible via the descriptor (long lists)
 //
 // Phase 1 sections are flat { items: [...] } shapes, but the renderer already
 // recurses through itemFields so Phase 2/3 field types slot in without
@@ -18,15 +19,22 @@
 
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowDown,
+  ArrowUp,
   CheckCircle2,
+  ChevronDown,
+  Cuboid,
+  ImagePlus,
+  Loader2,
   Plus,
   RotateCcw,
   Save,
   ShieldAlert,
   Trash2,
+  Video as VideoIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -35,6 +43,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { AdminPanel } from "@/features/admin/components/AdminSurface";
+import { optimizeProductImage } from "@/features/products/components/product-image-optimization.client";
 import {
   HOMEPAGE_ICON_KEYS,
   resolveHomepageIcon,
@@ -64,6 +73,9 @@ function blankFromDescriptor(f: FieldDescriptor): unknown {
   switch (f.kind) {
     case "text":
     case "textarea":
+    case "image":
+    case "model3d":
+    case "video":
       return "";
     case "icon":
       return "Sparkles";
@@ -499,13 +511,109 @@ function FieldRenderer({
     );
   }
 
+  if (field.kind === "image") {
+    return (
+      <ImageFieldControl
+        id={id}
+        label={field.label}
+        help={field.help}
+        placeholder={field.placeholder}
+        maxLength={field.maxLength}
+        value={String(value ?? "")}
+        onChange={onChange}
+      />
+    );
+  }
+
+  if (field.kind === "model3d") {
+    return (
+      <Model3DFieldControl
+        id={id}
+        label={field.label}
+        help={field.help}
+        placeholder={field.placeholder}
+        maxLength={field.maxLength}
+        value={String(value ?? "")}
+        onChange={onChange}
+      />
+    );
+  }
+
+  if (field.kind === "video") {
+    return (
+      <VideoFieldControl
+        id={id}
+        label={field.label}
+        scope={field.scope}
+        help={field.help}
+        placeholder={field.placeholder}
+        maxLength={field.maxLength}
+        value={String(value ?? "")}
+        onChange={onChange}
+      />
+    );
+  }
+
   // list
+  if (field.kind === "list") {
+    return <ListField field={field} value={value} onChange={onChange} />;
+  }
+
+  return null;
+}
+
+/** Repeating list editor: one bordered card per item with reorder (naik/turun),
+ *  hapus, and tambah. When the descriptor sets `collapsible`, each card's
+ *  fields hide behind a header toggle (default closed) headed by the
+ *  `titleKey` value — built for long lists like §02 groups/tiles. */
+function ListField({
+  field,
+  value,
+  onChange,
+}: {
+  field: Extract<FieldDescriptor, { kind: "list" }>;
+  value: unknown;
+  onChange: (next: unknown) => void;
+}) {
   const items = Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
   const useDiscriminated = Boolean(field.itemDiscriminator && field.itemVariants);
+  const collapsible = field.collapsible === true;
+  // Open state is tracked per index (sparse array of booleans) and travels
+  // with the item when reordered. Non-collapsible lists render everything.
+  const [openItems, setOpenItems] = useState<(boolean | undefined)[]>([]);
+  const isOpen = (index: number) => (collapsible ? openItems[index] === true : true);
+  const setOpen = (index: number, open: boolean) =>
+    setOpenItems((prev) => {
+      const next = [...prev];
+      next[index] = open;
+      return next;
+    });
+
   const blankRow = () =>
     useDiscriminated && field.itemDiscriminator && field.itemVariants
       ? blankDiscriminated(field.itemDiscriminator, field.itemVariants, Object.keys(field.itemVariants)[0] ?? "")
       : blankItem(field.itemFields ?? []);
+
+  function moveItem(from: number, to: number) {
+    if (to < 0 || to >= items.length) return;
+    const nextItems = [...items];
+    const [moved] = nextItems.splice(from, 1);
+    if (!moved) return;
+    nextItems.splice(to, 0, moved);
+    setOpenItems((prev) => {
+      const states = [...prev];
+      const [state] = states.splice(from, 1);
+      states.splice(to, 0, state);
+      return states;
+    });
+    onChange(nextItems);
+  }
+
+  function addItem() {
+    onChange([...items, blankRow()]);
+    if (collapsible) setOpen(items.length, true);
+  }
+
   return (
     <Field label={field.label} hint={field.help}>
       <div className="space-y-3">
@@ -514,59 +622,107 @@ function FieldRenderer({
             item && typeof item === "object" && !Array.isArray(item)
               ? item
               : {};
+          const title =
+            String(obj[field.titleKey ?? ""] ?? "").trim() ||
+            `${field.itemLabel} #${index + 1}`;
           return (
             <div
               key={index}
               className="rounded-xl border border-line bg-slate-50/60 p-4"
             >
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <span className="text-xs font-bold uppercase tracking-[0.08em] text-ink-muted">
-                  {field.itemLabel} #{index + 1}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onChange(items.filter((_, i) => i !== index))}
-                  disabled={field.min ? items.length <= field.min : false}
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                  Hapus
-                </button>
-              </div>
-              <div className="space-y-3">
-                {useDiscriminated && field.itemDiscriminator && field.itemVariants ? (
-                  <DiscriminatedFields
-                    discriminator={field.itemDiscriminator}
-                    variants={field.itemVariants}
-                    value={obj}
-                    onChange={(next) =>
-                      onChange(items.map((it, i) => (i === index ? next : it)))
-                    }
-                  />
+              <div className="flex items-center justify-between gap-2">
+                {collapsible ? (
+                  <button
+                    type="button"
+                    onClick={() => setOpen(index, !isOpen(index))}
+                    aria-expanded={isOpen(index)}
+                    className="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-sm font-bold text-ink-strong transition hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200",
+                        isOpen(index) && "rotate-180",
+                      )}
+                      aria-hidden
+                    />
+                    <span className="truncate">{title}</span>
+                    {obj.hidden === true ? (
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-800">
+                        Disembunyikan
+                      </span>
+                    ) : null}
+                  </button>
                 ) : (
-                  (field.itemFields ?? []).map((f) => (
-                    <FieldRenderer
-                      key={f.key}
-                      field={f}
-                      value={obj[f.key]}
-                      onChange={(v) =>
-                        onChange(
-                          items.map((it, i) =>
-                            i === index ? { ...obj, [f.key]: v } : it,
-                          ),
-                        )
+                  <span className="text-xs font-bold uppercase tracking-[0.08em] text-ink-muted">
+                    {field.itemLabel} #{index + 1}
+                  </span>
+                )}
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => moveItem(index, index - 1)}
+                    disabled={index === 0}
+                    className="inline-flex min-h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink-muted transition hover:bg-slate-50 hover:text-ink-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={`Naikkan ${field.itemLabel} ke atas`}
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveItem(index, index + 1)}
+                    disabled={index === items.length - 1}
+                    className="inline-flex min-h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink-muted transition hover:bg-slate-50 hover:text-ink-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={`Turunkan ${field.itemLabel} ke bawah`}
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange(items.filter((_, i) => i !== index))}
+                    disabled={field.min ? items.length <= field.min : false}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    Hapus
+                  </button>
+                </div>
+              </div>
+              {isOpen(index) ? (
+                <div className="mt-3 space-y-3">
+                  {useDiscriminated && field.itemDiscriminator && field.itemVariants ? (
+                    <DiscriminatedFields
+                      discriminator={field.itemDiscriminator}
+                      variants={field.itemVariants}
+                      value={obj}
+                      onChange={(next) =>
+                        onChange(items.map((it, i) => (i === index ? next : it)))
                       }
                     />
-                  ))
-                )}
-              </div>
+                  ) : (
+                    (field.itemFields ?? []).map((f) => (
+                      <FieldRenderer
+                        key={f.key}
+                        field={f}
+                        value={obj[f.key]}
+                        onChange={(v) =>
+                          onChange(
+                            items.map((it, i) =>
+                              i === index ? { ...obj, [f.key]: v } : it,
+                            ),
+                          )
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+              ) : null}
             </div>
           );
         })}
         {!field.max || items.length < field.max ? (
           <button
             type="button"
-            onClick={() => onChange([...items, blankRow()])}
+            onClick={addItem}
             className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-dashed border-line-strong bg-white px-3.5 py-2 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
           >
             <Plus className="h-4 w-4" aria-hidden />
@@ -630,5 +786,457 @@ function CharacterCount({ value, max }: { value: string; max: number }) {
     <p className="text-[11px] tabular-nums text-ink-muted">
       {value.length}/{max}
     </p>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Image field — upload ke WordPress Media (route admin site-content) dengan
+// pratinjau. Nilai tetap string biasa: hasil upload mengisi URL, atau ketik
+// path manual (cth: aset lokal /industries/…). String kosong = tanpa foto.
+// ---------------------------------------------------------------------------
+
+const IMAGE_ACCEPT = ".jpg,.jpeg,.png,.webp";
+const MODEL_3D_ACCEPT = ".glb,model/gltf-binary,application/octet-stream";
+const VIDEO_ACCEPT = ".mp4,.webm,video/mp4,video/webm";
+
+function VideoFieldControl({
+  id,
+  label,
+  scope,
+  help,
+  placeholder,
+  maxLength,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  scope: "hero" | "bordir";
+  help?: string;
+  placeholder?: string;
+  maxLength?: number;
+  value: string;
+  onChange: (next: unknown) => void;
+}) {
+  const fileId = `${id}-video-file`;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+
+  async function upload(file: File) {
+    setError(null);
+    setUploadedFilename(null);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("scope", scope);
+      const response = await fetch("/api/admin/site-content/video", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "x-ofissio-internal-role": "product_admin",
+          "x-ofissio-internal-user-id": "product-admin-dev",
+        },
+        body: formData,
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        url?: string;
+        filename?: string;
+        message?: string;
+      };
+      if (!response.ok || !result.ok || !result.url) {
+        setError(result.message ?? "Video gagal diunggah.");
+        return;
+      }
+      onChange(result.url);
+      setUploadedFilename(result.filename ?? file.name);
+    } catch {
+      setError("Video gagal diunggah. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  return (
+    <Field label={label} htmlFor={id} hint={help}>
+      <div className="space-y-3">
+        <div className="overflow-hidden rounded-xl border border-line bg-slate-950">
+          {value ? (
+            <video
+              key={value}
+              src={value}
+              controls
+              muted
+              playsInline
+              preload="metadata"
+              className="aspect-video max-h-72 w-full object-contain"
+            >
+              Browser tidak mendukung pratinjau video.
+            </video>
+          ) : (
+            <div className="grid aspect-video max-h-52 place-items-center text-white/70">
+              <span className="flex items-center gap-2 text-sm font-bold">
+                <VideoIcon className="h-5 w-5" aria-hidden />
+                Belum ada video
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={uploading}
+            aria-busy={uploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <VideoIcon className="h-4 w-4" aria-hidden />
+            )}
+            {uploading ? "Mengunggah video..." : value ? "Ganti video" : "Unggah video"}
+          </Button>
+          {value ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={uploading}
+              onClick={() => {
+                onChange("");
+                setUploadedFilename(null);
+                setError(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+              Gunakan video bawaan
+            </Button>
+          ) : null}
+          <input
+            ref={fileInputRef}
+            id={fileId}
+            type="file"
+            accept={VIDEO_ACCEPT}
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void upload(file);
+            }}
+          />
+        </div>
+        <Input
+          id={id}
+          suppressHydrationWarning
+          value={value}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setUploadedFilename(null);
+          }}
+        />
+        {maxLength ? <CharacterCount value={value} max={maxLength} /> : null}
+        {uploadedFilename ? (
+          <p role="status" className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+            {uploadedFilename} berhasil diunggah. Simpan section untuk menerbitkannya.
+          </p>
+        ) : value ? (
+          <p className="text-xs font-semibold text-ink-muted">Video terhubung dan siap dipratinjau.</p>
+        ) : (
+          <p className="text-xs font-semibold text-ink-muted">Video bawaan akan digunakan.</p>
+        )}
+        {error ? <p role="alert" className="text-xs font-bold text-red-600">{error}</p> : null}
+      </div>
+    </Field>
+  );
+}
+
+function Model3DFieldControl({
+  id,
+  label,
+  help,
+  placeholder,
+  maxLength,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  help?: string;
+  placeholder?: string;
+  maxLength?: number;
+  value: string;
+  onChange: (next: unknown) => void;
+}) {
+  const fileId = `${id}-glb-file`;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+
+  async function upload(file: File) {
+    setError(null);
+    setUploadedFilename(null);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/admin/site-content/model-3d", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "x-ofissio-internal-role": "product_admin",
+          "x-ofissio-internal-user-id": "product-admin-dev",
+        },
+        body: formData,
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        url?: string;
+        filename?: string;
+        message?: string;
+      };
+      if (!response.ok || !result.ok || !result.url) {
+        setError(result.message ?? "Model 3D gagal diunggah.");
+        return;
+      }
+      onChange(result.url);
+      setUploadedFilename(result.filename ?? file.name);
+    } catch {
+      setError("Model 3D gagal diunggah. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  return (
+    <Field label={label} htmlFor={id} hint={help}>
+      <div className="space-y-2">
+        <div className="flex items-start gap-3">
+          <div className="grid h-20 w-16 shrink-0 place-items-center rounded-lg border border-line bg-brand-50 text-brand-700">
+            <Cuboid className="h-6 w-6" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploading}
+                aria-busy={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Cuboid className="h-4 w-4" aria-hidden />
+                )}
+                {uploading ? "Mengunggah model..." : value ? "Ganti model 3D" : "Unggah model 3D"}
+              </Button>
+              {value ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => {
+                    onChange("");
+                    setUploadedFilename(null);
+                    setError(null);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  Hapus model
+                </Button>
+              ) : null}
+              <input
+                ref={fileInputRef}
+                id={fileId}
+                type="file"
+                accept={MODEL_3D_ACCEPT}
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void upload(file);
+                }}
+              />
+            </div>
+            <Input
+              id={id}
+              suppressHydrationWarning
+              value={value}
+              placeholder={placeholder ?? "/3d/model.glb"}
+              maxLength={maxLength}
+              onChange={(event) => {
+                onChange(event.target.value);
+                setUploadedFilename(null);
+              }}
+            />
+            {maxLength ? <CharacterCount value={value} max={maxLength} /> : null}
+          </div>
+        </div>
+        {uploadedFilename ? (
+          <p role="status" className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+            {uploadedFilename} berhasil diunggah. Simpan Section Hero untuk menerbitkannya.
+          </p>
+        ) : value ? (
+          <p className="text-xs font-semibold text-ink-muted">Model 3D terhubung ke slide ini.</p>
+        ) : null}
+        {error ? (
+          <p role="alert" className="text-xs font-bold text-red-600">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </Field>
+  );
+}
+
+function ImageFieldControl({
+  id,
+  label,
+  help,
+  placeholder,
+  maxLength,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  help?: string;
+  placeholder?: string;
+  maxLength?: number;
+  value: string;
+  onChange: (next: unknown) => void;
+}) {
+  const fileId = `${id}-file`;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upload(file: File) {
+    setError(null);
+    setUploading(true);
+    try {
+      // Foto besar di-resize/dikompres di browser dulu (pola foto produk),
+      // server tetap memvalidasi format & ukuran akhir.
+      const { file: prepared } = await optimizeProductImage(file);
+      const formData = new FormData();
+      formData.append("file", prepared);
+      const response = await fetch("/api/admin/site-content/upload", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "x-ofissio-internal-role": "product_admin",
+          "x-ofissio-internal-user-id": "product-admin-dev",
+        },
+        body: formData,
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        url?: string;
+        message?: string;
+      };
+      if (!response.ok || !result.ok || !result.url) {
+        setError(result.message ?? "Foto gagal diunggah.");
+        return;
+      }
+      onChange(result.url);
+    } catch {
+      setError("Foto gagal diunggah. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  return (
+    <Field label={label} htmlFor={id} hint={help}>
+      <div className="space-y-2">
+        <div className="flex items-start gap-3">
+          {value ? (
+            <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg border border-line bg-slate-50">
+              {/* eslint-disable-next-line @next/next/no-img-element -- URL upload bisa dari host media eksternal */}
+              <img
+                src={value}
+                alt={`Pratinjau ${label.toLowerCase()}`}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div
+              aria-hidden
+              className="grid h-20 w-16 shrink-0 place-items-center rounded-lg border border-dashed border-line-strong bg-slate-50 text-ink-muted"
+            >
+              <ImagePlus className="h-5 w-5" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <ImagePlus className="h-4 w-4" aria-hidden />
+                )}
+                {uploading ? "Mengunggah..." : "Unggah foto"}
+              </Button>
+              {value ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => onChange("")}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  Hapus foto
+                </Button>
+              ) : null}
+              <input
+                ref={fileInputRef}
+                id={fileId}
+                type="file"
+                accept={IMAGE_ACCEPT}
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void upload(file);
+                }}
+              />
+            </div>
+            <Input
+              id={id}
+              suppressHydrationWarning
+              value={value}
+              placeholder={placeholder ?? "URL atau path foto…"}
+              maxLength={maxLength}
+              onChange={(event) => onChange(event.target.value)}
+            />
+            {maxLength ? <CharacterCount value={value} max={maxLength} /> : null}
+          </div>
+        </div>
+        {error ? (
+          <p role="alert" className="text-xs font-bold text-red-600">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </Field>
   );
 }

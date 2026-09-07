@@ -3,7 +3,7 @@ import { Bolt, Boxes, Ruler, RotateCcw, Scissors, Users } from "lucide-react";
 const ITEMS = [
   { icon: Boxes, title: "Stok Reliable", desc: "Ketersediaan stok konsisten memudahkan perencanaan pengadaan seragam sepanjang tahun." },
   { icon: Scissors, title: "Siap Bordir Logo", desc: "Fasilitas bordir in-house memastikan logo perusahaan diaplikasikan dengan presisi tinggi." },
-  { icon: Users, title: "MOQ Kecil", desc: "Melayani seragam dalam jumlah kecil mulai 8 pcs — untuk tim yang dinamis." },
+  { icon: Users, title: "Bordir Mulai 8 Pcs", desc: "Belanja mulai 1 pcs; tambahkan bordir logo mulai 8 pcs. Full Custom min. 48 pcs." },
   { icon: Ruler, title: "Ukuran S–3XL", desc: "Pilihan ukuran lengkap memastikan setiap anggota tim mendapatkan ukuran yang pas." },
   { icon: Bolt, title: "Proses Cepat", desc: "Dari pemilihan hingga pengiriman, alur kerja didesain untuk efisiensi waktu perusahaan." },
   { icon: RotateCcw, title: "Repeat Order Mudah", desc: "Data logo dan spesifikasi pesanan tersimpan rapi untuk pemesanan ulang yang instan." },

@@ -20,6 +20,7 @@
 import "server-only";
 
 import { unstable_cache } from "next/cache";
+import { SupabaseDatabaseError } from "@/features/database/database.errors";
 
 import {
   SECTION_REGISTRY,
@@ -73,6 +74,14 @@ function resolveEffectiveData(key: SectionKey, raw: unknown): unknown {
   return clone(entry.default);
 }
 
+function assemblePublicSiteContent(rows: Record<string, unknown>): PublicSiteContent {
+  const assembled = {} as Record<SectionKey, unknown>;
+  for (const entry of SECTION_REGISTRY) {
+    assembled[entry.key] = resolveEffectiveData(entry.key, rows[entry.key]);
+  }
+  return assembled as unknown as PublicSiteContent;
+}
+
 // ---------------------------------------------------------------------------
 // Admin read (uncached)
 // ---------------------------------------------------------------------------
@@ -114,14 +123,19 @@ export async function getSiteContent(): Promise<SiteContentState> {
 
 export const getPublicSiteContent = unstable_cache(
   async (): Promise<PublicSiteContent> => {
-    const read = await readAllSiteContent();
-    const assembled = {} as Record<SectionKey, unknown>;
-    for (const entry of SECTION_REGISTRY) {
-      assembled[entry.key] = resolveEffectiveData(entry.key, read.rows[entry.key]);
+    try {
+      const read = await readAllSiteContent();
+      return assemblePublicSiteContent(read.rows);
+    } catch (error) {
+      // Public pages must remain available during a temporary Supabase outage.
+      // The admin read path intentionally still throws, so operators can see
+      // that persisted content is unavailable instead of unknowingly editing
+      // defaults. The client already logs the internal database error safely.
+      if (error instanceof SupabaseDatabaseError) {
+        return assemblePublicSiteContent({});
+      }
+      throw error;
     }
-    // Sound cast: every SectionKey maps to its validated-or-defaulted data, and
-    // PublicSiteContent's keys mirror SectionKey. Validation guarantees shape.
-    return assembled as unknown as PublicSiteContent;
   },
   // The keyParts MUST carry a registry-shape signature. The function body above
   // is shape-agnostic (it iterates SECTION_REGISTRY generically), so its source
@@ -133,8 +147,14 @@ export const getPublicSiteContent = unstable_cache(
   // gaining `photo`), which leave the count untouched but change what a fresh
   // fallback computes — without it, a pre-change entry keeps being served in
   // both dev and production until a manual revalidateTag.
-  ["site-content", `sections:${SITE_CONTENT_SECTION_KEYS.length}`, `shape:${siteContentDefaultsSignature()}`],
-  { tags: ["site-content"] },
+  ["site-content-v2", `sections:${SITE_CONTENT_SECTION_KEYS.length}`, `shape:${siteContentDefaultsSignature()}`],
+  {
+    tags: ["site-content"],
+    // Admin saves still invalidate immediately. This short backstop also keeps
+    // separate local/VPS instances from retaining an old content snapshot
+    // indefinitely when another process performed the write.
+    revalidate: 60,
+  },
 );
 
 // ---------------------------------------------------------------------------

@@ -1,9 +1,15 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+import { deflateSync } from "node:zlib";
+
 import type { PdfTextOptions } from "./pdf.types";
+import { decodePng } from "./png-decoder";
 
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
+const LANDSCAPE_WIDTH = 841.89;
+const LANDSCAPE_HEIGHT = 595.28;
 const MARGIN = 42;
 
 type PdfFont = NonNullable<PdfTextOptions["font"]>;
@@ -11,6 +17,7 @@ type PdfFont = NonNullable<PdfTextOptions["font"]>;
 interface PdfPage {
   ops: string[];
   links: PdfLinkAnnotation[];
+  imageNames: string[];
 }
 
 interface PdfLinkAnnotation {
@@ -19,6 +26,17 @@ interface PdfLinkAnnotation {
   width: number;
   height: number;
   url: string;
+}
+
+interface PdfImageEntry {
+  name: string;
+  /** Stream image siap embed (sudah difilter untuk PDF). */
+  stream: Buffer;
+  filter: "DCTDecode" | "FlateDecode";
+  width: number;
+  height: number;
+  colorSpace: string;
+  smaskStream: Buffer | null;
 }
 
 function rgb(hex = "#111827") {
@@ -62,19 +80,24 @@ function estimateTextWidth(text: string, size: number) {
 }
 
 export class SimplePdfDocument {
-  readonly width = PAGE_WIDTH;
-  readonly height = PAGE_HEIGHT;
+  readonly width: number;
+  readonly height: number;
   readonly margin = MARGIN;
   private readonly pages: PdfPage[] = [];
+  private readonly imageEntries = new Map<string, PdfImageEntry>();
   private page: PdfPage;
   cursorY = MARGIN;
 
-  constructor() {
+  constructor(options: { orientation?: "portrait" | "landscape" } = {}) {
+    this.width =
+      options.orientation === "landscape" ? LANDSCAPE_WIDTH : PAGE_WIDTH;
+    this.height =
+      options.orientation === "landscape" ? LANDSCAPE_HEIGHT : PAGE_HEIGHT;
     this.page = this.addPage();
   }
 
   addPage() {
-    const page: PdfPage = { ops: [], links: [] };
+    const page: PdfPage = { ops: [], links: [], imageNames: [] };
     this.pages.push(page);
     this.page = page;
     this.cursorY = MARGIN;
@@ -159,6 +182,35 @@ export class SimplePdfDocument {
     );
   }
 
+  /**
+   * Embed gambar raster (JPEG baseline atau PNG depth-8 non-interlaced) di
+   * dalam rect (x, y, width, height) — y dari atas halaman. Return false bila
+   * format tidak didukung; pemanggil wajib menggambar placeholder sendiri.
+   */
+  image(bytes: Uint8Array, x: number, y: number, width: number, height: number) {
+    if (width <= 0 || height <= 0) return false;
+    const entry = this.resolveImageEntry(Buffer.from(bytes));
+    if (!entry) return false;
+    if (!this.page.imageNames.includes(entry.name)) {
+      this.page.imageNames.push(entry.name);
+    }
+    this.page.ops.push(
+      `q ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${this.toPdfY(y + height).toFixed(2)} cm ${entry.name} Do Q`,
+    );
+    return true;
+  }
+
+  private resolveImageEntry(bytes: Buffer): PdfImageEntry | null {
+    const key = createHash("sha256").update(bytes).digest("hex");
+    const cached = this.imageEntries.get(key);
+    if (cached) return cached;
+    const entry = buildImageEntry(bytes);
+    if (!entry) return null;
+    entry.name = `/Im${this.imageEntries.size + 1}`;
+    this.imageEntries.set(key, entry);
+    return entry;
+  }
+
   wrappedText(
     value: string,
     x: number,
@@ -204,6 +256,24 @@ export class SimplePdfDocument {
     const fontRegularId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
     const fontBoldId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
     const fontMonoId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>");
+
+    // XObject gambar dibuat sebelum halaman agar id stabil; stream biner
+    // disimpan sebagai string latin1 (1 char = 1 byte, lossless utk PDF).
+    const imageObjectIdByName = new Map<string, number>();
+    for (const entry of this.imageEntries.values()) {
+      let smarkReference = "";
+      if (entry.smaskStream) {
+        const smaskId = addObject(
+          `<< /Type /XObject /Subtype /Image /Width ${entry.width} /Height ${entry.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /Length ${entry.smaskStream.length} >>\nstream\n${entry.smaskStream.toString("latin1")}\nendstream`,
+        );
+        smarkReference = ` /SMask ${smaskId} 0 R`;
+      }
+      const imageId = addObject(
+        `<< /Type /XObject /Subtype /Image /Width ${entry.width} /Height ${entry.height} /ColorSpace /${entry.colorSpace} /BitsPerComponent 8 /Filter /${entry.filter}${smarkReference} /Length ${entry.stream.length} >>\nstream\n${entry.stream.toString("latin1")}\nendstream`,
+      );
+      imageObjectIdByName.set(entry.name, imageId);
+    }
+
     const pageIds: number[] = [];
     const contentIds: number[] = [];
 
@@ -235,8 +305,15 @@ export class SimplePdfDocument {
         annotations.length > 0
           ? ` /Annots [${annotations.map((id) => `${id} 0 R`).join(" ")}]`
           : "";
+      const page = this.pages[index]!;
+      const xobjectsEntry =
+        page.imageNames.length > 0
+          ? ` /XObject << ${page.imageNames
+              .map((name) => `${name} ${imageObjectIdByName.get(name)} 0 R`)
+              .join(" ")} >>`
+          : "";
       const pageId = addObject(
-        `<< /Type /Page /Parent ${pagesIdPlaceholder} 0 R /MediaBox [0 0 ${this.width.toFixed(2)} ${this.height.toFixed(2)}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R /F3 ${fontMonoId} 0 R >> >> /Contents ${contentIds[index]} 0 R${annotationsEntry} >>`,
+        `<< /Type /Page /Parent ${pagesIdPlaceholder} 0 R /MediaBox [0 0 ${this.width.toFixed(2)} ${this.height.toFixed(2)}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R /F3 ${fontMonoId} 0 R >>${xobjectsEntry} >> /Contents ${contentIds[index]} 0 R${annotationsEntry} >>`,
       );
       pageIds[index] = pageId;
     }
@@ -268,6 +345,73 @@ export class SimplePdfDocument {
   private toPdfY(y: number) {
     return this.height - y;
   }
+}
+
+function buildImageEntry(bytes: Buffer): PdfImageEntry | null {
+  if (bytes.length > 8 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    const jpeg = parseJpegDimensions(bytes);
+    if (!jpeg) return null;
+    return {
+      name: "",
+      stream: bytes,
+      filter: "DCTDecode",
+      width: jpeg.width,
+      height: jpeg.height,
+      colorSpace:
+        jpeg.components === 1 ? "DeviceGray" : jpeg.components === 4 ? "DeviceCMYK" : "DeviceRGB",
+      smaskStream: null,
+    };
+  }
+  try {
+    const decoded = decodePng(bytes);
+    return {
+      name: "",
+      stream: deflateSync(decoded.colorData),
+      filter: "FlateDecode",
+      width: decoded.width,
+      height: decoded.height,
+      colorSpace: decoded.colorSpace,
+      smaskStream: decoded.smaskData ? deflateSync(decoded.smaskData) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseJpegDimensions(bytes: Buffer) {
+  let offset = 2;
+  let width = 0;
+  let height = 0;
+  let components = 0;
+  while (offset + 9 < bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+    const marker = bytes[offset + 1]!;
+    if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      offset += 2;
+      continue;
+    }
+    if (marker === 0xda) break; // start of scan — dimensi harus sudah terbaca di SOF
+    const segmentLength = bytes.readUInt16BE(offset + 2);
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc
+    ) {
+      if (marker === 0xc2) return null; // progressive JPEG tidak didukung DCTDecode aman
+      height = bytes.readUInt16BE(offset + 5);
+      width = bytes.readUInt16BE(offset + 7);
+      components = bytes[offset + 9]!;
+      break;
+    }
+    offset += 2 + segmentLength;
+  }
+  if (!width || !height || (components !== 1 && components !== 3 && components !== 4)) return null;
+  return { width, height, components };
 }
 
 export function wrapText(value: string, width: number, size: number) {

@@ -4,6 +4,10 @@ import type {
   OrderProcessRoute,
   WooOrderSyncStatus,
 } from "@/features/orders/order.types";
+import type {
+  EmbroideryTechnique,
+  EmbroideryZone,
+} from "@/types/uniform-3d";
 
 export type QuotationRequirementType =
   | "standard_product"
@@ -99,6 +103,15 @@ export const CUSTOM_BRIEF_APPROVAL_STATUSES = [
 export type CustomBriefApprovalStatus =
   (typeof CUSTOM_BRIEF_APPROVAL_STATUSES)[number];
 
+export const BRIEF_GENDERS = [
+  "men",
+  "women",
+  "custom",
+  "unspecified",
+] as const;
+
+export type BriefGender = (typeof BRIEF_GENDERS)[number];
+
 export const TECHNICAL_GARMENT_CATEGORIES = [
   "upper",
   "lower",
@@ -125,11 +138,34 @@ export interface TechnicalSpecificationValue {
   option: string | null;
   detail: string | null;
   notes: string | null;
+  /** Kolom "Ukuran" di lembar approval desain (mis. "Lingkar dada 108 cm"). */
+  measurements?: string | null;
 }
 
 export interface TechnicalSizeQuantity {
   size: string;
   quantity: number;
+  /** Breakdown Pria/Wanita/Custom untuk jumlah per ukuran. */
+  gender?: BriefGender;
+}
+
+/**
+ * Area bordir/logo pada satu garment untuk lembar approval desain.
+ * Satu zona hanya boleh dipakai satu area (dijaga oleh validasi service).
+ */
+export interface TechnicalEmbroideryArea {
+  /** Label singkat di lembar approval, mis. "A", "B", "C". */
+  label: string;
+  zone: EmbroideryZone;
+  positionNote: string | null;
+  offsetXCm: number | null;
+  offsetYCm: number | null;
+  widthCm: number;
+  heightCm: number;
+  technique: EmbroideryTechnique;
+  logoFileId: string | null;
+  logoFileName: string | null;
+  notes: string | null;
 }
 
 export interface TechnicalGarmentSpecification {
@@ -140,6 +176,62 @@ export interface TechnicalGarmentSpecification {
   quantity: number;
   specifications: TechnicalSpecificationValue[];
   sizeBreakdown: TechnicalSizeQuantity[];
+  /** Area bordir maksimal 6, satu per zona. */
+  embroideryAreas?: TechnicalEmbroideryArea[];
+  /** Foto mockup garment (tampak depan/belakang) untuk lembar approval. */
+  figureFrontFileId?: string | null;
+  figureBackFileId?: string | null;
+}
+
+/** Baris "Catatan custom" di lembar approval desain. */
+export interface BriefCustomAdjustment {
+  id: string;
+  size: string;
+  color: string | null;
+  changeNote: string;
+  quantity: number;
+}
+
+export const BRIEF_SIGNATURE_PARTIES = [
+  "design",
+  "customer",
+  "production",
+] as const;
+
+export type BriefSignatureParty = (typeof BRIEF_SIGNATURE_PARTIES)[number];
+
+/**
+ * Tanda tangan digital lembar approval: klik portal + identitas penandatangan.
+ * Customer wajib mencentang klausa persetujuan (consentText tersimpan).
+ */
+export interface BriefSignature {
+  party: BriefSignatureParty;
+  signerName: string;
+  signerTitle: string;
+  signerUserId: string | null;
+  method: "portal_click";
+  consentText: string | null;
+  signedAt: string;
+  revokedAt: string | null;
+  revisionNo: number;
+}
+
+/**
+ * Salinan permintaan awal customer (portal) sebelum diperkaya sales menjadi
+ * brief teknis — dipakai sebagai pembanding di halaman approval.
+ */
+export interface BriefCustomerRequestSnapshot {
+  projectName: string | null;
+  garmentType: string | null;
+  estimatedQuantity: number | null;
+  usageContext: string | null;
+  designDescription: string;
+  materialPreference: string | null;
+  colorPreference: string | null;
+  sizeNotes: string | null;
+  targetDate: string | null;
+  referenceFiles: Array<{ fileId: string; fileName: string }>;
+  capturedAt: string;
 }
 
 export interface ProductionRequestBrief {
@@ -160,6 +252,18 @@ export interface ProductionRequestBrief {
   approvalRequestedAt?: string | null;
   approvedAt?: string | null;
   approvalRevisionNote?: string | null;
+  /** Nomor revisi brief (0 = awal; naik tiap request_revision). */
+  revisionNo?: number;
+  revisedAt?: string | null;
+  /** Penyesuaian custom per ukuran/warna untuk "Catatan custom". */
+  customAdjustments?: BriefCustomAdjustment[];
+  /** Tanda tangan digital multi-pihak (design/customer/production). */
+  signatures?: BriefSignature[];
+  /** Waktu sales mengambil alih brief portal menjadi brief teknis. */
+  enrichedAt?: string | null;
+  enrichedByUserId?: string | null;
+  /** Permintaan awal customer sebelum pengayaan (diperoleh saat takeover). */
+  customerRequestSnapshot?: BriefCustomerRequestSnapshot | null;
 }
 
 export const QUOTATION_STATUSES = [
@@ -348,6 +452,8 @@ export interface CreateCustomQuotationRequestInput {
   customerNotes: string | null;
   actorType?: "customer" | "internal";
   sendCustomerConfirmation?: boolean;
+  /** Sales-assisted: minta ttd customer (default) atau buat tanpa persetujuan formal (repeat order). */
+  requireCustomerApproval?: boolean;
 }
 
 export interface CreateQuotationRequestResult {

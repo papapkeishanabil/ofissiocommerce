@@ -18,7 +18,7 @@ import {
   AdminProcessRouteBadge,
   AdminProcessRouteLegend,
 } from "@/features/admin/components/AdminProcessRouteBadge";
-import { AdminTableShell } from "@/features/admin/components/AdminSurface";
+import { ADMIN_ACTION_LINK_CLASS, AdminTableShell } from "@/features/admin/components/AdminSurface";
 import { formatAdminDate, formatRupiah } from "@/features/admin/admin.utils";
 import { cn } from "@/lib/utils";
 
@@ -272,14 +272,14 @@ function DesktopOrderRow({ order }: { order: AdminOrderRow }) {
         <Link
           href={`/admin/orders/${order.id}`}
           className={cn(
-            "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2",
+            ADMIN_ACTION_LINK_CLASS,
             priority
               ? "bg-emerald-700 text-white hover:bg-emerald-800 focus-visible:outline-emerald-700"
               : "border border-line bg-white text-brand-700 hover:border-brand-200 hover:bg-brand-50 focus-visible:outline-brand-600",
           )}
         >
           {priority ? "Teruskan ke Pengerjaan" : "Lihat detail"}
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
       </td>
     </tr>

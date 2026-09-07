@@ -41,6 +41,7 @@ export const DEFAULT_INDUSTRIES: IndustryMaster[] = [
   ], 30),
   industry("Hospitality", "hospitality", "Seragam hotel dan layanan hospitality.", [
     "hotel",
+    "perhotelan",
     "restoran",
     "cafe",
     "hospitality",
@@ -48,6 +49,7 @@ export const DEFAULT_INDUSTRIES: IndustryMaster[] = [
   industry("Healthcare", "healthcare", "Seragam kesehatan dan fasilitas medis.", [
     "kesehatan",
     "healthcare",
+    "health care",
     "rumah sakit",
     "klinik",
     "medis",
@@ -73,6 +75,7 @@ export const DEFAULT_INDUSTRIES: IndustryMaster[] = [
   industry("Logistics", "logistics", "Seragam logistik dan pergudangan.", [
     "logistik",
     "logistics",
+    "logistic",
     "gudang",
     "kurir",
     "ekspedisi",
@@ -106,6 +109,7 @@ export const DEFAULT_INDUSTRIES: IndustryMaster[] = [
     "f&b",
     "fnb",
     "food beverage",
+    "food and beverage",
     "makanan",
     "minuman",
     "restoran",

@@ -1,0 +1,123 @@
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Building2, FileCheck2, TrendingUp, UsersRound } from "lucide-react";
+
+import { resolveHomepageIcon } from "@/features/site-content/icon-registry";
+import type { IndustriGroup, IndustriSectionData, IndustriTile } from "@/features/site-content/content.schema";
+import { HomeSectionMarker } from "./HomeSectionMarker";
+
+const CAMPAIGN_PHOTOS: Record<string, string> = {
+  "/industries/bengkel-model.jpg": "/industries/campaign/bengkel-teknisi.png",
+  "/industries/klinik-model.jpg": "/industries/campaign/apotek-klinik.png",
+  "/industries/retail-model.jpg": "/industries/campaign/retail-restoran.png",
+};
+
+const PROOFS = [
+  { label: "Quotation formal", description: "Dokumen resmi dan transparan untuk proses pengadaan.", icon: FileCheck2 },
+  { label: "Multi-divisi", description: "Solusi seragam untuk berbagai departemen dalam satu standar.", icon: UsersRound },
+  { label: "Pengadaan skala besar", description: "Kapasitas produksi dan distribusi terukur.", icon: Building2 },
+] as const;
+
+function visibleTiles(group: IndustriGroup | undefined) {
+  return (group?.tiles ?? []).filter((tile) => tile.hidden !== true);
+}
+
+function photoFor(tile: IndustriTile) {
+  return CAMPAIGN_PHOTOS[tile.photo] ?? tile.photo;
+}
+
+function compactTitle(tile: IndustriTile) {
+  if (tile.industry === "Bengkel") return "Bengkel & Teknisi";
+  if (tile.industry === "Kesehatan") return "Apotek & Klinik";
+  if (tile.industry === "Retail") return "Retail & Restoran";
+  return tile.label;
+}
+
+function MiniIndustry({ tile }: { tile: IndustriTile }) {
+  const Icon = resolveHomepageIcon(tile.icon);
+  const photo = photoFor(tile);
+  return (
+    <Link href={`/catalog?industri=${encodeURIComponent(tile.industry)}`} className="group grid min-h-40 grid-cols-[minmax(0,1.05fr)_minmax(8rem,0.95fr)] overflow-hidden rounded-xl bg-white/70 shadow-[0_18px_45px_-36px_rgba(8,29,67,0.55)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_55px_-34px_rgba(8,29,67,0.48)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
+      <div className="relative min-h-40 overflow-hidden bg-[#e8e3da]">
+        {photo ? <Image src={photo} alt={`Seragam ${tile.label}`} fill unoptimized sizes="(max-width: 1024px) 55vw, 18vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.025]" /> : null}
+      </div>
+      <div className="flex flex-col justify-center p-5">
+        <Icon className="h-7 w-7 text-ochre-600" strokeWidth={1.6} aria-hidden="true" />
+        <h3 className="mt-3 text-lg font-extrabold leading-[1.05] tracking-[-0.02em] text-brand-950">{compactTitle(tile)}</h3>
+        <span className="mt-4 h-px w-10 bg-ochre-500 transition-[width] duration-300 group-hover:w-16" aria-hidden="true" />
+      </div>
+    </Link>
+  );
+}
+
+export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
+  const businessGroup = data.groups.find((group) => group.dot === "ochre") ?? data.groups[0];
+  const visible = visibleTiles(businessGroup);
+  const ordered = ["Bengkel", "Kesehatan", "Retail"]
+    .map((industry) => visible.find((tile) => tile.industry === industry))
+    .filter((tile): tile is IndustriTile => Boolean(tile));
+  const lead = ordered[0] ?? visible[0];
+
+  return (
+    <section id="usaha" className="scroll-mt-28 bg-[#f8f4ec] py-16 lg:py-20">
+      <div className="mx-auto max-w-[1600px] px-6 lg:px-10">
+        <header className="mx-auto max-w-4xl text-center">
+          <div className="mb-6"><HomeSectionMarker number="02" label="Bisnis & Korporasi" align="center" /></div>
+          <h2 className="text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-950 sm:text-6xl lg:text-[4rem]">
+            Seragam Profesional untuk <span className="text-ochre-600">Berbagai Usaha.</span>
+          </h2>
+          <p className="mx-auto mt-5 max-w-[55ch] text-base leading-relaxed text-ink-muted sm:text-lg">Dari operasional lapangan hingga organisasi terstruktur. Ofissio siap menjadi partner andal Anda.</p>
+        </header>
+
+        <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:gap-0">
+          <article className="lg:pr-12 xl:pr-16">
+            <div className="flex items-center gap-5">
+              <TrendingUp className="h-9 w-9 shrink-0 text-ochre-600" strokeWidth={1.65} aria-hidden="true" />
+              <h3 className="shrink-0 text-2xl font-extrabold tracking-[-0.025em] text-brand-950 sm:text-3xl">Bisnis Naik Kelas</h3>
+              <span className="h-px flex-1 bg-ochre-500/70" aria-hidden="true" />
+            </div>
+            <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">Seragam kerja dan kemasan profesional yang dirancang untuk menonjolkan performa tim di berbagai industri.</p>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-[1.08fr_0.92fr]">
+              <Link href={lead ? `/catalog?industri=${encodeURIComponent(lead.industry)}` : "/catalog"} className="group relative min-h-[34rem] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_68px_-38px_rgba(8,29,67,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 sm:min-h-[38rem] lg:min-h-[44rem]">
+                {lead && photoFor(lead) ? <Image src={photoFor(lead)} alt={`Seragam lengkap ${lead.label}`} fill unoptimized sizes="(max-width: 640px) 100vw, (max-width: 1024px) 55vw, 27vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]" /> : null}
+              </Link>
+              <div className="grid gap-3">
+                {ordered.map((tile) => <MiniIndustry key={`${tile.industry}-${tile.label}`} tile={tile} />)}
+              </div>
+            </div>
+            <Link href="/catalog" className="group mt-7 inline-flex min-h-11 items-center gap-3 border-b border-ochre-500 py-2 text-sm font-bold text-brand-950 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
+              Jelajahi Bisnis Naik Kelas <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+            </Link>
+          </article>
+
+          <article className="border-t border-ochre-500/50 pt-10 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0 xl:pl-16">
+            <div className="flex items-center gap-5">
+              <Building2 className="h-9 w-9 shrink-0 text-brand-950" strokeWidth={1.65} aria-hidden="true" />
+              <h3 className="shrink-0 text-2xl font-extrabold tracking-[-0.025em] text-brand-950 sm:text-3xl">Solusi Korporasi</h3>
+              <span className="h-px flex-1 bg-ochre-500/70" aria-hidden="true" />
+            </div>
+            <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">Pengadaan seragam terstruktur untuk perusahaan dan organisasi berskala besar dengan standar tinggi.</p>
+
+            <div className="relative mt-8 min-h-[28rem] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] sm:min-h-[34rem] lg:min-h-[38rem]">
+              <Image src="/industries/ofissio-team-campaign-v2.png" alt="Tim berseragam Ofissio untuk solusi korporasi" fill unoptimized sizes="(max-width: 1024px) 100vw, 46vw" className="object-cover object-center" />
+            </div>
+
+            <div className="mt-5 grid gap-0 sm:grid-cols-3">
+              {PROOFS.map(({ label, description, icon: Icon }, index) => (
+                <div key={label} className={`py-5 sm:px-5 ${index === 0 ? "sm:pl-0" : "border-t border-ochre-500/40 sm:border-l sm:border-t-0"}`}>
+                  <Icon className="h-8 w-8 text-brand-950" strokeWidth={1.55} aria-hidden="true" />
+                  <h4 className="mt-3 text-base font-extrabold leading-tight text-brand-950">{label}</h4>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-muted">{description}</p>
+                </div>
+              ))}
+            </div>
+            <Link href="/catalog?industri=Corporate" className="group mt-4 inline-flex min-h-11 items-center gap-3 border-b border-ochre-500 py-2 text-sm font-bold text-brand-950 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
+              Jelajahi Solusi Korporasi <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+            </Link>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}

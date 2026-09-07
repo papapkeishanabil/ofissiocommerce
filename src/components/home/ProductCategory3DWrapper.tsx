@@ -11,6 +11,12 @@ const ProductCategory3D = dynamic(() => import("./ProductCategory3D").then((m) =
   ),
 });
 
-export function ProductCategory3DWrapper({ url }: { url: string }) {
-  return <ProductCategory3D url={url} />;
+export function ProductCategory3DWrapper({
+  url,
+  autoRotate = true,
+}: {
+  url: string;
+  autoRotate?: boolean;
+}) {
+  return <ProductCategory3D url={url} autoRotate={autoRotate} />;
 }

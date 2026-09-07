@@ -12,6 +12,8 @@ import {
 
 import { AdminBadge, adminStatusTone } from "@/features/admin/components/AdminBadge";
 import { AdminBriefApprovalLink } from "@/features/admin/components/AdminBriefApprovalLink";
+import { AdminBriefEnrichmentStart } from "@/features/admin/components/AdminBriefEnrichmentStart";
+import { AdminBriefSignaturePanel } from "@/features/admin/components/AdminBriefSignaturePanel";
 import { AdminDocumentActions } from "@/features/admin/components/AdminDocumentActions";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminProductThumb } from "@/features/admin/components/AdminProductThumb";
@@ -38,6 +40,7 @@ import {
 } from "@/features/shipping-settings/shipping-settings.service";
 import { formatCustomerRequestNumber, quotationTaxLabel } from "@/features/quotation/quotation.utils";
 import {
+  briefApprovalStatusLabel,
   getBriefApprovalStatus,
   requirementTypeLabel,
   requiresCustomerBriefApproval,
@@ -80,11 +83,18 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
   const quotationPdf = documents.find(
     (document) => document.documentType === "quotation_pdf" && document.status === "generated",
   );
+  const approvalSheetPdf = documents.find(
+    (document) =>
+      document.documentType === "design_approval_sheet_pdf" && document.status === "generated",
+  );
   const canGenerateQuotationPdf = ["quoted", "accepted", "converted_to_order"].includes(
     quotation.status,
   );
   const briefApprovalStatus = getBriefApprovalStatus(quotation.productionBrief);
   const briefApprovalPending = requiresCustomerBriefApproval(quotation);
+  const briefIsPortal =
+    quotation.productionBrief?.intakeChannel === "customer_portal";
+  const briefEnriched = Boolean(quotation.productionBrief?.enrichedAt);
   const isOfficialQuotation = Boolean(
     ["quoted", "revision_requested", "accepted", "rejected", "expired", "converted_to_order", "cancelled"].includes(
         quotation.status,
@@ -128,6 +138,16 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         <AdminQuotationProgress status={quotation.status} requestMode={!isOfficialQuotation} />
       )}
 
+      {quotation.source === "custom_request" &&
+      quotation.productionBrief &&
+      (!briefIsPortal || briefEnriched) ? (
+        <AdminBriefSignaturePanel quotation={quotation} />
+      ) : null}
+
+      {quotation.source === "custom_request" && briefIsPortal && !briefEnriched ? (
+        <AdminBriefEnrichmentStart quotationId={quotation.id} />
+      ) : null}
+
       <AdminQuotationProcessControl quotation={quotation} />
 
       {quotation.requirementType === "standard_customization" ? (
@@ -168,9 +188,9 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             </AdminBadge>
             <AdminProcessRouteBadge route={quotation.requestedProcessRoute} />
             <AdminBadge tone={adminStatusTone(quotation.status)}>{quotation.status}</AdminBadge>
-            {quotation.productionBrief?.intakeChannel !== "customer_portal" ? (
+            {!briefIsPortal || briefEnriched ? (
               <AdminBadge tone={briefApprovalStatus === "approved" ? "success" : "warning"}>
-                brief {briefApprovalStatus}
+                brief {briefApprovalStatusLabel(briefApprovalStatus)}
               </AdminBadge>
             ) : null}
             <AdminBadge tone={adminStatusTone(quotation.emailStatus)}>{quotation.emailStatus}</AdminBadge>
@@ -236,9 +256,17 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
               <BriefRow
                 label="Sumber brief"
                 value={quotation.productionBrief.intakeChannel === "customer_portal"
-                  ? "Customer portal"
+                  ? (briefEnriched
+                    ? "Customer portal · diperkaya sales"
+                    : "Customer portal")
                   : `Sales-assisted · ${quotation.productionBrief.intakeChannel ?? "internal"}`}
               />
+              {quotation.productionBrief.customerRequestSnapshot ? (
+                <BriefRow
+                  label="Permintaan awal customer"
+                  value={`Di-snapshot ${formatAdminDate(quotation.productionBrief.customerRequestSnapshot.capturedAt)}`}
+                />
+              ) : null}
               <BriefRow label="No. PO / referensi" value={quotation.productionBrief.externalReference ?? "Belum dicatat"} />
               {(quotation.productionBrief.technicalSpecifications?.length ?? 0) > 0 ? (
                 <div className="md:col-span-2">
@@ -344,6 +372,48 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
           />
         </div>
       </AdminSectionCard>
+
+      {quotation.source === "custom_request" &&
+      (quotation.productionBrief?.technicalSpecifications ?? []).length > 0 ? (
+        <AdminSectionCard
+          icon={FileText}
+          tone="neutral"
+          eyebrow="Documents"
+          title="Lembar Approval Desain"
+          description={`PDF A4 landscape, 1 halaman per garment (revisi ${String(
+            quotation.productionBrief?.revisionNo ?? 0,
+          ).padStart(2, "0")}). Regenerate otomatis saat revisi/tanda tangan baru.`}
+          actions={
+            <AdminBadge tone={approvalSheetPdf ? "success" : "warning"}>
+              {approvalSheetPdf ? "generated" : "not generated"}
+            </AdminBadge>
+          }
+        >
+          {approvalSheetPdf ? (
+            <dl className="grid gap-3 text-sm md:grid-cols-3">
+              <InfoCard label="File" value={approvalSheetPdf.filename} />
+              <InfoCard label="Template" value={approvalSheetPdf.templateId} />
+              <InfoCard
+                label="Generated"
+                value={approvalSheetPdf.generatedAt ? formatAdminDate(approvalSheetPdf.generatedAt) : "-"}
+              />
+            </dl>
+          ) : null}
+          <div className="mt-4">
+            <AdminDocumentActions
+              entityId={quotation.id}
+              generatePath={`/api/admin/quotations/${quotation.id}/generate-approval-sheet`}
+              downloadPath={`/api/admin/quotations/${quotation.id}/approval-sheet-pdf`}
+              canGenerate
+              generateLabel="Generate lembar approval"
+              regenerateLabel="Regenerate"
+              downloadLabel="Download PDF"
+              printLabel="Print"
+              templateId="design_approval_sheet_ofissio"
+            />
+          </div>
+        </AdminSectionCard>
+      ) : null}
 
       <section id="final-pricing-summary" className="grid scroll-mt-28 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <AdminSectionCard icon={Wallet} eyebrow="Final pricing" title="Harga final">

@@ -6,6 +6,7 @@ export const DOCUMENT_TYPES = [
   "invoice_pdf",
   "embroidery_work_order_pdf",
   "production_work_order_pdf",
+  "design_approval_sheet_pdf",
   "production_order_pdf_future",
   "packing_slip_pdf_future",
 ] as const;
@@ -36,6 +37,7 @@ export const DOCUMENT_TEMPLATE_IDS = [
   "invoice_ofissio_custom",
   "embroidery_work_order_ofissio",
   "production_work_order_ofissio",
+  "design_approval_sheet_ofissio",
 ] as const;
 
 export type DocumentTemplateId = (typeof DOCUMENT_TEMPLATE_IDS)[number];
@@ -112,6 +114,14 @@ export interface GenerateEmbroideryWorkOrderPdfInput {
 
 export interface GenerateProductionWorkOrderPdfInput {
   processOrderId: string;
+  templateId?: DocumentTemplateId;
+  forceRegenerate?: boolean;
+  actorId: string;
+  request?: Request;
+}
+
+export interface GenerateDesignApprovalSheetPdfInput {
+  quotationId: string;
   templateId?: DocumentTemplateId;
   forceRegenerate?: boolean;
   actorId: string;
@@ -251,4 +261,97 @@ export interface ProductionWorkOrderPdfData extends EmbroideryWorkOrderPdfData {
   revisionNote: string | null;
   technicalSpecifications: Array<{ label: string; value: string }>;
   referenceFiles: Array<{ label: string; fileName: string }>;
+}
+
+// --- Lembar Approval Desain (A4 landscape, 1 halaman per garment) -----------
+
+export interface DesignApprovalSheetFigure {
+  side: "front" | "back";
+  /** Bytes foto mockup (JPEG baseline / PNG depth-8) di-resolve server-side. */
+  bytes: Uint8Array | null;
+  fileName: string | null;
+}
+
+export interface DesignApprovalSheetArea {
+  label: string;
+  zone: string;
+  zoneLabel: string;
+  techniqueLabel: string;
+  positionNote: string | null;
+  widthCm: number;
+  heightCm: number;
+  offsetXCm: number | null;
+  offsetYCm: number | null;
+  logoFileName: string | null;
+  notes: string | null;
+}
+
+export interface DesignApprovalSheetSizeRow {
+  group: string;
+  cells: Array<{ size: string; quantity: number }>;
+  total: number;
+}
+
+export interface DesignApprovalSheetGarment {
+  itemCode: string;
+  garmentType: string;
+  projectName: string;
+  clientLabel: string;
+  poNumber: string | null;
+  deadline: string | null;
+  totalQuantity: number;
+  materialLabel: string | null;
+  colorLabel: string | null;
+  sizeNotes: string | null;
+  specifications: Array<{
+    label: string;
+    value: string;
+    measurements: string | null;
+    status: string;
+  }>;
+  areas: DesignApprovalSheetArea[];
+  allSizes: string[];
+  sizeRows: DesignApprovalSheetSizeRow[];
+  adjustments: Array<{
+    size: string;
+    color: string | null;
+    changeNote: string;
+    quantity: number;
+  }>;
+  figures: {
+    front: DesignApprovalSheetFigure | null;
+    back: DesignApprovalSheetFigure | null;
+  };
+}
+
+export interface DesignApprovalSheetSignature {
+  party: "design" | "customer" | "production";
+  signerName: string;
+  signerTitle: string;
+  signedAt: string | null;
+}
+
+export interface DesignApprovalSheetPdfData {
+  documentNumber: string;
+  quotationNumber: string | null;
+  projectName: string;
+  clientName: string;
+  clientCompany: string;
+  /** No. PO klien — dipetakan dari brief.externalReference. */
+  poNumber: string | null;
+  deadline: string | null;
+  revisionNo: number;
+  revisedAt: string | null;
+  approvalStatus: string;
+  createdAt: string;
+  generatedAt: string;
+  garments: DesignApprovalSheetGarment[];
+  signatures: DesignApprovalSheetSignature[];
+  consentText: string;
+  productionNotes: string | null;
+  locationLabel: string;
+  contactTel: string;
+  contactWeb: string;
+  contactEmail: string;
+  rendererVersion: string;
 }

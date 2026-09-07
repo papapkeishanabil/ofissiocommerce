@@ -7,6 +7,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/help", label: "Panduan", permission: "admin:view" },
   { href: "/admin/products", label: "Produk", permission: "admin:catalog:view" },
   { href: "/admin/pricing/embroidery", label: "Harga Bordir", permission: "admin:catalog:view" },
+  { href: "/admin/settings/moq", label: "MOQ per Rute", permission: "admin:catalog:view" },
   { href: "/admin/promotions", label: "Promo & Kupon", permission: "admin:catalog:view" },
   { href: "/admin/site-content", label: "Konten Homepage", permission: "admin:content:view" },
   { href: "/admin/ofistant-knowledge", label: "Knowledge Base Ofistant", permission: "admin:knowledge:view" },

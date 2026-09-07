@@ -31,9 +31,13 @@ import {
   resolveQuotationRequirement,
 } from "./quotation-requirement";
 import type {
+  BriefCustomerRequestSnapshot,
+  BriefSignature,
+  BriefSignatureParty,
   CreateCustomQuotationRequestInput,
   CreateQuotationRequestInput,
   CreateQuotationRequestResult,
+  ProductionRequestBrief,
   QuotationEventRecord,
   QuotationEventType,
   QuotationPricingInput,
@@ -42,6 +46,7 @@ import type {
   EmbroideryConsultationEstimate,
   ProductionPlan,
 } from "./quotation.types";
+import { BRIEF_APPROVAL_CONSENT_TEXT } from "./quotation.validation";
 import type { EmbroideryEstimatePayload } from "./embroidery-estimate.validation";
 import type { ProductionPlanPayload } from "./production-plan.validation";
 import { buildCustomProductionItem } from "./custom-quotation";
@@ -260,7 +265,20 @@ export async function createCustomQuotationRequest(
   const now = new Date().toISOString();
   const id = `quo_${randomUUID()}`;
   const quotationNumber = await buildQuotationNumber(now, "production");
-  const productionBrief = normalizeProductionBrief(input.productionBrief);
+  // Jalur customer hanya boleh membawa kebutuhan desain — field internal
+  // (spesifikasi teknis, penyesuaian, No. PO, kanal intake) di-strip agar
+  // tidak bisa disuntikkan lewat raw JSON.
+  const productionBrief = normalizeProductionBrief(
+    actorType === "internal"
+      ? input.productionBrief
+      : {
+          ...input.productionBrief,
+          intakeChannel: "customer_portal",
+          externalReference: null,
+          technicalSpecifications: undefined,
+          customAdjustments: undefined,
+        },
+  );
   if (
     !productionBrief?.projectName ||
     !productionBrief.garmentType ||
@@ -278,12 +296,18 @@ export async function createCustomQuotationRequest(
     companyId: input.companyId,
     fileIds: input.referenceFileIds,
   });
+  const requireApproval =
+    actorType === "internal" && (input.requireCustomerApproval ?? true);
   const completeBrief = normalizeProductionBrief({
     ...productionBrief,
     referenceFiles,
     approvalStatus:
-      actorType === "internal" ? "pending_customer_approval" : "approved",
-    approvalRequestedAt: actorType === "internal" ? now : null,
+      actorType === "internal"
+        ? requireApproval
+          ? "pending_customer_approval"
+          : "not_required"
+        : "approved",
+    approvalRequestedAt: requireApproval ? now : null,
     approvedAt: actorType === "customer" ? now : null,
     approvalRevisionNote: null,
   });
@@ -584,20 +608,14 @@ export async function updateProductionPlan(input: {
   return normalizeQuotationRecord(updated);
 }
 
-export async function updateSalesAssistedBriefApproval(input: {
-  id: string;
-  companyId: string;
-  userId: string;
-  action: "approve" | "request_revision";
-  note?: string | null;
-  request?: Request;
-}) {
-  const current = await requireCompanyQuotation(input.id, input.companyId);
-  const brief = current.productionBrief;
+function requireSalesAssistedBrief(quotation: QuotationRequestRecord) {
+  const brief = quotation.productionBrief;
   if (
-    current.source !== "custom_request" ||
+    quotation.source !== "custom_request" ||
     !brief ||
-    brief.intakeChannel === "customer_portal"
+    // Brief portal hanya bisa diakses alur sales setelah diambil alih
+    // (lihat startBriefEnrichment).
+    (brief.intakeChannel === "customer_portal" && !brief.enrichedAt)
   ) {
     throw createApiError(
       "BAD_REQUEST",
@@ -605,10 +623,143 @@ export async function updateSalesAssistedBriefApproval(input: {
       400,
     );
   }
+  return brief;
+}
+
+/**
+ * Sales mengambil alih brief customer portal menjadi brief teknis:
+ * permintaan awal customer disimpan sebagai snapshot (tidak ditimpa),
+ * lalu editor brief/ttd/figur menjadi tersedia. Status approval tidak
+ * berubah di tahap ini — pilihan minta ttd customer ada saat menyimpan
+ * pengayaan (updateSalesAssistedBrief).
+ */
+export async function startBriefEnrichment(input: {
+  id: string;
+  actorId: string | null;
+  request?: Request;
+}) {
+  const current = await requireQuotation(input.id);
+  const brief = current.productionBrief;
+  if (current.source !== "custom_request" || !brief) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Quotation ini tidak memiliki brief Full Custom.",
+      400,
+    );
+  }
+  if (brief.intakeChannel !== "customer_portal") {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Pengayaan hanya untuk brief yang berasal dari customer portal.",
+      400,
+    );
+  }
+  if (brief.enrichedAt) return normalizeQuotationRecord(current);
+
+  const now = new Date().toISOString();
+  const snapshot: BriefCustomerRequestSnapshot = {
+    projectName: brief.projectName ?? null,
+    garmentType: brief.garmentType ?? null,
+    estimatedQuantity: brief.estimatedQuantity ?? null,
+    usageContext: brief.usageContext ?? null,
+    designDescription: brief.designDescription,
+    materialPreference: brief.materialPreference,
+    colorPreference: brief.colorPreference,
+    sizeNotes: brief.sizeNotes,
+    targetDate: brief.targetDate,
+    referenceFiles: (brief.referenceFiles ?? []).map((file) => ({
+      fileId: file.fileId,
+      fileName: file.filename,
+    })),
+    capturedAt: now,
+  };
+  const nextBrief = normalizeProductionBrief({
+    ...brief,
+    enrichedAt: now,
+    enrichedByUserId: input.actorId,
+    customerRequestSnapshot: snapshot,
+  });
+  if (!nextBrief) {
+    throw createApiError("BAD_REQUEST", "Brief Full Custom belum valid.", 400);
+  }
+
+  const updated = await quotationRepository.update(current.id, {
+    productionBrief: nextBrief,
+  });
+  if (!updated) {
+    throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  }
+  const normalized = normalizeQuotationRecord(updated);
+
+  await addQuotationEvent({
+    quotation: normalized,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "internal_note_added",
+    oldStatus: current.status,
+    newStatus: current.status,
+    note: "Sales mulai mengembangkan brief teknis dari permintaan customer (permintaan awal disimpan sebagai snapshot).",
+    metadata: {
+      briefApprovalStatus: nextBrief.approvalStatus,
+      intakeChannel: nextBrief.intakeChannel,
+      enrichedAt: now,
+    },
+  });
+
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    companyId: current.companyId,
+    action: "customer_brief_enrichment_started",
+    entityType: "quotation",
+    entityId: current.id,
+    metadata: { enrichedAt: now, referenceFileCount: snapshot.referenceFiles.length },
+  });
+
+  return normalized;
+}
+
+/**
+ * Tanda tangan digital customer pada lembar approval brief:
+ * approve = identitas + klausa wajib; request_revision = catatan wajib,
+ * revisionNo naik dan semua ttd aktif dicabut.
+ */
+export async function signSalesAssistedBrief(input: {
+  id: string;
+  companyId: string;
+  userId: string;
+  action: "approve" | "request_revision";
+  signerName?: string;
+  signerTitle?: string;
+  consentAccepted?: boolean;
+  note?: string | null;
+  request?: Request;
+}) {
+  const current = await requireCompanyQuotation(input.id, input.companyId);
+  const brief = requireSalesAssistedBrief(current);
 
   const currentApproval = getBriefApprovalStatus(brief);
   if (input.action === "approve" && currentApproval === "approved") {
     return normalizeQuotationRecord(current);
+  }
+  const signerName = input.signerName?.trim() ?? "";
+  const signerTitle = input.signerTitle?.trim() ?? "";
+  if (input.action === "approve") {
+    if (signerName.length < 2 || signerTitle.length < 2) {
+      throw createApiError(
+        "BAD_REQUEST",
+        "Nama dan jabatan penandatangan wajib diisi.",
+        400,
+      );
+    }
+    if (input.consentAccepted !== true) {
+      throw createApiError(
+        "BAD_REQUEST",
+        "Klausa persetujuan wajib dicentang sebelum menandatangani.",
+        400,
+      );
+    }
   }
   if (input.action === "request_revision" && !input.note?.trim()) {
     throw createApiError(
@@ -620,11 +771,36 @@ export async function updateSalesAssistedBriefApproval(input: {
 
   const now = new Date().toISOString();
   const approved = input.action === "approve";
+  const revisionNo = approved
+    ? (brief.revisionNo ?? 0)
+    : Math.min(99, (brief.revisionNo ?? 0) + 1);
+  const signatures: BriefSignature[] = approved
+    ? [
+        ...(brief.signatures ?? []),
+        {
+          party: "customer",
+          signerName,
+          signerTitle,
+          signerUserId: input.userId,
+          method: "portal_click",
+          consentText: BRIEF_APPROVAL_CONSENT_TEXT,
+          signedAt: now,
+          revokedAt: null,
+          revisionNo,
+        },
+      ]
+    : (brief.signatures ?? []).map((signature) =>
+        signature.revokedAt ? signature : { ...signature, revokedAt: now },
+      );
+
   const nextBrief = normalizeProductionBrief({
     ...brief,
     approvalStatus: approved ? "approved" : "revision_requested",
     approvedAt: approved ? now : null,
     approvalRevisionNote: approved ? null : input.note?.trim() ?? null,
+    revisionNo,
+    revisedAt: approved ? brief.revisedAt ?? null : now,
+    signatures,
   });
   if (!nextBrief) {
     throw createApiError("BAD_REQUEST", "Brief Full Custom belum valid.", 400);
@@ -632,7 +808,13 @@ export async function updateSalesAssistedBriefApproval(input: {
 
   const updated = await quotationRepository.update(current.id, {
     productionBrief: nextBrief,
-    status: approved ? "submitted" : "draft",
+    // Brief portal diperkaya: quotation sudah submitted sejak customer
+    // mengirim permintaan — revisi tidak menurunkannya ke draft.
+    status: approved
+      ? "submitted"
+      : brief.intakeChannel === "customer_portal"
+        ? current.status
+        : "draft",
   });
   if (!updated) {
     throw createApiError("NOT_FOUND", "Brief Full Custom tidak ditemukan.", 404);
@@ -647,11 +829,14 @@ export async function updateSalesAssistedBriefApproval(input: {
     oldStatus: current.status,
     newStatus: normalized.status,
     note: approved
-      ? "Customer menyetujui brief Full Custom."
+      ? `Customer menyetujui brief Full Custom (ditandatangani: ${signerName} — ${signerTitle}).`
       : input.note?.trim() ?? null,
     metadata: {
       briefApprovalStatus: nextBrief.approvalStatus,
       action: input.action,
+      signatureParty: approved ? "customer" : null,
+      signerName: approved ? signerName : null,
+      revisionNo,
     },
   });
 
@@ -676,10 +861,343 @@ export async function updateSalesAssistedBriefApproval(input: {
     metadata: {
       previousApprovalStatus: currentApproval,
       nextApprovalStatus: nextBrief.approvalStatus,
+      signerName: approved ? signerName : null,
+      signerTitle: approved ? signerTitle : null,
+      revisionNo,
     },
   });
 
   return normalized;
+}
+
+/** Admin mengubah isi brief — hanya sebelum approval customer. */
+export async function updateSalesAssistedBrief(input: {
+  id: string;
+  actorId: string | null;
+  brief: ProductionRequestBrief;
+  note?: string | null;
+  /** Khusus brief portal: minta ttd customer (default) atau simpan tanpa persetujuan formal. */
+  requireCustomerApproval?: boolean;
+  request?: Request;
+}) {
+  const current = await requireQuotation(input.id);
+  const brief = requireSalesAssistedBrief(current);
+  const portalOrigin = brief.intakeChannel === "customer_portal";
+  const hasActiveCustomerSignature = (brief.signatures ?? []).some(
+    (signature) => signature.party === "customer" && !signature.revokedAt,
+  );
+  // "Approved" bawaan brief portal hanyalah artefak (belum pernah ditandatangani
+  // customer) — tetap boleh diediter setelah takeover. Brief sales-assisted
+  // yang sudah ditandatangani customer tetap terkunci sampai minta revisi.
+  if (
+    getBriefApprovalStatus(brief) === "approved" &&
+    (!portalOrigin || hasActiveCustomerSignature)
+  ) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Brief sudah disetujui customer. Minta revisi dari customer sebelum mengubah brief.",
+      400,
+    );
+  }
+
+  const now = new Date().toISOString();
+  // Pilihan per kasus berlaku untuk semua kanal (repeat order boleh tanpa ttd).
+  const requireApproval = input.requireCustomerApproval ?? true;
+  const nextBrief = normalizeProductionBrief({
+    ...input.brief,
+    // intakeChannel & approval timeline milik brief asal — bukan bagian edit admin.
+    intakeChannel: brief.intakeChannel,
+    approvalStatus: requireApproval
+      ? "pending_customer_approval"
+      : "not_required",
+    approvalRequestedAt: requireApproval
+      ? (brief.approvalRequestedAt ?? now)
+      : null,
+    approvedAt: null,
+    approvalRevisionNote: null,
+    revisionNo: brief.revisionNo ?? 0,
+    revisedAt: brief.revisedAt ?? null,
+    signatures: (brief.signatures ?? []).map((signature) =>
+      signature.revokedAt ? signature : { ...signature, revokedAt: now },
+    ),
+    // Provenansi pengayaan portal tetap menyertai brief.
+    enrichedAt: brief.enrichedAt ?? null,
+    enrichedByUserId: brief.enrichedByUserId ?? null,
+    customerRequestSnapshot: brief.customerRequestSnapshot ?? null,
+  });
+  if (!nextBrief) {
+    throw createApiError("BAD_REQUEST", "Brief Full Custom belum valid.", 400);
+  }
+
+  const updated = await quotationRepository.update(current.id, {
+    productionBrief: nextBrief,
+  });
+  if (!updated) {
+    throw createApiError("NOT_FOUND", "Brief Full Custom tidak ditemukan.", 404);
+  }
+  const normalized = normalizeQuotationRecord(updated);
+
+  await addQuotationEvent({
+    quotation: normalized,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "internal_note_added",
+    oldStatus: current.status,
+    newStatus: current.status,
+    note: input.note?.trim()
+      ? `Brief Full Custom diperbarui: ${input.note.trim()}`
+      : requireApproval
+        ? "Brief Full Custom diperbarui; menunggu persetujuan customer."
+        : "Brief Full Custom diperbarui; tanpa persetujuan customer (pilihan sales).",
+    metadata: {
+      briefApprovalStatus: nextBrief.approvalStatus,
+      revisionNo: nextBrief.revisionNo,
+    },
+  });
+
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    companyId: current.companyId,
+    action: "sales_assisted_brief_updated",
+    entityType: "quotation",
+    entityId: current.id,
+    metadata: {
+      revisionNo: nextBrief.revisionNo,
+      garmentCount: nextBrief.technicalSpecifications?.length ?? 0,
+    },
+  });
+
+  return normalized;
+}
+
+/** Tanda tangan internal (Desain/Produksi) — tidak mengubah approvalStatus. */
+export async function addInternalBriefSignature(input: {
+  id: string;
+  actorId: string | null;
+  party: BriefSignatureParty;
+  signerName: string;
+  signerTitle: string;
+  request?: Request;
+}) {
+  const current = await requireQuotation(input.id);
+  const brief = requireSalesAssistedBrief(current);
+
+  const signerName = input.signerName.trim();
+  const signerTitle = input.signerTitle.trim();
+  if (signerName.length < 2 || signerTitle.length < 2) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Nama dan jabatan penandatangan wajib diisi.",
+      400,
+    );
+  }
+
+  const now = new Date().toISOString();
+  // Ganti ttd aktif lain dengan partai sama (satu ttd aktif per partai).
+  const signatures = (brief.signatures ?? []).filter(
+    (signature) => signature.party !== input.party || signature.revokedAt,
+  );
+  const nextBrief = normalizeProductionBrief({
+    ...brief,
+    signatures: [
+      ...signatures,
+      {
+        party: input.party,
+        signerName,
+        signerTitle,
+        signerUserId: input.actorId,
+        method: "portal_click",
+        consentText: null,
+        signedAt: now,
+        revokedAt: null,
+        revisionNo: brief.revisionNo ?? 0,
+      },
+    ],
+  });
+  if (!nextBrief) {
+    throw createApiError("BAD_REQUEST", "Brief Full Custom belum valid.", 400);
+  }
+
+  const updated = await quotationRepository.update(current.id, {
+    productionBrief: nextBrief,
+  });
+  if (!updated) {
+    throw createApiError("NOT_FOUND", "Brief Full Custom tidak ditemukan.", 404);
+  }
+  const normalized = normalizeQuotationRecord(updated);
+
+  const partyLabel =
+    input.party === "design" ? "Desain" : "Produksi";
+  await addQuotationEvent({
+    quotation: normalized,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "internal_note_added",
+    oldStatus: current.status,
+    newStatus: current.status,
+    note: `Tanda tangan ${partyLabel}: ${signerName} — ${signerTitle}.`,
+    metadata: {
+      signatureParty: input.party,
+      signerName,
+      revisionNo: brief.revisionNo ?? 0,
+    },
+  });
+
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    companyId: current.companyId,
+    action: "sales_assisted_brief_internal_signed",
+    entityType: "quotation",
+    entityId: current.id,
+    metadata: {
+      signatureParty: input.party,
+      signerName,
+      signerTitle,
+      revisionNo: brief.revisionNo ?? 0,
+    },
+  });
+
+  return normalized;
+}
+
+const BRIEF_FIGURE_ALLOWED_MIME = ["image/jpeg", "image/png"] as const;
+const BRIEF_FIGURE_MAX_BYTES = 10 * 1024 * 1024;
+
+/** Upload foto mockup garment (tampak depan/belakang) untuk lembar approval. */
+export async function attachSalesAssistedBriefFigure(input: {
+  id: string;
+  garmentId: string;
+  side: "front" | "back";
+  file: File;
+  actorId: string | null;
+  request?: Request;
+}) {
+  const current = await requireQuotation(input.id);
+  const brief = requireSalesAssistedBrief(current);
+  const garment = brief.technicalSpecifications?.find(
+    (candidate) => candidate.id === input.garmentId,
+  );
+  if (!garment) {
+    throw createApiError(
+      "NOT_FOUND",
+      "Item garment tidak ditemukan pada brief.",
+      404,
+    );
+  }
+  if (getBriefApprovalStatus(brief) === "approved") {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Brief sudah disetujui customer. Minta revisi dari customer sebelum mengubah figur.",
+      400,
+    );
+  }
+  if (!BRIEF_FIGURE_ALLOWED_MIME.includes(input.file.type as never)) {
+    throw createApiError(
+      "VALIDATION_ERROR",
+      "Figur harus berupa file JPEG atau PNG.",
+      400,
+    );
+  }
+  if (input.file.size <= 0 || input.file.size > BRIEF_FIGURE_MAX_BYTES) {
+    throw createApiError(
+      "VALIDATION_ERROR",
+      "Ukuran file figur maksimal 10 MB.",
+      400,
+    );
+  }
+
+  const uploaded = await storageService.uploadFile({
+    companyId: current.companyId,
+    userId: input.actorId ?? "ofissio-internal",
+    fileType: "artwork",
+    originalFilename: input.file.name,
+    mimeType: input.file.type,
+    sizeBytes: input.file.size,
+    data: new Uint8Array(await input.file.arrayBuffer()),
+    metadata: {
+      purpose: "design_approval_figure",
+      quotationId: current.id,
+      garmentId: garment.id,
+      side: input.side,
+    },
+    request: input.request,
+  });
+
+  const now = new Date().toISOString();
+  const nextBrief = normalizeProductionBrief({
+    ...brief,
+    technicalSpecifications: (brief.technicalSpecifications ?? []).map(
+      (candidate) =>
+        candidate.id === garment.id
+          ? {
+              ...candidate,
+              figureFrontFileId:
+                input.side === "front"
+                  ? uploaded.id
+                  : candidate.figureFrontFileId ?? null,
+              figureBackFileId:
+                input.side === "back"
+                  ? uploaded.id
+                  : candidate.figureBackFileId ?? null,
+            }
+          : candidate,
+    ),
+    signatures: (brief.signatures ?? []).map((signature) =>
+      signature.revokedAt ? signature : { ...signature, revokedAt: now },
+    ),
+  });
+  if (!nextBrief) {
+    throw createApiError("BAD_REQUEST", "Brief Full Custom belum valid.", 400);
+  }
+
+  const updated = await quotationRepository.update(current.id, {
+    productionBrief: nextBrief,
+  });
+  if (!updated) {
+    throw createApiError("NOT_FOUND", "Brief Full Custom tidak ditemukan.", 404);
+  }
+  const normalized = normalizeQuotationRecord(updated);
+
+  await addQuotationEvent({
+    quotation: normalized,
+    actorId: input.actorId,
+    actorType: "internal",
+    eventType: "internal_note_added",
+    oldStatus: current.status,
+    newStatus: current.status,
+    note: `Figur ${input.side === "front" ? "depan" : "belakang"} diunggah untuk ${garment.garmentType}.`,
+    metadata: {
+      garmentId: garment.id,
+      side: input.side,
+      fileId: uploaded.id,
+      filename: uploaded.originalFilename,
+    },
+  });
+
+  logAuditEvent({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    companyId: current.companyId,
+    action: "sales_assisted_brief_figure_uploaded",
+    entityType: "quotation",
+    entityId: current.id,
+    metadata: {
+      garmentId: garment.id,
+      side: input.side,
+      fileId: uploaded.id,
+      sizeBytes: uploaded.sizeBytes,
+    },
+  });
+
+  return {
+    quotation: normalized,
+    file: storageService.toPublicUploadedFile(uploaded),
+  };
 }
 
 export async function updateQuotationStatus(input: {
@@ -1347,8 +1865,26 @@ export async function convertQuotationToOrder(input: {
     statusNote: productionPaymentTerms
       ? `Quotation disetujui. Produksi dimulai setelah DP ${productionPaymentTerms.depositPercent}% diterima; pelunasan ditagihkan setelah produksi selesai sebelum pengiriman.`
       : "Quotation sudah disetujui dan dikonversi menjadi order Ofissio. Payment masih mock/foundation.",
-    estimatedCompletionDate: quotation.productionPlan?.estimatedCompletionDate ?? tracking.estimatedCompletionDate,
-    estimatedDeliveryDate: quotation.productionPlan?.estimatedArrivalEnd ?? tracking.estimatedDeliveryDate,
+    estimatedCompletionDate:
+      quotation.productionPlan?.estimatedCompletionDate ??
+      quotation.embroideryEstimate?.estimatedCompletionDate ??
+      tracking.estimatedCompletionDate,
+    plannedCourierHandoverDate:
+      quotation.productionPlan?.estimatedHandoverDate ??
+      quotation.embroideryEstimate?.estimatedHandoverDate ??
+      tracking.plannedCourierHandoverDate,
+    estimatedArrivalStartDate:
+      quotation.productionPlan?.estimatedArrivalStart ??
+      quotation.embroideryEstimate?.estimatedArrivalStart ??
+      tracking.estimatedArrivalStartDate,
+    estimatedArrivalEndDate:
+      quotation.productionPlan?.estimatedArrivalEnd ??
+      quotation.embroideryEstimate?.estimatedArrivalEnd ??
+      tracking.estimatedArrivalEndDate,
+    estimatedDeliveryDate:
+      quotation.productionPlan?.estimatedArrivalEnd ??
+      quotation.embroideryEstimate?.estimatedArrivalEnd ??
+      tracking.estimatedDeliveryDate,
     documents: [
       {
         id: `${order.id}-quotation`,

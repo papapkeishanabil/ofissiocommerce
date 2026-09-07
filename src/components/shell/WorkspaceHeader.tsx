@@ -12,7 +12,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCartCount, useCartHydrated } from "@/hooks/use-cart";
 import { useUIStore } from "@/stores/ui-store";
 import { roleLabel } from "@/types/account";
-import { ofistantFont } from "@/components/ofistant/ofistant-font";
 
 function scrollToHashId(id: string): boolean {
   if (!id) return false;
@@ -88,7 +87,7 @@ export function WorkspaceHeader() {
     "rounded-full px-3.5 py-2 text-sm font-semibold text-ink-muted transition-colors hover:bg-cool-100 hover:text-ink-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
 
   return (
-    <header className={`sticky top-0 z-30 border-b border-line bg-white/85 backdrop-blur-xl ${ofistantFont.className}`}>
+    <header className="sticky top-0 z-30 border-b border-line bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:gap-4 lg:px-8">
       <Link
         href="/"

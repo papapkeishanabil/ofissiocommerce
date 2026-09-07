@@ -25,6 +25,8 @@ Apply migrations sequentially to a backed-up target. Record the Supabase project
 | **020** | Final RLS security review | **Required last security gate** | `npm run check:rls` live inventory |
 | 021 | Ginee read-only tables | Optional while Ginee is skipped | `npm run check:ginee` only if activated |
 | **022** | WooCommerce stock monitoring/replenishment | **Required** | `npm run check:woocommerce-stock` |
+| 023-033 | Bordir WO, MOQ, product import, synonym search, dan lainnya (lihat file migration) | Sesuai fitur yang aktif | check terkait masing-masing |
+| **034** | Lembar Approval Desain: nilai CHECK `documents.document_type`/`template_id` baru + max lebar bordir punggung 30 cm | **Required sebelum generate DAS PDF & validasi dimensi live** | `npm run check:documents`; `npm run test:design-approval` |
 
 ## Per-environment record
 
@@ -42,12 +44,12 @@ Apply migrations sequentially to a backed-up target. Record the Supabase project
 
 - Supabase project/ref:
 - Backup before migration:
-- Applied through:
-- Operator/date:
+- Applied through: 034 (manual, Supabase SQL Editor)
+- Operator/date: 2026-08-31
 - `check:supabase` result:
 - `check:rls` result:
 - Rollback/restore point:
-- Notes:
+- Notes: Verifikasi 034 di project `.env.local`: `npm run check:documents` OK (tabel documents + bucket ofissio-documents reachable), `embroidery_pricing_zones.upper_back`/`center_back` `max_width_cm=30` live, dan CHECK `design_approval_sheet_pdf`/`design_approval_sheet_ofissio` terkonfirmasi 2026-09-01 via dokumen live `DAS-PRO-2609-001` (status generated).
 
 Migration files existing in Git are not proof that they were applied. Use the live checks and retain the SQL execution log/screenshot as release evidence.
 

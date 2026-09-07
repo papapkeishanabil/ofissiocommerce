@@ -12,21 +12,26 @@ import { SupabaseDatabaseError } from "@/features/database/database.errors";
 import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payment.types";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
 import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
+import { getBriefApprovalStatus } from "@/features/quotation/quotation-requirement";
+import { BRIEF_APPROVAL_CONSENT_TEXT } from "@/features/quotation/quotation.validation";
 import { getProcessOrderDetail } from "@/features/process-orders/process-order.service";
 import type { ProcessOrderDetail } from "@/features/process-orders/process-order.types";
+import { storageService } from "@/features/storage/storage.service";
 import { logAuditEvent } from "@/lib/security/audit-log";
-import { createApiError } from "@/lib/security/safe-error-response";
+import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
 import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
 
 import { getDocumentRuntimeConfig } from "./document.config";
 import { documentRepository } from "./document.repository";
 import type {
+  DesignApprovalSheetPdfData,
   DocumentEntityType,
   EmbroideryWorkOrderPdfData,
   DocumentRecord,
   DocumentSignedUrlResult,
   DocumentTemplateId,
   DocumentType,
+  GenerateDesignApprovalSheetPdfInput,
   GenerateInvoicePdfInput,
   GenerateEmbroideryWorkOrderPdfInput,
   GenerateProductionWorkOrderPdfInput,
@@ -42,6 +47,7 @@ import {
   isInvoiceTemplate,
   isEmbroideryWorkOrderTemplate,
   isProductionWorkOrderTemplate,
+  isDesignApprovalSheetTemplate,
   isQuotationFinalForPdf,
   isQuotationTemplate,
   nextMonthlyDocumentSequence,
@@ -53,8 +59,10 @@ import {
   renderInvoicePdfByTemplate,
   renderEmbroideryWorkOrderPdfByTemplate,
   renderProductionWorkOrderPdfByTemplate,
+  renderDesignApprovalSheetPdfByTemplate,
   renderQuotationPdfByTemplate,
 } from "./pdf/pdf-template.registry";
+import { DESIGN_APPROVAL_SHEET_RENDERER_VERSION } from "./pdf/templates/design-approval-sheet-ofissio.template";
 import {
   getGeneratedPdfSignedUrl,
   uploadGeneratedPdf,
@@ -534,7 +542,13 @@ export async function generateProductionWorkOrderPdf(input: GenerateProductionWo
     : null;
   const brief = quotation?.productionBrief;
   if (!brief) throw createApiError("BAD_REQUEST", "Brief produksi belum tersedia pada quotation.", 400);
-  if (brief.approvalStatus && brief.approvalStatus !== "approved") throw createApiError("BAD_REQUEST", "Brief produksi harus disetujui customer sebelum PWO dibuat.", 400);
+  const briefApproval = getBriefApprovalStatus(brief);
+  if (
+    briefApproval === "pending_customer_approval" ||
+    briefApproval === "revision_requested"
+  ) {
+    throw createApiError("BAD_REQUEST", "Brief produksi harus disetujui customer sebelum PWO dibuat.", 400);
+  }
 
   const lookup = { companyId: detail.processOrder.companyId, entityType: "process_order" as const, entityId: detail.processOrder.id, documentType: "production_work_order_pdf" as const };
   const existing = await latestGeneratedDocument(lookup);
@@ -561,6 +575,351 @@ export async function getProductionWorkOrderPdfSignedUrl(input:{processOrderId:s
   const document=await latestGeneratedDocument({companyId:detail.processOrder.companyId,entityType:"process_order",entityId:detail.processOrder.id,documentType:"production_work_order_pdf"});
   if(!document) throw createApiError("NOT_FOUND","Production Work Order PDF belum tersedia.",404);
   return signedUrlForDocument({document,request:input.request,actorId:input.actorId,actorType:"internal"});
+}
+
+export async function generateDesignApprovalSheetPdf(
+  input: GenerateDesignApprovalSheetPdfInput,
+) {
+  const config = getDocumentRuntimeConfig();
+  const templateId = input.templateId ?? config.defaultDesignApprovalSheetTemplate;
+  if (!isDesignApprovalSheetTemplate(templateId)) {
+    throw createApiError("BAD_REQUEST", "Template Lembar Approval Desain tidak valid.", 400);
+  }
+  const quotation = await repositoryRegistry.quotations.getById(input.quotationId);
+  if (!quotation) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  const brief = quotation.productionBrief;
+  if (
+    quotation.source !== "custom_request" ||
+    !brief ||
+    !(brief.technicalSpecifications ?? []).length
+  ) {
+    throw createApiError(
+      "BAD_REQUEST",
+      "Lembar approval desain hanya untuk permintaan Full Custom dengan brief produksi.",
+      400,
+    );
+  }
+
+  const lookup = {
+    companyId: quotation.companyId,
+    entityType: "quotation" as const,
+    entityId: quotation.id,
+    documentType: "design_approval_sheet_pdf" as const,
+  };
+  const activeSignatureCount = (brief.signatures ?? []).filter(
+    (signature) => !signature.revokedAt,
+  ).length;
+  // Idempoten per isi brief: revisi baru, ttd baru, atau renderer baru memicu regen.
+  const sheetFingerprint = [
+    templateId,
+    DESIGN_APPROVAL_SHEET_RENDERER_VERSION,
+    brief.revisionNo ?? 0,
+    activeSignatureCount,
+    (brief.technicalSpecifications ?? [])
+      .map((garment) => `${garment.id}:${garment.figureFrontFileId ?? "-"}:${garment.figureBackFileId ?? "-"}`)
+      .join("|"),
+  ].join("::");
+  const existing = await latestGeneratedDocument(lookup);
+  if (existing && !input.forceRegenerate && existing.metadata.sheetFingerprint === sheetFingerprint) {
+    return { document: existing, idempotent: true };
+  }
+  if (existing) {
+    await documentRepository.update(existing.id, {
+      status: "expired",
+      deletedAt: new Date().toISOString(),
+    });
+  }
+
+  const previous = existing ?? (await documentRepository.listByEntity(lookup))[0];
+  const now = new Date();
+  const allDocuments = previous || !documentRepository.listAll
+    ? []
+    : await documentRepository.listAll();
+  const sequence = nextMonthlyDocumentSequence({
+    existingNumbers: allDocuments.map((document) => document.documentNumber),
+    prefix: "DAS",
+    processRoute: "production",
+    date: now,
+  });
+  const documentNumber = previous?.documentNumber ?? safeDocumentNumber({
+    documentType: "design_approval_sheet_pdf",
+    processRoute: "production",
+    sequence,
+    date: now,
+  });
+  const generatedAt = now.toISOString();
+  const data = await mapQuotationToDesignApprovalSheetPdfData({
+    quotation,
+    documentNumber,
+    generatedAt,
+  });
+  const pdf = renderDesignApprovalSheetPdfByTemplate(templateId, data);
+  const filename = `${documentNumber.replaceAll("/", "-")}.pdf`;
+  const file = await uploadGeneratedPdf({
+    companyId: quotation.companyId,
+    userId: quotation.userId,
+    documentType: "design_approval_sheet_pdf",
+    documentNumber,
+    filename,
+    data: pdf,
+    metadata: {
+      documentType: "design_approval_sheet_pdf",
+      entityType: "quotation",
+      entityId: quotation.id,
+      templateId,
+      rendererVersion: DESIGN_APPROVAL_SHEET_RENDERER_VERSION,
+    },
+  });
+  const document = await saveDocumentRecord({
+    companyId: quotation.companyId,
+    userId: quotation.userId,
+    documentType: "design_approval_sheet_pdf",
+    entityType: "quotation",
+    entityId: quotation.id,
+    documentNumber,
+    templateId,
+    file,
+    filename,
+    generatedAt,
+    metadata: {
+      quotationNumber: quotation.quotationNumber,
+      revisionNo: brief.revisionNo ?? 0,
+      sheetFingerprint,
+      rendererVersion: DESIGN_APPROVAL_SHEET_RENDERER_VERSION,
+    },
+  });
+  auditDocument({
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+    action: "pdf_generated",
+    companyId: quotation.companyId,
+    entityType: "quotation",
+    entityId: quotation.id,
+    document,
+    metadata: {
+      documentNumber,
+      revisionNo: brief.revisionNo ?? 0,
+      regenerated: Boolean(input.forceRegenerate),
+    },
+  });
+  return { document, idempotent: false };
+}
+
+export async function getDesignApprovalSheetPdfSignedUrl(input: {
+  quotationId: string;
+  request?: Request;
+  actorId?: string | null;
+}): Promise<DocumentSignedUrlResult> {
+  const quotation = await repositoryRegistry.quotations.getById(input.quotationId);
+  if (!quotation) throw createApiError("NOT_FOUND", "Quotation tidak ditemukan.", 404);
+  const document = await latestGeneratedDocument({
+    companyId: quotation.companyId,
+    entityType: "quotation",
+    entityId: quotation.id,
+    documentType: "design_approval_sheet_pdf",
+  });
+  if (!document) {
+    throw createApiError("NOT_FOUND", "Lembar Approval Desain PDF belum tersedia.", 404);
+  }
+  return signedUrlForDocument({
+    document,
+    request: input.request,
+    actorId: input.actorId,
+    actorType: "internal",
+  });
+}
+
+const GENDER_ROW_LABELS: Record<string, string> = {
+  men: "Pria",
+  women: "Wanita",
+  custom: "Custom",
+  unspecified: "Umum",
+};
+
+async function mapQuotationToDesignApprovalSheetPdfData(input: {
+  quotation: QuotationRequestRecord;
+  documentNumber: string;
+  generatedAt: string;
+}): Promise<DesignApprovalSheetPdfData> {
+  const { quotation } = input;
+  const brief = quotation.productionBrief!;
+  const config = getDocumentRuntimeConfig();
+  const projectName = brief.projectName ?? quotation.companyName ?? "Proyek Ofissio";
+  const projectInitials = buildProjectInitials(projectName);
+  const [frontBytesById, backBytesById] = await Promise.all([
+    resolveFigureBytesMap(
+      quotation.companyId,
+      (brief.technicalSpecifications ?? []).map((garment) => garment.figureFrontFileId),
+    ),
+    resolveFigureBytesMap(
+      quotation.companyId,
+      (brief.technicalSpecifications ?? []).map((garment) => garment.figureBackFileId),
+    ),
+  ]);
+
+  const garments = (brief.technicalSpecifications ?? []).map((garment, index) => {
+    const allSizes = Array.from(
+      new Set(garment.sizeBreakdown.filter((entry) => entry.quantity > 0).map((entry) => entry.size)),
+    );
+    const rows = (["men", "women", "custom", "unspecified"] as const)
+      .map((gender) => {
+        const entries = garment.sizeBreakdown.filter(
+          (entry) => entry.quantity > 0 && (entry.gender ?? "unspecified") === gender,
+        );
+        if (!entries.length) return null;
+        return {
+          group: GENDER_ROW_LABELS[gender] ?? "Umum",
+          cells: allSizes.map((size) => ({
+            size,
+            quantity: entries
+              .filter((entry) => entry.size === size)
+              .reduce((total, entry) => total + entry.quantity, 0),
+          })),
+          total: entries.reduce((total, entry) => total + entry.quantity, 0),
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null);
+
+    const materialSpec = garment.specifications.find((spec) => spec.key.toLowerCase().includes("bahan"));
+    const colorSpec = garment.specifications.find((spec) => spec.key.toLowerCase().includes("warna"));
+
+    return {
+      itemCode: `${projectInitials}-${String(index + 1).padStart(3, "0")}`,
+      garmentType: garment.garmentType,
+      projectName,
+      clientLabel: [quotation.companyName, quotation.picName].filter(Boolean).join(" — "),
+      poNumber: brief.externalReference ?? null,
+      deadline: brief.targetDate ?? null,
+      totalQuantity: garment.sizeBreakdown.reduce((total, entry) => total + entry.quantity, 0),
+      materialLabel: materialSpec?.option ?? materialSpec?.detail ?? brief.materialPreference ?? null,
+      colorLabel: colorSpec?.option ?? colorSpec?.detail ?? brief.colorPreference ?? null,
+      sizeNotes: brief.sizeNotes ?? null,
+      specifications: garment.specifications
+        .filter((spec) => spec.status !== "not_used")
+        .map((spec) => ({
+          label: spec.label,
+          value: [spec.option, spec.detail, spec.notes].filter(Boolean).join(" · ") || "-",
+          measurements: spec.measurements ?? null,
+          status: spec.status,
+        })),
+      areas: (garment.embroideryAreas ?? []).map((area) => ({
+        label: area.label,
+        zone: area.zone,
+        zoneLabel: zoneLabel(area.zone),
+        techniqueLabel: embroideryTechniqueLabel(area.technique),
+        positionNote: area.positionNote,
+        widthCm: area.widthCm,
+        heightCm: area.heightCm,
+        offsetXCm: area.offsetXCm,
+        offsetYCm: area.offsetYCm,
+        logoFileName: area.logoFileName,
+        notes: area.notes,
+      })),
+      allSizes,
+      sizeRows: rows,
+      adjustments: (brief.customAdjustments ?? []).map((adjustment) => ({
+        size: adjustment.size,
+        color: adjustment.color,
+        changeNote: adjustment.changeNote,
+        quantity: adjustment.quantity,
+      })),
+      figures: {
+        front: figureEntry(garment.figureFrontFileId, "front", frontBytesById),
+        back: figureEntry(garment.figureBackFileId, "back", backBytesById),
+      },
+    };
+  });
+
+  return {
+    documentNumber: input.documentNumber,
+    quotationNumber: quotation.quotationNumber,
+    projectName,
+    clientName: quotation.picName ?? quotation.companyName,
+    clientCompany: quotation.companyName,
+    poNumber: brief.externalReference ?? null,
+    deadline: brief.targetDate ?? null,
+    revisionNo: brief.revisionNo ?? 0,
+    revisedAt: brief.revisedAt ?? null,
+    approvalStatus: getBriefApprovalStatus(brief),
+    createdAt: quotation.createdAt,
+    generatedAt: input.generatedAt,
+    garments,
+    signatures: (brief.signatures ?? [])
+      .filter((signature) => !signature.revokedAt)
+      .map((signature) => ({
+        party: signature.party,
+        signerName: signature.signerName,
+        signerTitle: signature.signerTitle,
+        signedAt: signature.signedAt,
+      })),
+    consentText: BRIEF_APPROVAL_CONSENT_TEXT,
+    productionNotes: quotation.internalNotes?.[0]?.note ?? null,
+    locationLabel: config.companyLocationLabel,
+    contactTel: config.contactTel,
+    contactWeb: config.contactWeb,
+    contactEmail: config.contactEmail,
+    rendererVersion: DESIGN_APPROVAL_SHEET_RENDERER_VERSION,
+  };
+}
+
+function figureEntry(
+  fileId: string | null | undefined,
+  side: "front" | "back",
+  bytesById: Map<string, Uint8Array>,
+) {
+  if (!fileId) return null;
+  const bytes = bytesById.get(fileId);
+  if (!bytes) return null;
+  return { side, bytes, fileName: fileId };
+}
+
+/** Ambil bytes figur dari storage sekali per fileId (dedupe antar garment). */
+async function resolveFigureBytesMap(companyId: string, fileIds: Array<string | null | undefined>) {
+  const uniqueIds = Array.from(new Set(fileIds.filter((fileId): fileId is string => Boolean(fileId))));
+  const entries = await Promise.all(
+    uniqueIds.map(async (fileId) => {
+      const bytes = await fetchFigureBytes(companyId, fileId);
+      return bytes ? ([fileId, bytes] as const) : null;
+    }),
+  );
+  return new Map(entries.filter((entry): entry is Readonly<[string, Uint8Array]> => entry !== null));
+}
+
+async function fetchFigureBytes(companyId: string, fileId: string): Promise<Uint8Array | null> {
+  try {
+    const file = await storageService.getFileById({ companyId, fileId });
+    if (!file || file.status === "deleted" || file.status === "rejected") return null;
+    if (file.mimeType !== "image/jpeg" && file.mimeType !== "image/png") return null;
+    const signed = await storageService.getSignedFileUrl({ companyId, fileId });
+    if (!signed) return null;
+    const response = await fetch(signed.signedUrl);
+    if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.byteLength || bytes.byteLength > 10 * 1024 * 1024) return null;
+    return bytes;
+  } catch (error) {
+    logInternalError(error, {
+      area: "documents",
+      action: "design_approval_figure_fetch_failed",
+      companyId,
+      fileId,
+    });
+    return null;
+  }
+}
+
+function buildProjectInitials(projectName: string) {
+  const initials = projectName
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .split(/[\s-]+/)
+    .filter((word) => word.length > 2 || /^\d+$/.test(word))
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 3);
+  return initials.padEnd(2, "X") || "OF";
 }
 
 export async function getQuotationPdfSignedUrl(input: {

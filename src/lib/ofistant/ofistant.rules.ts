@@ -7,7 +7,7 @@
 
 import { productService } from "@/features/products/product.service";
 import { getOfistantOrderStatusText } from "@/features/tracking/tracking.service";
-import { emptySizeMatrix } from "@/types/cart";
+import { moqSizeSpread } from "@/types/cart";
 import { SIZES } from "@/types/industry";
 import type {
   CatalogSearchResult,
@@ -66,11 +66,8 @@ function buildAddToCartActionFromSelected(
   let sizeMatrix = ctx.sizeMatrix;
   if (!sizeMatrix) {
     // Provide an MOQ-even split as a sensible default the user can adjust.
-    sizeMatrix = { ...emptySizeMatrix() };
-    const per = Math.max(1, Math.floor(product.moq / 3));
-    sizeMatrix.M = per;
-    sizeMatrix.L = per;
-    sizeMatrix.XL = Math.max(0, product.moq - per * 2);
+    // Total is exactly the MOQ (1 pcs ready stock included).
+    sizeMatrix = moqSizeSpread(product.moq);
   }
   return {
     type: "ADD_TO_CART",

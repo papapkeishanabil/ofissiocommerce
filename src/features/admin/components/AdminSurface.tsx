@@ -132,3 +132,9 @@ export function AdminBackLink({
 
 export const ADMIN_TABLE_CLASS =
   "w-full text-left text-sm [&_thead]:bg-slate-50 [&_tbody]:divide-y [&_tbody]:divide-line [&_tbody_tr]:transition [&_tbody_tr:hover]:bg-brand-50/50 [&_th]:whitespace-nowrap [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-ink [&_td]:px-4 [&_td]:py-3";
+
+/** Tombol aksi compact untuk kolom "Tindakan" di tabel admin — teks 12px,
+ *  tinggi 36px — supaya aksi tidak menyaingi bobot data pada barisnya.
+ *  Varian warna (solid brand/emerald atau outline) ditambahkan per pemakaian. */
+export const ADMIN_ACTION_LINK_CLASS =
+  "inline-flex min-h-9 items-center justify-center gap-1 rounded-lg px-3 text-xs font-bold tracking-tight transition focus-visible:outline-2 focus-visible:outline-offset-2";

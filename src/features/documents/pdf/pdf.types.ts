@@ -1,4 +1,5 @@
 import type {
+  DesignApprovalSheetPdfData,
   DocumentTemplateId,
   EmbroideryWorkOrderPdfData,
   InvoicePdfData,
@@ -6,9 +7,14 @@ import type {
   QuotationPdfData,
 } from "../document.types";
 
-export type PdfTemplateKind = "quotation" | "invoice" | "embroidery_work_order" | "production_work_order";
+export type PdfTemplateKind =
+  | "quotation"
+  | "invoice"
+  | "embroidery_work_order"
+  | "production_work_order"
+  | "design_approval_sheet";
 
-export interface PdfTemplate<TData = QuotationPdfData | InvoicePdfData | EmbroideryWorkOrderPdfData | ProductionWorkOrderPdfData> {
+export interface PdfTemplate<TData = QuotationPdfData | InvoicePdfData | EmbroideryWorkOrderPdfData | ProductionWorkOrderPdfData | DesignApprovalSheetPdfData> {
   id: DocumentTemplateId;
   kind: PdfTemplateKind;
   label: string;

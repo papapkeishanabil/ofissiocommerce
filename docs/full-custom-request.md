@@ -25,6 +25,28 @@ Jika customer hanya membutuhkan produk yang tersedia tanpa modifikasi, gunakan k
 6. Harga awal sengaja belum final. Sales menilai feasibility, bahan, pola, harga, dan jadwal sebelum mengirim penawaran.
 7. Setelah quotation diterima customer dan dikonversi menjadi order, sistem memakai route Production Order / SPK.
 
+## Lembar Approval Desain (design approval)
+
+Setelah sales mengisi brief teknis (sales-assisted brief), quotation tidak bisa diproses ke pricing/PWO sebelum customer menyetujui brief. Gate ini memakai `requiresCustomerBriefApproval` dan halaman `/briefs/[id]`. Pilihan **per kasus**: saat membuat maupun mengedit brief, sales dapat menghilangkan centang *Minta tanda tangan customer* — status menjadi `not_required` dan gate langsung terbuka, untuk repeat order dengan desain yang sudah disetujui sebelumnya.
+
+- **Tanda tangan digital** = klik portal + nama + jabatan penandatangan. Customer wajib mencentang klausa persetujuan (`BRIEF_APPROVAL_CONSENT_TEXT`); tanda tangan disimpan di `productionBrief.signatures` dengan `method: "portal_click"`, `signedAt`, dan `revisionNo` saat ditandatangani.
+- **Tiga pihak**: `design` dan `production` ditandatangani internal dari panel admin (tidak memblokir gate); `customer` ditandatangani lewat link approval dan membuka gate.
+- **Revisi**: customer memilih *Minta revisi* + catatan → `revisionNo` naik, `revisedAt` diisi, semua tanda tangan aktif dicabut (`revokedAt`), status kembali `draft`. Admin juga dapat mengubah brief sebelum approval (status kembali `pending_customer_approval` + ttd dicabut, atau `not_required` bila centang *Minta tanda tangan customer* dilepas).
+- **Isi brief per garment**: spesifikasi konstruksi + kolom Ukuran (measurements), area bordir A/B/C (zona, posisi, dimensi cm, teknik, logo), size breakdown dengan kelompok gender (Pria/Wanita/Custom/Umum), figur foto mockup depan/belakang yang diunggah admin, dan catatan custom per ukuran.
+- **No. PO klien** memakai field `externalReference` yang sudah ada — jangan buat field baru.
+- **PDF Lembar Approval Desain** (`design_approval_sheet_pdf`): A4 landscape, 1 halaman per garment, mengikuti format internal Ofissio (meta + revisi, figur foto, tabel spesifikasi/bordir/qty per gender, catatan custom, 3 blok ttd + klausa). Detail di `docs/pdf-documents.md`.
+- Batas dimensi bordir server-side divalidasi per zona (`validatePlacementDimensions`); punggung atas/tengah maksimal 30×8 / 30×20 cm (migration 034).
+
+### Pengayaan brief dari permintaan customer (portal)
+
+Quotation dari `/custom-request` (kanal `customer_portal`) awalnya **tidak** melalui alur approval — permintaan customer dianggap deklarasi kebutuhan. Setelah follow-up sales dan konsultasi internal (desainer, kepala produksi):
+
+- Sales menekan **Kembangkan brief teknis** di detail quotation (`POST /api/admin/quotations/[id]/brief-enrichment`). Permintaan awal customer disimpan sebagai snapshot (`customerRequestSnapshot`) — tidak ditimpa — dan editor brief, upload figur, serta ttd internal menjadi tersedia.
+- Saat menyimpan hasil pengayaan, sales **memilih per kasus**: *Minta tanda tangan customer* (default; status `pending_customer_approval`, gate pricing/PWO terkunci) atau tanpa persetujuan formal (`not_required`, gate tetap terbuka).
+- Halaman approval customer menampilkan blok **Permintaan awal Anda** sebagai pembanding atas lembar desain teknis.
+- Revisi pada jalur ini tidak menurunkan status quotation ke `draft` (quotation sudah `submitted` sejak customer mengirim).
+- Jalur customer juga di-strip server-side: payload `/api/quotation/custom-request` tidak bisa menyuntikkan `intakeChannel` internal, `technicalSpecifications`, `customAdjustments`, atau `externalReference`.
+
 ## Data dan keamanan file
 
 - Request customer tidak mempercayai `companyId` dari body; company scope berasal dari session server.

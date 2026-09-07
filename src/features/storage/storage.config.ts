@@ -11,12 +11,15 @@ const DEFAULTS = {
     artwork: "ofissio-artwork",
     documents: "ofissio-documents",
     "3d": "ofissio-3d-models",
+    product_imports: "ofissio-product-imports",
+    site_videos: "ofissio-site-videos",
   },
   signedUrlExpiresSeconds: 3600,
   maxUploadMb: {
     logo: 10,
     document: 20,
     glb: 100,
+    video: 50,
   },
 };
 
@@ -57,6 +60,17 @@ export function getStorageRuntimeConfig(): StorageRuntimeConfig {
           DEFAULT_SUPABASE_STORAGE_MAX_FILE_MB,
         )
       : configuredGlbMaxMb;
+  const configuredVideoMaxMb = envNumber(
+    "MAX_SITE_VIDEO_UPLOAD_MB",
+    DEFAULTS.maxUploadMb.video,
+  );
+  const providerVideoMaxMb =
+    provider === "supabase"
+      ? envNumber(
+          "SUPABASE_STORAGE_MAX_FILE_MB",
+          DEFAULT_SUPABASE_STORAGE_MAX_FILE_MB,
+        )
+      : configuredVideoMaxMb;
 
   return {
     requestedProvider,
@@ -69,6 +83,10 @@ export function getStorageRuntimeConfig(): StorageRuntimeConfig {
         process.env.STORAGE_BUCKET_DOCUMENTS?.trim() ||
         DEFAULTS.buckets.documents,
       "3d": process.env.STORAGE_BUCKET_3D?.trim() || DEFAULTS.buckets["3d"],
+      product_imports: process.env.STORAGE_BUCKET_PRODUCT_IMPORTS?.trim() || DEFAULTS.buckets.product_imports,
+      site_videos:
+        process.env.STORAGE_BUCKET_SITE_VIDEOS?.trim() ||
+        DEFAULTS.buckets.site_videos,
     },
     signedUrlExpiresSeconds: envNumber(
       "STORAGE_SIGNED_URL_EXPIRES_SECONDS",
@@ -84,6 +102,7 @@ export function getStorageRuntimeConfig(): StorageRuntimeConfig {
       // provider accepts. Supabase Free projects cap a single file at 50 MB;
       // paid projects can override SUPABASE_STORAGE_MAX_FILE_MB.
       glb: Math.min(configuredGlbMaxMb, providerGlbMaxMb),
+      video: Math.min(configuredVideoMaxMb, providerVideoMaxMb),
     },
     supabaseConfigured,
   };

@@ -51,6 +51,7 @@ export async function POST(request: Request) {
         customerNotes: payload.customerNotes ?? null,
         actorType: "internal",
         sendCustomerConfirmation: false,
+        requireCustomerApproval: payload.requireCustomerApproval ?? true,
       },
       request,
     );

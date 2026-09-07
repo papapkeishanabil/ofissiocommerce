@@ -9,6 +9,8 @@ import type { EmbroideryPricing } from "./embroidery-pricing";
 
 export type ProductStatus = "draft" | "published" | "archived";
 export type TransactionMode = "DIRECT_CHECKOUT" | "REQUEST_QUOTATION" | "HYBRID";
+/** Rute pengerjaan Woo (meta process_route): STK / CUS / PRO. */
+export type ProductProcessRoute = "fulfillment" | "customization" | "production";
 export type ProductModelSource =
   | "tripo3d"
   | "blender"
@@ -58,4 +60,6 @@ export interface OfissioProduct extends Product {
   /** WooCommerce image order: index 0 is the catalog/main image. */
   mainImage?: string | null;
   images?: ProductImageReference[];
+  /** Rute pengerjaan dari meta Woo process_route; optional untuk mock lama. */
+  processRoute?: ProductProcessRoute;
 }

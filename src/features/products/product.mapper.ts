@@ -9,6 +9,7 @@ import type {
   Product3DModel,
   ProductModelSource,
   OfissioProduct,
+  ProductProcessRoute,
   TransactionMode,
 } from "./product.types";
 import type { WooCommerceProduct } from "./woocommerce/woocommerce.types";
@@ -25,6 +26,7 @@ import {
   normalizeWooFulfillmentType,
   normalizeWooTransactionMode,
 } from "./woocommerce/woocommerce-product-readiness";
+import { toProxiedWordPressMediaUrl } from "./woocommerce/wordpress-media-proxy";
 
 const DEFAULT_SIZES = [...SIZES];
 
@@ -38,12 +40,18 @@ export function mapWooCommerceProductToOfissioProduct(
   const modelId = getMetaString(meta, "model_3d_id");
   const modelVersion = getMetaString(meta, "model_3d_version");
   const modelUpdatedAt = getMetaString(meta, "model_3d_updated_at");
-  const modelUrl = withModelRevision(
+  const modelRevisionUrl = withModelRevision(
     rawModelUrl,
     modelUpdatedAt || modelVersion || modelId,
   );
+  // GLB legacy berupa URL absolut WordPress (loopback) dialihkan ke proxy
+  // same-origin supaya bisa diambil perangkat LAN lain. Di client bundle env
+  // non-NEXT_PUBLIC ter-compile undefined → helper jadi no-op. Filename tetap
+  // diturunkan dari URL asli, bukan bentuk proxy.
+  const mediaProxyBase = process.env.WORDPRESS_MEDIA_BASE_URL?.trim() ?? "";
+  const modelUrl = toProxiedWordPressMediaUrl(modelRevisionUrl, mediaProxyBase);
   const modelFilename =
-    getMetaString(meta, "model_3d_filename") || filenameFromUrl(modelUrl);
+    getMetaString(meta, "model_3d_filename") || filenameFromUrl(modelRevisionUrl);
   const modelSource = normalizeModelSource(getMetaString(meta, "model_3d_source"));
   const has3DModel = getMetaBoolean(meta, "has_3d_model", false);
   const model: Product3DModel | null =
@@ -153,6 +161,11 @@ export function mapWooCommerceProductToOfissioProduct(
     lead_time: leadTime,
     fulfillment,
     transaction_mode: transactionMode,
+    processRoute: normalizeEnum<ProductProcessRoute>(
+      getMetaString(meta, "process_route"),
+      ["fulfillment", "customization", "production"],
+      "fulfillment",
+    ),
     colors: colors.length ? colors : ["Default"],
     available_colors: colors.length ? colors : ["Default"],
     available_sizes: availableSizes.length ? availableSizes : DEFAULT_SIZES,

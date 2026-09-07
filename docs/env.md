@@ -71,6 +71,15 @@ WORDPRESS_MEDIA_USERNAME=
 WORDPRESS_MEDIA_APP_PASSWORD=
 WORDPRESS_MEDIA_TOKEN=
 
+# Akses LAN (media proxy): saat WORDPRESS_MEDIA_BASE_URL mengarah ke host
+# loopback/`.local` (LocalWP di mesin yang sama), URL gambar produk dan GLB
+# legacy otomatis dialihkan ke proxy same-origin `/api/media/wordpress/...`
+# agar perangkat lain di jaringan tidak diminta mengambil `localhost` miliknya
+# sendiri. Base media publik (https) tidak pernah diproxy. Trafik proxy ikut
+# dibatasi WORDPRESS_PROVIDER_MAX_CONCURRENCY (naikkan bila first-paint katalog
+# di LAN terasa lambat). Data WooCommerce tetap menyimpan URL absolut —
+# write-back guard memulihkannya sebelum menulis ke provider.
+
 PAYMENT_PROVIDER=mock
 PAYMENT_MODE=sandbox
 IPAYMU_ENABLED=false

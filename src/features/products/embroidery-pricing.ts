@@ -78,8 +78,8 @@ export const DEFAULT_EMBROIDERY_PRICING_ZONES: EmbroideryPricingZone[] = [
   defaultZone("right_chest", "Dada Kanan", 8, 8, 5_000, "Logo atau nama"),
   defaultZone("left_sleeve", "Lengan Kiri", 7, 7, 6_000, "Bordir lengan"),
   defaultZone("right_sleeve", "Lengan Kanan", 7, 7, 6_000, "Bordir lengan"),
-  defaultZone("upper_back", "Punggung Atas", 20, 8, 10_000, "Logo sedang punggung atas"),
-  defaultZone("center_back", "Punggung Tengah", 25, 20, 15_000, "Logo besar punggung tengah"),
+  defaultZone("upper_back", "Punggung Atas", 30, 8, 10_000, "Logo sedang punggung atas"),
+  defaultZone("center_back", "Punggung Tengah", 30, 20, 15_000, "Logo besar punggung tengah"),
 ];
 
 export function createDefaultEmbroideryPricingZones() {
@@ -97,6 +97,60 @@ export function normalizeEmbroideryZoneId(
   return EMBROIDERY_PRICING_ZONE_IDS.includes(compatible as never)
     ? (compatible as EmbroideryPricingZoneId)
     : null;
+}
+
+export interface PlacementDimensionIssue {
+  zoneId: string;
+  maxWidthCm?: number;
+  maxHeightCm?: number;
+  widthCm?: number;
+  heightCm?: number;
+  message: string;
+}
+
+/**
+ * Validasi dimensi placement logo terhadap batas maksimum per zona
+ * (middle_back dipetakan ke center_back oleh normalizeEmbroideryZoneId).
+ * Zona tanpa definisi atau tanpa batas (> 0) dilewati demi backward-compat.
+ */
+export function validatePlacementDimensions(
+  placement: { zoneId: unknown; widthCm: unknown; heightCm: unknown },
+  zones: Array<
+    Pick<EmbroideryPricingZone, "zoneId" | "maxWidthCm" | "maxHeightCm">
+  >,
+): PlacementDimensionIssue[] {
+  const zoneId = normalizeEmbroideryZoneId(placement.zoneId);
+  if (!zoneId) return [];
+  const zone = zones.find((candidate) => candidate.zoneId === zoneId);
+  if (!zone) return [];
+  const widthCm = Number(placement.widthCm);
+  const heightCm = Number(placement.heightCm);
+  if (!Number.isFinite(widthCm) || !Number.isFinite(heightCm) || widthCm <= 0 || heightCm <= 0) {
+    return [
+      {
+        zoneId,
+        message: `Dimensi area bordir zona ${zoneId} tidak valid.`,
+      },
+    ];
+  }
+  const issues: PlacementDimensionIssue[] = [];
+  if (zone.maxWidthCm > 0 && widthCm > zone.maxWidthCm) {
+    issues.push({
+      zoneId,
+      maxWidthCm: zone.maxWidthCm,
+      widthCm,
+      message: `Lebar ${widthCm} cm melebihi maksimum zona ${zoneId} (${zone.maxWidthCm} cm).`,
+    });
+  }
+  if (zone.maxHeightCm > 0 && heightCm > zone.maxHeightCm) {
+    issues.push({
+      zoneId,
+      maxHeightCm: zone.maxHeightCm,
+      heightCm,
+      message: `Tinggi ${heightCm} cm melebihi maksimum zona ${zoneId} (${zone.maxHeightCm} cm).`,
+    });
+  }
+  return issues;
 }
 
 export function parseEmbroideryPricingZones(value: unknown): {

@@ -98,6 +98,7 @@ export interface AdminSummary {
 export interface AdminQuotationRow {
   id: string;
   quotationNumber: string;
+  source: string;
   companyId: string;
   companyName: string;
   picName: string;

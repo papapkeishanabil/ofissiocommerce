@@ -2,6 +2,7 @@ import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
 import { AdminBackLink, AdminPageHeader } from "@/features/admin/components/AdminSurface";
 import { getProductEditorTaxonomyOptions } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
+import { getMoqSettings } from "@/features/moq-settings/moq-settings.service";
 import { AdminProductForm } from "@/features/products/components/AdminProductForm";
 import { getWordPressMediaRuntimeConfig } from "@/features/products/woocommerce/wordpress-media-upload.service";
 import { getStorageRuntimeConfig } from "@/features/storage/storage.config";
@@ -11,7 +12,10 @@ export const dynamic = "force-dynamic";
 export default async function AdminNewProductPage() {
   await requireInternalAdminServer("admin:catalog:update");
   try {
-    const options = await getProductEditorTaxonomyOptions();
+    const [options, moqState] = await Promise.all([
+      getProductEditorTaxonomyOptions(),
+      getMoqSettings(),
+    ]);
     return (
       <div className="space-y-6">
         <AdminBackLink href="/admin/products">Kembali ke produk</AdminBackLink>
@@ -23,6 +27,7 @@ export default async function AdminNewProductPage() {
         <AdminProductForm
           mode="create"
           options={options}
+          routeMoqDefaults={moqState.settings}
           productImageMaxMb={getWordPressMediaRuntimeConfig().maxUploadMb}
           glbMaxMb={getStorageRuntimeConfig().maxUploadMb.glb}
         />

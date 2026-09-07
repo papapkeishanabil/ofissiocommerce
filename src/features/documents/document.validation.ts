@@ -26,3 +26,8 @@ export const generateProductionWorkOrderPdfBodySchema = z.object({
   templateId: z.enum(DOCUMENT_TEMPLATE_IDS).optional(),
   forceRegenerate: z.boolean().optional().default(false),
 });
+
+export const generateDesignApprovalSheetPdfBodySchema = z.object({
+  templateId: z.enum(DOCUMENT_TEMPLATE_IDS).optional(),
+  forceRegenerate: z.boolean().optional().default(false),
+});

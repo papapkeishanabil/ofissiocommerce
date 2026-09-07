@@ -7,10 +7,8 @@
 // API ref: https://platform.tripo3d.ai/docs
 // Never expose TRIPO_API_KEY to the client.
 
-import { readFileSync } from "node:fs";
-import { resolve, basename } from "node:path";
-
 import { getOptionalServerEnv } from "@/lib/security/server-only-secret";
+import { readSafePublicProductImage } from "@/lib/security/public-product-image";
 
 const TRIPO_BASE = "https://openapi.tripo3d.ai/v3";
 
@@ -29,14 +27,14 @@ export interface TripoTask {
 /** Step 1: Upload a local /public image file to Tripo, get image_token + ext. */
 async function uploadFile(publicPath: string): Promise<{ ok: true; token: string; ext: string } | { ok: false; reason: string }> {
   const apiKey = getOptionalServerEnv("TRIPO_API_KEY");
-  const fsPath = resolve(process.cwd(), "public", publicPath.replace(/^\//, ""));
-  const fileBuffer = readFileSync(fsPath);
-  const fileName = basename(fsPath);
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "png";
-  const mime = ext === "webp" ? "image/webp" : ext === "jpg" ? "image/jpeg" : "image/png";
+  const image = readSafePublicProductImage(publicPath);
+  const fileBuffer = image.data;
+  const fileName = image.filename;
+  const ext = image.extension;
+  const mime = image.mimeType;
 
   const formData = new FormData();
-  formData.append("file", new Blob([fileBuffer], { type: mime }), fileName);
+  formData.append("file", new Blob([new Uint8Array(fileBuffer)], { type: mime }), fileName);
 
   try {
     const res = await fetch(`${TRIPO_BASE}/files`, {

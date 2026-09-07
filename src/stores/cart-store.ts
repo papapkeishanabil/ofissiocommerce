@@ -14,6 +14,8 @@ import {
 } from "@/types/cart";
 import type { SizeMatrix } from "@/types/industry";
 import { validateProductForCart } from "@/features/products/product.validation";
+import { hasEmbroideryRequest, resolveLineMoqIssue } from "@/features/products/moq-rules";
+import type { MoqSettings } from "@/features/moq-settings/moq-settings.types";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { mapOfissioProductToCartItem } from "@/features/products/product.mapper";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
@@ -32,6 +34,7 @@ interface CartState {
     customization?: string | null;
     uniform3DConfig?: import("@/types/uniform-3d").Uniform3DConfig | null;
     globalEmbroideryPricing?: EmbroideryPricing;
+    moqSettings?: MoqSettings;
   }) => { ok: boolean; reason?: string; lineId?: string };
   updateLineSizes: (lineId: string, sizes: SizeMatrix) => void;
   removeLine: (lineId: string) => void;
@@ -51,19 +54,23 @@ export const useCartStore = create<CartState>()(
       hydrated: false,
       setHydrated: () => set({ hydrated: true }),
 
-      add: ({ product, color, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing }) => {
+      add: ({ product, color, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing, moqSettings }) => {
         const validation = validateProductForCart(product);
         if (!validation.ok) return { ok: false, reason: validation.reason };
         const totalQty = sumSizeMatrix(sizes);
         if (totalQty <= 0) {
           return { ok: false, reason: "Quantitas belum diisi." };
         }
-        if (totalQty < product.moq) {
-          return {
-            ok: false,
-            reason: `MOQ ${product.moq} pcs belum terpenuhi (saat ini ${totalQty}).`,
-          };
-        }
+        const moqIssue = resolveLineMoqIssue({
+          productMoq: product.moq,
+          totalQty,
+          hasEmbroidery: hasEmbroideryRequest({
+            uniform3DPlacements: uniform3DConfig?.placements,
+            customization,
+          }),
+          embroideryMoq: moqSettings?.embroidery,
+        });
+        if (moqIssue) return { ok: false, reason: moqIssue.reason };
         const id = lineItemId(product.id, color);
         const calculatedPrice = calculateQuantityTierPrice({
           regularPrice: product.priceFrom,
@@ -89,6 +96,18 @@ export const useCartStore = create<CartState>()(
             mergedSizes[k] = (cur.sizes[k] ?? 0) + (sizes[k] ?? 0);
           });
           const mergedQty = sumSizeMatrix(mergedSizes);
+          // Guard bordir: dua line di bawah batas bordir tidak boleh lolos
+          // lewat penggabungan (mis. 4 pcs polos + 4 pcs ber-note bordir).
+          const mergedIssue = resolveLineMoqIssue({
+            productMoq: product.moq,
+            totalQty: mergedQty,
+            hasEmbroidery: hasEmbroideryRequest({
+              embroideryPlacements: uniform3DConfig?.placements ?? cur.embroideryPlacements,
+              customization: customization ?? cur.customization,
+            }),
+            embroideryMoq: moqSettings?.embroidery,
+          });
+          if (mergedIssue) return { ok: false, reason: mergedIssue.reason };
           const mergedPrice = calculateQuantityTierPrice({
             regularPrice: cur.regularPrice ?? product.priceFrom,
             totalQty: mergedQty,

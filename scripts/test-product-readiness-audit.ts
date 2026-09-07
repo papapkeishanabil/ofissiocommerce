@@ -1,0 +1,28 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { auditProductReadiness } from "../src/features/product-readiness/product-readiness-audit";
+import type { WooCommerceProduct,WooCommerceProductVariation } from "../src/features/products/woocommerce/woocommerce.types";
+
+const meta=(key:string,value:unknown)=>({key,value});
+const product:WooCommerceProduct={id:828,sku:"KK-014",name:"Kemeja Kantor KK-014",slug:"kk-014",status:"draft",type:"variable",description:"Kemeja kerja",short_description:"Kemeja",price:"150000",regular_price:"150000",sale_price:"",weight:"0.3",dimensions:{length:"30",width:"20",height:"5"},categories:[{id:2,name:"Kemeja",slug:"kemeja"}],images:Array.from({length:7},(_,i)=>({id:i+1,src:`https://example.test/${i}.jpg`})),attributes:[{id:1,name:"WARNA",slug:"warna",options:["Krem"],variation:true},{id:2,name:"UKURAN",slug:"ukuran",options:["S","M","L"],variation:true},{id:3,name:"Material",slug:"material",options:["Tropical"]}],variations:[1,2,3,4,5,6],meta_data:[meta("industries",'["corporate"]'),meta("moq",12),meta("lead_time","3 hari"),meta("fulfillment_type","READY_STOCK"),meta("transaction_mode","DIRECT_CHECKOUT"),meta("has_3d_model",true),meta("model_3d_url","/3d/kk-014.glb"),meta("model_3d_id","m1"),meta("model_3d_version","1"),meta("model_3d_source","upload"),meta("model_3d_filename","kk.glb"),meta("quantity_pricing_enabled",false)]};
+const variations:WooCommerceProductVariation[]=Array.from({length:6},(_,i)=>({id:i+1,sku:i<2?"":`KK-014-${i}`,status:"publish",regular_price:"150000",attributes:[{name:"UKURAN",option:["S","M","L"][i%3]!},{name:"WARNA",option:"Krem"}]}));
+const item={batch_id:"batch",source_id:"7819",source_sku:"KK-014",target_sku:"KK-014",status:"IMPORTED",metadata:{name:product.name,variationCount:6,imageCount:7,photoSource:"NEW_LOCAL_PHOTOS"}};
+const planned={variationCount:6,imageCount:7,variationWithoutSkuCount:2,variantImages:[]};const masters={materials:new Set(["tropical"]),sizes:new Set(["s","m","l"]),colors:new Set(["krem"])};
+const ready=auditProductReadiness({product,variations,item,planned,duplicateSku:false,brokenImages:0,duplicateMedia:0,masters});assert.equal(ready.actualVariations,6);assert.equal(ready.imageCount,7);assert.equal(ready.withoutSourceSku,2);assert.equal(ready.preservedWithoutSku,2);assert.equal(ready.issues.some(v=>v.code==="variation_mismatch"),false);
+assert.equal(auditProductReadiness({product,variations:variations.slice(0,5),item,planned,duplicateSku:false,brokenImages:0,duplicateMedia:0,masters}).level,"BLOCKED","variation mismatch blocked");
+assert.equal(auditProductReadiness({product:{...product,images:[]},variations,item,planned,duplicateSku:false,brokenImages:0,duplicateMedia:0,masters}).issues.some(v=>v.code==="missing_image"),true);
+const missing=auditProductReadiness({product:{...product,categories:[{id:15,name:"Uncategorized",slug:"uncategorized"}],attributes:[],meta_data:[]},variations,item,planned,duplicateSku:false,brokenImages:0,duplicateMedia:0,masters});for(const code of ["uncategorized","missing_industry","missing_moq","missing_lead_time","missing_fulfillment","missing_transaction_mode","missing_material","missing_size"])assert.ok(missing.issues.some(v=>v.code===code),code);
+assert.ok(auditProductReadiness({product:{...product,attributes:[...(product.attributes??[]).filter(v=>v.slug!=="warna"),{id:1,name:"WARNA",slug:"warna",options:["LEGACY BLUE"]}]},variations,item,planned,duplicateSku:false,brokenImages:0,duplicateMedia:0,masters}).issues.some(v=>v.code==="legacy_color"));
+const dirty=auditProductReadiness({product:{...product,description:'n<br />n<strong>Spesifikasi<img src="https://www.ofissio.com/a.jpg">'},variations,item,planned,duplicateSku:false,brokenImages:0,duplicateMedia:0,masters});assert.ok(dirty.descriptionIssue);assert.ok(dirty.externalDescriptionMedia);
+assert.equal(auditProductReadiness({product,variations,item,planned,duplicateSku:true,brokenImages:0,duplicateMedia:0,masters}).level,"BLOCKED");
+const bdrProduct:WooCommerceProduct={...product,id:999,sku:"BDR",name:"Tambah Bordir",images:[],attributes:[],meta_data:[]};
+const bdrSnapshot=structuredClone(bdrProduct);
+const bdr=auditProductReadiness({product:bdrProduct,variations:[],item:{...item,source_sku:"BDR",target_sku:"BDR",metadata:{...item.metadata,name:"Tambah Bordir"}},planned:{variationCount:0,imageCount:0,variationWithoutSkuCount:0,variantImages:[]},duplicateSku:false,brokenImages:0,duplicateMedia:0,masters});
+assert.equal(bdr.level,"SKIPPED_SPECIAL_PRODUCT");
+assert.equal(bdr.dispositionReason,"SERVICE_ADDON_NOT_CATALOG_PRODUCT");
+assert.equal(bdr.issues.length,0,"BDR must not contribute readiness blockers");
+assert.deepEqual(bdrProduct,bdrSnapshot,"readiness audit must not mutate BDR Woo data");
+assert.notEqual(ready.level,"SKIPPED_SPECIAL_PRODUCT","normal products remain unaffected");
+const service=readFileSync(path.join(process.cwd(),"src/features/product-readiness/product-readiness-audit.service.ts"),"utf8");for(const forbidden of ["updateProduct(","createProduct(","createProductVariation(","deleteProduct(","uploadProductImage"] )assert.equal(service.includes(forbidden),false,`read-only service excludes ${forbidden}`);
+console.log("PASS: bulk product readiness read-only classification checks");

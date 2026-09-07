@@ -62,9 +62,9 @@ export function AdminReplenishmentButton({
         onClick={submit}
         disabled={busy || requested}
         aria-busy={busy}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-3 py-2 text-sm font-extrabold text-white transition hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+        className="inline-flex min-h-9 w-full items-center justify-center gap-1 rounded-lg bg-brand-700 px-3 text-xs font-bold tracking-tight text-white transition hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
       >
-        <Factory className="h-4 w-4" aria-hidden="true" />
+        <Factory className="h-3.5 w-3.5" aria-hidden="true" />
         {requested ? "Request sudah dibuat" : busy ? "Membuat request…" : "Buat Request Produksi"}
       </button>
       {message ? (

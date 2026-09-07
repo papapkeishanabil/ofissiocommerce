@@ -7,8 +7,14 @@ import { storageService } from "@/features/storage/storage.service";
 import type { SizeMatrix } from "@/types/industry";
 import type { LogoPlacement } from "@/types/uniform-3d";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
-import { calculateEmbroideryPricing } from "@/features/products/embroidery-pricing";
+import {
+  calculateEmbroideryPricing,
+  validatePlacementDimensions,
+} from "@/features/products/embroidery-pricing";
 import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global-embroidery-pricing.service";
+import { hasEmbroideryRequest, resolveLineMoqIssue } from "@/features/products/moq-rules";
+import { getMoqSettings } from "@/features/moq-settings/moq-settings.service";
+import type { MoqSettings } from "@/features/moq-settings/moq-settings.types";
 import { createApiError } from "@/lib/security/safe-error-response";
 import { validatePromotionCode } from "@/features/promotions/promotion.service";
 
@@ -37,6 +43,7 @@ function sumSizes(sizes: SizeMatrix) {
 async function validateAndPriceItem(
   input: SyncCheckoutCartInput["items"][number],
   companyId: string,
+  moqSettings: MoqSettings,
 ): Promise<ValidatedCheckoutCartItem> {
   const product = await productServerService.getProductById(input.productId);
   if (!product) throw new Error("Produk tidak ditemukan.");
@@ -48,10 +55,21 @@ async function validateAndPriceItem(
     throw new Error("Warna produk tidak tersedia.");
   }
 
+  // Satu helper untuk MOQ produk + batas keras bordir — dipakai juga oleh
+  // cart-store client sehingga pesan blokir identik.
   const totalQty = sumSizes(input.sizeMatrix);
-  if (totalQty < product.moq) {
-    throw new Error(`MOQ ${product.moq} pcs belum terpenuhi.`);
-  }
+  const moqIssue = resolveLineMoqIssue({
+    productMoq: product.moq,
+    totalQty,
+    hasEmbroidery: hasEmbroideryRequest({
+      embroideryPlacements: input.embroideryPlacements,
+      customization: input.customization,
+    }),
+    embroideryMoq: moqSettings.embroidery,
+  });
+  // SecurityApiError agar pesan MOQ/bordir sampai ke customer — plain Error
+  // akan dimask safeErrorResponse jadi pesan generik.
+  if (moqIssue) throw createApiError("VALIDATION_ERROR", moqIssue.reason, 400);
   const embroideryPlacements = await resolveEmbroideryLogoFiles(
     companyId,
     input.embroideryPlacements,
@@ -62,6 +80,22 @@ async function validateAndPriceItem(
     quantityPricing: product.quantityPricing,
   });
   const embroideryPricingSnapshot = (await getGlobalEmbroideryPricing()).pricing;
+  // Batas dimensi per zona (mis. punggung maks 30 cm) — zona tanpa definisi
+  // dilewati oleh validatePlacementDimensions demi backward-compat.
+  const dimensionIssues = embroideryPlacements.flatMap((placement) =>
+    validatePlacementDimensions(
+      {
+        zoneId: placement.zone,
+        widthCm: placement.widthCm,
+        heightCm: placement.heightCm,
+      },
+      embroideryPricingSnapshot.zones,
+    ),
+  );
+  const firstDimensionIssue = dimensionIssues[0]?.message;
+  if (firstDimensionIssue) {
+    throw createApiError("VALIDATION_ERROR", firstDimensionIssue, 400);
+  }
   const embroideryPrice = calculateEmbroideryPricing({
     totalQty,
     selectedZones: embroideryPlacements.map((placement) => placement.zone),
@@ -171,8 +205,9 @@ async function resolveEmbroideryLogoFiles(
 
 export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<CheckoutCartRecord> {
   const parsed = syncCheckoutCartSchema.parse(input);
+  const moqSettings = (await getMoqSettings()).settings;
   const items = await Promise.all(
-    parsed.items.map((item) => validateAndPriceItem(item, parsed.companyId)),
+    parsed.items.map((item) => validateAndPriceItem(item, parsed.companyId, moqSettings)),
   );
   const now = new Date();
   const subtotal = items.reduce((total, item) => total + item.finalEstimatedTotal, 0);
@@ -214,6 +249,7 @@ export async function getValidatedCheckoutCart(
 
   // Rebuild from canonical product data on every payment attempt. Stored
   // price/model snapshots are never the final source of truth.
+  const moqSettings = (await getMoqSettings()).settings;
   const items = await Promise.all(
     stored.items.map((item) =>
       validateAndPriceItem({
@@ -222,7 +258,7 @@ export async function getValidatedCheckoutCart(
         sizeMatrix: item.sizeMatrix,
         customization: item.customization,
         embroideryPlacements: item.embroideryPlacements,
-      }, stored.companyId),
+      }, stored.companyId, moqSettings),
     ),
   );
   const subtotal = items.reduce((total, item) => total + item.finalEstimatedTotal, 0);

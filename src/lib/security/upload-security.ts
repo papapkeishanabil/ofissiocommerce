@@ -10,6 +10,7 @@ export type AllowedUploadKind =
   | "document"
   | "spreadsheet"
   | "model3d"
+  | "video"
   | "custom";
 
 const UPLOAD_RULES: Record<
@@ -41,6 +42,11 @@ const UPLOAD_RULES: Record<
   model3d: {
     extensions: [".glb"],
     mimeTypes: ["model/gltf-binary", "application/octet-stream"],
+    maxBytes: 50 * 1024 * 1024,
+  },
+  video: {
+    extensions: [".mp4", ".webm"],
+    mimeTypes: ["video/mp4", "video/webm", "application/octet-stream"],
     maxBytes: 50 * 1024 * 1024,
   },
   custom: {

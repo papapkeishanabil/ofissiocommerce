@@ -16,6 +16,7 @@ import {
   type AdminProductImagesPatch,
 } from "./woocommerce-product-image.validation";
 import { woocommerceClient } from "./woocommerce.client";
+import { fromSameOriginWordPressMediaUrl } from "./wordpress-media-proxy";
 import {
   getWordPressMediaRuntimeConfig,
   uploadProductImageToWordPress,
@@ -270,8 +271,13 @@ function normalizeImages(images: WooCommerceImage[], productName: string) {
 }
 
 function toWooWriteImage(image: AdminProductImage) {
+  // WooCommerce harus menerima URL absolut — path proxy same-origin tidak
+  // boleh bocor tersimpan ke data produk.
+  const mediaBaseUrl = getWordPressMediaRuntimeConfig().baseUrl;
   return {
-    ...(image.id ? { id: image.id } : { src: image.src }),
+    ...(image.id
+      ? { id: image.id }
+      : { src: fromSameOriginWordPressMediaUrl(image.src, mediaBaseUrl) }),
     name: image.name,
     alt: image.alt,
   };
@@ -286,6 +292,7 @@ async function updateWooProductImagesWithFallback(
   images: AdminProductImage[],
   newlyUploadedMediaIds: Set<number>,
 ) {
+  const mediaBaseUrl = getWordPressMediaRuntimeConfig().baseUrl;
   try {
     await woocommerceClient.updateProduct(productId, {
       images: images.map(toWooWriteImage),
@@ -295,7 +302,11 @@ async function updateWooProductImagesWithFallback(
     await woocommerceClient.updateProduct(productId, {
       images: images.map((image) =>
         image.id && newlyUploadedMediaIds.has(image.id)
-          ? { src: image.src, name: image.name, alt: image.alt }
+          ? {
+              src: fromSameOriginWordPressMediaUrl(image.src, mediaBaseUrl),
+              name: image.name,
+              alt: image.alt,
+            }
           : toWooWriteImage(image),
       ),
     });

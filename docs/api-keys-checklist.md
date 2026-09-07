@@ -153,6 +153,7 @@ Ofistant kini HYBRID: bila `GEMINI_API_KEY` terisi, percakapan natural dipahami 
 ```env
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.0-flash-lite
+OFISTANT_AI_PROVIDER=google
 OFISTANT_LLM_ENABLED=true
 ```
 
@@ -161,6 +162,9 @@ Catatan:
 - Tanpa `GEMINI_API_KEY` (atau bila LLM gagal), Ofistant otomatis fallback ke rule engine server-side yang diberi data katalog asli — tetap berfungsi, `source:"rules"` terlihat di response network.
 - Kill-switch: `OFISTANT_LLM_ENABLED=false` memaksa rule engine walau key terisi.
 - `GEMINI_API_KEY` hanya boleh dibaca server (tidak boleh ada varian `NEXT_PUBLIC_`).
+- Semua model wajib melewati `ofistantModelResponseSchema` dan grounding gate yang sama. Model hanya menyusun bahasa; harga, tanggal, jumlah, nomor dokumen, status, dan tindakan tetap berasal dari rule engine, konteks halaman, atau Knowledge Base Published.
+- Provider yang belum memiliki adapter tidak akan dijalankan. Sistem otomatis kembali ke rule engine, sehingga pergantian model/provider tidak boleh menurunkan akurasi fakta.
+- Jalankan `npm run test:ofistant-consistency` setelah mengganti model atau menambah adapter provider.
 - Harga/bordir hanya dihitung lewat tool (`compute_quantity_price`, `compute_embroidery_price`); model dilarang mengarang angka.
 - Route bersifat anonim (pesan pertama pre-login); session opsional dan hanya memperkaya konteks (mis. `companyId` untuk cek status order).
 

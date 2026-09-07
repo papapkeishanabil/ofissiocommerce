@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   getQuotationRequestById,
-  updateSalesAssistedBriefApproval,
+  signSalesAssistedBrief,
 } from "@/features/quotation/quotation.service";
-import { customBriefApprovalBodySchema } from "@/features/quotation/quotation.validation";
+import { customBriefSignatureBodySchema } from "@/features/quotation/quotation.validation";
 import { getBriefApprovalStatus } from "@/features/quotation/quotation-requirement";
 import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
 import { requireAuth } from "@/lib/security/auth-guard";
@@ -42,10 +42,13 @@ export async function GET(request: Request, context: RouteContext) {
     const session = customerSession(request);
     const { id } = await context.params;
     const quotation = await getQuotationRequestById(id, session.companyId);
+    const brief = quotation?.productionBrief;
     if (
       !quotation ||
       quotation.source !== "custom_request" ||
-      quotation.productionBrief?.intakeChannel === "customer_portal"
+      !brief ||
+      // Brief portal tersedia setelah sales mengambil alih (enrichment).
+      (brief.intakeChannel === "customer_portal" && !brief.enrichedAt)
     ) {
       throw createApiError("NOT_FOUND", "Brief Full Custom tidak ditemukan.", 404);
     }
@@ -68,12 +71,16 @@ export async function POST(request: Request, context: RouteContext) {
     });
     const session = customerSession(request);
     const { id } = await context.params;
-    const payload = validateInput(customBriefApprovalBodySchema, await request.json());
-    const brief = await updateSalesAssistedBriefApproval({
+    const payload = validateInput(customBriefSignatureBodySchema, await request.json());
+    const brief = await signSalesAssistedBrief({
       id,
       companyId: session.companyId,
       userId: session.userId,
       action: payload.action,
+      signerName: "signerName" in payload ? payload.signerName : undefined,
+      signerTitle: "signerTitle" in payload ? payload.signerTitle : undefined,
+      consentAccepted:
+        "consentAccepted" in payload ? payload.consentAccepted : undefined,
       note: payload.note ?? null,
       request,
     });

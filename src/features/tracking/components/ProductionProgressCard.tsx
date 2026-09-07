@@ -17,6 +17,15 @@ interface ProductionProgressCardProps {
 export function ProductionProgressCard({ order }: ProductionProgressCardProps) {
   const progress = calculateOrderProgress(order.productionTimeline);
   const status = trackingOrderStatusLabel(order);
+  const shipmentActive = ["in_transit", "delivered"].includes(order.currentStageId);
+  const pickupAt =
+    order.actualCourierPickupAt ??
+    shipmentMilestoneTimestamp(order, ["picked_up", "pickup", "in_transit", "transit"]);
+  const deliveredAt =
+    order.actualDeliveredAt ?? shipmentMilestoneTimestamp(order, ["delivered"]);
+  const plannedHandover =
+    order.plannedCourierHandoverDate ?? order.estimatedDeliveryDate;
+  const arrivalEstimate = formatArrivalEstimate(order);
 
   return (
     <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
@@ -65,9 +74,16 @@ export function ProductionProgressCard({ order }: ProductionProgressCardProps) {
           value={formatTrackingDate(order.estimatedCompletionDate)}
         />
         <Info
-          label="Estimasi kirim"
-          value={formatTrackingDate(order.estimatedDeliveryDate)}
+          label="Rencana diserahkan ke kurir"
+          value={formatTrackingDate(plannedHandover)}
         />
+        {shipmentActive && (
+          <Info
+            label={deliveredAt ? "Terkirim aktual" : "Diserahkan ke kurir"}
+            value={formatTrackingDate(deliveredAt ?? pickupAt)}
+          />
+        )}
+        {shipmentActive && <Info label="Estimasi tiba" value={arrivalEstimate} />}
         <Info label="Jumlah item" value={`${order.items.length} item`} />
         <Info
           label="Total qty"
@@ -81,6 +97,29 @@ export function ProductionProgressCard({ order }: ProductionProgressCardProps) {
       </p>
     </section>
   );
+}
+
+function shipmentMilestoneTimestamp(
+  order: CustomerTrackingOrder,
+  fragments: string[],
+) {
+  const milestone = [...order.shipmentTimeline]
+    .reverse()
+    .find(
+      (entry) =>
+        entry.timestamp &&
+        fragments.some((fragment) => entry.id.toLowerCase().includes(fragment)),
+    );
+  return milestone?.timestamp ?? null;
+}
+
+function formatArrivalEstimate(order: CustomerTrackingOrder) {
+  const start = order.estimatedArrivalStartDate;
+  const end = order.estimatedArrivalEndDate ?? order.estimatedDeliveryDate;
+  if (start && end && start !== end) {
+    return `${formatTrackingDate(start)} – ${formatTrackingDate(end)}`;
+  }
+  return formatTrackingDate(end ?? start);
 }
 
 function Info({ label, value }: { label: string; value: string }) {

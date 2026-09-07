@@ -1,6 +1,7 @@
 import "server-only";
 
 import type {
+  DesignApprovalSheetPdfData,
   DocumentTemplateId,
   EmbroideryWorkOrderPdfData,
   InvoicePdfData,
@@ -13,6 +14,7 @@ import { invoiceOfissioCustomTemplate } from "./templates/invoice-ofissio-custom
 import { quotationDefaultTemplate } from "./templates/quotation-default.template";
 import { embroideryWorkOrderOfissioTemplate } from "./templates/embroidery-work-order-ofissio.template";
 import { productionWorkOrderOfissioTemplate } from "./templates/production-work-order-ofissio.template";
+import { designApprovalSheetOfissioTemplate } from "./templates/design-approval-sheet-ofissio.template";
 
 const templates = {
   quotation_default: quotationDefaultTemplate,
@@ -20,6 +22,7 @@ const templates = {
   invoice_ofissio_custom: invoiceOfissioCustomTemplate,
   embroidery_work_order_ofissio: embroideryWorkOrderOfissioTemplate,
   production_work_order_ofissio: productionWorkOrderOfissioTemplate,
+  design_approval_sheet_ofissio: designApprovalSheetOfissioTemplate,
 } satisfies Record<DocumentTemplateId, PdfTemplate>;
 
 export function getDocumentTemplate(templateId: DocumentTemplateId) {
@@ -66,6 +69,17 @@ export function renderProductionWorkOrderPdfByTemplate(
   const template = getDocumentTemplate(templateId);
   if (template.kind !== "production_work_order") throw new Error("Template Production Work Order tidak valid.");
   return (template as PdfTemplate<ProductionWorkOrderPdfData>).render(data);
+}
+
+export function renderDesignApprovalSheetPdfByTemplate(
+  templateId: DocumentTemplateId,
+  data: DesignApprovalSheetPdfData,
+) {
+  const template = getDocumentTemplate(templateId);
+  if (template.kind !== "design_approval_sheet") {
+    throw new Error("Template Lembar Approval Desain tidak valid.");
+  }
+  return (template as PdfTemplate<DesignApprovalSheetPdfData>).render(data);
 }
 
 export const documentTemplateRegistry = templates;

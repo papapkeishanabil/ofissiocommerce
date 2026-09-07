@@ -170,4 +170,49 @@ export const supabaseStorageProvider: StorageObjectProvider = {
       contentType: response.headers.get("content-type"),
     };
   },
+
+  async createSignedUploadToken(input) {
+    const { url } = supabaseStorageConfig();
+    const safeBucket = encodeURIComponent(input.bucket);
+    const safeKey = input.key.split("/").map(encodeURIComponent).join("/");
+    const response = await fetch(`${url}/storage/v1/object/upload/sign/${safeBucket}/${safeKey}`, {
+      method: "POST",
+      headers: {
+        ...headers("application/json"),
+        ...(input.upsert ? { "x-upsert": "true" } : {}),
+      },
+      body: JSON.stringify({}),
+    });
+    await assertOk(response, "signed-upload", { bucket: input.bucket });
+    const payload = await response.json().catch(() => null) as { url?: string; token?: string } | null;
+    const tokenFromUrl = signedUploadTokenFromUrl(url, payload?.url);
+    const token = tokenFromUrl ?? payload?.token;
+    if (!isCompactJws(token)) throw new Error("Token upload Supabase tidak valid.");
+    return { token, path: input.key };
+  },
 };
+
+export function signedUploadTokenFromUrl(baseUrl: string, signedPath: string | undefined) {
+  if (!signedPath) return null;
+  try {
+    const absolute = signedPath.startsWith("http")
+      ? signedPath
+      : `${baseUrl}/storage/v1${signedPath.startsWith("/") ? signedPath : `/${signedPath}`}`;
+    return new URL(absolute).searchParams.get("token");
+  } catch {
+    return null;
+  }
+}
+
+export function isCompactJws(value: string | null | undefined): value is string {
+  return Boolean(value && value.split(".").length === 3 && value.split(".").every(Boolean));
+}
+
+export function getSupabaseResumableUploadEndpoint() {
+  const { url } = supabaseStorageConfig();
+  const parsed = new URL(url);
+  const projectRef = parsed.hostname.endsWith(".supabase.co") ? parsed.hostname.split(".")[0] : null;
+  return projectRef
+    ? `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable/sign`
+    : `${url}/storage/v1/upload/resumable/sign`;
+}

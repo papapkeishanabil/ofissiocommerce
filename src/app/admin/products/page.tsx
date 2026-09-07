@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, Box, ExternalLink, FileBox, Pencil, Plus, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import { Boxes, Box, ExternalLink, FileBox, FileSearch, Pencil, Plus, RotateCcw, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
 
 import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { AdminBadge } from "@/features/admin/components/AdminBadge";
@@ -76,12 +76,20 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
           eyebrow="Product readiness"
           title="Produk WooCommerce"
           description="Lihat semua produk dari WooCommerce, termasuk produk yang belum tampil di Ofissio, beserta field yang masih harus dilengkapi."
-          actions={
+          actions={<div className="flex flex-wrap gap-2">
+            <Link href="/admin/products/readiness" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              Bulk Product Readiness
+            </Link>
+            <Link href="/admin/products/import" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">
+              <FileSearch className="h-4 w-4" aria-hidden="true" />
+              Preview Bulk Import
+            </Link>
             <Link href="/admin/products/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white transition hover:bg-brand-800">
               <Plus className="h-4 w-4" aria-hidden="true" />
               Tambah Produk Baru
             </Link>
-          }
+          </div>}
         >
           <div className="flex flex-wrap gap-2 text-xs font-medium text-ink-muted">
             <span className="rounded-md border border-line bg-slate-50 px-3 py-1.5">

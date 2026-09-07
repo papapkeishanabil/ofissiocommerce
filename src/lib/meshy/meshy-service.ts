@@ -9,10 +9,8 @@
 //   POST https://api.meshy.ai/openapi/v1/multi-image-to-3d   → create task
 //   GET  https://api.meshy.ai/openapi/v1/multi-image-to-3d/{id} → poll
 
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
 import { getOptionalServerEnv } from "@/lib/security/server-only-secret";
+import { readSafePublicProductImage } from "@/lib/security/public-product-image";
 
 const MESHY_BASE = "https://api.meshy.ai";
 
@@ -22,12 +20,8 @@ const MESHY_BASE = "https://api.meshy.ai";
  * dev server can't provide). Format: data:image/webp;base64,xxxx
  */
 function publicFileToDataUri(publicPath: string): string {
-  // publicPath like "/products/kk-006/KK-006-front-nobg.webp"
-  const fsPath = resolve(process.cwd(), "public", publicPath.replace(/^\//, ""));
-  const buf = readFileSync(fsPath);
-  const ext = publicPath.split(".").pop()?.toLowerCase() ?? "png";
-  const mime = ext === "webp" ? "image/webp" : ext === "jpg" ? "image/jpeg" : "image/png";
-  return `data:${mime};base64,${buf.toString("base64")}`;
+  const image = readSafePublicProductImage(publicPath);
+  return `data:${image.mimeType};base64,${image.data.toString("base64")}`;
 }
 
 export function isMeshyConfigured(): boolean {
@@ -80,6 +74,7 @@ export async function createImageTo3D(
   }
 
   try {
+    const imageUrl = publicFileToDataUri(input.imageUrl);
     const res = await fetch(`${MESHY_BASE}/openapi/v1/image-to-3d`, {
       method: "POST",
       headers: {
@@ -87,7 +82,7 @@ export async function createImageTo3D(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        image_url: input.imageUrl,
+        image_url: imageUrl,
         prompt: input.prompt,
         ai_model: input.aiModel ?? "meshy-6",
         enable_pbr: input.enablePbr ?? true,

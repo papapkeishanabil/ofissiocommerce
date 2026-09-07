@@ -1068,6 +1068,7 @@ function mapQuotationRow(
   return {
     id: quotation.id,
     quotationNumber: quotation.quotationNumber,
+    source: quotation.source,
     companyId: quotation.companyId,
     companyName: quotation.companyName || quotation.companyId,
     picName: quotation.picName,

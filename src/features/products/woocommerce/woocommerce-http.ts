@@ -1,8 +1,8 @@
 import { createHmac, randomBytes } from "node:crypto";
-import { once } from "node:events";
 import type { ClientRequest } from "node:http";
 import { request as httpRequest } from "node:http";
 import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
+import { withWordPressProviderSlot } from "./wordpress-provider-gate";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
@@ -87,11 +87,13 @@ function isLoopbackHost(hostname: string) {
   return host === "localhost" || host === "127.0.0.1" || host === "::1";
 }
 
-export function requestWooCommerceJson<T>(
+export async function requestWooCommerceJson<T>(
   url: URL,
   init: WooJsonRequestInit = {},
 ): Promise<WooJsonResponse<T>> {
-  return new Promise((resolve, reject) => {
+  const method = init.method ?? "GET";
+  const operation = `${method.toUpperCase()} ${safeProviderPath(url.pathname)}`;
+  return withWordPressProviderSlot(operation, () => new Promise((resolve, reject) => {
     const body = init.body;
     const bodyLength =
       init.bodyLength ??
@@ -116,33 +118,58 @@ export function requestWooCommerceJson<T>(
       },
       (res) => {
         const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer | string) => {
+        let settled = false;
+        const cleanup = () => {
+          res.off("data", onData);
+          res.off("end", onEnd);
+          res.off("aborted", onAborted);
+          res.off("error", onError);
+        };
+        const finish = (callback: () => void) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          callback();
+        };
+        const onData = (chunk: Buffer | string) => {
           chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-        });
-        res.on("end", () => {
+        };
+        const onEnd = () => {
           const text = Buffer.concat(chunks).toString("utf8");
           try {
-            resolve({
+            const value = {
               ok: Boolean(res.statusCode && res.statusCode >= 200 && res.statusCode < 300),
               status: res.statusCode ?? 0,
               data: (text ? JSON.parse(text) : null) as T,
               text,
-            });
+            };
+            finish(() => resolve(value));
           } catch {
-            reject(new Error("invalid_response"));
+            finish(() => reject(Object.assign(new Error("WooCommerce returned invalid or truncated JSON."), { code: "INVALID_RESPONSE" })));
           }
-        });
+        };
+        const onAborted = () => finish(() => reject(Object.assign(new Error("WooCommerce response stream was aborted."), { code: "ECONNRESET" })));
+        const onError = (error: Error) => finish(() => reject(error));
+        res.on("data", onData);
+        res.once("end", onEnd);
+        res.once("aborted", onAborted);
+        res.once("error", onError);
       },
     );
 
     req.setTimeout(init.timeoutMs ?? REQUEST_TIMEOUT_MS, () => {
-      req.destroy(new Error("network_error"));
+      const timeoutError = Object.assign(
+        new Error(`WooCommerce request timed out after ${init.timeoutMs ?? REQUEST_TIMEOUT_MS}ms`),
+        { code: "ETIMEDOUT" },
+      );
+      req.destroy(timeoutError);
     });
-    req.on("error", reject);
+    req.once("error", reject);
+    req.once("close", () => req.setTimeout(0));
     void writeRequestBody(req, body).catch((error) => {
       req.destroy(error instanceof Error ? error : new Error("network_error"));
     });
-  });
+  }));
 }
 
 async function writeRequestBody(
@@ -163,10 +190,33 @@ async function writeRequestBody(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      if (!request.write(value)) await once(request, "drain");
+      if (!request.write(value)) await waitForDrain(request);
     }
     request.end();
+  } catch (error) {
+    await reader.cancel(error).catch(() => undefined);
+    throw error;
   } finally {
     reader.releaseLock();
   }
+}
+
+function waitForDrain(request: ClientRequest) {
+  return new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      request.off("drain", onDrain);
+      request.off("error", onError);
+      request.off("close", onClose);
+    };
+    const onDrain = () => { cleanup(); resolve(); };
+    const onError = (error: Error) => { cleanup(); reject(error); };
+    const onClose = () => { cleanup(); reject(Object.assign(new Error("Request closed before drain."), { code: "ECONNRESET" })); };
+    request.once("drain", onDrain);
+    request.once("error", onError);
+    request.once("close", onClose);
+  });
+}
+
+function safeProviderPath(pathname: string) {
+  return pathname.replace(/\/\d+(?=\/|$)/g, "/:id");
 }

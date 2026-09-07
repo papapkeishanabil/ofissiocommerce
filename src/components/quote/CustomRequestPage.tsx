@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   CalendarDays,
@@ -74,7 +75,12 @@ const STEPS: Array<{ n: string; label: string }> = [
   { n: "4", label: "Production Order" },
 ];
 
-export function CustomRequestPage() {
+interface CustomRequestPageProps {
+  /** MOQ rute production (master MOQ) — hanya warning, bukan blokir. */
+  productionMoq?: number;
+}
+
+export function CustomRequestPage({ productionMoq }: CustomRequestPageProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { session, hydrated, isAuthenticated } = useAuth();
@@ -96,6 +102,14 @@ export function CustomRequestPage() {
   }, [form]);
 
   const readyToSubmit = requiredFilled === REQUIRED_TOTAL;
+  // Soft warning only: sales handles sub-MOQ full-custom requests case by case.
+  const estimatedQty = Number(form.estimatedQuantity);
+  const belowProductionMoq =
+    productionMoq != null &&
+    productionMoq > 1 &&
+    Number.isFinite(estimatedQty) &&
+    estimatedQty >= 1 &&
+    estimatedQty < productionMoq;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -419,6 +433,12 @@ export function CustomRequestPage() {
                     <input id="custom-estimatedQuantity" type="number" min={1} step={1} inputMode="numeric" value={form.estimatedQuantity} onChange={(event) => update("estimatedQuantity", event.target.value)} className={`${inputClass} pr-14`} placeholder="100" />
                     <span className="pointer-events-none absolute right-4 top-3.5 text-sm font-semibold text-ink-muted">pcs</span>
                   </div>
+                  {belowProductionMoq ? (
+                    <p role="note" className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium leading-relaxed text-amber-900">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      Full custom/production umumnya minimal {productionMoq} pcs. Jumlah di bawah itu tetap bisa diajukan — tim sales akan menghubungi Anda untuk opsi jumlah lebih kecil.
+                    </p>
+                  ) : null}
                 </Field>
                 <Field label="Preferensi bahan" htmlFor="custom-materialPreference" hint="Opsional; dapat berupa jenis kain atau gramasi.">
                   <input id="custom-materialPreference" value={form.materialPreference} onChange={(event) => update("materialPreference", event.target.value)} maxLength={160} className={inputClass} placeholder="Contoh: ripstop 190 gsm" />
