@@ -108,6 +108,7 @@ export type PaymentOrderStatus =
   | "cancelled";
 
 export interface PaymentOrderRecord {
+  orderNote?: string;
   id: string;
   orderNumber?: string | null;
   cartId: string;

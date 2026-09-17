@@ -66,7 +66,7 @@ export function AdminInlineProcessChecklist({
     <AdminSectionCard
       icon={Workflow}
       title={variant === "summary" ? "Progress proses" : "Checklist operasional"}
-      description={`${processOrder.processOrderNumber} · ${processOrder.assignedTeam ?? "Tim belum ditentukan"}`}
+      description={`${processOrder.processOrderNumber}, ${processOrder.assignedTeam ?? "Tim belum ditentukan"}`}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <AdminProcessRouteBadge route={processOrder.processRoute} />

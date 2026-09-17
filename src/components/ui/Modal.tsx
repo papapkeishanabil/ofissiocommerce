@@ -1,11 +1,13 @@
 // src/components/ui/Modal.tsx
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useContext, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { StorefrontThemeContext } from "@/components/shell/StorefrontThemeContext";
+import { storefrontFont } from "@/components/shell/storefront-font";
 
 interface ModalProps {
   open: boolean;
@@ -32,6 +34,7 @@ export function Modal({
   footer,
   size = "md",
 }: ModalProps) {
+  const storefront = useContext(StorefrontThemeContext);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -48,7 +51,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      className={cn("fixed inset-0 z-[80] flex items-center justify-center p-4", storefront && `${storefrontFont.variable} storefront-scope`)}
       role="dialog"
       aria-modal="true"
     >

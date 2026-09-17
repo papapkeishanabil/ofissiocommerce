@@ -22,6 +22,8 @@ interface CatalogFilterBarProps {
   industries: FilterOption[];
   categories: FilterOption[];
   colors: FilterOption[];
+  sort?: string;
+  onSortChange?: (value: string) => void;
 }
 
 function buildCatalogHref(active: {
@@ -44,6 +46,8 @@ export function CatalogFilterBar({
   industries,
   categories,
   colors,
+  sort = "default",
+  onSortChange,
 }: CatalogFilterBarProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -68,7 +72,7 @@ export function CatalogFilterBar({
 
   return (
     <div
-      className={`mb-6 flex flex-col gap-3 rounded-2xl border border-line bg-white p-4 shadow-soft-sm sm:p-5 lg:flex-row lg:items-end${pending ? " opacity-70" : ""}`}
+      className={`catalog-filter-bar flex flex-col gap-3 rounded-xl border border-line bg-white p-4 sm:flex-row sm:items-end${pending ? " opacity-70" : ""}`}
       role="group"
       aria-label="Filter katalog"
     >
@@ -82,7 +86,7 @@ export function CatalogFilterBar({
         onChange={(v) => apply("industry", v)}
         selectClass={selectClass}
       />
-      <FilterSelect
+      {categories.length > 0 && <FilterSelect
         id="filter-jenis"
         label="Jenis produk"
         allLabel="Semua jenis"
@@ -91,7 +95,7 @@ export function CatalogFilterBar({
         disabled={pending}
         onChange={(v) => apply("category", v)}
         selectClass={selectClass}
-      />
+      />}
       <FilterSelect
         id="filter-warna"
         label="Warna"
@@ -102,6 +106,7 @@ export function CatalogFilterBar({
         onChange={(v) => apply("color", v)}
         selectClass={selectClass}
       />
+      {onSortChange && <div className="min-w-0 flex-1"><label htmlFor="catalog-sort" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-subtle">Urutkan</label><select id="catalog-sort" value={sort} onChange={e=>onSortChange(e.target.value)} className={selectClass}><option value="default">Rekomendasi</option><option value="price-asc">Harga terendah</option><option value="price-desc">Harga tertinggi</option><option value="name">Nama A-Z</option></select></div>}
       {(industry || category || color) && (
         <button
           type="button"
@@ -141,7 +146,7 @@ function FilterSelect({
   selectClass: string;
 }) {
   return (
-    <div className="min-w-0 flex-1 lg:max-w-60">
+    <div className="min-w-0 flex-1">
       <label
         htmlFor={id}
         className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-subtle"

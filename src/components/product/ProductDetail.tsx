@@ -1,6 +1,9 @@
 // src/components/product/ProductDetail.tsx
 
 "use client";
+import { garmentReference } from "@/components/configurator/garment-scale";
+
+import { productColorDisplayLabel, productColorSwatchStyle } from "@/lib/product-colors";
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -9,12 +12,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatIDR } from "@/types/product";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
-import { calculateEmbroideryPricing, normalizeEmbroideryZoneId, type EmbroideryPricing } from "@/features/products/embroidery-pricing";
+import { calculateEmbroideryPricing, type EmbroideryPricing } from "@/features/products/embroidery-pricing";
 import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { fulfillmentLabel } from "@/types/industry";
 import { emptySizeMatrix } from "@/types/cart";
 import { hasEmbroideryRequest, resolveLineMoqIssue } from "@/features/products/moq-rules";
+import { resolveOrderProcessingInfo } from "@/features/products/order-processing";
 import type { MoqSettings } from "@/features/moq-settings/moq-settings.types";
+import { DEFAULT_MOQ_SETTINGS } from "@/features/moq-settings/moq-settings.types";
 import { getModel3DForProduct } from "@/data/uniform-3d";
 import type { SizeMatrix } from "@/types/industry";
 import { useCartStore } from "@/stores/cart-store";
@@ -23,13 +28,17 @@ import { useUIStore } from "@/stores/ui-store";
 import { afterConfirmItemAdded } from "@/lib/ofistant/ofistant.rules";
 import {
   ArrowLeft,
+  Box,
   CheckCircle2,
+  ChevronRight,
+  Clock3,
   Layers,
   Minus,
-  Plus,
+  PackageCheck,
   Ruler,
   Shirt,
   Sparkles,
+  ShoppingCart,
   Truck,
   X,
 } from "lucide-react";
@@ -44,6 +53,7 @@ import { useFloatingPreviewState } from "@/features/product-preview/hooks/useFlo
 import { useProductHeroVisibility } from "@/features/product-preview/hooks/useProductHeroVisibility";
 import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
 import { ProductGallery } from "./ProductGallery";
+import { StudioShell } from "@/components/configurator/StudioShell";
 
 // Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
 // when the customer actually opens the 3D tab on a supported product.
@@ -63,86 +73,37 @@ const Uniform3DConfigurator = dynamic(
 );
 
 interface ProductDetailProps {
+  pricingUnavailable?: boolean;
+  purchasingUnavailable?: boolean;
   product: OfissioProduct;
   globalEmbroideryPricing: EmbroideryPricing;
   moqSettings?: MoqSettings;
+  /** Nama standar ukuran yang terpasang (dari master kategori) untuk judul panduan. */
+  sizeChartStandardName?: string;
 }
 
-const COLOR_SWATCHES: Record<string, string> = {
-  Navy: "#1e3a8a",
-  Black: "#0f172a",
-  White: "#f8fafc",
-  "Orange Safety": "#f97316",
-  "Lime Safety": "#84cc16",
-  Yellow: "#facc15",
-  Khaki: "#a16207",
-  "Dark Green": "#166534",
-  "Royal Blue": "#1d4ed8",
-  Maroon: "#7f1d1d",
-  "Light Blue": "#7dd3fc",
-  Pink: "#fbcfe8",
-  Grey: "#94a3b8",
-  "Dark Grey": "#475569",
-  "Ceil Blue": "#7dd3fc",
-  Teal: "#0d9488",
-  Wine: "#9f1239",
-  Charcoal: "#334155",
-  Olive: "#4d7c0f",
-  Burgundy: "#7f1d1d",
-  Kuning: "#facc15",
-  Merah: "#dc2626",
-  Biru: "#2563eb",
-  Hijau: "#16a34a",
-  Putih: "#f8fafc",
-  Hitam: "#0f172a",
-  Abu: "#94a3b8",
-  "Abu-abu": "#94a3b8",
-  Cokelat: "#92400e",
-  Oranye: "#f97316",
-  Ungu: "#7e22ce",
-};
 
-function productColorSwatch(colorName: string) {
-  const exact = COLOR_SWATCHES[colorName];
-  if (exact) return exact;
 
-  const normalized = colorName.trim().toLowerCase();
-  const aliases: Array<[string[], string]> = [
-    [["navy", "biru dongker", "dongker"], "#1e3a8a"],
-    [["black", "hitam"], "#0f172a"],
-    [["white", "putih"], "#f8fafc"],
-    [["yellow", "kuning"], "#facc15"],
-    [["orange", "oranye"], "#f97316"],
-    [["lime", "hijau stabilo"], "#84cc16"],
-    [["dark green", "hijau tua"], "#166534"],
-    [["green", "hijau"], "#16a34a"],
-    [["royal blue", "biru royal"], "#1d4ed8"],
-    [["light blue", "ceil blue", "biru muda"], "#7dd3fc"],
-    [["blue", "biru"], "#2563eb"],
-    [["maroon", "burgundy", "wine", "merah marun"], "#7f1d1d"],
-    [["pink", "merah muda"], "#f9a8d4"],
-    [["red", "merah"], "#dc2626"],
-    [["dark grey", "dark gray", "abu tua"], "#475569"],
-    [["grey", "gray", "abu-abu", "abu"], "#94a3b8"],
-    [["khaki", "cokelat", "brown"], "#92400e"],
-    [["purple", "ungu"], "#7e22ce"],
-    [["teal", "toska"], "#0d9488"],
-    [["olive", "zaitun"], "#4d7c0f"],
-  ];
-  return aliases.find(([names]) => names.some((name) => normalized.includes(name)))?.[1]
-    ?? "#cbd5e1";
-}
-
-export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }: ProductDetailProps) {
+export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, sizeChartStandardName, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
   const router = useRouter();
   const [color, setColor] = useState<string>(product.colors[0] ?? "Default");
   const [sizes, setSizes] = useState<SizeMatrix>(() => emptySizeMatrix());
   const [customization, setCustomization] = useState<string>("");
   const [added, setAdded] = useState(false);
+  const [showSizeChart, setShowSizeChart] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uniform3DConfig, setUniform3DConfig] =
     useState<import("@/types/uniform-3d").Uniform3DConfig | null>(null);
   const [show3D, setShow3D] = useState(false);
+  const [editingLineId, setEditingLineId] = useState<string | undefined>();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const line = useCartStore.getState().items.find(item => item.id === params.get("line") && item.productId === product.id);
+    if (line) { setEditingLineId(line.id); setSizes(line.sizes); setColor(line.color); setUniform3DConfig(line.uniform3DConfig || null); }
+    if (params.get("studio") === "1" && product.model_3d) {
+      setShow3D(true);
+    }
+  }, [product.id, product.model_3d]);
   const [showFloatingPreviewModal, setShowFloatingPreviewModal] = useState(false);
 
   const heroRef = useRef<HTMLDivElement>(null);
@@ -160,14 +121,24 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
       if (!product.model_3d) return undefined;
       const registered = getModel3DForProduct(product.id);
       return {
+        referenceLengthCm: garmentReference(product.sku)?.lengthCm,
         productId: product.id,
         model3dId: product.model_3d.id,
         glbUrl: product.model_3d.url,
+        orientationY: product.model_3d.orientationY ?? registered?.orientationY ?? 0,
         photo360: registered?.photo360 ?? null,
         depth3D: registered?.depth3D ?? null,
         depth3DDual: registered?.depth3DDual ?? null,
         depth3DQuad: registered?.depth3DQuad ?? null,
         fallbackColor: registered?.fallbackColor ?? product.accentColor,
+        adjustment: {
+          exposure: product.model_3d.exposure ?? 1.15,
+          emissiveIntensity: product.model_3d.emissiveIntensity ?? 0.6,
+          brightness: product.model_3d.brightness ?? 1,
+          saturation: product.model_3d.saturation ?? 1,
+          hue: product.model_3d.hue ?? 0,
+          temperature: product.model_3d.temperature ?? 0,
+        },
       };
     },
     [product],
@@ -199,7 +170,9 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
       const { useGLTF } = await import("@react-three/drei");
       const resolvedUrl = await resolveProduct3DUrl(product3DModel.glbUrl!);
       if (cancelled) return;
-        useGLTF.preload(resolvedUrl, "/draco/");
+      const { configureStudioGLTFLoader } = await import("@/components/configurator/configure-gltf-loader");
+      if (cancelled) return;
+      useGLTF.preload(resolvedUrl, "/draco/", true, configureStudioGLTFLoader);
       // Keep the module reference alive through this task so bundlers do not
       // treat the viewer import as an unused speculative request.
       void viewerModule;
@@ -269,12 +242,25 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
     [globalEmbroideryPricing, product.embroidery_zones, totalQty, uniform3DConfig?.placements],
   );
   const estimatedPrice = quantityPrice.subtotal + embroideryPrice.total;
-  const lowestTierPrice = useMemo(
-    () => product.quantityPricing?.enabled && product.quantityPricing.tiers.length
-      ? Math.min(...product.quantityPricing.tiers.map((tier) => tier.unitPrice))
-      : product.priceFrom,
-    [product.priceFrom, product.quantityPricing],
-  );
+  const entryTier = useMemo(() => {
+    const tiers = product.quantityPricing?.enabled
+      ? product.quantityPricing.tiers
+      : [];
+    if (!tiers.length) return null;
+    return tiers.reduce((earliest, tier) =>
+      tier.minQty < earliest.minQty ? tier : earliest,
+    );
+  }, [product.quantityPricing]);
+  const lowestTier = useMemo(() => {
+    const tiers = product.quantityPricing?.enabled
+      ? product.quantityPricing.tiers
+      : [];
+    if (!tiers.length) return null;
+    return tiers.reduce((lowest, tier) =>
+      tier.unitPrice < lowest.unitPrice ? tier : lowest,
+    );
+  }, [product.quantityPricing]);
+  const entryPrice = entryTier?.unitPrice ?? product.priceFrom;
   // Satu helper MOQ bersama dengan cart-store/checkout: MOQ produk + batas
   // keras bordir (8 pcs default) bila line ini meminta bordir.
   const lineHasEmbroidery = hasEmbroideryRequest({
@@ -286,6 +272,13 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
     totalQty,
     hasEmbroidery: lineHasEmbroidery,
     embroideryMoq: moqSettings?.embroidery,
+  });
+  const embroideryMoq = moqSettings?.embroidery ?? DEFAULT_MOQ_SETTINGS.embroidery;
+  const processingInfo = resolveOrderProcessingInfo({
+    processRoute: product.processRoute,
+    fulfillmentType: product.fulfillment,
+    leadTimeDays: product.leadTimeDays,
+    hasEmbroidery: lineHasEmbroidery,
   });
   const snapshotUrl = uniform3DConfig?.snapshots.front ?? Object.values(uniform3DConfig?.snapshots ?? {})[0];
   const floatingPreviewOpen =
@@ -311,31 +304,50 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
     });
   }
 
-  function handleAdd() {
+  function addProductToCart(
+    configOverride: import("@/types/uniform-3d").Uniform3DConfig | null,
+  ) {
+    if (purchasingUnavailable || (pricingUnavailable && configOverride?.placements.length)) {
+      setError("Informasi pemesanan belum tersedia. Muat ulang halaman untuk mencoba lagi.");
+      return false;
+    }
     const result = addToCart({
+      replaceLineId: editingLineId,
       product,
-      color,
+      color: configOverride?.color ?? color,
       sizes,
       customization: customization.trim() || null,
-      uniform3DConfig: uniform3DConfig ?? null,
+      uniform3DConfig: configOverride,
       globalEmbroideryPricing,
       moqSettings,
     });
     if (!result.ok) {
       setError(result.reason ?? "Gagal menambahkan ke keranjang.");
       setAdded(false);
-      return;
+      return false;
     }
     setError(null);
     setAdded(true);
     if (result.lineId) {
       notifyOfistantPostAdd(product.name);
     }
+    return true;
+  }
+
+  function handleAdd() {
+    addProductToCart(uniform3DConfig);
+  }
+
+  function handleStudioAdd(config: import("@/types/uniform-3d").Uniform3DConfig) {
+    setUniform3DConfig(config);
+    setColor(config.color);
+    if (addProductToCart(config)) setShow3D(false);
   }
 
   return (
-    <div className="w-full px-4 py-6 sm:px-6 lg:px-6 lg:py-8 xl:px-8">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-4 lg:px-8">
+    <div className="min-h-full w-full bg-surface px-3 pb-5 sm:px-5 lg:px-6 xl:px-8">
+      {(pricingUnavailable || purchasingUnavailable) && <div role="status" className="mx-auto my-3 flex max-w-[1680px] flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><p>{purchasingUnavailable ? "Informasi minimum pesanan belum tersedia. Pemesanan sementara tidak dapat dilanjutkan." : "Tarif bordir belum dapat dimuat. Anda tetap bisa melihat produk; pemesanan dengan bordir menunggu tarif tersedia."}</p><button type="button" className="font-semibold underline" onClick={() => router.refresh()}>Coba lagi</button></div>}
+      <div className="commerce-breadcrumb-row mx-auto flex w-full max-w-[1680px] flex-wrap items-center gap-x-3 gap-y-2">
         <Button
           variant="ghost"
           size="sm"
@@ -349,63 +361,71 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
           items={[
             { label: "Beranda", href: "/" },
             { label: "Katalog", href: "/catalog" },
-            ...(product.industries[0]
-              ? [
-                  {
-                    label: product.industries[0],
-                    href: `/catalog?industri=${encodeURIComponent(product.industries[0])}`,
-                  },
-                ]
-              : []),
             { label: product.name },
           ]}
         />
       </div>
 
-      <div className="grid w-full min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(350px,420px)] xl:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(380px,440px)] 2xl:gap-8">
+      <div className="mx-auto grid w-full max-w-[1680px] min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.32fr)_minmax(430px,0.68fr)] xl:gap-6 2xl:grid-cols-[minmax(0,1.38fr)_minmax(470px,0.62fr)]">
         {/* Left: gallery + info */}
-        <div className="space-y-4">
-          <div ref={heroRef} className="space-y-4">
-            <ProductGallery product={product} />
+        <div className="contents xl:block xl:space-y-4">
+          <div ref={heroRef} className="order-1">
+            <ProductGallery
+              product={product}
+              immersive
+              has3DSupport={has3DSupport}
+              onOpen3D={() => setShow3D(true)}
+            />
           </div>
 
-          <section className="rounded-2xl border border-line bg-surface p-5">
-            <h2 className="text-sm font-bold text-ink">Deskripsi</h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-              {product.description}
-            </p>
+          <section className="order-3 rounded-2xl border border-line bg-surface p-5 sm:p-6 xl:order-none">
+            <h2 className="type-display text-lg font-bold text-brand-900">Deskripsi Produk</h2>
+            {product.descriptionHtml ? (
+              // HTML sudah tersanitasi di jalur server (repository) sebelum
+              // sampai ke sini; tipografi diatur class .rich-text.
+              <div
+                className="rich-text mt-3 max-w-3xl text-[15px] leading-7 text-ink-muted"
+                dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
+              />
+            ) : (
+              <p className="mt-3 max-w-3xl whitespace-pre-line text-[15px] leading-7 text-ink-muted">
+                {product.description}
+              </p>
+            )}
 
-            <h3 className="mt-5 text-sm font-bold text-ink">Spesifikasi</h3>
-            <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-              {product.specs.map((s) => (
+            <h3 className="type-display mt-6 text-base font-bold text-brand-900">Spesifikasi Produk</h3>
+            <dl className="mt-1 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+              {product.specs
+                .filter((spec) => spec.label.trim().toLowerCase() !== "lead time" || processingInfo.kind === "production")
+                .map((s) => (
                 <div
                   key={s.label}
-                  className="flex items-center justify-between border-b border-line py-1.5 text-sm"
+                  className="flex items-start justify-between gap-4 border-b border-line py-2 text-sm"
                 >
-                  <dt className="text-ink-muted">{s.label}</dt>
-                  <dd className="font-semibold text-ink">{s.value}</dd>
+                  <dt className="text-ink-muted">{s.label.trim().toLowerCase() === "lead time" ? "Estimasi produksi" : s.label}</dt>
+                  <dd className="text-right font-semibold text-ink">
+                    {s.label.trim().toLowerCase() === "lead time"
+                      ? processingInfo.value
+                      : ["warna", "color"].includes(s.label.trim().toLowerCase())
+                        ? productColorDisplayLabel(s.value)
+                        : s.value}
+                  </dd>
                 </div>
               ))}
             </dl>
-
-            <div className="mt-4 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
-              <Shirt className="h-4 w-4 text-brand-700" />
-              <span className="text-ink-muted">Bahan:</span>
-              <span className="font-semibold text-ink">{product.material}</span>
-            </div>
           </section>
         </div>
 
         {/* Right: configurator (sticky) */}
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-line bg-surface p-5">
+        <div className="order-2 space-y-4 xl:order-none xl:sticky xl:top-5">
+          <div className="storefront-product-panel rounded-2xl border border-line bg-surface p-4">
             {/* Title block */}
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-700">
                   {product.category}
                 </p>
-                <h1 className="mt-1 text-xl font-bold leading-tight text-ink lg:text-2xl">
+                <h1 className="storefront-product-title mt-1 font-bold leading-tight tracking-tight text-ink">
                   {product.name}
                 </h1>
                 <p className="mt-1 font-mono text-xs text-ink-muted">
@@ -413,109 +433,88 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
                 </p>
               </div>
               <Badge
+                className="shrink-0 whitespace-nowrap"
                 tone={product.fulfillment === "READY_STOCK" ? "success" : "amber"}
               >
                 {fulfillmentLabel(product.fulfillment)}
               </Badge>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {product.industries.map((ind) => (
-                <Badge key={ind} tone="neutral">
-                  {ind}
-                </Badge>
-              ))}
+            {/* Harga utama menampilkan tier masuk, bukan harga tier termurah. */}
+            <div className="mt-3 border-y border-[#df9f22] py-2">
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-ink-muted">
+                Harga saat ini
+              </p>
+              <p className="storefront-product-price mt-1 font-bold leading-tight tracking-tight text-ink">
+                {formatIDR(entryPrice)} <span className="text-base font-bold tracking-normal">/ pcs</span>
+              </p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-[#f3eee5] px-2 py-1.5 text-xs font-bold text-brand-900">
+                <span>{entryTier?.label ?? `Mulai ${Math.max(1, product.moq)} pcs`}</span>
+                {lowestTier && lowestTier.unitPrice < entryPrice ? (
+                  <span className="font-semibold text-ink-muted">
+                    Mulai {formatIDR(lowestTier.unitPrice)} / pcs untuk {lowestTier.label}
+                  </span>
+                ) : null}
+              </div>
             </div>
 
-            {/* Price + MOQ + lead time */}
-            <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center">
+            <div className="grid grid-cols-2 gap-2 border-b border-[#df9f22] py-2">
               <Stat
-                icon={<span className="text-sm font-bold">Rp</span>}
-                label="Mulai dari"
-                value={formatIDR(lowestTierPrice)}
-              />
-              <Stat
-                icon={<Layers className="h-4 w-4" />}
+                icon={<Layers className="h-5 w-5" />}
                 label={product.moq <= 1 ? "Min. Beli" : "MOQ"}
                 value={`${Math.max(1, product.moq)} pcs`}
               />
               <Stat
-                icon={<Truck className="h-4 w-4" />}
-                label="Lead time"
-                value={`${product.leadTimeDays} hari`}
+                icon={processingInfo.kind === "ready_stock"
+                  ? <PackageCheck className="h-5 w-5" />
+                  : <Clock3 className="h-5 w-5" />}
+                label={processingInfo.label}
+                value={processingInfo.value}
               />
             </div>
 
-            {product.quantityPricing?.enabled && product.quantityPricing.tiers.length > 0 ? (
-              <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/60 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-bold text-brand-900">Harga bertingkat tersedia</p>
-                  <span className="text-[10px] font-semibold text-brand-700">Total seluruh ukuran</span>
-                </div>
-                <dl className="mt-2 grid gap-1 sm:grid-cols-2">
+            {product.quantityPricing?.enabled && product.quantityPricing.tiers.length > 1 ? (
+              <details className="border-b border-[#eadcbc] py-2 text-xs">
+                <summary className="cursor-pointer font-bold text-brand-900">Lihat semua harga bertingkat</summary>
+                <dl className="mt-3 grid gap-x-5 gap-y-2 sm:grid-cols-2">
                   {product.quantityPricing.tiers.map((tier) => (
-                    <div key={`${tier.minQty}-${tier.maxQty ?? "plus"}`} className="flex items-center justify-between gap-3 rounded-lg bg-white/80 px-2.5 py-1.5 text-[11px]">
+                    <div key={`${tier.minQty}-${tier.maxQty ?? "plus"}`} className="flex items-center justify-between border-b border-[#eadcbc] py-2 text-xs">
                       <dt className="font-semibold text-ink-muted">{tier.label}</dt>
-                      <dd className="font-bold text-ink">{formatIDR(tier.unitPrice)} / pcs</dd>
+                      <dd className="font-bold text-brand-900">{formatIDR(tier.unitPrice)} / pcs</dd>
                     </div>
                   ))}
                 </dl>
-              </div>
-            ) : null}
-
-            {product.supports_embroidery ? (
-              globalEmbroideryPricing.enabled && globalEmbroideryPricing.zones.some((zone) => zone.enabled && product.embroidery_zones.some((supported) => normalizeEmbroideryZoneId(supported) === zone.zoneId)) ? (
-                <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-bold text-amber-950">Harga Bordir Estimasi</p>
-                    <span className="text-[10px] font-semibold text-amber-800">Per zona / pcs</span>
-                  </div>
-                  <dl className="mt-2 grid gap-1 sm:grid-cols-2">
-                    {globalEmbroideryPricing.zones.filter((zone) => zone.enabled && product.embroidery_zones.some((supported) => normalizeEmbroideryZoneId(supported) === zone.zoneId)).map((zone) => (
-                      <div key={zone.zoneId} className="rounded-lg bg-white/85 px-2.5 py-2 text-[11px]">
-                        <div className="flex items-center justify-between gap-3">
-                          <dt className="font-semibold text-ink-muted">{zone.label}</dt>
-                          <dd className="font-bold text-ink">{formatIDR(zone.unitPrice)} / pcs</dd>
-                        </div>
-                        {zone.showSetupFee && zone.setupFee > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Biaya setup: {formatIDR(zone.setupFee)}</p> : null}
-                      </div>
-                    ))}
-                  </dl>
-                  <p className="mt-2 text-[10px] leading-4 text-amber-900">Estimasi biaya bordir. Harga final mengikuti validasi logo oleh admin.</p>
-                </div>
-              ) : (
-                <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">Harga bordir perlu dikonfirmasi admin.</p>
-              )
+              </details>
             ) : null}
 
             {/* Color picker */}
-            <div className="mt-5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Warna: <span className="text-ink">{color}</span>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <p className="text-xs font-bold text-brand-900">
+                Warna: <span>{productColorDisplayLabel(color)}</span>
               </p>
               <div className="flex flex-wrap gap-2">
                 {product.colors.map((c) => {
                   const active = c === color;
-                  const swatch = productColorSwatch(c);
+                  const colorLabel = productColorDisplayLabel(c);
                   return (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setColor(c)}
-                      aria-label={`Pilih warna ${c}`}
+                      aria-label={`Pilih warna ${colorLabel}`}
                       aria-pressed={active}
-                      title={c}
+                      title={colorLabel}
                       className={
-                        "relative h-8 w-8 rounded-full border shadow-sm transition " +
+                        "relative h-9 w-9 rounded-full border transition pointer-coarse:h-10 pointer-coarse:w-10 " +
                         (active
-                          ? "ring-2 ring-brand-600 ring-offset-2"
+                          ? "ring-2 ring-brand-900 ring-offset-2"
                           : "border-line hover:scale-110")
                       }
-                      style={{ backgroundColor: swatch }}
+                      style={productColorSwatchStyle(c)}
                     >
                       {active && (
                         <CheckCircle2
-                          className="absolute inset-0 m-auto h-4 w-4 text-white mix-blend-difference"
+                          className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full fill-brand-900 text-white ring-2 ring-white"
                           strokeWidth={3}
                         />
                       )}
@@ -526,70 +525,117 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
             </div>
 
             {/* Size matrix */}
-            <div className="mt-5">
+            <div className="mt-3">
               <SizeQuantityMatrix
                 value={sizes}
                 onChange={setSizes}
                 moq={product.moq}
                 sizeChart={product.sizeChart}
-                embroideryMoq={moqSettings?.embroidery}
+                embroideryMoq={embroideryMoq}
                 hasEmbroidery={lineHasEmbroidery}
               />
             </div>
 
-            {/* Size chart reference */}
-            <details className="mt-3 rounded-lg border border-line bg-surface-muted px-3 py-2 text-sm">
-              <summary className="flex cursor-pointer items-center gap-2 font-semibold text-ink">
-                <Ruler className="h-4 w-4" />
-                Lihat size chart lengkap
-              </summary>
-              <table className="mt-3 w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-line text-ink-muted">
-                    <th className="py-1">Ukuran</th>
-                    <th className="py-1">Lingkar Dada (cm)</th>
-                    <th className="py-1">Panjang (cm)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {product.sizeChart.map((row) => (
-                    <tr key={row.size} className="border-b border-line/60">
-                      <td className="py-1 font-semibold text-ink">{row.size}</td>
-                      <td className="py-1">{row.chest > 0 ? row.chest : "—"}</td>
-                      <td className="py-1">{row.length > 0 ? row.length : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </details>
+            {/* Size chart reference — expand inline di panel pembelian,
+                hanya saat standar ukuran terpasang. */}
+            {product.sizeChart.length > 0 && (
+              <div className="mt-2 border-y border-[#eadcbc] py-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSizeChart((open) => !open)}
+                  aria-expanded={showSizeChart}
+                  className="flex w-full min-h-11 items-center gap-2 text-xs font-semibold text-ink transition-colors hover:text-brand-700"
+                >
+                  <Ruler className="h-4 w-4" />
+                  {showSizeChart ? "Sembunyikan size chart" : "Lihat size chart lengkap"}
+                  <ChevronRight
+                    className={`ml-auto h-4 w-4 transition-transform${showSizeChart ? " rotate-90" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
+                {showSizeChart &&
+                  (() => {
+                    const showShoulder = product.sizeChart.some((row) => (row.shoulder ?? 0) > 0);
+                    const showHeight = product.sizeChart.some((row) => (row.height ?? 0) > 0);
+                    return (
+                      <div className="mt-2">
+                        {sizeChartStandardName ? (
+                          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-muted">
+                            {sizeChartStandardName}
+                          </p>
+                        ) : null}
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs">
+                            <thead>
+                              <tr className="border-b border-line text-[10px] uppercase tracking-wide text-ink-muted">
+                                <th scope="col" className="py-1.5 pr-2 font-bold">Ukuran</th>
+                                <th scope="col" className="py-1.5 px-1 text-right font-bold">Dada</th>
+                                <th scope="col" className="py-1.5 px-1 text-right font-bold">Panjang</th>
+                                {showShoulder ? <th scope="col" className="py-1.5 px-1 text-right font-bold">Bahu</th> : null}
+                                {showHeight ? <th scope="col" className="py-1.5 pl-1 text-right font-bold">Tinggi</th> : null}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {product.sizeChart.map((row, index) => (
+                                <tr key={row.size} className={index % 2 === 1 ? "bg-surface-muted/60" : undefined}>
+                                  <th scope="row" className="py-1.5 pr-2 font-bold text-ink">{row.size}</th>
+                                  <td className="py-1.5 px-1 text-right tabular-nums text-ink">{row.chest > 0 ? `${row.chest} cm` : "—"}</td>
+                                  <td className="py-1.5 px-1 text-right tabular-nums text-ink">{row.length > 0 ? `${row.length} cm` : "—"}</td>
+                                  {showShoulder ? <td className="py-1.5 px-1 text-right tabular-nums text-ink">{(row.shoulder ?? 0) > 0 ? `${row.shoulder} cm` : "—"}</td> : null}
+                                  {showHeight ? <td className="py-1.5 pl-1 text-right tabular-nums text-ink">{(row.height ?? 0) > 0 ? `${row.height} cm` : "—"}</td> : null}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <p className="mt-2 text-[10px] leading-4 text-ink-muted">
+                          Dada diukur melingkar di bawah ketiak, panjang dari titik bahu hingga ujung bawah,
+                          bahu dari ujung kiri ke ujung kanan, tinggi adalah rekomendasi tinggi pemakai. Toleransi ±2 cm.
+                        </p>
+                      </div>
+                    );
+                  })()}
+              </div>
+            )}
 
             {/* Customization: 3D configurator for supported products,
                 plain-text notes for the rest. */}
             {has3DSupport ? (
-              <div className="mt-5 space-y-3">
+              <div className="mt-3 space-y-3">
                 <button
                   type="button"
                   onClick={() => setShow3D(true)}
-                  className="flex w-full items-center justify-between rounded-xl border border-brand-200 bg-brand-50/40 px-4 py-2.5 text-left transition-all hover:border-brand-400 hover:bg-brand-50"
+                  className="group flex min-h-[60px] w-full items-center gap-3 rounded-xl border border-ochre-600 bg-white px-3 py-2 text-left transition-colors hover:bg-ochre-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ochre-500"
                 >
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-brand-700" />
-                    <span className="text-xs font-bold text-brand-800">
-                      Preview 3D &amp; Bordir Logo
-                    </span>
+                  <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#f3eee5]">
+                    {product.images?.[0]?.src ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={product.images[0].src} alt="" className="h-full w-full object-contain p-1" />
+                    ) : (
+                      <Box className="h-7 w-7 text-brand-700" aria-hidden="true" />
+                    )}
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-base font-bold text-brand-900">Tambah Bordir</span>
+                      <span className="inline-flex rounded-full bg-ochre-100 px-2 py-0.5 text-[11px] font-bold text-ochre-800">
+                        Min. pemesanan {embroideryMoq} pcs
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-sm text-ink-muted">
+                      Preview desain bebas dicoba sebelum menentukan jumlah.
+                    </span>
                     {uniform3DConfig && uniform3DConfig.placements.length > 0 && (
-                      <span className="rounded-full bg-ochre-500 px-2 py-0.5 text-[9px] font-bold text-white">
+                      <span className="mt-2 inline-flex rounded-full bg-ochre-500 px-2 py-0.5 text-[10px] font-bold text-white">
                         {uniform3DConfig.placements.length} bordir
                       </span>
                     )}
-                    <span className="text-[10px] font-semibold text-brand-700">Buka</span>
                   </span>
+                  <ChevronRight className="h-6 w-6 shrink-0 text-brand-900 transition-transform group-hover:translate-x-1" aria-hidden="true" />
                 </button>
 
                 {product.model_3d && (
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 rounded-lg bg-slate-50 px-3 py-2 text-[10px] text-ink-muted">
+                  <div className="sr-only">
                     <span>Model: <strong className="text-ink">{product.model_3d.filename}</strong></span>
                     <span>Versi: <strong className="text-ink">{product.model_3d.version}</strong></span>
                     <span>Sumber: <strong className="capitalize text-ink">{product.model_3d.source}</strong></span>
@@ -647,7 +693,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
                       <strong className="text-ink">{formatIDR(line.subtotal)}</strong>
                     </div>
                   ))}
-                  <div className="flex justify-between border-t border-amber-200 pt-2 text-xs font-black text-amber-950"><span>Total bordir</span><span>{formatIDR(embroideryPrice.total)}</span></div>
+                  <div className="flex justify-between border-t border-amber-200 pt-2 text-xs font-bold text-amber-950"><span>Total bordir</span><span>{formatIDR(embroideryPrice.total)}</span></div>
                 </div>
               ) : null}
               {embroideryPrice.missingPricingZones.length > 0 ? <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">Harga bordir untuk zona ini perlu dikonfirmasi admin.</p> : null}
@@ -687,7 +733,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
                 >
                   {lineMoqIssue == null ? (
                     <>
-                      <Plus className="h-4 w-4" /> Tambahkan ke Keranjang
+                      <ShoppingCart className="h-4 w-4" /> Tambahkan ke Keranjang
                     </>
                   ) : totalQty === 0 ? (
                     "Pilih quantity dulu"
@@ -750,47 +796,26 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings }:
       />
 
       {show3D && (
-        <div
-          className="fixed inset-0 z-[70] flex min-w-0 flex-col bg-slate-100 xl:left-[clamp(320px,21vw,400px)]"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Konfigurator 3D bordir"
-        >
-          <div className="flex items-center justify-between border-b border-brand-900/10 bg-surface px-4 py-3 shadow-soft-xs lg:px-7">
-            <div className="flex items-center gap-3">
-              <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand-700 text-xs font-black text-white shadow-sm shadow-brand-700/20">
-                3D
-              </div>
-              <div>
-                <p className="type-display text-[15px] font-bold text-ink">
-                  Studio Bordir
-                </p>
-                <p className="text-[11px] text-ink-muted">{product.name}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShow3D(false)}
-              aria-label="Tutup konfigurator"
-              className="grid h-9 w-9 place-items-center rounded-xl border border-line text-ink-muted transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_#eef4ff,_#f8fafc_42%,_#eef2f8)] p-3 sm:p-5 lg:p-6 2xl:p-7">
-            <div className="w-full">
-              <Uniform3DConfigurator
+        <StudioShell product={product} onClose={() => setShow3D(false)}>              <Uniform3DConfigurator
+                orderUnavailableReason={pricingUnavailable || purchasingUnavailable ? "Informasi pemesanan belum dapat dimuat. Kembali ke produk dan pilih Coba lagi sebelum menambahkan ke keranjang." : undefined}
+                sizes={sizes}
+                onSizesChange={setSizes}
                 product={product}
+                embroideryPricing={globalEmbroideryPricing}
+                embroideryMoq={embroideryMoq}
                 initialColor={color}
+                initialConfig={uniform3DConfig}
                 onSave={(cfg) => {
+                  if (editingLineId && !addProductToCart(cfg)) return;
                   setUniform3DConfig(cfg);
+                  setColor(cfg.color);
                   setShow3D(false);
                 }}
                 onCancel={() => setShow3D(false)}
+                priceLabel={`${formatIDR(entryPrice)} / pcs`}
+                onAddToCart={handleStudioAdd}
               />
-            </div>
-          </div>
-        </div>
+        </StudioShell>
       )}
     </div>
   );
@@ -806,9 +831,9 @@ function Stat({
   value: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-brand-700">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wide text-ink-muted">
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+      <span className="text-brand-700 [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</span>
+      <span className="text-[10px] tracking-wide text-ink-muted">
         {label}
       </span>
       <span className="text-xs font-bold text-ink">{value}</span>

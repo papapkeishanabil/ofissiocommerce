@@ -98,7 +98,7 @@ export function LoginPageClient({
       : "Gunakan email dan password yang telah terdaftar.";
 
   return (
-    <main className="relative isolate grid min-h-dvh w-full place-items-center overflow-hidden bg-cool-100 px-4 py-[clamp(1rem,3.5vh,2.5rem)] text-ink sm:px-6 lg:px-10">
+    <main data-customer-auth={!isAdmin || undefined} className="relative isolate grid min-h-dvh w-full place-items-center overflow-hidden bg-cool-100 px-4 py-[clamp(1rem,3.5vh,2.5rem)] text-ink sm:px-6 lg:px-10">
       <section className="relative grid w-full max-w-[1120px] overflow-hidden rounded-[28px] border border-line bg-surface shadow-soft-lg lg:h-[min(760px,calc(100dvh-5rem))] lg:min-h-[620px] lg:grid-cols-[1.02fr_0.98fr]">
         {/* ===== LEFT — brand panel ===== */}
         <div className="relative flex overflow-hidden bg-brand-900 p-7 text-white sm:p-8 lg:p-9 xl:p-10">
@@ -108,11 +108,11 @@ export function LoginPageClient({
 
           <div className="relative z-10 flex w-full flex-col">
             <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-white text-lg font-extrabold text-brand-700">
+              {isAdmin && <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-white text-lg font-extrabold text-brand-700">
                 O
-              </span>
+              </span>}
               <div>
-                <p className="text-[15px] font-bold leading-none">Ofissio</p>
+                <p className={isAdmin ? "text-[15px] font-bold leading-none" : "text-3xl font-bold tracking-tight"}>Ofissio{!isAdmin && <span className="text-ochre-500">.</span>}</p>
                 <p className="mt-1 text-[11px] text-brand-200">
                   {isAdmin ? "Operations suite" : "B2B Workwear Commerce"}
                 </p>

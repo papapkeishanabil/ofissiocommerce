@@ -10,7 +10,8 @@
 // real catalog products because it uses actual product imagery and is far
 // more accurate for apparel than AI-generated 3D.
 
-import type { EmbroideryZone } from "@/types/uniform-3d";
+import type { EmbroideryZone, ModelOrientationY } from "@/types/uniform-3d";
+import type { ModelColorAdjustment } from "@/types/model-color-adjustment";
 
 /** One frame in a 360° photo spin sequence. */
 export interface Photo360Frame {
@@ -27,7 +28,7 @@ export interface Photo360Set {
   frames: Photo360Frame[];
   /**
    * Logo anchor overlays per zone, in PERCENTAGE of frame dimensions
-   * (0–100 from top-left). Tuned per product since each photo set frames
+   * (0-100 from top-left). Tuned per product since each photo set frames
    * the product differently. Front-facing zones only need overlays on the
    * front frames; back zones on back frames; etc.
    */
@@ -73,12 +74,16 @@ export interface Depth3DQuadSet {
 }
 
 export interface Model3DEntry {
+  /** Confirmed reference length; bounds-based preview is still approximate. */
+  referenceLengthCm?: number;
   /** matches Product.id */
   productId: string;
   /** stable model id, persisted in Uniform3DConfig */
   model3dId: string;
   /** path under /public — null = skip GLB */
   glbUrl: string | null;
+  /** Koreksi sumbu depan GLB. 0 berarti file sudah menghadap +Z. */
+  orientationY?: ModelOrientationY;
   /** 360° photo set — null = skip photo mode */
   photo360: Photo360Set | null;
   /** AI depth → 3D mesh (single side). Lower priority than depth3DDual. */
@@ -89,6 +94,8 @@ export interface Model3DEntry {
   depth3DQuad: Depth3DQuadSet | null;
   /** base tint used by procedural fallback shape (hex). */
   fallbackColor: string;
+  /** Penyesuaian warna render (agar mendekati foto produk). */
+  adjustment?: ModelColorAdjustment;
 }
 
 /**
@@ -110,6 +117,7 @@ export const MODEL_3D_REGISTRY: Model3DEntry[] = [
     productId: "p-012",
     model3dId: "kk-006-v1",
     glbUrl: "/3d/kk-006.glb",
+    orientationY: 90,
     photo360: null,
     depth3D: null,
     depth3DDual: null,
@@ -156,6 +164,7 @@ export const ZONE_ANCHORS: Record<EmbroideryZone, { x: number; y: number; z: num
   right_sleeve: { x: -0.69, y:  0.35, z: -0.03 },
   // Punggung — belakang kemeja (z-)
   upper_back:   { x:  0.00, y:  0.6, z: -0.356 },
+  // Place the second back logo just below the horizontal shoulder yoke seam.
   middle_back:  { x:  0.00, y:  0.4, z: -0.356 },
 };
 

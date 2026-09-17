@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Box, Calculator, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Plus, RotateCcw, Save, Settings2, Shirt, Trash2, X } from "lucide-react";
+import { Box, Calculator, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Plus, RotateCcw, Save, Settings2, Shirt, SunMedium, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import type { CatalogAttribute, CatalogCategory, IndustryMaster } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
@@ -22,10 +23,31 @@ import {
   WOO_PROCESS_ROUTES,
   WOO_PRODUCT_STATUSES,
   WOO_REPLENISHMENT_POLICIES,
+  WOO_MODEL_ORIENTATION_Y_OPTIONS,
   WOO_TRANSACTION_MODES,
   type AdminWooProductInput,
 } from "@/features/products/woocommerce/woocommerce-product-management.types";
 import type { MoqSettings } from "@/features/moq-settings/moq-settings.types";
+import type { Model3DEntry } from "@/data/uniform-3d";
+import { clearResolvedProduct3DUrlCache } from "@/features/products/product-3d-url.client";
+import { defaultModelOrientationY } from "@/types/uniform-3d";
+import { DEFAULT_MODEL_COLOR_ADJUSTMENT } from "@/types/model-color-adjustment";
+import { productColorDisplayLabel, productColorSwatchStyle } from "@/lib/product-colors";
+
+// Preview 3D live untuk penyesuaian warna — bundle three.js hanya dimuat
+// saat panel dibuka (produk dengan model GLB).
+const ModelPreviewCanvas = dynamic(
+  () => import("@/components/configurator/Uniform3DViewer").then((m) => m.Uniform3DViewer),
+  { ssr: false },
+);
+
+// Editor WYSIWYG deskripsi — bundle TipTap hanya dimuat saat form admin
+// dirender (form ini hanya dipakai route /admin/products/*), ssr:false
+// menjaga initial JS admin tetap ringan.
+const RichTextField = dynamic(
+  () => import("./RichTextField").then((m) => m.RichTextField),
+  { ssr: false, loading: () => <div className="h-36 animate-pulse rounded-lg bg-slate-100" /> },
+);
 
 interface AdminProductFormProps {
   mode: "create" | "edit";
@@ -103,6 +125,49 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
     [form.moq, form.quantityPricingEnabled, form.quantityPricingTiers],
   );
 
+  // Preview penyesuaian warna 3D — hanya untuk produk yang punya model GLB.
+  const colorPreviewModel = useMemo<Model3DEntry | null>(() => {
+    const baseGlbUrl =
+      product?.ofissioMeta.model3DUrl ||
+      (product?.id ? `/api/products/woocommerce/${product.id}/3d-model/signed-url` : "");
+    if (!baseGlbUrl) return null;
+    // ?preview= berubah setiap upload GLB baru sehingga viewer me-resolve ulang
+    // (melewati cache modul + THREE.Cache) alih-alih memakai URL identik.
+    const glbUrl = activeGlb.updatedAt
+      ? `${baseGlbUrl}?preview=${encodeURIComponent(activeGlb.updatedAt)}`
+      : baseGlbUrl;
+    return {
+      productId: product?.id?.toString() ?? "admin-preview",
+      model3dId: "admin-color-preview",
+      glbUrl,
+      orientationY: form.model3dRotationY ?? defaultModelOrientationY(form.sku),
+      photo360: null,
+      depth3D: null,
+      depth3DDual: null,
+      depth3DQuad: null,
+      fallbackColor: "#d9c39a",
+      adjustment: {
+        exposure: form.model3dExposure ?? 1.15,
+        emissiveIntensity: form.model3dEmissive ?? 0.6,
+        brightness: form.model3dBrightness ?? 1,
+        saturation: form.model3dSaturation ?? 1,
+        hue: form.model3dHue ?? 0,
+        temperature: form.model3dTemperature ?? 0,
+      },
+    };
+  }, [
+    product,
+    activeGlb.updatedAt,
+    form.model3dBrightness,
+    form.model3dEmissive,
+    form.model3dExposure,
+    form.model3dHue,
+    form.model3dRotationY,
+    form.model3dSaturation,
+    form.model3dTemperature,
+    form.sku,
+  ]);
+
   const set = <K extends keyof AdminWooProductInput>(key: K, value: AdminWooProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -130,6 +195,12 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
     if (!pricingValidation.valid) {
       setMessage({ tone: "error", text: pricingValidation.errors[0]?.message ?? "Tier harga quantity belum valid." });
       document.getElementById("quantity-pricing")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    // Editor WYSIWYG tidak punya clamp maxLength native textarea — zod tetap
+    // menjadi otoritas server, ini guard UX di client.
+    if (form.shortDescription.trim().length > 2000 || form.description.trim().length > 20000) {
+      setMessage({ tone: "error", text: "Deskripsi melebihi batas karakter (singkat maks. 2.000 / lengkap maks. 20.000)." });
       return;
     }
     setBusy(true);
@@ -189,6 +260,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           );
         } else {
           const uploaded = uploadPayload.upload;
+          // GLB baru sudah aktif — hapus URL resolusi tercache agar preview
+          // berikutnya mengambil token versi baru dari resolver.
+          clearResolvedProduct3DUrlCache();
           setActiveGlb({
             filename: uploaded.filename,
             version: uploaded.version,
@@ -380,12 +454,12 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
               {WOO_PRODUCT_STATUSES.map((value) => <option key={value} value={value}>{value === "publish" ? "Publish" : "Draft"}</option>)}
             </select>
           </Field>
-          <Field label="Deskripsi singkat" className="lg:col-span-2">
-            <textarea className={`${INPUT} min-h-24`} value={form.shortDescription} onChange={(e) => set("shortDescription", e.target.value)} maxLength={2000} />
-          </Field>
-          <Field label="Deskripsi lengkap" className="lg:col-span-2">
-            <textarea className={`${INPUT} min-h-36`} value={form.description} onChange={(e) => set("description", e.target.value)} maxLength={20000} />
-          </Field>
+          <FieldBlock label="Deskripsi singkat" className="lg:col-span-2" hint="Tulis satu paragraf berisi jenis produk, kegunaan utama, dan pembeda terpenting. Jangan mengulang spesifikasi. Maks. 2.000 karakter.">
+            <RichTextField value={form.shortDescription} onChange={(html) => set("shortDescription", html)} maxLength={2000} minHeight={112} placeholder="Ringkasan singkat produk…" />
+          </FieldBlock>
+          <FieldBlock label="Deskripsi lengkap" className="lg:col-span-2" hint="Format standar: 1–2 paragraf manfaat dan penggunaan, lalu Detail Produk dalam daftar bullet. Material, warna, ukuran, gender, tipe lengan, serta status stok berasal dari spesifikasi dan tidak perlu ditulis ulang. Maks. 20.000 karakter.">
+            <RichTextField value={form.description} onChange={(html) => set("description", html)} maxLength={20000} minHeight={176} placeholder="Deskripsi lengkap produk…" />
+          </FieldBlock>
         </div>
       </FormSection>
 
@@ -590,14 +664,14 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       <FormSection icon={Box} title="Aturan B2B dan routing" description="Produk standar tetap dapat dipesan; kekurangan stok ditangani sebagai replenishment internal.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <NumberField label="MOQ" value={form.moq} onChange={(value) => { setMoqTouched(true); set("moq", value); }} />
-          <NumberField label="Lead time (hari)" value={form.leadTimeDays} onChange={(value) => set("leadTimeDays", value)} />
+          <NumberField label={form.processRoute === "production" ? "Estimasi produksi full custom (hari)" : "Estimasi produksi rute PRO (hari)"} value={form.leadTimeDays} onChange={(value) => set("leadTimeDays", value)} />
           <SelectField label="Ketersediaan produk" value={form.fulfillmentType} values={WOO_FULFILLMENT_TYPES} labels={{ READY_STOCK: "Ready Stock", MADE_TO_ORDER: "Dibuat setelah dipesan" }} onChange={(value) => set("fulfillmentType", value as AdminWooProductInput["fulfillmentType"])} />
           <SelectField label="Transaction mode" value={form.transactionMode} values={WOO_TRANSACTION_MODES} onChange={(value) => set("transactionMode", value as AdminWooProductInput["transactionMode"])} />
           <SelectField label="Rute pengerjaan" value={form.processRoute} values={WOO_PROCESS_ROUTES} labels={{ fulfillment: "Ready Stock (STK)", customization: "Custom (CUS)", production: "Production (PRO)" }} onChange={(value) => { set("processRoute", value as AdminWooProductInput["processRoute"]); if (!moqTouched && routeMoqDefaults) set("moq", routeMoqDefaults[value as keyof MoqSettings] ?? form.moq); }} />
           <SelectField label="Replenishment policy" value={form.replenishmentPolicy} values={WOO_REPLENISHMENT_POLICIES} onChange={(value) => set("replenishmentPolicy", value as AdminWooProductInput["replenishmentPolicy"])} />
         </div>
         <div className="mt-4 flex flex-col gap-3 rounded-lg border border-brand-200 bg-brand-50 p-4 text-sm text-ink sm:flex-row sm:items-center sm:justify-between">
-          <p className="leading-6"><strong>Default MOQ mengikuti master MOQ per rute</strong> (STK/CUS umumnya 1 pcs, PRO mengikuti kebijakan Full Custom); bordir punya batas minimum sendiri yang berlaku otomatis di keranjang. Ubah nilai MOQ di atas hanya bila produk ini berbeda.</p>
+          <p className="leading-6"><strong>Default MOQ mengikuti master MOQ per rute</strong> (STK/CUS umumnya 1 pcs, PRO mengikuti kebijakan Full Custom); bordir punya batas minimum sendiri yang berlaku otomatis di keranjang. Waktu customer ditampilkan sesuai rute: STK siap diproses, bordir 2–4 hari, dan nilai estimasi di atas hanya untuk produksi full custom (PRO).</p>
           <Link href="/admin/settings/moq" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-brand-700 px-4 font-semibold text-white hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">Kelola Master MOQ</Link>
         </div>
         <div className="mt-4"><Toggle label="Selalu dapat dipesan" description="Customer tidak melihat status out of stock; warning replenishment hanya untuk admin." checked={form.alwaysOrderable} onChange={(value) => set("alwaysOrderable", value)} /></div>
@@ -638,12 +712,157 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             <span className="font-semibold">GLB aktif:</span>
-            <span>{activeGlb.filename} · {activeGlb.version}</span>
+            <span>{activeGlb.filename}, {activeGlb.version}</span>
             {activeGlb.updatedAt ? (
               <span className="text-xs font-normal text-emerald-700">
                 diperbarui {formatGlbUpdatedAt(activeGlb.updatedAt)}
               </span>
             ) : null}
+          </div>
+        ) : null}
+        {colorPreviewModel ? (
+          <div className="mt-4 rounded-xl border border-line bg-slate-50/60 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-bold text-ink"><SunMedium className="h-4 w-4 text-brand-700" aria-hidden="true" />Penyesuaian Model 3D</p>
+                <p className="mt-1 text-xs leading-5 text-ink-muted">
+                  Cocokkan sisi depan model dengan foto produk, lalu sesuaikan pencahayaannya. Berlaku di Studio Bordir setelah disimpan.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  set("model3dRotationY", defaultModelOrientationY(form.sku));
+                  set("model3dExposure", DEFAULT_MODEL_COLOR_ADJUSTMENT.exposure);
+                  set("model3dEmissive", DEFAULT_MODEL_COLOR_ADJUSTMENT.emissiveIntensity);
+                  set("model3dBrightness", DEFAULT_MODEL_COLOR_ADJUSTMENT.brightness);
+                  set("model3dSaturation", DEFAULT_MODEL_COLOR_ADJUSTMENT.saturation);
+                  set("model3dHue", DEFAULT_MODEL_COLOR_ADJUSTMENT.hue);
+                  set("model3dTemperature", DEFAULT_MODEL_COLOR_ADJUSTMENT.temperature);
+                }}
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-xs font-semibold text-ink-muted transition hover:text-ink"
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />Reset
+              </button>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="overflow-hidden rounded-lg border border-line bg-white">
+                <div className="h-64 bg-[#f5f2ec]">
+                  <ModelPreviewCanvas
+                    model={colorPreviewModel}
+                    color={form.colors[0] ?? "#d9c39a"}
+                    placements={[]}
+                    activeCamera="front"
+                  />
+                </div>
+                <p className="border-t border-line px-3 py-1.5 text-[11px] font-semibold text-ink-muted">Render 3D (live)</p>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-line bg-white">
+                {form.imageUrls[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={form.imageUrls[0]} alt="Foto produk" className="h-64 w-full bg-white object-contain" />
+                ) : (
+                  <div className="grid h-64 place-items-center text-xs text-ink-muted">Foto produk belum ada</div>
+                )}
+                <p className="border-t border-line px-3 py-1.5 text-[11px] font-semibold text-ink-muted">Foto produk (referensi)</p>
+              </div>
+            </div>
+            <fieldset className="mt-4">
+              <legend className="text-xs font-bold text-ink">Orientasi sisi depan model</legend>
+              <p className="mt-1 text-xs leading-5 text-ink-muted">
+                Pilih rotasi yang membuat tampilan live menunjukkan bagian depan pakaian.
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {WOO_MODEL_ORIENTATION_Y_OPTIONS.map((degrees) => {
+                  const active = (form.model3dRotationY ?? defaultModelOrientationY(form.sku)) === degrees;
+                  return (
+                    <button
+                      key={degrees}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => set("model3dRotationY", degrees)}
+                      className={`min-h-10 rounded-lg border px-3 text-xs font-semibold transition ${active ? "border-brand-700 bg-brand-50 text-brand-800 ring-1 ring-brand-700" : "border-line bg-white text-ink-muted hover:border-brand-300"}`}
+                    >
+                      {degrees}°
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="text-xs font-bold text-ink">Warna &amp; tone kain</p>
+              <p className="mt-1 text-xs leading-5 text-ink-muted">
+                Samakan warna kain dengan foto referensi. Pengaturan ini tidak mengubah file GLB asli.
+              </p>
+              <div className="mt-3 grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                <RangeControl
+                  label="Kecerahan kain"
+                  value={form.model3dBrightness ?? 1}
+                  min={0.5}
+                  max={1.5}
+                  step={0.05}
+                  description="Mengubah terang-gelap tekstur tanpa mengubah pencahayaan ruang."
+                  onChange={(value) => set("model3dBrightness", value)}
+                />
+                <RangeControl
+                  label="Saturasi warna"
+                  value={form.model3dSaturation ?? 1}
+                  min={0}
+                  max={1.5}
+                  step={0.05}
+                  description="Turunkan bila warna model terlalu pekat dibanding foto."
+                  onChange={(value) => set("model3dSaturation", value)}
+                />
+                <RangeControl
+                  label="Rona warna"
+                  value={form.model3dHue ?? 0}
+                  min={-60}
+                  max={60}
+                  step={1}
+                  formatValue={(value) => `${Math.round(value)}°`}
+                  description="Geser rona saat warna dasarnya berbeda, misalnya terlalu jingga."
+                  onChange={(value) => set("model3dHue", value)}
+                />
+                <RangeControl
+                  label="Temperatur warna"
+                  value={form.model3dTemperature ?? 0}
+                  min={-1}
+                  max={1}
+                  step={0.05}
+                  formatValue={formatTemperature}
+                  description="Arah negatif lebih dingin; arah positif lebih hangat."
+                  onChange={(value) => set("model3dTemperature", value)}
+                />
+              </div>
+            </div>
+            <details className="mt-4 border-t border-line pt-3">
+              <summary className="min-h-10 cursor-pointer py-2 text-xs font-bold text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+                Pencahayaan lanjutan
+              </summary>
+              <p className="text-xs leading-5 text-ink-muted">
+                Gunakan setelah warna dan tone kain sudah mendekati foto.
+              </p>
+              <div className="mt-3 grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                <RangeControl
+                  label="Eksposur render"
+                  value={form.model3dExposure ?? 1.15}
+                  min={0.5}
+                  max={1.8}
+                  step={0.05}
+                  description="Menerangkan atau menggelapkan seluruh hasil render."
+                  onChange={(value) => set("model3dExposure", value)}
+                />
+                <RangeControl
+                  label="Cahaya pengisi kain"
+                  value={form.model3dEmissive ?? 0.6}
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  description="Turunkan bila kain terang terlihat pudar atau tercuci."
+                  onChange={(value) => set("model3dEmissive", value)}
+                />
+              </div>
+            </details>
           </div>
         ) : null}
       </FormSection>
@@ -708,7 +927,19 @@ function initialForm(product?: AdminWooCommerceProductDetail, routeMoqDefaults?:
     quantityPricingTiers: product?.ofissioMeta.quantityPricingTiers?.length
       ? product.ofissioMeta.quantityPricingTiers
       : [createDefaultQuantityPricingTier(product?.price || 0, product?.ofissioMeta.moq || routeMoqDefaults?.fulfillment || 20)],
+    model3dExposure: product?.ofissioMeta.model3DExposure ?? 1.15,
+    model3dEmissive: product?.ofissioMeta.model3DEmissive ?? 0.6,
+    model3dBrightness: product?.ofissioMeta.model3DBrightness ?? 1,
+    model3dSaturation: product?.ofissioMeta.model3DSaturation ?? 1,
+    model3dHue: product?.ofissioMeta.model3DHue ?? 0,
+    model3dTemperature: product?.ofissioMeta.model3DTemperature ?? 0,
+    model3dRotationY: product?.ofissioMeta.model3DRotationY ?? defaultModelOrientationY(product?.sku),
   };
+}
+
+function formatTemperature(value: number) {
+  if (Math.abs(value) < 0.001) return "Netral";
+  return `${value > 0 ? "+" : ""}${value.toFixed(2)} · ${value > 0 ? "hangat" : "dingin"}`;
 }
 
 function formatGlbUpdatedAt(value: string) {
@@ -755,8 +986,53 @@ function Field({ label, hint, required, className = "", children }: { label: str
   return <label className={`block ${className}`}><span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.06em] text-ink-subtle">{label}{required ? <span className="ml-1 text-red-600">*</span> : null}</span>{children}{hint ? <span className="mt-1.5 block text-xs leading-5 text-ink-muted">{hint}</span> : null}</label>;
 }
 
+// Varian Field dengan <div> (bukan <label>) — semantik yang benar untuk
+// editor WYSIWYG: label tidak boleh membungkus contenteditable + toolbar.
+function FieldBlock({ label, hint, required, className = "", children }: { label: string; hint?: string; required?: boolean; className?: string; children: ReactNode }) {
+  return <div className={className}><span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.06em] text-ink-subtle">{label}{required ? <span className="ml-1 text-red-600">*</span> : null}</span>{children}{hint ? <span className="mt-1.5 block text-xs leading-5 text-ink-muted">{hint}</span> : null}</div>;
+}
+
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return <Field label={label} required><input className={INPUT} type="number" min={1} step={1} value={value} onChange={(event) => onChange(Number(event.target.value))} required /></Field>;
+}
+
+function RangeControl({
+  label,
+  value,
+  min,
+  max,
+  step,
+  description,
+  formatValue = (current) => current.toFixed(2),
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  description: string;
+  formatValue?: (value: number) => string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block text-xs font-bold text-ink">
+      <span className="flex items-center justify-between gap-3">
+        <span>{label}</span>
+        <span className="tabular-nums text-brand-700">{formatValue(value)}</span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="mt-2 h-6 w-full cursor-pointer accent-[#2563eb]"
+      />
+      <span className="mt-1 block font-normal leading-5 text-ink-muted">{description}</span>
+    </label>
+  );
 }
 
 function ShippingNumberField({
@@ -915,7 +1191,9 @@ function MasterMultiSelectField({
     <Field
       label={label}
       required={required}
-      hint={`Pilih dari master ${label.toLowerCase()} agar data konsisten di seluruh katalog.`}
+      hint={label === "Warna"
+        ? "Satu kombinasi adalah satu varian. Gunakan satu nama, misalnya Kuning–Navy; jangan pilih Kuning dan Navy secara terpisah."
+        : `Pilih dari master ${label.toLowerCase()} agar data konsisten di seluruh katalog.`}
     >
       <select
         className={INPUT}
@@ -943,7 +1221,14 @@ function MasterMultiSelectField({
                     : "border-amber-300 bg-amber-50 text-amber-900"
                 }`}
               >
-                {selected}
+                {label === "Warna" ? (
+                  <span
+                    className="h-5 w-5 shrink-0 rounded-full border border-black/10 ring-1 ring-white"
+                    style={productColorSwatchStyle(selected)}
+                    aria-hidden="true"
+                  />
+                ) : null}
+                {label === "Warna" ? productColorDisplayLabel(selected) : selected}
                 {!managed ? <span className="text-[10px] font-bold uppercase tracking-wide">Legacy</span> : null}
                 <button
                   type="button"
@@ -980,7 +1265,7 @@ function MasterMultiSelectField({
                   void addMasterValue();
                 }
               }}
-              placeholder={label === "Warna" ? "Contoh: Kuning Safety" : "Contoh: 4XL"}
+              placeholder={label === "Warna" ? "Contoh: Kuning–Navy" : "Contoh: 4XL"}
               maxLength={100}
             />
             <button

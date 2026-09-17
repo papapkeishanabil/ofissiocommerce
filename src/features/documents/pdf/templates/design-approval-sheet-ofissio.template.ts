@@ -81,7 +81,7 @@ function header(
 
   doc.text("LEMBAR APPROVAL DESAIN", 330, 28, { size: 13, font: "bold", color: N });
   doc.text(
-    `Design Approval Sheet — ${garment.itemCode} · ${garment.garmentType}`,
+    `Design Approval Sheet — ${garment.itemCode}, ${garment.garmentType}`,
     330,
     46,
     { size: 6.5, color: M },
@@ -93,9 +93,9 @@ function header(
 
   const revision = `REVISI ${String(data.revisionNo).padStart(2, "0")}`;
   const revisionDate = data.revisedAt
-    ? ` · ${formatInvoiceDate(data.revisedAt)}`
+    ? `, ${formatInvoiceDate(data.revisedAt)}`
     : data.revisionNo > 0
-      ? ` · ${formatInvoiceDate(data.generatedAt)}`
+      ? `, ${formatInvoiceDate(data.generatedAt)}`
       : "";
   doc.rect(X, 62, 120, 16, data.revisionNo > 0 ? RED : S);
   doc.text(
@@ -313,7 +313,7 @@ function areaTable(doc: SimplePdfDocument, garment: DesignApprovalSheetGarment) 
         area.label,
         [area.positionNote ?? area.zoneLabel, area.logoFileName ? `Logo: ${area.logoFileName}` : null, area.notes]
           .filter(Boolean)
-          .join(" · "),
+          .join(", "),
         `${area.widthCm} × ${area.heightCm}`,
         area.techniqueLabel,
       ],

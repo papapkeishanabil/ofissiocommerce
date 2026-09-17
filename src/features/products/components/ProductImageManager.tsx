@@ -396,7 +396,7 @@ export const ProductImageManager = forwardRef<
       </div>
 
       <p className="text-xs font-semibold text-ink-muted">
-        Format didukung: JPG, PNG, WEBP · Maksimal {maxFileMb} MB per file
+        Format didukung: JPG, PNG, WEBP, Maksimal {maxFileMb} MB per file
       </p>
 
       {fileErrors.length > 0 ? (

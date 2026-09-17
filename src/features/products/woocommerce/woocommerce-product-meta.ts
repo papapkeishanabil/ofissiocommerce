@@ -29,7 +29,10 @@ export function getMetaNumber(
     typeof value === "number"
       ? value
       : typeof value === "string"
-        ? Number(value.replace(/[^\d.]/g, ""))
+        // WooCommerce commonly serializes numeric meta as text. Preserve the
+        // sign so color calibration values such as hue=-4 and
+        // temperature=-0.05 survive a save-and-reload cycle.
+        ? Number(value.replace(/[^\d.+-]/g, ""))
         : Number.NaN;
   return Number.isFinite(parsed) ? parsed : fallback;
 }

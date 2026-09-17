@@ -148,6 +148,11 @@ async function resolveEmbroideryLogoFiles(
   const resolved: LogoPlacement[] = [];
 
   for (const placement of placements) {
+    if (placement.textBordir) {
+      // Text is validated structured input, not an uploaded company asset.
+      resolved.push({ ...placement, logoFileId: `text-${placement.zone}`, logoFileName: "Bordir nama", logoPreviewUrl: undefined });
+      continue;
+    }
     let file = await storageService.getFileById({
       companyId,
       fileId: placement.logoFileId,
@@ -218,6 +223,7 @@ export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<Ch
   const record: CheckoutCartRecord = {
     id: `cart_${randomUUID()}`,
     companyId: parsed.companyId,
+    orderNote: parsed.orderNote,
     userId: parsed.userId,
     items,
     subtotal,

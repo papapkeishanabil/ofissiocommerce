@@ -117,7 +117,7 @@ function formatArrivalEstimate(order: CustomerTrackingOrder) {
   const start = order.estimatedArrivalStartDate;
   const end = order.estimatedArrivalEndDate ?? order.estimatedDeliveryDate;
   if (start && end && start !== end) {
-    return `${formatTrackingDate(start)} – ${formatTrackingDate(end)}`;
+    return `${formatTrackingDate(start)} - ${formatTrackingDate(end)}`;
   }
   return formatTrackingDate(end ?? start);
 }

@@ -155,7 +155,7 @@ export async function AdminQuotationWorkspace({ searchParams, workspace, viewerR
               </p>
             </div>
             <p className="text-xs font-medium text-ink-subtle">
-              {supportTickets.length} tiket · {supportTickets.filter((ticket) => ticket.status === "unread").length} baru
+              {supportTickets.length} tiket, {supportTickets.filter((ticket) => ticket.status === "unread").length} baru
             </p>
           </div>
 
@@ -223,7 +223,7 @@ export async function AdminQuotationWorkspace({ searchParams, workspace, viewerR
               </p>
             </div>
             <p className="text-xs font-medium text-ink-subtle">
-              {quotations.length} total · {attentionCount} disorot
+              {quotations.length} total, {attentionCount} disorot
             </p>
           </div>
 
@@ -321,13 +321,13 @@ function QuotationRow({
       <td className="px-4 py-3.5">
         <div className="font-semibold text-ink">{quotation.companyName}</div>
         <div className="text-xs text-ink-muted">
-          {quotation.picName} · {quotation.picEmail ?? "-"}
+          {quotation.picName}, {quotation.picEmail ?? "-"}
         </div>
         {quotation.intakeChannel ? (
           <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-ink-muted">
             {quotation.intakeChannel === "customer_portal"
               ? "Customer portal"
-              : `Sales · ${quotation.intakeChannel}`}
+              : `Sales, ${quotation.intakeChannel}`}
           </span>
         ) : null}
       </td>
@@ -408,5 +408,5 @@ function ageLabel(value: string) {
   const hours = ageInHours(value);
   if (hours < 24) return `Diperbarui ${hours} jam lalu`;
   const days = Math.floor(hours / 24);
-  return `Diperbarui ${days} hari lalu${days >= 3 ? " · perlu dicek" : ""}`;
+  return `Diperbarui ${days} hari lalu${days >= 3 ? ", perlu dicek" : ""}`;
 }

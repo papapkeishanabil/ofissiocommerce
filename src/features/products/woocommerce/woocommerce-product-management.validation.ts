@@ -11,11 +11,26 @@ import {
   WOO_TRANSACTION_MODES,
   WOO_QUANTITY_BASES,
   WOO_QUANTITY_PRICING_MODES,
+  WOO_MODEL_ORIENTATION_Y_OPTIONS,
 } from "./woocommerce-product-management.types";
 import { validateQuantityPricing } from "../quantity-pricing";
+import { isWordPressMediaProxyUrl } from "./wordpress-media-proxy";
 
 const shortText = z.string().trim().max(180);
 const stringList = z.array(z.string().trim().min(1).max(100)).max(60);
+// Form admin menerima URL gambar hasil proxy same-origin (base media
+// loopback LocalWP). buildWritePayload mengembalikannya ke URL absolut
+// sebelum menulis ke WooCommerce, jadi kedua bentuk sah di payload.
+const wooImageSource = z
+  .string()
+  .trim()
+  .max(2_000)
+  .refine(
+    (value) =>
+      isWordPressMediaProxyUrl(value) ||
+      z.string().url().safeParse(value).success,
+    "URL gambar produk tidak valid.",
+  );
 const quantityPricingTierSchema = z.object({
   minQty: z.coerce.number().int(),
   maxQty: z.preprocess(
@@ -40,7 +55,7 @@ export const adminWooProductPayloadSchema = z.object({
   shortDescription: z.string().trim().max(2_000),
   categoryIds: z.array(z.coerce.number().int().positive()).min(1).max(30),
   industries: stringList.min(1),
-  imageUrls: z.array(z.string().trim().url().max(2_000)).max(20),
+  imageUrls: z.array(wooImageSource).max(20),
   colors: stringList.min(1, "Pilih minimal satu warna dari master."),
   sizes: stringList.min(1, "Pilih minimal satu ukuran dari master."),
   materials: stringList,
@@ -62,6 +77,19 @@ export const adminWooProductPayloadSchema = z.object({
   quantityPricingMode: z.enum(WOO_QUANTITY_PRICING_MODES).default("fixed_unit_price"),
   quantityBasis: z.enum(WOO_QUANTITY_BASES).default("total_order_qty"),
   quantityPricingTiers: z.array(quantityPricingTierSchema).max(50).default([]),
+  model3dExposure: z.coerce.number().min(0.3).max(2).optional(),
+  model3dEmissive: z.coerce.number().min(0).max(1).optional(),
+  model3dBrightness: z.coerce.number().min(0.5).max(1.5).optional(),
+  model3dSaturation: z.coerce.number().min(0).max(1.5).optional(),
+  model3dHue: z.coerce.number().min(-60).max(60).optional(),
+  model3dTemperature: z.coerce.number().min(-1).max(1).optional(),
+  model3dRotationY: z.coerce
+    .number()
+    .refine(
+      (value) => WOO_MODEL_ORIENTATION_Y_OPTIONS.includes(value as never),
+      "Orientasi model harus 0°, 90°, 180°, atau 270°.",
+    )
+    .optional(),
 }).superRefine((value, context) => {
   if (value.supportsEmbroidery && value.embroideryZones.length === 0) {
     context.addIssue({

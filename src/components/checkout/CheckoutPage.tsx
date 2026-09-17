@@ -19,6 +19,7 @@ import { formatIDR } from "@/types/product";
 import { hasCartCustomization, type CartLineItem } from "@/types/cart";
 import type { Address, Company } from "@/types/account";
 import type { ShippingRate } from "@/features/shipping/shipping.types";
+import { resolveOrderProcessingInfo } from "@/features/products/order-processing";
 import {
   CheckCircle2,
   CircleAlert,
@@ -27,12 +28,21 @@ import {
   Truck,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { ProductThumb } from "@/components/ui/ProductThumb";
 import { CompanyProfileForm } from "@/components/company/CompanyProfileForm";
 import { CompanyAddressForm } from "@/components/company/CompanyAddressForm";
+import { PromotionBox, type PromotionLine } from "@/features/promotions/components/PromotionBox";
 import { CheckoutFrame } from "./CheckoutFrame";
+
+/** Payload baris untuk validasi kode promo di PromotionBox. */
+function toPromotionLines(items: CartLineItem[]): PromotionLine[] {
+  return items.map((item) => ({
+    productId: item.productId,
+    quantity: item.totalQty,
+    subtotal: item.finalEstimatedTotal ?? item.estimatedPrice,
+  }));
+}
 
 /** Check only profile fields (excludes address). */
 function isProfileFieldsComplete(c: Company): boolean {
@@ -67,6 +77,7 @@ export function CheckoutPage() {
   const [backendSubtotal, setBackendSubtotal] = useState<number | null>(null);
   const [backendDiscount, setBackendDiscount] = useState<number | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [addressDirty, setAddressDirty] = useState(false);
 
   const clientSubtotal = useMemo(
     () => items.reduce((a, it) => a + (it.finalEstimatedTotal ?? it.estimatedPrice), 0),
@@ -80,7 +91,7 @@ export function CheckoutPage() {
   );
   const netSubtotal = Math.max(0, subtotal - discountTotal);
   const tax = Math.round(netSubtotal * 0.11);
-  const selectedShippingRate = shippingRates.find(
+  const selectedShippingRate = addressDirty ? undefined : shippingRates.find(
     (rate) => rate.id === selectedShippingRateId,
   );
   const shippingCost = selectedShippingRate?.price ?? 0;
@@ -207,30 +218,6 @@ export function CheckoutPage() {
     (a) => a.id === effectiveAddressId,
   );
 
-  if (!selectedAddress) {
-    return (
-      <CheckoutFrame
-        step={2}
-        title="Tambah alamat pengiriman"
-        description="Anda belum punya alamat. Tambahkan satu untuk lanjut."
-        aside={
-          <CondensedSummary
-            items={items}
-            subtotal={subtotal}
-            discountTotal={discountTotal}
-            tax={tax}
-            total={total}
-            promotionCode={appliedPromotion?.code}
-          />
-        }
-      >
-        <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
-          <AddressAddInline />
-        </div>
-      </CheckoutFrame>
-    );
-  }
-
   function handlePayment() {
     if (!session || !selectedAddress) return;
     setSubmitting(true);
@@ -246,6 +233,7 @@ export function CheckoutPage() {
         companyId: session.company.id,
         userId: session.user.id,
         promotionCode: appliedPromotion?.code ?? null,
+        orderNote: useCartStore.getState().orderNote,
         items: items.map((item) => ({
           productId: item.productId,
           selectedColor: item.color,
@@ -367,193 +355,30 @@ export function CheckoutPage() {
     router.push("/quote");
   }
 
-  // Step 4: review.
+  // Recipient, shipping and summary share one review screen.
   return (
-    <CheckoutFrame
-      step={3}
-      title="Review pesanan"
-      description="Periksa detail, pilih ongkir, lalu lanjutkan pembayaran atau quotation."
-      aside={
-        <div className="rounded-2xl border border-line bg-surface p-5 shadow-soft-sm">
-          <h2 className="text-sm font-bold text-ink">Ringkasan</h2>
-          <dl className="mt-3 space-y-2 text-sm">
-            <Row label="Subtotal" value={formatIDR(subtotal)} />
-            {discountTotal > 0 ? (
-              <Row
-                label={`Promo ${appliedPromotion?.code ?? ""}`.trim()}
-                value={`- ${formatIDR(discountTotal)}`}
-              />
-            ) : null}
-            <Row label="PPN 11%" value={formatIDR(tax)} muted />
-            <Row
-              label="Ongkos kirim"
-              value={
-                selectedShippingRate
-                  ? selectedShippingRate.price === 0
-                    ? "Gratis"
-                    : formatIDR(selectedShippingRate.price)
-                  : "Belum dipilih"
-              }
-              muted={!selectedShippingRate}
-              italic={!selectedShippingRate}
-            />
-          </dl>
-          <div className="mt-4 flex items-end justify-between border-t border-line pt-3">
-            <span className="text-sm font-semibold text-ink">Total</span>
-            <span className="text-2xl font-extrabold tracking-tight text-ink-strong tabular-nums">
-              {formatIDR(total)}
-            </span>
-          </div>
-
-          <div className="mt-4 space-y-2">
-            <Button
-              className="w-full"
-              onClick={requiresEmbroideryConsultation ? handleRequestQuote : handlePayment}
-              disabled={submitting}
-              aria-busy={submitting}
-            >
-              {submitting
-                ? "Memproses..."
-                : requiresEmbroideryConsultation
-                  ? "Minta Estimasi Bordir"
-                  : "Lanjut Pembayaran"}
-            </Button>
-            {!requiresEmbroideryConsultation ? <Button
-              className="w-full"
-              variant="outline"
-              onClick={handleRequestQuote}
-              disabled={submitting}
-            >
-              Request Quotation
-            </Button> : null}
-          </div>
-
-          {checkoutMessage && (
-            <p
-              role="alert"
-              className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800"
-            >
-              {checkoutMessage}
-            </p>
-          )}
-
-          <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-[11px] leading-snug text-brand-800">
-            {requiresEmbroideryConsultation
-              ? "Produk dengan bordir perlu estimasi supervisor sebelum harga, jadwal, dan pembayaran dikonfirmasi."
-              : "Total final dihitung ulang oleh backend. Development memakai payment mock sampai konfigurasi iPaymu resmi diaktifkan."}
-          </p>
-        </div>
-      }
-    >
-      {/* Items + address + shipping */}
-      <div className="space-y-4">
-          <section className="rounded-2xl border border-line bg-surface p-5">
-            <h2 className="text-sm font-bold text-ink">Item pesanan</h2>
-            <ul className="mt-3 divide-y divide-line">
-              {items.map((it) => (
-                <li key={it.id} className="flex items-start justify-between gap-3 py-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <ProductThumb src={it.image} alt={it.productName} className="h-16 w-16 sm:h-20 sm:w-20" />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-ink">
-                        {it.productName}
-                      </p>
-                      <p className="text-[11px] text-ink-muted">
-                        {it.color} · {it.totalQty} pcs · {formatIDR(it.finalUnitPrice ?? it.unitPrice)}/pcs
-                        {it.quantityTierApplied && it.quantityTierLabel ? ` · Tier ${it.quantityTierLabel}` : ""}
-                      </p>
-                      {(it.embroideryLines?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Bordir {formatIDR(it.embroideryTotal)}</p> : null}
-                    </div>
-                  </div>
-                  <p className="text-sm font-bold text-ink tabular-nums">{formatIDR(it.finalEstimatedTotal ?? it.estimatedPrice)}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="rounded-2xl border border-line bg-surface p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-ink">Alamat pengiriman</h2>
-              <ButtonLink href="/dashboard/addresses" variant="ghost" size="sm">
-                Kelola alamat
-              </ButtonLink>
-            </div>
-
-            {session.company.addresses.length > 1 && (
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {session.company.addresses.map((a) => {
-                  const active = a.id === effectiveAddressId;
-                  return (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedAddressId(a.id);
-                        setShippingRates([]);
-                        setSelectedShippingRateId(null);
-                      }}
-                      aria-pressed={active}
-                      className={
-                        "rounded-xl border p-3 text-left text-xs transition " +
-                        (active
-                          ? "border-brand-500 bg-brand-50/50 ring-2 ring-brand-100"
-                          : "border-line hover:border-brand-300")
-                      }
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-ink">{a.label}</span>
-                        {a.isDefaultShipping && (
-                          <Badge tone="brand">Utama</Badge>
-                        )}
-                      </div>
-                      <p className="mt-1 text-ink-muted">
-                        {a.recipientName} · {a.recipientPhone}
-                      </p>
-                      <p className="mt-0.5 text-ink-muted">
-                        {a.street}, {a.city}, {a.province} {a.postalCode}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {session.company.addresses.length === 1 && (
-              <div className="mt-3 rounded-xl border border-line p-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-ink">{selectedAddress.label}</span>
-                  <Badge tone="brand">Utama</Badge>
-                </div>
-                <p className="mt-1 text-ink-muted">
-                  {selectedAddress.recipientName} · {selectedAddress.recipientPhone}
-                </p>
-                <p className="mt-0.5 text-ink-muted">
-                  {selectedAddress.street}, {selectedAddress.city},{" "}
-                  {selectedAddress.province} {selectedAddress.postalCode}
-                </p>
-              </div>
-            )}
-          </section>
-
-          <section
-            className="rounded-2xl border border-line bg-surface p-5"
+    <CheckoutFrame checkout title="Checkout" description="Lengkapi informasi pengiriman untuk melanjutkan pesanan."
+      aside={<div className="space-y-3">
+                  <section
+            className="rounded-lg border border-line bg-surface p-5"
             aria-labelledby="shipping-heading"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-col items-stretch gap-3">
               <div>
                 <h2 id="shipping-heading" className="text-sm font-bold text-ink">
-                  Pilihan pengiriman
+                  Pengiriman
                 </h2>
                 <p className="mt-1 text-xs text-ink-muted">
-                  Ongkir dihitung melalui backend Ofissio.
+                  Pilih layanan pengiriman untuk alamat tujuan Anda.
                 </p>
               </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="min-h-11 w-full justify-start"
                 onClick={() => void handleCheckShipping()}
-                disabled={shippingLoading}
+                disabled={shippingLoading || !selectedAddress || addressDirty}
                 aria-busy={shippingLoading}
               >
                 {shippingLoading ? (
@@ -561,7 +386,7 @@ export function CheckoutPage() {
                 ) : (
                   <Truck className="h-4 w-4" />
                 )}
-                {shippingLoading ? "Menghitung…" : "Cek Ongkir"}
+                {shippingLoading ? "Menghitung…" : selectedShippingRate ? "Ubah pengiriman" : "Belum dipilih"}
               </Button>
             </div>
 
@@ -573,7 +398,7 @@ export function CheckoutPage() {
               </div>
             )}
 
-            {shippingRates.length > 0 && (
+            {shippingRates.length > 0 && !addressDirty && (
               <fieldset className="mt-4 grid gap-2">
                 <legend className="sr-only">Pilih layanan pengiriman</legend>
                 {shippingRates.map((rate) => {
@@ -584,7 +409,7 @@ export function CheckoutPage() {
                       className={
                         "flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors " +
                         (selected
-                          ? "border-brand-600 bg-brand-50/60 ring-1 ring-brand-100"
+                          ? "border-ochre-600 bg-ochre-50 ring-1 ring-ochre-600"
                           : "border-line hover:border-brand-300")
                       }
                     >
@@ -594,11 +419,11 @@ export function CheckoutPage() {
                         value={rate.id}
                         checked={selected}
                         onChange={() => setSelectedShippingRateId(rate.id)}
-                        className="h-4 w-4 accent-brand-700"
+                        className="h-4 w-4 accent-ochre-600"
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold text-ink">
-                          {rate.courierName} · {rate.serviceName}
+                          {rate.courierName}, {rate.serviceName}
                         </span>
                         <span className="block text-xs text-ink-muted">
                           {rate.estimatedDays}
@@ -613,7 +438,29 @@ export function CheckoutPage() {
               </fieldset>
             )}
           </section>
-      </div>
+        <section className="rounded-lg border border-line bg-surface p-4">
+          <h2 className="text-base font-bold">Ringkasan pesanan</h2>
+          <SummaryItems items={items} />
+          <details className="mt-2 text-xs"><summary className="cursor-pointer text-ink-muted">Rincian biaya</summary><dl className="mt-2 space-y-2"><Row label="Subtotal" value={formatIDR(subtotal)} />{discountTotal>0 && <Row label="Diskon promo" value={formatIDR(discountTotal)} />}<Row label="PPN 11% (estimasi)" value={formatIDR(tax)} /><Row label="Pengiriman" value={selectedShippingRate?formatIDR(shippingCost):"Belum dipilih"} /></dl></details>
+          <PromotionBox lines={toPromotionLines(items)} subtotal={clientSubtotal} />
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3"><span className="text-sm font-bold">Total pesanan</span><div className="text-right"><strong className="text-xl tabular-nums">{formatIDR(total)}</strong><p className="text-xs text-ink-muted">{selectedShippingRate?"Termasuk pengiriman":"Menunggu pengiriman"}</p></div></div>
+          {checkoutMessage && <p role="alert" className="mt-3 text-xs text-amber-800">{checkoutMessage}</p>}
+          {requiresEmbroideryConsultation && <p className="mt-2 text-xs text-ink-muted">Biaya dan jadwal bordir perlu dikonfirmasi sebelum pembayaran.</p>}
+          <button className="mt-3 text-xs font-semibold underline" onClick={handleRequestQuote}>Request Quotation</button>
+        </section>
+      </div>}
+      footer={<><div><strong className="text-xl tabular-nums">{formatIDR(total)}</strong><p className="text-xs text-ink-muted">{selectedShippingRate?"Termasuk pengiriman dan estimasi PPN":"Menunggu pengiriman, termasuk estimasi PPN"}</p></div><div className="flex flex-wrap gap-2"><ButtonLink href="/cart" variant="outline">Kembali ke Keranjang</ButtonLink><Button disabled={submitting||shippingLoading} onClick={()=>{
+        if (!selectedAddress || addressDirty) { (document.getElementById("checkout-recipient") as HTMLFormElement|null)?.requestSubmit(); return; }
+        if (requiresEmbroideryConsultation) { handleRequestQuote(); return; }
+        if (!selectedShippingRate) { void handleCheckShipping(); return; }
+        handlePayment();
+      }}>{submitting?"Memproses...":shippingLoading?"Menghitung ongkir...":!selectedAddress||addressDirty?"Simpan penerima":requiresEmbroideryConsultation?"Minta Estimasi Bordir":!selectedShippingRate?"Pilih pengiriman":"Lanjut Pembayaran"}</Button></div></>}
+    >
+      <section className="rounded-lg border border-line bg-surface p-4">
+        <h2 className="mb-3 text-base font-bold">Informasi penerima</h2>
+        {session.company.addresses.length>1 && <label className="mb-3 block text-xs">Alamat tersimpan<select value={effectiveAddressId??""} onChange={e=>{setSelectedAddressId(e.target.value);setShippingRates([]);setSelectedShippingRateId(null);setAddressDirty(false);}} className="mt-1 block h-10 w-full rounded-lg border border-line px-2">{session.company.addresses.map(a=><option key={a.id} value={a.id}>{a.label} ({a.recipientName})</option>)}</select></label>}
+        <CompanyAddressForm key={selectedAddress?.id??"new"} checkout address={selectedAddress} onDirtyChange={setAddressDirty} onSuccess={()=>{setShippingRates([]);setSelectedShippingRateId(null);setCheckoutMessage(null);}} />
+      </section>
     </CheckoutFrame>
   );
 }
@@ -630,11 +477,11 @@ function Row({
   italic?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-start justify-between gap-4">
       <dt className={muted ? "text-ink-muted" : "text-ink"}>{label}</dt>
       <dd
         className={
-          (muted ? "text-ink-muted " : "font-semibold text-ink ") +
+          (muted ? "text-right text-ink-muted " : "text-right font-semibold text-ink ") +
           (italic ? "italic text-xs" : " tabular-nums")
         }
       >
@@ -645,7 +492,7 @@ function Row({
 }
 
 /**
- * Condensed order summary for steps 1–2. Desktop-only aside — renders the
+ * Condensed order summary for steps 1-2. Desktop-only aside — renders the
  * totals already derived in CheckoutPage, adds no logic of its own.
  */
 function CondensedSummary({
@@ -665,8 +512,9 @@ function CondensedSummary({
 }) {
   const totalQty = items.reduce((a, it) => a + it.totalQty, 0);
   return (
-    <div className="hidden rounded-2xl border border-line bg-surface p-5 shadow-soft-sm lg:block">
-      <h2 className="text-sm font-bold text-ink">Ringkasan pesanan</h2>
+    <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
+      <h2 className="text-lg font-semibold text-ink">Ringkasan Pesanan</h2>
+      <SummaryItems items={items} />
       <dl className="mt-3 space-y-2 text-sm">
         <Row label={`Subtotal (${totalQty} pcs)`} value={formatIDR(subtotal)} />
         {discountTotal > 0 ? (
@@ -677,6 +525,10 @@ function CondensedSummary({
         ) : null}
         <Row label="PPN 11% (estimasi)" value={formatIDR(tax)} muted />
       </dl>
+      <PromotionBox
+        lines={toPromotionLines(items)}
+        subtotal={items.reduce((a, it) => a + (it.finalEstimatedTotal ?? it.estimatedPrice), 0)}
+      />
       <div className="mt-4 flex items-end justify-between border-t border-line pt-3">
         <span className="text-sm font-semibold text-ink">Estimasi total</span>
         <span className="text-xl font-extrabold tracking-tight text-ink-strong tabular-nums">
@@ -687,6 +539,33 @@ function CondensedSummary({
         Ongkos kirim dihitung pada langkah terakhir setelah alamat dipilih.
       </p>
     </div>
+  );
+}
+
+function SummaryItems({ items }: { items: CartLineItem[] }) {
+  return (
+    <ul className="mt-4 divide-y divide-line border-b border-line">
+      {items.map((item) => {
+        const processingInfo = resolveOrderProcessingInfo({
+          processRoute: item.processRoute,
+          fulfillmentType: item.fulfillmentType,
+          leadTimeDays: item.leadTimeDays,
+          hasEmbroidery: hasCartCustomization(item),
+        });
+        return (
+          <li key={item.id} className="flex items-start gap-3 py-4 first:pt-0">
+            <ProductThumb src={item.image} alt={item.productName} className="h-16 w-16 shrink-0" />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-semibold">{item.productName}</p>
+              <EmbroiderySummary placements={item.embroideryPlacements} sizes={item.sizes} />
+              <p className="mt-1 text-xs text-ink-muted">{item.color}, {Object.entries(item.sizes).filter(([,q])=>q>0).map(([s,q])=>`${s} ${q} pcs`).join(", ")}</p>
+              <p className="mt-1 text-xs font-semibold text-ink-muted">{processingInfo.label}: {processingInfo.value}</p>
+            </div>
+            <div className="text-right text-sm"><p className="font-semibold tabular-nums">{formatIDR(item.finalEstimatedTotal ?? item.estimatedPrice)}</p><p className="mt-1 text-xs text-ink-muted">{item.totalQty} pcs</p></div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -705,3 +584,4 @@ function AddressAddInline() {
 
 // Re-export for type completeness (unused but keeps tree-shaking honest).
 export type { Address };
+import { EmbroiderySummary } from "@/components/configurator/EmbroiderySummary";

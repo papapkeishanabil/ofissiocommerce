@@ -74,8 +74,8 @@ export function AuthModal() {
           generic Modal's px-5/py-4 content padding so the navy band reaches the
           card edges and top; the card's overflow-hidden + rounded-2xl clip the
           band's top corners into the card. */}
-      <div className="-mx-5 -mt-4">
-        <div className="relative overflow-hidden bg-brand-900 px-5 py-5 text-white">
+      <div data-customer-auth className="-mx-5 -mt-4">
+        <div className="relative overflow-hidden bg-[#071c3a] px-5 py-5 text-white">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
@@ -86,11 +86,8 @@ export function AuthModal() {
           <div className="relative z-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-9 w-9 place-items-center rounded-[11px] bg-white text-base font-extrabold text-brand-700">
-                  O
-                </span>
                 <div className="leading-none">
-                  <p className="text-sm font-bold">Ofissio</p>
+                  <p className="text-2xl font-bold tracking-tight">Ofissio<span className="text-ochre-500">.</span></p>
                   <p className="mt-1 text-[11px] text-brand-200">
                     B2B Workwear Commerce
                   </p>

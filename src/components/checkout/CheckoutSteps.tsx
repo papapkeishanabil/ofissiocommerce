@@ -41,8 +41,8 @@ export function CheckoutSteps({ current }: CheckoutStepsProps) {
                   aria-current={active ? "step" : undefined}
                   className={cn(
                     "grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold transition-colors",
-                    active && "bg-brand-700 text-white shadow-soft-xs",
-                    done && "bg-brand-50 text-brand-700 ring-1 ring-brand-200",
+                    active && "bg-ochre-700 text-white",
+                    done && "bg-ochre-50 text-ochre-700 ring-1 ring-ochre-300",
                     !active && !done && "bg-surface-muted text-ink-subtle ring-1 ring-line",
                   )}
                 >
@@ -50,7 +50,7 @@ export function CheckoutSteps({ current }: CheckoutStepsProps) {
                 </span>
                 <span
                   className={cn(
-                    "truncate text-xs font-semibold sm:text-sm",
+                    "text-xs font-semibold sm:text-sm",
                     active ? "text-ink" : "text-ink-muted",
                   )}
                 >

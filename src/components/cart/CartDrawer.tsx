@@ -74,7 +74,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                 >
                   <p className="font-semibold text-ink">{it.productName}</p>
                   <p className="text-[11px] text-ink-muted">
-                    {it.color} · {it.totalQty} pcs
+                    {it.color}, {it.totalQty} pcs
                   </p>
                   <p className="mt-1 text-xs font-bold">
                     {formatIDR(it.finalEstimatedTotal ?? it.estimatedPrice)}

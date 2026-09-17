@@ -22,7 +22,7 @@ export function OrderLogoThumbnails({ placements }: OrderLogoThumbnailsProps) {
   const { session } = useAuth();
   const [previewUrls, setPreviewUrls] = useState<PreviewState>({});
   const fileIds = useMemo(
-    () => [...new Set(placements.map((placement) => placement.logoFileId).filter(Boolean))],
+    () => [...new Set(placements.filter(p => !p.textBordir).map((placement) => placement.logoFileId).filter(Boolean))],
     [placements],
   );
   const fileIdsKey = fileIds.join("|");
@@ -115,7 +115,7 @@ export function OrderLogoThumbnails({ placements }: OrderLogoThumbnailsProps) {
       <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {placements.map((placement, index) => {
           const previewUrl = previewUrls[placement.logoFileId];
-          const isLoading = session && placement.logoFileId && previewUrl === undefined;
+          const isLoading = !placement.textBordir && session && placement.logoFileId && previewUrl === undefined;
           const position = zoneLabel(placement.zone);
 
           return (
@@ -141,11 +141,11 @@ export function OrderLogoThumbnails({ placements }: OrderLogoThumbnailsProps) {
               </div>
               <div className="min-w-0 text-xs">
                 <p className="font-bold text-ink">{position}</p>
-                <p className="mt-0.5 truncate text-ink-muted" title={placement.logoFileName}>
-                  {placement.logoFileName || "Logo bordir"}
+                <p className="mt-0.5 break-words text-ink-muted" title={placement.logoFileName}>
+                  {placement.textBordir ? embroideryTextSummary(placement) : placement.logoFileName || "Logo bordir"}
                 </p>
                 <p className="mt-1 text-[11px] text-ink-muted">
-                  {embroideryTechniqueLabel(placement.technique)} · {placement.widthCm} ×{" "}
+                  {embroideryTechniqueLabel(placement.technique)}, {placement.widthCm} ×{" "}
                   {placement.heightCm} cm
                 </p>
               </div>
@@ -171,3 +171,4 @@ function authHeaders(session: AuthSession): HeadersInit {
 function isPlaceholderFileId(fileId: string) {
   return fileId.toLowerCase().includes("placeholder");
 }
+import { embroideryTextSummary } from "@/lib/embroidery-names";

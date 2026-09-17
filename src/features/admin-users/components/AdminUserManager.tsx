@@ -70,7 +70,7 @@ export function AdminUserManager({ initialUsers }: { initialUsers: ManagedIntern
         <Field label="Nama lengkap"><input name="name" required minLength={2} className={INPUT} autoComplete="name" /></Field>
         <Field label="Email Ofissio"><input name="email" type="email" required className={INPUT} autoComplete="email" /></Field>
         <Field label="Password sementara" hint="Minimal 10 karakter. Sampaikan secara aman."><input name="password" type="password" required minLength={10} className={INPUT} autoComplete="new-password" /></Field>
-        <Field label="Peran"><select name="role" defaultValue="sales" className={INPUT}>{MANAGED_ROLE_OPTIONS.map((role) => <option key={role.value} value={role.value}>{role.label} · {role.routes}</option>)}</select></Field>
+        <Field label="Peran"><select name="role" defaultValue="sales" className={INPUT}>{MANAGED_ROLE_OPTIONS.map((role) => <option key={role.value} value={role.value}>{role.label}, {role.routes}</option>)}</select></Field>
         <div className="md:col-span-2 xl:col-span-4"><Button type="submit" disabled={pending} aria-busy={pending}><UserPlus className="h-4 w-4" aria-hidden="true" />{pending ? "Menyimpan..." : "Buat akun internal"}</Button></div>
       </form>
       {message ? <p role="status" className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{message}</p> : null}

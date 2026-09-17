@@ -11,6 +11,7 @@ import type {
   EmbroideryPricingLine,
   EmbroideryPricingZoneId,
 } from "@/features/products/embroidery-pricing";
+import type { ProductProcessRoute } from "@/features/products/product.types";
 
 export interface CartLineItem {
   /** stable id derived from productId + color (one line per product+color) */
@@ -27,6 +28,8 @@ export interface CartLineItem {
   priceFrom?: number;
   moq?: number;
   fulfillmentType?: string;
+  processRoute?: ProductProcessRoute;
+  leadTimeDays?: number;
   transactionMode?: string;
   model3dId?: string;
   model3dUrl?: string;

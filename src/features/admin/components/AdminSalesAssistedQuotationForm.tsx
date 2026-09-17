@@ -393,7 +393,7 @@ export function AdminSalesAssistedQuotationForm({
                 {openBriefs.map((row) => (
                   <li key={row.id} className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-bold">{row.quotationNumber}</span>
-                    <span className="text-xs">{intakeChannelLabel(row.intakeChannel)} · {QUOTATION_STATUS_LABELS[row.status] ?? row.status}</span>
+                    <span className="text-xs">{intakeChannelLabel(row.intakeChannel)}, {QUOTATION_STATUS_LABELS[row.status] ?? row.status}</span>
                     <a className="text-xs font-bold text-amber-900 underline" href={`/admin/quotations/${row.id}`}>Buka &amp; kembangkan</a>
                   </li>
                 ))}

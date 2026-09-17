@@ -25,6 +25,7 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
     currency: "IDR",
     set_paid: false,
     customer_note: [
+      order.orderNote || null,
       `Ofissio order ${order.orderNumber ?? order.id}`,
       input.companyName ? `Company: ${input.companyName}` : null,
       input.quotationId ? `Quotation: ${input.quotationId}` : null,

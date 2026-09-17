@@ -64,6 +64,13 @@ export function embroideryTechniqueLabel(technique: EmbroideryTechnique): string
 
 /** A single logo placement on the uniform. */
 export interface LogoPlacement {
+  textBordir?: {
+    mode: "same" | "individual";
+    name: string;
+    font: "sans" | "serif";
+    color: string;
+    allocations: { name: string; size: "S" | "M" | "L" | "XL" | "2XL" | "3XL"; quantity: number }[];
+  };
   zone: EmbroideryZone;
   /** Object-storage file id (placeholder for Phase 4; AV scan in Phase 8) */
   logoFileId: string;
@@ -74,7 +81,7 @@ export interface LogoPlacement {
   logoPreviewUrl?: string;
   widthCm: number;
   heightCm: number;
-  /** degrees, 0 / 90 / 180 / 270 */
+  /** Whole degrees, -360 through 360; independently stored for each zone. */
   rotation: number;
   technique: EmbroideryTechnique;
   /** Raycast surface point [x,y,z] — set when customer clicks on GLB surface */
@@ -95,6 +102,28 @@ export const CAMERA_PRESETS = [
 ] as const;
 
 export type CameraPreset = (typeof CAMERA_PRESETS)[number];
+
+/**
+ * Rotasi koreksi terhadap sumbu Y agar bagian depan GLB menghadap kamera +Z.
+ * Export dari aplikasi 3D tidak selalu memakai sumbu depan yang sama.
+ */
+export const MODEL_ORIENTATION_Y_OPTIONS = [0, 90, 180, 270] as const;
+export type ModelOrientationY = (typeof MODEL_ORIENTATION_Y_OPTIONS)[number];
+
+export function normalizeModelOrientationY(
+  value: number | null | undefined,
+  fallback: ModelOrientationY = 0,
+): ModelOrientationY {
+  const normalized = ((Number(value) % 360) + 360) % 360;
+  return MODEL_ORIENTATION_Y_OPTIONS.includes(normalized as ModelOrientationY)
+    ? (normalized as ModelOrientationY)
+    : fallback;
+}
+
+/** Koreksi bawaan untuk model lama yang belum memiliki metadata orientasi. */
+export function defaultModelOrientationY(sku: string | null | undefined): ModelOrientationY {
+  return sku?.trim().toUpperCase() === "KK-006" ? 90 : 0;
+}
 
 export function cameraLabel(c: CameraPreset): string {
   switch (c) {

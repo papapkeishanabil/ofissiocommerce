@@ -27,7 +27,7 @@ export function ProductPreviewModal({
       onClose={onClose}
       size="lg"
       title={data.product.name}
-      description={`${data.color} · ${data.totalQty} pcs${data.embroideryCount ? ` · ${data.embroideryCount} titik bordir` : ""}`}
+      description={`${data.color}, ${data.totalQty} pcs${data.embroideryCount ? `, ${data.embroideryCount} titik bordir` : ""}`}
       footer={has3DSupport ? (
         <button
           type="button"

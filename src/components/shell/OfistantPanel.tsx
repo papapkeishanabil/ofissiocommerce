@@ -59,13 +59,13 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   return (
     <div className={`relative flex h-full w-full flex-col overflow-hidden bg-cool-50 text-ink ${ofistantFont.className}`}>
       {/* Header — blok navy yang kuat, identitas asisten */}
-      <header className="relative flex h-16 shrink-0 items-center justify-between bg-brand-900 px-4">
+      <header className="workspace-chrome-header relative flex shrink-0 items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <div className="relative">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-700 text-white shadow-soft-sm ring-1 ring-white/20">
               <OfistantMark variant="rev" className="h-7 w-7" />
             </span>
-            <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-brand-900 bg-emerald-500" />
+            <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#071c3a] bg-emerald-500" />
           </div>
           <div>
             <p className="flex items-center gap-2 text-base font-extrabold leading-tight tracking-tight text-white">
@@ -74,7 +74,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
             </p>
             <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-brand-200">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Online · Asisten pengadaan
+              Online, asisten pengadaan
             </p>
           </div>
         </div>
@@ -131,7 +131,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
             <Headset className="h-3.5 w-3.5" /> Butuh bantuan tim Ofissio
           </button>
           <span className="flex items-center gap-1 text-[10px] text-ink-subtle">
-            <OfistantMark variant="navy" className="h-4 w-4" /> Ofistant AI · B2B commerce
+            <OfistantMark variant="navy" className="h-4 w-4" /> Ofistant AI, B2B commerce
           </span>
         </div>
       </div>

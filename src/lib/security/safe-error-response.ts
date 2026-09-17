@@ -13,6 +13,7 @@ const DEFAULT_MESSAGES: Record<ApiErrorCode, string> = {
   RATE_LIMITED: "Terlalu banyak percobaan. Silakan coba lagi sebentar lagi.",
   VALIDATION_ERROR: "Data yang dikirim belum valid.",
   PROVIDER_UNAVAILABLE: "Layanan sedang tidak tersedia. Silakan coba lagi.",
+  PROVIDER_ERROR: "Hasil layanan eksternal tidak valid. Silakan coba lagi.",
   INTERNAL_ERROR: "Terjadi kendala sistem. Silakan coba lagi.",
 };
 
@@ -112,6 +113,8 @@ function statusForCode(code: ApiErrorCode) {
       return 429;
     case "PROVIDER_UNAVAILABLE":
       return 503;
+    case "PROVIDER_ERROR":
+      return 502;
     case "INTERNAL_ERROR":
       return 500;
   }

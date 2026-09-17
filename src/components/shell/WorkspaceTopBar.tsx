@@ -2,11 +2,12 @@
 
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useChromeOpen, useChromeStore } from "@/stores/chrome-store";
+import { useChromeStore, useRailOpen, useTopOpen } from "@/stores/chrome-store";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 
 export function WorkspaceTopBar() {
-  const open = useChromeOpen();
+  const open = useTopOpen();
+  const railOpen = useRailOpen();
   const pinned = useChromeStore((s) => s.pinned);
   const locked = useChromeStore((s) => s.locked);
   const topEnter = useChromeStore((s) => s.topEnter);
@@ -19,13 +20,13 @@ export function WorkspaceTopBar() {
       onMouseLeave={topLeave}
       className={cn(
         "group fixed left-0 right-0 top-0 z-30 hidden shrink-0 transition-[transform,padding-left] duration-300 ease-out lg:block",
-        // Saat chrome terbuka di xl+, geser konten bar melewati rail Ofistant
-        // supaya menu tidak pernah tertutup panel — sejajar kolom konten.
-        open && "xl:pl-[clamp(320px,21vw,400px)]",
+        // Saat panel Ofistant terbuka di xl+, geser konten bar melewati rail
+        // Ofistant supaya menu tidak pernah tertutup panel — sejajar kolom konten.
+        railOpen && "xl:pl-[clamp(320px,21vw,400px)]",
       )}
       style={{ transform: open ? "translateY(0)" : "translateY(-100%)" }}
     >
-      <div className="h-16">
+      <div className="h-14">
         <WorkspaceHeader />
       </div>
       {!locked && (

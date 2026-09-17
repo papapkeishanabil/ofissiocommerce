@@ -174,7 +174,7 @@ export function GineeIntegrationPanel(props: Props) {
             </p>
           </div>
           <StatusPill ok={Boolean(health?.connectionOk)}>
-            {health?.providerMode === "live_inventory_read_only" ? "LIVE · INVENTORY ONLY" : "MOCK · INVENTORY ONLY"}
+            {health?.providerMode === "live_inventory_read_only" ? "LIVE, INVENTORY ONLY" : "MOCK, INVENTORY ONLY"}
           </StatusPill>
         </div>
       </section>
@@ -277,7 +277,7 @@ export function GineeIntegrationPanel(props: Props) {
           icon={CircleAlert}
           eyebrow="Mapping report"
           title="SKU belum dipetakan"
-          description="SKU ini pernah diperiksa tetapi belum memiliki mapping teknis Ofissio–Ginee."
+          description="SKU ini pernah diperiksa tetapi belum memiliki mapping teknis Ofissio-Ginee."
         >
           {unmappedSkus.length ? (
             <ul className="space-y-2">

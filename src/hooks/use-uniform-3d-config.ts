@@ -5,7 +5,8 @@
 
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 import type {
   CameraPreset,
@@ -35,7 +36,9 @@ export function useUniform3DConfig(
   productId: string,
   initialColor: string,
   model3dIdOverride?: string,
+  initialConfig?: Uniform3DConfig | null,
 ): UseUniform3DConfig {
+  const { session } = useAuth();
   const registeredModel = useMemo(() => getModel3DForProduct(productId), [productId]);
   const model3dId = registeredModel?.model3dId ?? model3dIdOverride;
   const hasModel = Boolean(model3dId);
@@ -43,8 +46,25 @@ export function useUniform3DConfig(
 
   const [config, setConfig] = useState<Uniform3DConfig | null>(() => {
     if (!model3dId) return null;
+    if (initialConfig?.productId === productId && initialConfig.model3dId === model3dId) {
+      return { ...initialConfig, color: initialColor, placements: initialConfig.placements.map(p => ({ ...p, logoPreviewUrl: p.logoPreviewUrl?.startsWith("blob:") ? undefined : p.logoPreviewUrl })) };
+    }
     return empty3DConfig(productId, model3dId, initialColor);
   });
+
+  useEffect(() => {
+    if (!session || !initialConfig) return;
+    const controller = new AbortController();
+    void Promise.all(initialConfig.placements.filter(p => !p.textBordir && !p.logoFileId.startsWith("pending-")).map(async placement => {
+      try {
+        const response = await fetch(`/api/files/${encodeURIComponent(placement.logoFileId)}/signed-url`, { credentials: "same-origin", signal: controller.signal, headers: { "x-ofissio-company-id": session.company.id, "x-ofissio-user-id": session.user.id, "x-ofissio-role": session.user.role } });
+        const result = await response.json();
+        if (!response.ok || !result.ok || !result.signedUrl || controller.signal.aborted) return;
+        setConfig(current => current ? { ...current, placements: current.placements.map(p => p.zone === placement.zone && p.logoFileId === placement.logoFileId ? { ...p, logoPreviewUrl: result.signedUrl } : p) } : current);
+      } catch { /* Keep the saved file reference; retry on reopening the studio. */ }
+    }));
+    return () => controller.abort();
+  }, [initialConfig, session]);
 
   const init = useCallback(
     (pid: string, color: string) => {
@@ -70,10 +90,10 @@ export function useUniform3DConfig(
       }
       setConfig((c) => {
         if (!c) return c;
-        const others = c.placements.filter((p) => p.zone !== placement.zone);
+        const exists = c.placements.some((p) => p.zone === placement.zone);
         return {
           ...c,
-          placements: [...others, parsed.data],
+          placements: exists ? c.placements.map(p => p.zone === placement.zone ? parsed.data : p) : [...c.placements, parsed.data],
           updatedAt: new Date().toISOString(),
         };
       });

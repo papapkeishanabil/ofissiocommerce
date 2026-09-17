@@ -54,7 +54,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.2.4"],
   // Keep development chunks isolated from `next build`. Running validation
   // while the dev server is active must not replace its webpack manifests.
-  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
+  distDir: process.env.NODE_ENV === "development"
+    ? (process.env.OFISSIO_DEV_DIST_DIR ?? ".next-dev")
+    : (process.env.OFISSIO_BUILD_DIST_DIR ?? ".next"),
   reactStrictMode: true,
   experimental: {
     // GLB/video uploads allow a 50 MB file; multipart boundaries add a small amount

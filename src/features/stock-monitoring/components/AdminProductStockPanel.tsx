@@ -97,7 +97,7 @@ export function AdminProductStockPanel({
         </>
       )}
       <p className="text-xs font-semibold text-ink-subtle">
-        Terakhir diperiksa {formatCheckedAt(matrix.lastCheckedAt)} · Sumber: WooCommerce
+        Terakhir diperiksa {formatCheckedAt(matrix.lastCheckedAt)}, Sumber: WooCommerce
       </p>
     </AdminSectionCard>
   );

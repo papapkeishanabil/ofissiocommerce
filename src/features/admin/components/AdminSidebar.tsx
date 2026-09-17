@@ -16,6 +16,7 @@ import {
   ListChecks,
   ListOrdered,
   Mail,
+  Ruler,
   MessagesSquare,
   PackageCheck,
   PackageSearch,
@@ -39,6 +40,7 @@ const ICONS = {
   "/admin/products": PackageSearch,
   "/admin/pricing/embroidery": CircleDollarSign,
   "/admin/settings/moq": ListOrdered,
+  "/admin/settings/size-charts": Ruler,
   "/admin/promotions": TicketPercent,
   "/admin/site-content": FileText,
   "/admin/ofistant-knowledge": BookOpen,
@@ -62,7 +64,7 @@ const ICONS = {
 };
 
 const NAV_GROUPS = [
-  { label: "Overview", hrefs: ["/admin", "/admin/help", "/admin/products", "/admin/pricing/embroidery", "/admin/settings/moq", "/admin/promotions", "/admin/site-content", "/admin/settings/tax", "/admin/settings/shipping"] },
+  { label: "Overview", hrefs: ["/admin", "/admin/help", "/admin/products", "/admin/pricing/embroidery", "/admin/settings/moq", "/admin/settings/size-charts", "/admin/promotions", "/admin/site-content", "/admin/settings/tax", "/admin/settings/shipping"] },
   { label: "Sales & order", hrefs: ["/admin/requests", "/admin/quotations", "/admin/orders", "/admin/invoices", "/admin/customers"] },
   { label: "Production", hrefs: ["/admin/process-orders", "/admin/shipments", "/admin/tracking", "/admin/uploads"] },
   { label: "Master & system", hrefs: ["/admin/catalog", "/admin/ofistant-knowledge", "/admin/users", "/admin/notifications", "/admin/settings/email", "/admin/integrations/ginee", "/admin/audit"] },

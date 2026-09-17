@@ -7,6 +7,10 @@ export interface ProductSizeRow {
   chest: number;
   /** body length in cm */
   length: number;
+  /** shoulder width in cm — optional, 0/undefined = not measured */
+  shoulder?: number;
+  /** recommended wearer height in cm — optional, 0/undefined = not measured */
+  height?: number;
 }
 
 export interface ProductSpec {

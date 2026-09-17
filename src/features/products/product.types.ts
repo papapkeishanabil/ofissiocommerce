@@ -1,11 +1,12 @@
 import type { Product } from "@/types/product";
-import type { EmbroideryZone, CameraPreset } from "@/types/uniform-3d";
+import type { EmbroideryZone, CameraPreset, ModelOrientationY } from "@/types/uniform-3d";
 import type {
   ProductAttributeValue,
   ProductTaxonomyReference,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
 import type { QuantityPricing } from "./quantity-pricing";
 import type { EmbroideryPricing } from "./embroidery-pricing";
+import type { ModelColorAdjustment } from "@/types/model-color-adjustment";
 
 export type ProductStatus = "draft" | "published" | "archived";
 export type TransactionMode = "DIRECT_CHECKOUT" | "REQUEST_QUOTATION" | "HYBRID";
@@ -19,9 +20,11 @@ export type ProductModelSource =
   | "woocommerce"
   | "other";
 
-export interface Product3DModel {
+export interface Product3DModel extends Partial<ModelColorAdjustment> {
   id: string; url: string; filename: string; version: string;
   source: ProductModelSource; file_type: "glb"; uploaded_at: string; is_required: true;
+  /** Rotasi koreksi sumbu Y agar preset kamera sesuai sisi pakaian. */
+  orientationY?: ModelOrientationY;
 }
 
 export interface ProductImageReference {
@@ -34,6 +37,12 @@ export interface ProductImageReference {
 /** Canonical product contract. UI-compatible fields remain from Product. */
 export interface OfissioProduct extends Product {
   source: "mock" | "woocommerce"; source_id: string; short_description: string;
+  /**
+   * HTML deskripsi tersanitasi untuk render storefront (dangerouslySetInnerHTML
+   * + class .rich-text). Dilampirkan hanya di jalur server (repository); produk
+   * mock/legacy tanpa field ini memakai fallback teks polos `description`.
+   */
+  descriptionHtml?: string;
   subcategory: string; lead_time: string; transaction_mode: TransactionMode;
   available_sizes: string[]; available_colors: string[]; gender: "men" | "women" | "unisex";
   sleeve_type: "short" | "long"; usage: "indoor" | "outdoor" | "both";

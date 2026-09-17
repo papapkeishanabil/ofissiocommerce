@@ -142,7 +142,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
               {tracking?.orderNumber ?? order.orderNumber ?? order.id}
             </h1>
             <p className="mt-1 text-sm text-ink-muted">
-              {detail.customer.companyName} · {formatAdminDate(order.createdAt)}
+              {detail.customer.companyName}, {formatAdminDate(order.createdAt)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -398,7 +398,7 @@ function deriveNextAction(input: {
   if (!input.paymentReceived) {
     return {
       tone: "warning",
-      title: "Invoice terkirim — tunggu pembayaran",
+      title: "Invoice terkirim, tunggu pembayaran",
       description:
         "Invoice sudah terkirim. Pantau pembayaran dan jangan mulai pekerjaan sebelum status menjadi paid.",
       actionLabel: "Periksa pembayaran",
@@ -419,7 +419,7 @@ function deriveNextAction(input: {
     const routeLabel = processOrderLabel(input.processRoute);
     return {
       tone: "brand",
-      title: `Pembayaran diterima — buat ${routeLabel}`,
+      title: `Pembayaran diterima, buat ${routeLabel}`,
       description: `Pembayaran sudah terverifikasi. Buat ${routeLabel} dari snapshot order agar tim dapat mulai bekerja tanpa input ulang.`,
       actionLabel: `Buat ${routeLabel}`,
       actionHref: "#process-order",
@@ -451,7 +451,7 @@ function deriveNextAction(input: {
     Boolean(input.carrierShipmentStatus) || input.shipmentStatuses.length > 0;
   return {
     tone: "brand",
-    title: shipmentStarted ? "Pantau status pengiriman" : "Process selesai — siapkan pengiriman",
+    title: shipmentStarted ? "Pantau status pengiriman" : "Process selesai, siapkan pengiriman",
     description: shipmentStarted
       ? "Shipment sudah dibuat. Perbarui tracking sampai paket diterima customer."
       : "Pilih layanan carrier, buat shipment, lalu simpan nomor resi untuk customer.",

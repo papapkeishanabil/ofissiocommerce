@@ -8,6 +8,7 @@ import {
 
 import { mapWooCommerceProductToOfissioProduct } from "../product.mapper";
 import type { OfissioProduct } from "../product.types";
+import { sanitizeProductDescriptionHtml } from "../description/sanitize-product-html";
 import {
   validateRawWooCommerceProductForOfissio,
   validateWooCommerceProductForOfissio,
@@ -108,7 +109,15 @@ function mapAndFilter(products: WooCommerceProduct[]) {
       });
       continue;
     }
-    valid.push(product);
+    // descriptionHtml hanya dilampirkan di jalur server ini — mapper tetap
+    // bebas dependency berat karena ter-bundle ke client lewat cart-store.
+    valid.push({
+      ...product,
+      descriptionHtml: sanitizeProductDescriptionHtml(raw.description ?? "", {
+        productName: product.name,
+        structuredFactLabels: product.specs.map((spec) => spec.label),
+      }),
+    });
   }
   return valid;
 }

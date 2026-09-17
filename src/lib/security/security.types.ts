@@ -101,6 +101,7 @@ export type ApiErrorCode =
   | "RATE_LIMITED"
   | "VALIDATION_ERROR"
   | "PROVIDER_UNAVAILABLE"
+  | "PROVIDER_ERROR"
   | "INTERNAL_ERROR";
 
 export class SecurityApiError extends Error {

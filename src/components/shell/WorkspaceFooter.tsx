@@ -10,7 +10,7 @@ import { Headset, Mail, MapPin } from "lucide-react";
 const LINKS = [
   { label: "Beranda", href: "/" },
   { label: "Katalog", href: "/catalog" },
-  { label: "Cara Order", href: "/#how-it-works" },
+  { label: "Cara Order", href: "/#cara" },
   { label: "Request Quotation", href: "/quote" },
 ];
 
@@ -28,10 +28,7 @@ export function WorkspaceFooter() {
         <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.75fr_0.9fr_1.35fr]">
           {/* Brand + tagline */}
           <div className="max-w-xs">
-            <Link href="/" className="type-display flex items-center gap-2 text-lg text-ink">
-              <span className="grid h-7 w-7 place-items-center rounded-md bg-brand-700 text-white">
-                O
-              </span>
+            <Link href="/" className="text-2xl font-bold tracking-tight text-ink">
               Ofissio<span className="text-ochre-500">.</span>
             </Link>
             <p className="mt-2 text-xs leading-relaxed text-ink-muted">

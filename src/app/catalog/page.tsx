@@ -57,9 +57,9 @@ export default async function Page({ searchParams }: PageProps) {
     <ProductCatalog
       products={products}
       industry={industry?.slug}
-      category={category?.slug}
+      category={category?.slug ?? normalizedCategory}
       industryLabel={industry?.name}
-      categoryLabel={category?.name}
+      categoryLabel={category?.name ?? rawKategori}
       color={search.warna}
       categoryStrict={Boolean(activeCategory)}
       taxonomyCategories={taxonomy.categories}

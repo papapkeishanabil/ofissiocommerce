@@ -37,7 +37,7 @@ export function SmartFloatingPreview({
 
   if (!open) return null;
 
-  const summary = `${data.totalQty} pcs${data.embroideryCount ? ` · ${data.embroideryCount} bordir` : ""}`;
+  const summary = `${data.totalQty} pcs${data.embroideryCount ? `, ${data.embroideryCount} bordir` : ""}`;
   const motionClass = entered
     ? "translate-y-0 scale-100 opacity-100"
     : "translate-y-3 scale-95 opacity-0";

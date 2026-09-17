@@ -109,7 +109,7 @@ export async function createImageTo3D(
 }
 
 export interface MeshyMultiImageInput {
-  /** 1–4 image paths. Can be public URLs OR local /public paths (auto-converted
+  /** 1-4 image paths. Can be public URLs OR local /public paths (auto-converted
    *  to data URIs so Meshy can ingest without public hosting). */
   imageUrls: string[];
   prompt?: string;
@@ -119,7 +119,7 @@ export interface MeshyMultiImageInput {
 }
 
 /**
- * Multi-Image to 3D — accepts 1–4 images and generates ONE solid GLB mesh.
+ * Multi-Image to 3D — accepts 1-4 images and generates ONE solid GLB mesh.
  * Local /public paths are auto-encoded as base64 data URIs.
  *
  * Docs: https://docs.meshy.ai/en/api/multi-image-to-3d
@@ -134,7 +134,7 @@ export async function createMultiImageTo3D(
   }
 
   if (input.imageUrls.length === 0 || input.imageUrls.length > 4) {
-    return { ok: false, reason: "Jumlah gambar harus 1–4." };
+    return { ok: false, reason: "Jumlah gambar harus 1-4." };
   }
 
   // Convert local /public paths to data URIs; pass URLs through as-is.

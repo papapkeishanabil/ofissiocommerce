@@ -37,9 +37,14 @@
     "next-env.d.ts",
     ".next-dev/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    ".next-dev/dev/types/**/*.ts"
+    ".next-dev/dev/types/**/*.ts",
+    ".next-checkout-fixture/types/**/*.ts",
+    ".next-checkout-fixture/dev/types/**/*.ts",
+    ".next-inspiration-verify/types/**/*.ts",
+    ".next-inspiration-verify/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "artifacts"
   ]
 }

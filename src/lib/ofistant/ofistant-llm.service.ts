@@ -272,7 +272,7 @@ function formatPageContextBlock(page: OfistantPageContext | null): string | null
     } else {
       const linesText = page.lines.slice(0, 8).map((l, i) => {
         const tier = l.tierLabel ? ` (tier ${l.tierLabel})` : "";
-        const head = `${i + 1}) ${l.productName} — warna ${l.color} — ${l.totalQty} pcs @ ${formatIDRCompact(l.unitPrice)}${tier} = ${formatIDRCompact(l.subtotal)}`;
+        const head = `${i + 1}) ${l.productName}, warna ${l.color}, ${l.totalQty} pcs @ ${formatIDRCompact(l.unitPrice)}${tier} = ${formatIDRCompact(l.subtotal)}`;
         if (l.embroidery.length === 0) return head;
         const emb = l.embroidery
           .slice(0, 6)

@@ -155,7 +155,7 @@ export function AdminOrderProcessPanel({
       <div className="mt-4 flex flex-wrap gap-2">
         {processOrderId ? (
           <ButtonLink href={`/admin/process-orders/${processOrderId}`} size="sm">
-            Buka Perintah Kerja{processOrderNumber ? ` · ${processOrderNumber}` : ""}
+            Buka Perintah Kerja{processOrderNumber ? `, ${processOrderNumber}` : ""}
           </ButtonLink>
         ) : (
           <Button

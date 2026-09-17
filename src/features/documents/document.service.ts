@@ -1,3 +1,4 @@
+import { embroideryTextSummary } from "@/lib/embroidery-names";
 import "server-only";
 
 import { randomUUID } from "node:crypto";
@@ -799,7 +800,7 @@ async function mapQuotationToDesignApprovalSheetPdfData(input: {
         .filter((spec) => spec.status !== "not_used")
         .map((spec) => ({
           label: spec.label,
-          value: [spec.option, spec.detail, spec.notes].filter(Boolean).join(" · ") || "-",
+          value: [spec.option, spec.detail, spec.notes].filter(Boolean).join(", ") || "-",
           measurements: spec.measurements ?? null,
           status: spec.status,
         })),
@@ -1054,7 +1055,7 @@ function quotationCustomizationSummary(
     [
       zoneLabel(placement.zone),
       embroideryTechniqueLabel(placement.technique),
-      placement.logoFileName,
+      embroideryTextSummary(placement),
       `${placement.widthCm}x${placement.heightCm} cm`,
       `Rotasi ${placement.rotation} deg`,
       placement.notes,
@@ -1190,7 +1191,7 @@ export function mapProcessOrderToEmbroideryWorkOrderPdfData(input: {
         widthCm: placement.widthCm,
         heightCm: placement.heightCm,
         rotation: placement.rotation,
-        notes: placement.notes ?? null,
+        notes: placement.textBordir ? embroideryTextSummary(placement) : placement.notes ?? null,
       })),
     })),
     locationLabel: config.companyLocationLabel,
@@ -1254,7 +1255,7 @@ function invoiceItemDescription(item: PaymentOrderRecord["items"][number]) {
     [
       zoneLabel(placement.zone),
       embroideryTechniqueLabel(placement.technique),
-      placement.logoFileName,
+      embroideryTextSummary(placement),
       `${placement.widthCm}x${placement.heightCm} cm`,
       `Rotasi ${placement.rotation} deg`,
     ]

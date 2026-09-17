@@ -4,7 +4,7 @@
 
 import { useRouter } from "next/navigation";
 
-import type { CartLineItem } from "@/types/cart";
+import { hasCartCustomization, type CartLineItem } from "@/types/cart";
 import { formatIDR } from "@/types/product";
 import { SIZES } from "@/types/industry";
 import { useCartStore } from "@/stores/cart-store";
@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ProductThumb } from "@/components/ui/ProductThumb";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
+import { resolveOrderProcessingInfo } from "@/features/products/order-processing";
+import { productColorDisplayLabel, productColorSwatchStyle } from "@/lib/product-colors";
 
 interface CartLineItemViewProps {
   item: CartLineItem;
@@ -29,6 +31,12 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
     regularPrice: item.regularPrice ?? item.priceFrom ?? item.unitPrice,
     totalQty: item.totalQty,
     quantityPricing: item.quantityPricing,
+  });
+  const processingInfo = resolveOrderProcessingInfo({
+    processRoute: item.processRoute,
+    fulfillmentType: item.fulfillmentType,
+    leadTimeDays: item.leadTimeDays,
+    hasEmbroidery: hasCartCustomization(item),
   });
 
   function setSize(size: (typeof SIZES)[number], qty: unknown) {
@@ -45,7 +53,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
   return (
     <article
       style={{ animationDelay: `${index * 60}ms` }}
-      className="animate-fade-in-up rounded-2xl border border-line bg-surface p-4 shadow-soft-sm transition-colors hover:border-line-strong sm:p-5"
+      className="animate-fade-in-up rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-line-strong sm:p-5"
     >
       <div className="flex items-start gap-3">
         <ProductThumb
@@ -54,7 +62,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
           className="h-20 w-20 sm:h-24 sm:w-24"
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <button
                 type="button"
@@ -82,7 +90,10 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <Badge tone="brand">Warna: {item.color}</Badge>
+            <span className="inline-flex items-center gap-2 text-sm text-ink">
+              <span className="h-4 w-4 rounded-full border border-black/10" style={productColorSwatchStyle(item.color)} aria-hidden="true" />
+              {productColorDisplayLabel(item.color)}
+            </span>
             <Badge tone="neutral">{item.totalQty} pcs</Badge>
             {item.customization && (
               <Badge tone="amber" className="max-w-[200px] truncate">
@@ -91,12 +102,15 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
             )}
             {item.uniform3DConfig && item.uniform3DConfig.placements.length > 0 && (
               <Badge tone="success">
-                {item.uniform3DConfig.placements.length} bordir ·{" "}
+                {item.uniform3DConfig.placements.length} bordir,{" "}
                 {item.uniform3DConfig.placements
                   .map((p) => p.zone.replace(/_/g, " "))
                   .join(", ")}
               </Badge>
             )}
+            <Badge tone={processingInfo.kind === "ready_stock" ? "success" : "amber"}>
+              {processingInfo.label}: {processingInfo.value}
+            </Badge>
           </div>
 
           {item.uniform3DConfig &&
@@ -122,7 +136,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
         <div className="mt-3 space-y-2 rounded-xl border border-ochre-100 bg-ochre-50 p-3">
           <div className="flex justify-between text-[11px]"><span className="font-semibold text-ink-muted">Subtotal produk</span><strong className="tabular-nums">{formatIDR(item.productSubtotal ?? item.subtotal)}</strong></div>
           {item.embroideryLines.map((line) => (
-            <div key={line.zoneId} className="flex items-start justify-between gap-3 text-[11px]">
+            <div key={line.zoneId} className="flex flex-wrap items-start justify-between gap-3 text-[11px]">
               <div><p className="font-semibold text-ink">{line.label}</p><p className="text-ink-muted tabular-nums">{line.quantity} pcs × {formatIDR(line.unitPrice)}{line.setupFeeApplied ? ` + setup ${formatIDR(line.setupFee)}` : ""}</p></div>
               <strong className="tabular-nums">{formatIDR(line.subtotal)}</strong>
             </div>
@@ -132,8 +146,14 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
       ) : null}
       {(item.missingEmbroideryPricingZones?.length ?? 0) > 0 ? <p className="mt-3 rounded-lg bg-ochre-50 px-3 py-2 text-[11px] font-semibold text-ochre-700">Harga bordir untuk zona ini perlu dikonfirmasi admin.</p> : null}
 
-      {/* Per-size editor (compact) */}
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-4 text-sm">
+        {SIZES.filter((size) => (item.sizes[size] ?? 0) > 0).map((size) => (
+          <div key={size} className="flex gap-2"><dt className="font-semibold">{size}</dt><dd className="text-ink-muted">{item.sizes[size]} pcs</dd></div>
+        ))}
+      </dl>
+      <details className="mt-3">
+      <summary className="w-fit cursor-pointer py-2 text-sm font-semibold text-ink">Ubah jumlah per ukuran</summary>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-6">
         {SIZES.map((s) => {
           const qty = item.sizes[s] ?? 0;
           const active = qty > 0;
@@ -142,7 +162,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
               key={s}
               className={cn(
                 "flex flex-col items-center rounded-xl border py-2 transition-colors",
-                active ? "border-brand-300 bg-brand-50" : "border-line bg-surface",
+                active ? "border-ochre-600 bg-ochre-50" : "border-line bg-surface",
               )}
             >
               <span
@@ -153,7 +173,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
               >
                 {s}
               </span>
-              <div className="mt-1.5 flex items-center gap-1">
+              <div className="mt-1.5 flex w-full items-center justify-center gap-1 px-1">
                 <button
                   type="button"
                   aria-label={`Kurangi ${s}`}
@@ -170,7 +190,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
                   placeholder="0"
                   onChange={(e) => setSize(s, e.target.value)}
                   aria-label={`Qty ${s}`}
-                  className="h-9 w-12 rounded-lg border border-line bg-surface text-center text-sm font-bold tabular-nums focus:border-brand-500 focus:outline-none"
+                  className="h-9 w-10 min-w-0 rounded-lg border border-line bg-surface text-center text-sm font-bold tabular-nums focus:border-brand-500 focus:outline-none"
                 />
                 <button
                   type="button"
@@ -185,6 +205,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
           );
         })}
       </div>
+      </details>
 
       {pricing.nextTier ? (
         <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">
@@ -194,7 +215,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
 
       <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
         <p className="text-[11px] text-ink-muted">
-          Edit qty per ukuran langsung di atas.
+          {item.totalQty} pcs dalam pilihan ini.
         </p>
         <Button
           variant="ghost"

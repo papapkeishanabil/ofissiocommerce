@@ -1,7 +1,9 @@
+"use client";
+
 // src/components/catalog/ProductCatalog.tsx
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { OfissioProduct } from "@/features/products/product.types";
 import {
@@ -10,10 +12,11 @@ import {
 } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import { ArrowRight, Factory, PackageOpen } from "lucide-react";
 
-import { Badge } from "@/components/ui/Badge";
+
 import { Breadcrumbs, type Crumb } from "@/components/ui/Breadcrumbs";
 import { CatalogFilterBar } from "./CatalogFilterBar";
-import { ProductCard } from "./ProductCard";
+import { CatalogProductCard } from "./CatalogProductCard";
+import { ProductImagePlaceholder } from "./ProductImagePlaceholder";
 
 interface ProductCatalogProps {
   products: OfissioProduct[];
@@ -35,7 +38,7 @@ interface ProductCatalogProps {
 }
 
 /** Preview maksimum per kategori di mode landing. */
-const PREVIEW_PER_CATEGORY = 3;
+
 
 function categoryLabelFromSlug(slug: string) {
   return slug
@@ -134,7 +137,8 @@ export function ProductCatalog({
     );
   }, [products, taxonomyCategories]);
 
-  const isLanding = !industry && !category && !color;
+  const [sort, setSort] = useState("default");
+  const sortedProducts = useMemo(() => [...filteredProducts].sort((a,b) => sort === "price-asc" ? a.priceFrom-b.priceFrom : sort === "price-desc" ? b.priceFrom-a.priceFrom : sort === "name" ? a.name.localeCompare(b.name,"id") : 0), [filteredProducts, sort]);
 
   // Warna yang benar-benar tersedia pada produk — basis chip filter "Warna".
   const presentColors = useMemo(() => {
@@ -201,160 +205,31 @@ export function ProductCatalog({
     { label: "Katalog" },
   ];
 
+  function categoryHref(slug?: string) {
+    const params = new URLSearchParams();
+    if (industry) params.set("industri", industry);
+    if (color) params.set("warna", color);
+    if (slug) params.set("kategori", slug);
+    return "/catalog" + (params.size ? "?" + params : "");
+  }
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
-      <Breadcrumbs items={crumbs} className="mb-4" />
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold text-ink lg:text-3xl">
-          Katalog Produk
-        </h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {activeIndustry || activeCategory || activeColor
-            ? "Hasil filter:"
-            : "Temukan seragam kerja untuk setiap industri."}
-        </p>
-        {(activeIndustry || activeCategory || activeColor) && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {activeIndustry && (
-              <Badge tone="brand" className="px-3 py-1">
-                Industri: {activeIndustry}
-              </Badge>
-            )}
-            {activeCategory && (
-              <Badge tone="brand" className="px-3 py-1">
-                Kategori: {activeCategory}
-              </Badge>
-            )}
-            {activeColor && (
-              <Badge tone="brand" className="px-3 py-1">
-                Warna: {activeColor}
-              </Badge>
-            )}
-          </div>
-        )}
-      </header>
-
-      {(categoryGroups.length > 0 ||
-        presentIndustries.length > 0 ||
-        presentColors.length > 0) && (
-        <CatalogFilterBar
-          industry={industry}
-          category={category}
-          color={color}
-          industries={presentIndustries}
-          categories={categoryGroups.map((g) => ({
-            slug: g.slug,
-            label: g.label,
-            count: g.items.length,
-          }))}
-          colors={presentColors}
-        />
-      )}
-
-      <aside className="mb-6 flex flex-col gap-4 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50 to-white p-4 shadow-soft-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-800 text-white">
-            <Factory className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div>
-            <p className="font-extrabold text-ink">Tidak menemukan model yang sesuai?</p>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-ink-muted">
-              Untuk desain, model, bahan, pola, kombinasi warna, atau size chart milik
-              perusahaan sendiri, Anda tidak perlu memilih produk. Mulai langsung dari
-              brief Seragam Full Custom.
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/custom-request"
-          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-800 px-5 py-3 text-sm font-bold text-white transition hover:bg-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-        >
-          Buat brief Full Custom
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
-      </aside>
-
-      {isLanding ? (
-        categoryGroups.length === 0 ? (
-          <div className="grid place-items-center rounded-2xl border border-dashed border-line bg-surface px-6 py-16 text-center">
-            <PackageOpen className="mb-3 h-12 w-12 text-slate-300" />
-            <p className="text-sm font-semibold text-ink">
-              Belum ada produk published dengan model 3D yang valid.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-12">
-            {categoryGroups.map((group) => (
-              <section key={group.slug} aria-labelledby={`kategori-${group.slug}`}>
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <h2
-                      id={`kategori-${group.slug}`}
-                      className="text-xl font-bold text-ink-strong"
-                    >
-                      {group.label}
-                    </h2>
-                    <p className="mt-0.5 text-sm text-ink-muted">
-                      {group.items.length} produk
-                    </p>
-                  </div>
-                  <Link
-                    href={`/catalog?kategori=${encodeURIComponent(group.slug)}`}
-                    className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-sm font-bold text-white shadow-soft-md transition-colors duration-200 hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-                  >
-                    Lihat produk lainnya
-                    <ArrowRight
-                      className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
-                      aria-hidden="true"
-                    />
-                  </Link>
-                </div>
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {group.items.slice(0, PREVIEW_PER_CATEGORY).map((p) => (
-                    <ProductCard key={`${group.slug}-${p.id}`} product={p} />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        )
-      ) : filteredProducts.length === 0 ? (
-        <div className="grid place-items-center rounded-2xl border border-dashed border-line bg-surface px-6 py-16 text-center">
-          <PackageOpen className="mb-3 h-12 w-12 text-slate-300" />
-          <p className="text-sm font-semibold text-ink">
-            Belum ada produk published dengan model 3D yang valid.
-          </p>
-          <p className="mt-1 text-xs text-ink-muted">
-            Coba industri atau kategori lain.
-          </p>
-          <div className="mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
-            {alternativeCategories.slice(0, 4).map((item) => (
-              <Link
-                key={`category-${item.slug}`}
-                href={`/catalog?kategori=${encodeURIComponent(item.slug)}`}
-                className="rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-brand-700 transition hover:border-brand-300 hover:bg-brand-50"
-              >
-                {item.name}
-              </Link>
-            ))}
-            {alternativeIndustries.slice(0, 3).map((item) => (
-              <Link
-                key={`industry-${item.slug}`}
-                href={`/catalog?industri=${encodeURIComponent(item.slug)}`}
-                className="rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-ink-muted transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
-              >
-                {item.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredProducts.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
-      )}
+    <div className="catalog-page">
+      <div className="commerce-breadcrumb-row flex items-center"><Breadcrumbs items={crumbs} /></div>
+      <header className="catalog-heading"><h1>Katalog Produk</h1><p>Seragam kerja untuk kebutuhan tim Anda.</p></header>
+      {categoryGroups.length > 0 && <nav className="catalog-categories" aria-label="Kategori produk">
+        <Link className={"catalog-category-all" + (!category ? " is-active" : "")} href={categoryHref()} aria-current={!category ? "page" : undefined}><PackageOpen size={22}/><span>Semua produk</span></Link>
+        {categoryGroups.map(group => <Link key={group.slug} className={"catalog-category" + (category === group.slug ? " is-active" : "")} href={categoryHref(group.slug)} aria-current={category === group.slug ? "page" : undefined}>
+          {group.items[0]?.mainImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={group.items[0]?.mainImage} alt="" loading="lazy" />
+          ) : <ProductImagePlaceholder name={group.label} category={group.label} accentColor="#10245a" className="h-12 w-10" />}
+          <span><b>{group.label}</b><small>{group.items.length} produk</small></span><ArrowRight size={15}/>
+        </Link>)}
+      </nav>}
+      <CatalogFilterBar industry={industry} category={category} color={color} industries={presentIndustries} categories={[]} colors={presentColors} sort={sort} onSortChange={setSort}/>
+      <div className="catalog-results-summary" aria-live="polite"><span>{sortedProducts.length} produk{activeCategory ? ", " + activeCategory : ""}{activeIndustry ? ", " + activeIndustry : ""}{activeColor ? ", " + activeColor : ""}</span></div>
+      {sortedProducts.length ? <div className="catalog-product-grid">{sortedProducts.map(p=><CatalogProductCard key={p.id} product={p}/>)}</div> : <div className="catalog-empty"><PackageOpen size={36}/><h2>Belum ada produk yang sesuai</h2><p>Coba ubah filter atau lihat pilihan kategori lainnya.</p><Link href="/catalog">Lihat semua produk</Link><div>{alternativeCategories.slice(0,4).map(item=><Link key={item.slug} href={categoryHref(item.slug)}>{item.name}</Link>)}{alternativeIndustries.slice(0,3).map(item=><Link key={item.slug} href={"/catalog?industri="+encodeURIComponent(item.slug)}>{item.name}</Link>)}</div></div>}
+      <aside className="catalog-custom"><Factory size={22}/><div><b>Tidak menemukan produk yang sesuai?</b><p>Buat brief Seragam Full Custom sesuai kebutuhan tim Anda.</p></div><Link href="/custom-request">Buat Brief Full Custom <ArrowRight size={16}/></Link></aside>
     </div>
   );
 }

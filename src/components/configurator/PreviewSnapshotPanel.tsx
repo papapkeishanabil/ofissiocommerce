@@ -51,7 +51,7 @@ export function PreviewSnapshotPanel({
                 </div>
               )}
               <span className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-0.5 text-left text-[9px] font-semibold text-white">
-                {cameraLabel(p)} · {url ? "tap ulang" : "tap simpan"}
+                {cameraLabel(p)}, {url ? "tap ulang" : "tap simpan"}
               </span>
             </button>
           );

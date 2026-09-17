@@ -11,7 +11,7 @@ interface AppShellProps { children: ReactNode; }
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden bg-surface-muted lg:flex-row">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-surface lg:flex-row">
       <ChromeRouteSync />
       <ChromeBodySync />
       <OfistantRail />

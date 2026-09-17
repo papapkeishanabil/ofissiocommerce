@@ -305,9 +305,9 @@ export function QuotationConfirmation({
               <BriefSummary label="Mulai pengerjaan" value={formatDate(quotation.embroideryEstimate.estimatedStartDate)} />
               <BriefSummary label="Selesai bordir" value={formatDate(quotation.embroideryEstimate.estimatedCompletionDate)} />
               <BriefSummary label="Diserahkan ke kurir" value={formatDate(quotation.embroideryEstimate.estimatedHandoverDate)} />
-              <BriefSummary label="Estimasi tiba" value={`${formatDate(quotation.embroideryEstimate.estimatedArrivalStart)} – ${formatDate(quotation.embroideryEstimate.estimatedArrivalEnd)}`} />
+              <BriefSummary label="Estimasi tiba" value={`${formatDate(quotation.embroideryEstimate.estimatedArrivalStart)} - ${formatDate(quotation.embroideryEstimate.estimatedArrivalEnd)}`} />
             </dl>
-            <p className="mt-3 text-xs font-semibold text-brand-800">Rencana kurir: {quotation.embroideryEstimate.courierCode.toUpperCase()} · {quotation.embroideryEstimate.courierService} · estimasi berlaku sampai {formatDate(quotation.embroideryEstimate.validUntil)}</p>
+            <p className="mt-3 text-xs font-semibold text-brand-800">Rencana kurir: {quotation.embroideryEstimate.courierCode.toUpperCase()}, {quotation.embroideryEstimate.courierService}, estimasi berlaku sampai {formatDate(quotation.embroideryEstimate.validUntil)}</p>
           </section>
         ) : quotation.requirementType === "standard_customization" ? (
           <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -330,7 +330,7 @@ export function QuotationConfirmation({
               <BriefSummary label={`DP ${quotation.productionPlan.depositPercent}%`} value={formatIDR(quotation.productionPlan.depositAmount)} />
               <BriefSummary label="Pelunasan sebelum kirim" value={formatIDR(quotation.productionPlan.balanceAmount)} />
             </dl>
-            <p className="mt-3 text-xs font-semibold text-brand-800">Rencana kurir: {quotation.productionPlan.courierCode.toUpperCase()} · {quotation.productionPlan.courierService} · estimasi tiba {formatDate(quotation.productionPlan.estimatedArrivalStart)} – {formatDate(quotation.productionPlan.estimatedArrivalEnd)}</p>
+            <p className="mt-3 text-xs font-semibold text-brand-800">Rencana kurir: {quotation.productionPlan.courierCode.toUpperCase()}, {quotation.productionPlan.courierService}, estimasi tiba {formatDate(quotation.productionPlan.estimatedArrivalStart)} - {formatDate(quotation.productionPlan.estimatedArrivalEnd)}</p>
           </section>
         ) : quotation.requirementType === "custom_production" ? (
           <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -466,7 +466,7 @@ export function QuotationConfirmation({
                 <div className="min-w-0">
                   <h3 className="text-lg font-black text-ink">{item.productName}</h3>
                   <p className="mt-0.5 text-sm text-ink-muted">
-                    SKU {item.sku} · {item.selectedColor}
+                    SKU {item.sku}, {item.selectedColor}
                   </p>
                 </div>
               </div>
@@ -551,7 +551,7 @@ export function QuotationConfirmation({
                           </span>
                         </div>
                         <p className="mt-1.5 text-xs leading-5 text-ink-muted">
-                          {embroideryTechniqueLabel(placement.technique)} · Rotasi {placement.rotation}°
+                          {embroideryTechniqueLabel(placement.technique)}, Rotasi {placement.rotation}°
                         </p>
                         {placement.notes ? (
                           <p className="mt-1 text-xs leading-5 text-ink-muted">Catatan: {placement.notes}</p>
@@ -568,7 +568,7 @@ export function QuotationConfirmation({
                     <ul className="mt-2 space-y-2 text-ink-muted">
                       {item.embroideryLines.map((line) => (
                         <li key={line.zoneId} className="flex items-start justify-between gap-4">
-                          <span className="leading-5">{line.label} · {line.quantity} pcs × {formatIDR(line.unitPrice)}</span>
+                          <span className="leading-5">{line.label}, {line.quantity} pcs × {formatIDR(line.unitPrice)}</span>
                           <strong className="shrink-0 text-ink">{formatIDR(line.subtotal)}</strong>
                         </li>
                       ))}

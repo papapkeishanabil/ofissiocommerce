@@ -3,7 +3,12 @@ import {
   slugifyTaxonomy,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import { SIZES } from "@/types/industry";
-import { CAMERA_PRESETS, EMBROIDERY_ZONES } from "@/types/uniform-3d";
+import {
+  CAMERA_PRESETS,
+  EMBROIDERY_ZONES,
+  defaultModelOrientationY,
+  normalizeModelOrientationY,
+} from "@/types/uniform-3d";
 
 import type {
   Product3DModel,
@@ -65,6 +70,16 @@ export function mapWooCommerceProductToOfissioProduct(
           file_type: "glb",
           uploaded_at: modelUpdatedAt,
           is_required: true,
+          exposure: getMetaNumber(meta, "model3d_exposure", 1.15),
+          emissiveIntensity: getMetaNumber(meta, "model3d_emissive", 0.6),
+          brightness: getMetaNumber(meta, "model3d_brightness", 1),
+          saturation: getMetaNumber(meta, "model3d_saturation", 1),
+          hue: getMetaNumber(meta, "model3d_hue", 0),
+          temperature: getMetaNumber(meta, "model3d_temperature", 0),
+          orientationY: normalizeModelOrientationY(
+            getMetaNumber(meta, "model3d_rotation_y", defaultModelOrientationY(raw.sku)),
+            defaultModelOrientationY(raw.sku),
+          ),
         }
       : null;
 
@@ -106,13 +121,24 @@ export function mapWooCommerceProductToOfissioProduct(
   const transactionMode = normalizeTransactionMode(
     getMetaString(meta, "transaction_mode"),
   );
-  const embroideryZones = normalizeEmbroideryZones(
+  const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
+  const configuredEmbroideryZones = normalizeEmbroideryZones(
     getMetaStringArray(meta, "embroidery_zones"),
   );
+  // Studio positions include both back areas. Keep the viewer's middle_back
+  // identifier; pricing normalizes it to the Admin's existing center_back zone.
+  const embroideryZones = has3DModel && supportsEmbroidery
+    ? [...EMBROIDERY_ZONES]
+    : configuredEmbroideryZones;
   const cameraPresets = normalizeCameraPresets(
     getMetaStringArray(meta, "camera_presets"),
   );
   const material = getMetaString(meta, "material") || attributeOptions(raw, ["material"])[0] || "Material belum diisi";
+  const sleeveType = normalizeEnum(
+    getMetaString(meta, "sleeve_type"),
+    ["short", "long"],
+    "short",
+  );
   const priceFrom = parseMoney(raw.regular_price || raw.price || raw.sale_price) || 0;
   const moq = getMetaNumber(meta, "moq", 12);
   const leadTime = getMetaString(meta, "lead_time") || "Hubungi tim Ofissio";
@@ -171,10 +197,10 @@ export function mapWooCommerceProductToOfissioProduct(
     available_sizes: availableSizes.length ? availableSizes : DEFAULT_SIZES,
     material,
     gender: normalizeEnum(getMetaString(meta, "gender"), ["men", "women", "unisex"], "unisex"),
-    sleeve_type: normalizeEnum(getMetaString(meta, "sleeve_type"), ["short", "long"], "short"),
+    sleeve_type: sleeveType,
     usage: normalizeEnum(getMetaString(meta, "usage"), ["indoor", "outdoor", "both"], "both"),
     safety_features: getMetaStringArray(meta, "safety_features"),
-    supports_embroidery: getMetaBoolean(meta, "supports_embroidery", false),
+    supports_embroidery: supportsEmbroidery,
     supports_screen_printing: getMetaBoolean(
       meta,
       "supports_screen_printing",
@@ -191,7 +217,7 @@ export function mapWooCommerceProductToOfissioProduct(
     // created before camera_presets metadata existed must not be reduced to
     // front/back only.
     camera_presets: cameraPresets.length ? cameraPresets : [...CAMERA_PRESETS],
-    specs: buildSpecs(raw, material, leadTime),
+    specs: buildSpecs(raw, material, leadTime, sleeveType),
     sizeChart: (availableSizes.length ? availableSizes : DEFAULT_SIZES).map((size) => ({
       size,
       chest: 0,
@@ -229,11 +255,39 @@ export function mapWooCommerceProductToOfissioProduct(
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
   if (!product.model_3d) throw new Error("Produk tanpa GLB tidak dapat dipetakan ke cart.");
-  return { source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing };
+  return { source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, processRoute: product.processRoute, leadTimeDays: product.leadTimeDays, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing };
 }
 
 function stripHtml(value = "") {
-  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+  return decodeEntities(value.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ");
+}
+
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: "\u00A0",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+};
+
+/**
+ * Dekoder entity HTML ringan tanpa dependency — mapper ini ter-bundle ke client
+ * lewat cart-store sehingga tidak boleh mengimpor library sanitizer. Entity
+ * `&amp;` didekode terakhir agar tidak terjadi dekode ganda (`&amp;nbsp;`).
+ */
+function decodeEntities(value: string) {
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => safeCodePoint(parseInt(hex, 16), `&#x${hex};`))
+    .replace(/&#(\d+);/g, (_, dec: string) => safeCodePoint(Number(dec), `&#${dec};`))
+    .replace(/&(nbsp|lt|gt|quot|apos);/g, (match, name: string) => NAMED_ENTITIES[name] ?? match)
+    .replace(/&amp;/g, "&");
+}
+
+function safeCodePoint(code: number, original: string) {
+  // Codepoint valid rentang Unicode + bukan surrogate agar fromCodePoint tidak melempar.
+  return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff)
+    ? String.fromCodePoint(code)
+    : original;
 }
 
 function parseMoney(value?: string) {
@@ -348,17 +402,32 @@ function attributeOptions(raw: WooCommerceProduct, names: string[]) {
     .filter(Boolean);
 }
 
-function buildSpecs(raw: WooCommerceProduct, material: string, leadTime: string) {
+function buildSpecs(
+  raw: WooCommerceProduct,
+  material: string,
+  leadTime: string,
+  sleeveType: "short" | "long",
+) {
+  const managedAttributeAliases = new Set([
+    "material",
+    "bahan",
+    "tipe-lengan",
+    "panjang-lengan",
+    "jenis-lengan",
+    "sleeve",
+    "sleeve-type",
+  ]);
   const specs = [
     { label: "Material", value: material },
     { label: "Lead time", value: leadTime },
     ...(raw.attributes ?? []).filter((attribute) => {
-      const slug = (attribute.slug || attribute.name).toLowerCase().replace(/^pa_/, "");
-      return !["material", "bahan"].includes(slug);
+      const slug = slugifyTaxonomy(attribute.slug || attribute.name).replace(/^pa-/, "");
+      return !managedAttributeAliases.has(slug);
     }).flatMap((attribute) => {
       const value = (attribute.options ?? []).join(", ");
       return value ? [{ label: attribute.name, value }] : [];
     }),
+    { label: "Tipe Lengan", value: sleeveType === "long" ? "Panjang" : "Pendek" },
   ];
   return specs.filter((spec) => spec.value);
 }

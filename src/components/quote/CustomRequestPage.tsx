@@ -317,7 +317,7 @@ export function CustomRequestPage({ productionMoq }: CustomRequestPageProps) {
                   <Factory className="h-6 w-6" aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
-                  <p className="type-eyebrow text-ochre-300">Full Custom · Produksi khusus</p>
+                  <p className="type-eyebrow text-ochre-300">Full Custom, Produksi khusus</p>
                   <h1 className="mt-2 max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">
                     Mulai dari ide Anda, bukan dari produk katalog.
                   </h1>
@@ -391,7 +391,7 @@ export function CustomRequestPage({ productionMoq }: CustomRequestPageProps) {
 
         {/* Required-fields legend */}
         <p className="mt-6 text-xs font-semibold leading-5 text-ink-muted">
-          Kolom bertanda <span className="text-brand-700">*</span> wajib diisi. Sisanya opsional — tim Ofissio akan membantu rekomendasi bahan, warna, dan ukuran.
+          Kolom bertanda <span className="text-brand-700">*</span> wajib diisi. Sisanya opsional; tim Ofissio akan membantu rekomendasi bahan, warna, dan ukuran.
         </p>
 
         <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
@@ -436,7 +436,7 @@ export function CustomRequestPage({ productionMoq }: CustomRequestPageProps) {
                   {belowProductionMoq ? (
                     <p role="note" className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium leading-relaxed text-amber-900">
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      Full custom/production umumnya minimal {productionMoq} pcs. Jumlah di bawah itu tetap bisa diajukan — tim sales akan menghubungi Anda untuk opsi jumlah lebih kecil.
+                      Full custom/production umumnya minimal {productionMoq} pcs. Jumlah di bawah itu tetap bisa diajukan; tim sales akan menghubungi Anda untuk opsi jumlah lebih kecil.
                     </p>
                   ) : null}
                 </Field>
@@ -472,7 +472,7 @@ export function CustomRequestPage({ productionMoq }: CustomRequestPageProps) {
                     {uploading ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <UploadCloud className="h-4 w-4" aria-hidden="true" />}
                     {uploading ? "Mengupload..." : isAuthenticated ? "Pilih file referensi" : "Masuk untuk upload"}
                   </Button>
-                  <p className="mt-1.5 text-[11px] text-ink-muted">PNG, JPG, atau PDF · maks. 5 file · 10 MB/file</p>
+                  <p className="mt-1.5 text-[11px] text-ink-muted">PNG, JPG, atau PDF, maks. 5 file, 10 MB/file</p>
                 </div>
               </div>
               {references.length > 0 ? (

@@ -264,7 +264,7 @@ export function MockPaymentPage({
                             {item.productName}
                           </p>
                           <p className="mt-1 text-xs text-ink-muted">
-                            {item.selectedColor} · {item.totalQty} pcs ·{" "}
+                            {item.selectedColor}, {item.totalQty} pcs,{" "}
                             <span className="tabular-nums">
                               {formatIDR(item.estimatedPrice)}
                             </span>

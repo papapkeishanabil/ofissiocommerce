@@ -44,7 +44,7 @@ export default async function AdminShipmentDetailPage({ params }: PageProps) {
               {shipment.shipmentNumber}
             </h1>
             <p className="mt-1 text-sm text-ink-muted">
-              Order {order?.orderNumber ?? shipment.orderId} · {formatAdminDate(shipment.createdAt)}
+              Order {order?.orderNumber ?? shipment.orderId}, {formatAdminDate(shipment.createdAt)}
             </p>
           </div>
           <AdminBadge tone={adminStatusTone(shipment.status)}>

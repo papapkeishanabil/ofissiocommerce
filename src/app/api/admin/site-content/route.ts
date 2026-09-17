@@ -57,6 +57,11 @@ export async function PATCH(request: Request) {
     // The homepage is prerendered. Invalidating only the data tag can leave its
     // Full Route Cache serving the previous media path after a content save.
     revalidatePath("/", "page");
+    if (payload.section === "industri") {
+      revalidatePath("/inspirasi", "page");
+      revalidatePath("/inspirasi/[slug]", "page");
+      revalidatePath("/inspirasi/bengkel-teknisi", "page");
+    }
     logAuditEvent({
       request,
       actorId,

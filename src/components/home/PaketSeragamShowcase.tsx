@@ -149,7 +149,7 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
           >
             <div className="flex items-start justify-between gap-4">
               <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-700">
-                Paket {String(activeIndex + 1).padStart(2, "0")}
+                Opsi {String(activeIndex + 1).padStart(2, "0")}
               </p>
               {activeItem.scale ? (
                 <span className="rounded-full border border-ochre-600/35 bg-ochre-50 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.12em] text-ochre-800">
@@ -187,7 +187,7 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
             </dl>
 
             <Link
-              href={activeItem.href}
+              href={activeItem.name === "Paket Kafe dan Restoran" ? "/inspirasi/restoran-kafe" : activeItem.href}
               aria-label={`${data.ctaLabel}: ${activeItem.name}`}
               className="group mt-auto flex min-h-12 items-center justify-between gap-4 pt-8 text-sm font-extrabold text-brand-950 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700"
             >

@@ -4,6 +4,7 @@ import type {
   QuantityPricingMode,
   QuantityPricingTier,
 } from "../quantity-pricing";
+import type { ModelOrientationY } from "@/types/uniform-3d";
 
 export interface AdminWooCommerceProduct {
   id: number;
@@ -40,6 +41,14 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
     model3DSource: string;
     model3DFilename: string;
     model3DUpdatedAt: string;
+    /** Penyesuaian warna render 3D agar mendekati foto produk. */
+    model3DExposure?: number;
+    model3DEmissive?: number;
+    model3DBrightness?: number;
+    model3DSaturation?: number;
+    model3DHue?: number;
+    model3DTemperature?: number;
+    model3DRotationY?: ModelOrientationY;
     moq: number;
     leadTime: string;
     fulfillmentType: string;

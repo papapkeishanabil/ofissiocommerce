@@ -19,6 +19,7 @@ export interface CheckoutCartItemInput {
 }
 
 export interface SyncCheckoutCartInput {
+  orderNote?: string;
   companyId: string;
   userId: string;
   promotionCode?: string | null;
@@ -64,6 +65,7 @@ export interface ValidatedCheckoutCartItem {
 }
 
 export interface CheckoutCartRecord {
+  orderNote?: string;
   id: string;
   companyId: string;
   userId: string;

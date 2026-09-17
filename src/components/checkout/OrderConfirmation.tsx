@@ -37,8 +37,8 @@ export function OrderConfirmation({ order }: OrderConfirmationProps) {
         </h1>
         <p className="mt-2 text-sm text-ink-muted">
           Order Anda berstatus <strong>menunggu pembayaran (dummy)</strong>.
-          Integrasi iPaymu aktif di Phase 4 — Anda akan menerima instruksi
-          pembayaran resmi saat itu.
+          Saat integrasi iPaymu aktif, Anda akan menerima instruksi
+          pembayaran resmi.
         </p>
 
         <div className="mt-6 rounded-xl border border-line bg-surface-muted p-4 text-left">
@@ -61,7 +61,7 @@ export function OrderConfirmation({ order }: OrderConfirmationProps) {
                     {it.productName}
                   </p>
                   <p className="text-ink-muted">
-                    {it.color} · {it.totalQty} pcs
+                    {it.color}, {it.totalQty} pcs
                   </p>
                 </div>
                 <p className="font-semibold">{formatIDR(it.estimatedPrice)}</p>

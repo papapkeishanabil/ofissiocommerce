@@ -66,7 +66,7 @@ export function AdminOrderStockPanel({
           ))}
         </div>
       )}
-      <p className="text-xs font-semibold text-ink-subtle">Terakhir diperiksa {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(comparison.lastCheckedAt))} · Ginee tidak dipanggil dari halaman ini.</p>
+      <p className="text-xs font-semibold text-ink-subtle">Terakhir diperiksa {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(comparison.lastCheckedAt))}, Ginee tidak dipanggil dari halaman ini.</p>
     </AdminSectionCard>
   );
 }

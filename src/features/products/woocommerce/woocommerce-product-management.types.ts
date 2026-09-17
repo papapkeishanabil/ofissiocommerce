@@ -20,6 +20,7 @@ export const WOO_EMBROIDERY_ZONES = [
 ] as const;
 export const WOO_QUANTITY_PRICING_MODES = ["fixed_unit_price"] as const;
 export const WOO_QUANTITY_BASES = ["total_order_qty"] as const;
+export const WOO_MODEL_ORIENTATION_Y_OPTIONS = [0, 90, 180, 270] as const;
 
 export interface AdminQuantityPricingTierInput {
   minQty: number;
@@ -64,6 +65,14 @@ export interface AdminWooProductInput {
   quantityPricingMode: (typeof WOO_QUANTITY_PRICING_MODES)[number];
   quantityBasis: (typeof WOO_QUANTITY_BASES)[number];
   quantityPricingTiers: AdminQuantityPricingTierInput[];
+  /** Penyesuaian warna render 3D (agar mendekati foto produk). */
+  model3dExposure?: number;
+  model3dEmissive?: number;
+  model3dBrightness?: number;
+  model3dSaturation?: number;
+  model3dHue?: number;
+  model3dTemperature?: number;
+  model3dRotationY?: (typeof WOO_MODEL_ORIENTATION_Y_OPTIONS)[number];
 }
 
 export interface ProductGlbUploadResult {

@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { addressSchema, type AddressForm as AddressValues } from "@/schemas/auth";
@@ -16,9 +16,11 @@ import { Input } from "@/components/ui/Input";
 interface CompanyAddressFormProps {
   address?: Address | null;
   onSuccess?: () => void;
+  checkout?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function CompanyAddressForm({ address, onSuccess }: CompanyAddressFormProps) {
+export function CompanyAddressForm({ address, onSuccess, checkout = false, onDirtyChange }: CompanyAddressFormProps) {
   const refresh = useAuthStore((s) => s.refresh);
   const session = useAuthStore((s) => s.session);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -29,23 +31,25 @@ export function CompanyAddressForm({ address, onSuccess }: CompanyAddressFormPro
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    reset,
+    formState: { errors, isDirty },
   } = useForm<AddressValues>({
     resolver: zodResolver(addressSchema),
     defaultValues: {
-      label: address?.label ?? "",
+      label: address?.label ?? (checkout ? "Pengiriman" : ""),
       recipientName: address?.recipientName ?? session?.user.fullName ?? "",
       recipientPhone: address?.recipientPhone ?? session?.user.whatsapp ?? "",
       street: address?.street ?? "",
       city: address?.city ?? "",
       province: address?.province ?? "",
       postalCode: address?.postalCode ?? "",
-      isDefaultShipping: address?.isDefaultShipping ?? false,
+      isDefaultShipping: address?.isDefaultShipping ?? checkout,
       isDefaultBilling: address?.isDefaultBilling ?? false,
     },
   });
 
   const isDefaultShipping = watch("isDefaultShipping");
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
 
   const onSubmit = handleSubmit(async (values) => {
     if (!session) return;
@@ -73,6 +77,7 @@ export function CompanyAddressForm({ address, onSuccess }: CompanyAddressFormPro
         );
       }
       await refresh();
+      reset(values);
       onSuccess?.();
     } catch (error) {
       setServerError(
@@ -86,6 +91,25 @@ export function CompanyAddressForm({ address, onSuccess }: CompanyAddressFormPro
       setSubmitting(false);
     }
   });
+
+  if (checkout) return (
+    <form id="checkout-recipient" onSubmit={onSubmit} noValidate className="space-y-3">
+      {serverError && <p role="alert" className="text-xs text-red-700">{serverError}</p>}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Nama penerima" htmlFor="recipient-name" error={errors.recipientName?.message}><Input id="recipient-name" autoComplete="name" placeholder="Contoh: Budi Santoso" {...field("recipientName")} /></Field>
+        <Field label="Nomor telepon" htmlFor="recipient-phone" error={errors.recipientPhone?.message}><Input id="recipient-phone" autoComplete="tel" placeholder="Contoh: 0812 3456 7890" {...field("recipientPhone")} /></Field>
+      </div>
+      <Field label="Alamat" htmlFor="recipient-street" error={errors.street?.message}><textarea id="recipient-street" autoComplete="street-address" placeholder="Tulis alamat lengkap" {...field("street")} className="min-h-20 w-full rounded-lg border border-line bg-white p-3 text-sm" /></Field>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Kota" htmlFor="recipient-city" error={errors.city?.message}><Input id="recipient-city" autoComplete="address-level2" placeholder="Contoh: Jakarta" {...field("city")} /></Field>
+        <Field label="Kode pos" htmlFor="recipient-postal" error={errors.postalCode?.message}><Input id="recipient-postal" autoComplete="postal-code" maxLength={5} placeholder="Contoh: 12345" {...field("postalCode")} /></Field>
+      </div>
+      <Field label="Provinsi" htmlFor="recipient-province" error={errors.province?.message}><Input id="recipient-province" autoComplete="address-level1" placeholder="Contoh: DKI Jakarta" {...field("province")} /></Field>
+      <input type="hidden" {...field("label")} />
+      {errors.label && <p role="alert" className="text-xs text-red-700">{errors.label.message}</p>}
+      {(!address || isDirty) && <Button type="submit" variant="outline" disabled={submitting}>{submitting?"Menyimpan...":"Simpan informasi penerima"}</Button>}
+    </form>
+  );
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>

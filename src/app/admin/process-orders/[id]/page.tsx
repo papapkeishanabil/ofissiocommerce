@@ -74,7 +74,7 @@ export default async function AdminProcessOrderDetailPage({ params, searchParams
               {processOrder.processOrderNumber}
             </h2>
             <p className="mt-1 text-sm text-ink-muted">
-              {detail.companyName} · order {detail.relatedOrderNumber} · {formatAdminDate(processOrder.createdAt)}
+              {detail.companyName}, order {detail.relatedOrderNumber}, {formatAdminDate(processOrder.createdAt)}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -87,7 +87,7 @@ export default async function AdminProcessOrderDetailPage({ params, searchParams
 
         {processOrder.replenishmentStatus !== "not_required" ? (
           <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm font-bold text-amber-800">
-            Replenishment needed — warning internal. Customer UI tetap tidak menampilkan stok habis.
+            Replenishment needed (warning internal). Customer UI tetap tidak menampilkan stok habis.
           </p>
         ) : null}
 
@@ -170,7 +170,7 @@ export default async function AdminProcessOrderDetailPage({ params, searchParams
                   <div>
                     <h4 className="font-black text-ink">{item.productName}</h4>
                     <p className="text-sm text-ink-muted">
-                      {item.sku} · {item.selectedColor} · {item.totalQty} pcs
+                      {item.sku}, {item.selectedColor}, {item.totalQty} pcs
                     </p>
                   </div>
                   <AdminBadge tone={adminStatusTone(item.customization.type)}>
@@ -182,6 +182,7 @@ export default async function AdminProcessOrderDetailPage({ params, searchParams
                   <Info label="placements" value={`${item.customization.placements.length} titik`} />
                   <Info label="instruksi custom" value={item.customization.text ?? "Tidak ada instruksi tambahan"} />
                 </dl>
+                <EmbroiderySummary placements={item.customization.placements} sizes={item.sizeMatrix} />
               </article>
             ))}
           </div>
@@ -227,7 +228,7 @@ export default async function AdminProcessOrderDetailPage({ params, searchParams
                   </span>
                 </div>
                 <p className="mt-2 font-mono text-xs text-ink-muted">
-                  {event.oldStage ?? "-"} → {event.newStage ?? "-"} · {event.oldStatus ?? "-"} → {event.newStatus ?? "-"}
+                  {event.oldStage ?? "-"} → {event.newStage ?? "-"}, {event.oldStatus ?? "-"} → {event.newStatus ?? "-"}
                 </p>
               </li>
             ))}
@@ -264,3 +265,4 @@ function Info({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+import { EmbroiderySummary } from "@/components/configurator/EmbroiderySummary";

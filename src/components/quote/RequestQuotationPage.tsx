@@ -47,7 +47,8 @@ export function RequestQuotationPage() {
   const appliedPromotion = useCartStore((s) => s.appliedPromotion);
   const openAuth = useUIStore((s) => s.openAuth);
 
-  const [notes, setNotes] = useState("");
+  const notes = useCartStore(s => s.orderNote);
+  const setNotes = useCartStore(s => s.setOrderNote);
   const [requirementType, setRequirementType] =
     useState<QuotationRequirementType>("standard_product");
   const [productionBrief, setProductionBrief] =
@@ -241,10 +242,10 @@ export function RequestQuotationPage() {
                         {it.productName}
                       </p>
                       <p className="mt-1 text-[11px] text-ink-muted">
-                        {it.color} · {it.totalQty} pcs
-                        {it.customization ? ` · ${it.customization}` : ""}
+                        {it.color}, {it.totalQty} pcs
+                        {it.customization ? `, ${it.customization}` : ""}
                       </p>
-                      {(it.embroideryLines?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Bordir {formatIDR(it.embroideryTotal)} · {it.embroideryLines.map((line) => line.label.replace("Bordir ", "")).join(", ")}</p> : null}
+                      {(it.embroideryLines?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Bordir {formatIDR(it.embroideryTotal)}, {it.embroideryLines.map((line) => line.label.replace("Bordir ", "")).join(", ")}</p> : null}
                       {(it.missingEmbroideryPricingZones?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Harga bordir perlu dikonfirmasi admin.</p> : null}
                     </div>
                   </div>
@@ -585,11 +586,11 @@ function ProductionTextInput({
 function requirementSummary(type: QuotationRequirementType) {
   switch (type) {
     case "standard_product":
-      return "Ready Stock (STK) — picking, packing, dan pengiriman produk standar.";
+      return "Ready Stock (STK): picking, packing, dan pengiriman produk standar.";
     case "standard_customization":
-      return "Customization — produk standar diproses bordir/sablon/custom ringan sebelum QC dan packing.";
+      return "Customization: produk standar diproses bordir/sablon/custom ringan sebelum QC dan packing.";
     case "custom_production":
-      return "Production / SPK — review brief, approval desain, material, cutting, sewing, finishing, dan QC.";
+      return "Production / SPK: review brief, approval desain, material, cutting, sewing, finishing, dan QC.";
   }
 }
 

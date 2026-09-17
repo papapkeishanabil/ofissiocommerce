@@ -69,7 +69,7 @@ export function AdminOrderItems({
                       {item.productName}
                     </h3>
                     <p className="mt-1 text-sm text-ink-muted">
-                      SKU {item.sku} · {item.selectedColor} · {item.totalQty} pcs
+                      SKU {item.sku}, {item.selectedColor}, {item.totalQty} pcs
                     </p>
                   </div>
                   <AdminBadge tone="brand">{item.fulfillmentType}</AdminBadge>
@@ -158,7 +158,7 @@ export function AdminOrderItems({
                               {placement.logoFileName || "Nama file tidak tersedia"}
                             </p>
                             <p className="mt-1 text-xs text-ink-muted">
-                              {placement.widthCm} × {placement.heightCm} cm · Rotasi {placement.rotation}°
+                              {placement.widthCm} × {placement.heightCm} cm, Rotasi {placement.rotation}°
                             </p>
                             {placement.notes ? (
                               <p className="mt-2 text-sm text-ink-muted">Catatan: {placement.notes}</p>

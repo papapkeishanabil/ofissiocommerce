@@ -1,14 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Phone, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, MessageCircle, Phone, ShieldCheck, Sparkles } from "lucide-react";
 
 import { HeroIntro } from "./HeroIntro";
 import { HomeSectionMarker } from "./HomeSectionMarker";
 import { IndustryScaleShowcase } from "./IndustryScaleShowcase";
 import { OfistantOpenButton } from "./OfistantOpenButton";
+import { OfistantMark } from "@/components/ofistant/OfistantMark";
 import { PaketSeragamShowcase } from "./PaketSeragamShowcase";
 import { ProductCategory3DWrapper } from "./ProductCategory3DWrapper";
 import { ScrollRevealInit } from "./ScrollRevealInit";
+import { TestimoniSection } from "./TestimoniSection";
 import { resolveHomepageIcon } from "@/features/site-content/icon-registry";
 import { getPublicSiteContent } from "@/features/site-content/site-content.service";
 import type { TextSegment } from "@/features/site-content/content.schema";
@@ -31,7 +33,7 @@ export async function HomePage() {
               Bisnis Naik Kelas Dimulai dari <span className="text-brand-600">Tim yang Tampil Profesional.</span>
             </h2>
             <p className="mt-6 max-w-[62ch] text-lg leading-relaxed text-ink-muted sm:text-xl">
-              Seragam bukan sekadar baju — ia adalah identitas bisnis yang dilihat pelanggan setiap hari. Dari anggota tim pertama hingga tim yang terus bertambah, Ofissio menjaga tampilan bisnis Anda tetap konsisten dan profesional di setiap fase pertumbuhan.
+              Seragam adalah identitas bisnis yang dilihat pelanggan setiap hari. Dari anggota tim pertama hingga tim yang terus bertambah, Ofissio menjaga tampilan bisnis Anda tetap konsisten dan profesional di setiap fase pertumbuhan.
             </p>
           </div>
           <div className="border-y border-line">
@@ -306,10 +308,17 @@ export async function HomePage() {
         </div>
       </section>
 
-      {/* CTA — Ofistant + WhatsApp */}
+      {/* 08 — TESTIMONI (hanya tampil setelah admin mempublikasikan ulasan
+          pertama; nilai bawaan kosong agar tidak ada ulasan contoh palsu) */}
+      <TestimoniSection data={content.testimoni} />
+
+      {/* CTA penutup — kartu krem berisi jendela percakapan ringkas Ofistant
+          ("show, don't tell") di atas dua tombol. Prinsip: tenang dan lega —
+          janji "1×24 jam" cukup sekali (di paragraf), tanpa chip/caption
+          tambahan; jahitan feston pendek menggemakan motif §08. */}
       <section id="cta" className="scroll-reveal scroll-mt-24 bg-gradient-to-br from-brand-700 to-brand-900 py-20 lg:py-28">
         <div className="mx-auto max-w-[1600px] px-6">
-          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] lg:gap-16">
             <div>
               <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-ochre-300">
                 <Sparkles className="h-4 w-4" aria-hidden="true" /> {content.cta.eyebrow}
@@ -317,22 +326,59 @@ export async function HomePage() {
               <h2 className="mt-5 text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-[3.75rem]">
                 <Headline segments={content.cta.headline} highlightClass="text-ochre-400" />
               </h2>
-              <div className="mt-4 h-[3px] w-10 rounded-full bg-ochre-400" />
-              <p className="mt-5 max-w-xl text-xl leading-relaxed text-brand-100 lg:text-2xl">
+              <div aria-hidden className="mt-6 flex items-center">
+                <span className="w-16 border-t-2 border-dashed border-ochre-500" />
+                <span className="-ml-1.5 h-2.5 w-2.5 rounded-full border-2 border-brand-700 bg-ochre-400" />
+              </div>
+              <p className="mt-6 max-w-xl text-xl leading-relaxed text-brand-100 lg:text-2xl">
                 {content.cta.lede}
               </p>
             </div>
-            <div className="flex flex-col gap-4 sm:flex-row lg:flex-col lg:items-start">
-              <OfistantOpenButton
-                label={content.cta.ofistantLabel}
-                className="inline-flex items-center gap-2 rounded-xl bg-ochre-400 px-7 py-3.5 text-sm font-bold text-brand-900 transition-all hover:bg-ochre-300"
-              />
-              <Link
-                href={content.cta.whatsappHref}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10"
-              >
-                <Phone className="h-4 w-4" aria-hidden="true" /> {content.cta.whatsappLabel}
-              </Link>
+
+            {/* Kartu konsultasi — dua zona saja: percakapan di atas, tombol di
+                bawah. Tombol utama ochre agar kontras dari kartu krem;
+                WhatsApp ghost supaya hierarki jelas (tombol utama menang). */}
+            <div className="w-full max-w-md lg:justify-self-end">
+              <div className="rounded-[20px] bg-[#f8f4ec] p-6 text-ink-strong shadow-[0_30px_70px_rgba(2,8,25,0.55)]">
+                <div className="flex items-center gap-3 border-b border-brand-600/10 pb-4">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-600">
+                    <OfistantMark variant="rev" className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-extrabold text-ink-strong">Ofistant</p>
+                    <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-bold text-[#0e7a3c]">
+                      <span className="h-[7px] w-[7px] rounded-full bg-[#1faf54]" aria-hidden="true" />
+                      Asisten seragam, online
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2.5 py-4">
+                  <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-[#e8edfb] px-3.5 py-2.5 text-[13px] leading-relaxed text-[#1b2c5e]">
+                    {content.cta.chatUserLine}
+                  </p>
+                  <p className="mr-auto w-fit max-w-[88%] rounded-2xl rounded-bl-md border border-brand-600/10 bg-white px-3.5 py-2.5 text-[13px] leading-relaxed text-ink">
+                    {content.cta.chatOfistantLine}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 border-t border-brand-600/10 pt-5">
+                  <OfistantOpenButton
+                    label={content.cta.ofistantLabel}
+                    className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-ochre-400 px-6 py-4 text-sm font-bold text-brand-950 transition-colors hover:bg-ochre-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+                  />
+                  <Link
+                    href={content.cta.whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-brand-600/25 px-6 py-4 text-sm font-bold text-ink-strong transition-colors hover:border-[#1faf54]/60 hover:text-[#0e7a3c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+                  >
+                    <MessageCircle className="h-[18px] w-[18px] text-[#1faf54]" strokeWidth={2.4} aria-hidden="true" />
+                    {content.cta.whatsappLabel}
+                  </Link>
+                </div>
+              </div>
+              <p className="mt-3 text-center text-[11px] text-white/45">
+                Ilustrasi percakapan, bukan transkrip asli.
+              </p>
             </div>
           </div>
         </div>

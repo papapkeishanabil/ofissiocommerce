@@ -21,13 +21,18 @@ import { mapOfissioProductToCartItem } from "@/features/products/product.mapper"
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 import { calculateEmbroideryPricing, normalizeEmbroideryZoneId, type EmbroideryPricing, type EmbroideryPricingZoneId } from "@/features/products/embroidery-pricing";
 
+import { validateNameAllocations } from "@/lib/embroidery-names";
+
 interface CartState {
+  orderNote: string;
+  setOrderNote: (note: string) => void;
   items: CartLineItem[];
   appliedPromotion: { code: string; discountTotal: number; subtotalAtApply: number } | null;
   hydrated: boolean;
   /** Marks store as hydrated after rehydration (avoids SSR mismatch). */
   setHydrated: () => void;
   add: (input: {
+    replaceLineId?: string;
     product: OfissioProduct;
     color: string;
     sizes: SizeMatrix;
@@ -50,11 +55,13 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      orderNote: "",
+      setOrderNote: (orderNote) => set({ orderNote: orderNote.slice(0,1000) }),
       appliedPromotion: null,
       hydrated: false,
       setHydrated: () => set({ hydrated: true }),
 
-      add: ({ product, color, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing, moqSettings }) => {
+      add: ({ replaceLineId, product, color, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing, moqSettings }) => {
         const validation = validateProductForCart(product);
         if (!validation.ok) return { ok: false, reason: validation.reason };
         const totalQty = sumSizeMatrix(sizes);
@@ -71,7 +78,13 @@ export const useCartStore = create<CartState>()(
           embroideryMoq: moqSettings?.embroidery,
         });
         if (moqIssue) return { ok: false, reason: moqIssue.reason };
-        const id = lineItemId(product.id, color);
+        const nameIssue = validateNameAllocations(uniform3DConfig?.placements || [], sizes);
+        if (nameIssue) return { ok: false, reason: nameIssue };
+        const replacing = replaceLineId ? get().items.find(item => item.id === replaceLineId && item.productId === product.id) : undefined;
+        if (replaceLineId && !replacing) return { ok: false, reason: "Item keranjang tidak ditemukan. Buka ulang keranjang." };
+        const baseId = lineItemId(product.id, color);
+        const customized = !!uniform3DConfig?.placements.length;
+        const id = replacing?.id || (customized ? `${baseId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}` : baseId);
         const calculatedPrice = calculateQuantityTierPrice({
           regularPrice: product.priceFrom,
           totalQty,
@@ -93,7 +106,7 @@ export const useCartStore = create<CartState>()(
           const cur = next[idx]!;
           const mergedSizes: SizeMatrix = { ...emptySizeMatrix() };
           (Object.keys(mergedSizes) as (keyof SizeMatrix)[]).forEach((k) => {
-            mergedSizes[k] = (cur.sizes[k] ?? 0) + (sizes[k] ?? 0);
+            mergedSizes[k] = (replacing ? 0 : cur.sizes[k] ?? 0) + (sizes[k] ?? 0);
           });
           const mergedQty = sumSizeMatrix(mergedSizes);
           // Guard bordir: dua line di bawah batas bordir tidak boleh lolos
@@ -122,7 +135,11 @@ export const useCartStore = create<CartState>()(
           });
           next[idx] = {
             ...cur,
+            color,
             image: product.mainImage ?? cur.image,
+            fulfillmentType: product.fulfillment,
+            processRoute: product.processRoute,
+            leadTimeDays: product.leadTimeDays,
             sizes: mergedSizes,
             totalQty: mergedQty,
             unitPrice: mergedPrice.unitPrice,
@@ -232,7 +249,7 @@ export const useCartStore = create<CartState>()(
       removeLine: (lineId) =>
         set((s) => ({ items: s.items.filter((it) => it.id !== lineId) })),
 
-      clear: () => set({ items: [], appliedPromotion: null }),
+      clear: () => set({ items: [], appliedPromotion: null, orderNote: "" }),
 
       setAppliedPromotion: (appliedPromotion) => set({ appliedPromotion }),
 
@@ -249,7 +266,7 @@ export const useCartStore = create<CartState>()(
         state?.setHydrated();
       },
       // Only persist the data, not the methods.
-      partialize: ({ items, appliedPromotion }) => ({ items, appliedPromotion }),
+      partialize: ({ items, appliedPromotion, orderNote }) => ({ items, appliedPromotion, orderNote }),
     },
   ),
 );

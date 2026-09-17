@@ -185,7 +185,14 @@ export async function resolvePublishedProductGlb(input: {
     entityId: String(input.productId),
     metadata: { expiresAt: signed.expiresAt },
   });
-  return { url: signed.signedUrl, expiresAt: signed.expiresAt };
+  return {
+    url: signed.signedUrl,
+    expiresAt: signed.expiresAt,
+    // Penanda versi objek untuk cache-busting URL konten: berubah setiap kali
+    // file GLB baru di-upload (key/ukuran berubah) supaya browser tidak
+    // menyajikan GLB lama dari cache HTTP pada URL ?content=1 yang identik.
+    versionToken: `${key}:${object.sizeBytes ?? 0}`,
+  };
 }
 
 function isAllowedProductObject(bucket: string, key: string, configuredBucket: string) {

@@ -169,6 +169,24 @@ const mappedString = mapWooCommerceProductToOfissioProduct(baseWooProduct);
 assert.equal(mappedString.legacyEmbroideryPricing?.zones[0]?.unitPrice, 5_000);
 assert.equal(mappedString.legacyEmbroideryPricing?.zones[5]?.zoneId, "center_back");
 
+// Both Studio back positions must resolve to the existing Admin prices.
+const studioBackPricing = calculateEmbroideryPricing({
+  totalQty: 20,
+  selectedZones: ["upper_back", "middle_back"],
+  productSupportedZones: mappedString.embroidery_zones,
+  globalEmbroideryPricing: pricing,
+});
+assert.deepEqual(studioBackPricing.unsupportedZones, []);
+assert.deepEqual(studioBackPricing.missingPricingZones, []);
+assert.deepEqual(
+  studioBackPricing.lines.map(({ zoneId, label, subtotal }) => ({ zoneId, label, subtotal })),
+  [
+    { zoneId: "upper_back", label: "Bordir Punggung Atas", subtotal: 200_000 },
+    { zoneId: "center_back", label: "Bordir Punggung Tengah", subtotal: 300_000 },
+  ],
+);
+assert.equal(studioBackPricing.total, 500_000);
+
 const mappedArray = mapWooCommerceProductToOfissioProduct({
   ...baseWooProduct,
   id: 1002,

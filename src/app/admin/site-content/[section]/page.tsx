@@ -35,7 +35,7 @@ export default async function AdminSiteContentSectionPage({ params }: PageProps)
     <div className="space-y-6">
       <AdminBackLink href="/admin/site-content">Kembali ke daftar konten</AdminBackLink>
       <AdminPageHeader
-        eyebrow="Homepage CMS"
+        eyebrow="Website CMS"
         title={entry?.label ?? rawSection}
         description={entry?.description}
       />

@@ -7,7 +7,7 @@
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { DecalGeometry } from "three/examples/jsm/geometries/DecalGeometry.js";
 
@@ -19,20 +19,32 @@ import type {
 import { CAMERA_PRESET_VIEWS, ZONE_ANCHORS, type Model3DEntry } from "@/data/uniform-3d";
 import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { ProceduralShirt } from "./ProceduralShirt";
+import { renderModelThumbnails } from "./model-thumbnails";
+import { configureStudioGLTFLoader } from "./configure-gltf-loader";
+import { fitGarmentModel } from "./fit-garment-model";
+import { modelUnitsPerCm } from "./garment-scale";
+import {
+  DEFAULT_MODEL_COLOR_ADJUSTMENT,
+  normalizeModelColorAdjustment,
+  type ModelColorAdjustment,
+} from "@/types/model-color-adjustment";
 
 interface Uniform3DViewerProps {
+  onScaleReady?: (unitsPerCm: number) => void;
   model: Model3DEntry;
   color: string;
   placements: LogoPlacement[];
   activeCamera: CameraPreset;
   highlightZone?: string | null;
-  onCanvasReady?: (gl: { domElement: HTMLCanvasElement }) => void;
+  onCanvasReady?: (gl: { domElement: HTMLCanvasElement; captureFrame?: () => string }) => void;
   onModelReady?: () => void;
+  onThumbnailsReady?: (thumbnails: Partial<Record<CameraPreset, string>>) => void;
   /** Raycast: customer klik surface → dapat posisi + normal untuk logo */
   onSurfaceClick?: (hit: { point: [number, number, number]; normal: [number, number, number] }) => void;
 }
 
 export function Uniform3DViewer({
+  onScaleReady,
   model,
   color,
   placements,
@@ -40,6 +52,7 @@ export function Uniform3DViewer({
   highlightZone,
   onCanvasReady,
   onModelReady,
+  onThumbnailsReady,
   onSurfaceClick,
 }: Uniform3DViewerProps) {
   const view = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
@@ -82,19 +95,23 @@ export function Uniform3DViewer({
 
   return (
     <Canvas
-      // Keep the configurator below the browser's WebGL memory threshold.
-      // The GLB and environment are already detailed; runtime shadows at DPR 2
-      // caused context loss after the preview was opened repeatedly.
+      // Respect display density up to 1.5x and smooth silhouette edges.
+      // Keep shadows off and avoid DPR 2, which previously exhausted WebGL memory.
       shadows={false}
       camera={{ position: view.position, fov: 38 }}
-      dpr={[1, 1]}
+      dpr={[1, 1.5]}
       performance={{ min: 0.5 }}
-      gl={{ preserveDrawingBuffer: false, antialias: false, powerPreference: "high-performance" }}
-      onCreated={({ gl }) => {
+      gl={{ preserveDrawingBuffer: false, antialias: true, powerPreference: "high-performance" }}
+      onCreated={({ gl, scene, camera }) => {
         gl.outputColorSpace = THREE.SRGBColorSpace;
         gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.15;
-        onCanvasReady?.({ domElement: gl.domElement });
+        // Penyesuaian per produk (Admin → Model 3D) agar warna render
+        // mendekati foto produk; default sama dengan pipeline sebelumnya.
+        gl.toneMappingExposure = model.adjustment?.exposure ?? 1.15;
+        onCanvasReady?.({ domElement: gl.domElement, captureFrame: () => {
+          gl.render(scene, camera);
+          return gl.domElement.toDataURL("image/png");
+        } });
       }}
       style={{ width: "100%", height: "100%", background: "transparent" }}
     >
@@ -103,6 +120,7 @@ export function Uniform3DViewer({
         controlsRef={controlsRef}
         zoomUntil={zoomUntil}
       />
+      <ExposureSync exposure={model.adjustment?.exposure ?? 1.15} />
       <TemporaryZoomReset zoomUntil={zoomUntil} />
       {/* Lighting */}
       <ambientLight intensity={0.9} />
@@ -117,10 +135,15 @@ export function Uniform3DViewer({
         {/* Real GLB path (Phase 8+) — guarded by glbUrl */}
         {resolvedGlbUrl ? (
           <GLBModel
+            referenceLengthCm={model.referenceLengthCm}
+            orientationY={model.orientationY}
+            onScaleReady={onScaleReady}
             url={resolvedGlbUrl}
             placements={placements}
             highlightZone={highlightZone}
+            adjustment={model.adjustment}
             onModelReady={onModelReady}
+            onThumbnailsReady={onThumbnailsReady}
             onSurfaceClick={onSurfaceClick}
           />
         ) : !model.glbUrl ? (
@@ -145,6 +168,15 @@ export function Uniform3DViewer({
       />
     </Canvas>
   );
+}
+
+/** Sinkronkan tone-mapping exposure saat adjustment berubah (slider admin). */
+function ExposureSync({ exposure }: { exposure: number }) {
+  const gl = useThree((state) => state.gl);
+  useEffect(() => {
+    gl.toneMappingExposure = exposure;
+  }, [gl, exposure]);
+  return null;
 }
 
 /**
@@ -177,6 +209,7 @@ function CameraRig({
   controlsRef: React.MutableRefObject<any>;
   zoomUntil: React.MutableRefObject<number>;
 }) {
+  const camera = useThree((state) => state.camera);
   const targetView = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
   const desiredPos = useRef(new THREE.Vector3(...targetView.position));
   const desiredTarget = useRef(new THREE.Vector3(...targetView.target));
@@ -185,7 +218,17 @@ function CameraRig({
     const v = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
     desiredPos.current.set(...v.position);
     desiredTarget.current.set(...v.target);
-  }, [activeCamera]);
+
+    // A preset is an explicit view selection, so it must never stop halfway
+    // between two sides. The frame loop still keeps zoom recovery smooth.
+    camera.position.set(...v.position);
+    camera.lookAt(...v.target);
+    const controls = controlsRef.current;
+    if (controls) {
+      controls.target.set(...v.target);
+      controls.update();
+    }
+  }, [activeCamera, camera, controlsRef]);
 
   useFrame(({ camera }) => {
     // Lerp target FIRST (snap to center quickly)
@@ -235,56 +278,82 @@ function CameraRig({
 // GLB loader — auto-centers + scales + supports raycast click for logo.
 
 interface GLBModelProps {
+  referenceLengthCm?: number;
+  orientationY?: number;
+  onScaleReady?: (unitsPerCm: number) => void;
   url: string;
   placements?: LogoPlacement[];
   highlightZone?: string | null;
+  adjustment?: ModelColorAdjustment;
   onModelReady?: () => void;
+  onThumbnailsReady?: (thumbnails: Partial<Record<CameraPreset, string>>) => void;
   onSurfaceClick?: (hit: { point: [number, number, number]; normal: [number, number, number] }) => void;
 }
 
-function GLBModel({ url, placements = [], highlightZone, onModelReady, onSurfaceClick }: GLBModelProps) {
+function GLBModel({ url, placements = [], highlightZone, adjustment, onModelReady, onSurfaceClick, onThumbnailsReady, referenceLengthCm, orientationY, onScaleReady }: GLBModelProps) {
   // Keep Draco decoding same-origin. Production CSP intentionally does not
   // allow third-party decoder scripts from the default Google CDN.
-  const { scene } = useGLTF(url, "/draco/");
+  const { scene } = useGLTF(url, "/draco/", true, configureStudioGLTFLoader);
   const [, forceTick] = useState(0);
+  const renderer = useThree((state) => state.gl);
 
   // Clone + auto-fit SYNCHRONOUSLY so transform applied before first render.
   const fitted = useMemo(() => {
-    const cloned = scene.clone(true);
-    const box = new THREE.Box3().setFromObject(cloned);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-    const targetHeight = 1.76;
-    const scale = targetHeight / maxDim;
+    const cloned = fitGarmentModel(scene, orientationY);
 
     cloned.traverse((child) => {
-      if (child.type === "Mesh") {
-        const mesh = child as THREE.Mesh;
-        mesh.scale.multiplyScalar(scale);
-        mesh.position.sub(center.multiplyScalar(scale));
-        const mat = mesh.material as THREE.MeshStandardMaterial;
-          if (mat && mat.isMeshStandardMaterial) {
-            mat.metalness = 0.0;
-            mat.roughness = 0.78;
-            mat.envMapIntensity = 0.25;
-            // Tripo exports this garment with a highly metallic material.
-            // In our lightweight (non-HDR) viewer, add a small texture-based
-            // emissive contribution so dark navy remains navy, not black.
-            if (mat.map) {
-              mat.emissiveMap = mat.map;
-              mat.emissive.set("#ffffff");
-              mat.emissiveIntensity = 0.6;
-            }
-        }
-      }
+      if (!(child instanceof THREE.Mesh)) return;
+      const sourceMaterials = Array.isArray(child.material)
+        ? child.material
+        : [child.material];
+      const clonedMaterials = sourceMaterials.map((source) =>
+        prepareGarmentMaterial(source, DEFAULT_MODEL_COLOR_ADJUSTMENT),
+      );
+      child.material = Array.isArray(child.material)
+        ? clonedMaterials
+        : clonedMaterials[0]!;
     });
     return cloned;
-  }, [scene]);
+  }, [scene, orientationY]);
+
+  const normalizedAdjustment = useMemo(
+    () => normalizeModelColorAdjustment(adjustment),
+    [adjustment],
+  );
+  useLayoutEffect(() => {
+    updateGarmentColorCalibration(fitted, normalizedAdjustment);
+  }, [fitted, normalizedAdjustment]);
+
+  useEffect(() => () => {
+    fitted.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((material) => material.dispose());
+    });
+  }, [fitted]);
+
+  const unitsPerCm = useMemo(() => modelUnitsPerCm(
+    new THREE.Box3().setFromObject(fitted).getSize(new THREE.Vector3()).y,
+    referenceLengthCm,
+  ), [fitted, referenceLengthCm]);
+
+  useEffect(() => { onScaleReady?.(unitsPerCm); }, [onScaleReady, unitsPerCm]);
 
   useEffect(() => {
     onModelReady?.();
   }, [fitted, onModelReady]);
+
+  useEffect(() => {
+    if (!onThumbnailsReady) return;
+    const frame = requestAnimationFrame(() => {
+      try { onThumbnailsReady(renderModelThumbnails(renderer, fitted)); }
+      catch (error) {
+        console.warn("[Studio Bordir] Camera thumbnails could not be rendered:", error);
+        onThumbnailsReady({});
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [renderer, fitted, onThumbnailsReady]);
 
   // Raycast click → get surface point + normal
   const handleClick = (e: any) => {
@@ -324,6 +393,7 @@ function GLBModel({ url, placements = [], highlightZone, onModelReady, onSurface
       {/* Logo placements — auto-placed at ZONE_ANCHORS, raycast for fine-tune */}
       {placements.map((placement) => (
         <EmbroideryDecal
+          unitsPerCm={unitsPerCm}
           key={placement.zone}
           modelRoot={fitted}
           placement={placement}
@@ -358,7 +428,7 @@ function GLBModel({ url, placements = [], highlightZone, onModelReady, onSurface
         const tex = p.logoPreviewUrl ? logoTexture(p.logoPreviewUrl, () => forceTick((n: number) => n + 1)) : null;
         const { width: imgW, height: imgH } = textureImageDimensions(tex);
         const logoAspect = imgW > 0 && imgH > 0 ? imgW / imgH : p.widthCm / p.heightCm;
-        const baseW = (p.widthCm / 30) * 0.9;
+        const baseW = p.widthCm * unitsPerCm;
         const w = baseW;
         const h = baseW / logoAspect;
 
@@ -395,8 +465,116 @@ function GLBModel({ url, placements = [], highlightZone, onModelReady, onSurface
   );
 }
 
-function projectZoneAnchor(modelRoot: THREE.Object3D, zone: EmbroideryZone) {
-  const anchor = ZONE_ANCHORS[zone];
+type ColorGradeShader = {
+  uniforms: Record<string, { value: number }>;
+  fragmentShader: string;
+};
+
+const COLOR_GRADE_CHUNK = `
+uniform float ofissioBrightness;
+uniform float ofissioSaturation;
+uniform float ofissioHue;
+uniform float ofissioTemperature;
+
+vec3 ofissioGradeColor(vec3 sourceColor) {
+  float luminance = dot(sourceColor, vec3(0.2126, 0.7152, 0.0722));
+  vec3 saturated = mix(vec3(luminance), sourceColor, ofissioSaturation);
+
+  float yiqY = dot(saturated, vec3(0.299, 0.587, 0.114));
+  float yiqI = dot(saturated, vec3(0.596, -0.275, -0.321));
+  float yiqQ = dot(saturated, vec3(0.212, -0.523, 0.311));
+  float chroma = sqrt(yiqI * yiqI + yiqQ * yiqQ);
+  float hueAngle = atan(yiqQ, yiqI) + ofissioHue;
+  float rotatedI = chroma * cos(hueAngle);
+  float rotatedQ = chroma * sin(hueAngle);
+  vec3 rotated = vec3(
+    yiqY + 0.956 * rotatedI + 0.621 * rotatedQ,
+    yiqY - 0.272 * rotatedI - 0.647 * rotatedQ,
+    yiqY - 1.106 * rotatedI + 1.703 * rotatedQ
+  );
+
+  vec3 temperatureScale = vec3(
+    1.0 + 0.12 * ofissioTemperature,
+    1.0,
+    1.0 - 0.12 * ofissioTemperature
+  );
+  return max(rotated * temperatureScale * ofissioBrightness, vec3(0.0));
+}
+`;
+
+function prepareGarmentMaterial(
+  source: THREE.Material,
+  adjustment: ModelColorAdjustment,
+): THREE.Material {
+  const cloned = source.clone();
+  if (!(cloned instanceof THREE.MeshStandardMaterial)) return cloned;
+
+  cloned.metalness = 0;
+  cloned.roughness = 0.78;
+  cloned.envMapIntensity = 0.25;
+  cloned.dithering = true;
+  if (cloned.map) {
+    // Kept as a controllable fill for legacy/dark GLBs. The color-grade
+    // shader below now adjusts this path too, so emissive no longer locks the
+    // fabric into its original hue or saturation.
+    cloned.emissiveMap = cloned.map;
+    cloned.emissive.set("#ffffff");
+  }
+  cloned.emissiveIntensity = adjustment.emissiveIntensity;
+  cloned.userData.ofissioColorAdjustment = { ...adjustment };
+
+  const originalOnBeforeCompile = cloned.onBeforeCompile.bind(cloned);
+  const originalProgramCacheKey = cloned.customProgramCacheKey.bind(cloned);
+  cloned.onBeforeCompile = (shader, renderer) => {
+    originalOnBeforeCompile(shader, renderer);
+    const currentAdjustment = normalizeModelColorAdjustment(
+      cloned.userData.ofissioColorAdjustment as Partial<ModelColorAdjustment> | undefined,
+    );
+    shader.uniforms.ofissioBrightness = { value: currentAdjustment.brightness };
+    shader.uniforms.ofissioSaturation = { value: currentAdjustment.saturation };
+    shader.uniforms.ofissioHue = { value: THREE.MathUtils.degToRad(currentAdjustment.hue) };
+    shader.uniforms.ofissioTemperature = { value: currentAdjustment.temperature };
+    shader.fragmentShader = shader.fragmentShader
+      .replace("void main() {", `${COLOR_GRADE_CHUNK}\nvoid main() {`)
+      .replace(
+        "#include <map_fragment>",
+        "#include <map_fragment>\ndiffuseColor.rgb = ofissioGradeColor(diffuseColor.rgb);",
+      )
+      .replace(
+        "#include <emissivemap_fragment>",
+        "#include <emissivemap_fragment>\ntotalEmissiveRadiance = ofissioGradeColor(totalEmissiveRadiance);",
+      );
+    cloned.userData.ofissioColorGradeShader = shader;
+  };
+  cloned.customProgramCacheKey = () => `${originalProgramCacheKey()}|ofissio-color-grade-v1`;
+  cloned.needsUpdate = true;
+  return cloned;
+}
+
+function updateGarmentColorCalibration(
+  root: THREE.Object3D,
+  adjustment: ModelColorAdjustment,
+) {
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.forEach((material) => {
+      if (!(material instanceof THREE.MeshStandardMaterial)) return;
+      material.emissiveIntensity = adjustment.emissiveIntensity;
+      material.userData.ofissioColorAdjustment = { ...adjustment };
+      const shader = material.userData.ofissioColorGradeShader as ColorGradeShader | undefined;
+      if (!shader) return;
+      shader.uniforms.ofissioBrightness!.value = adjustment.brightness;
+      shader.uniforms.ofissioSaturation!.value = adjustment.saturation;
+      shader.uniforms.ofissioHue!.value = THREE.MathUtils.degToRad(adjustment.hue);
+      shader.uniforms.ofissioTemperature!.value = adjustment.temperature;
+    });
+  });
+}
+
+function projectZoneAnchor(modelRoot: THREE.Object3D, zone: EmbroideryZone, point?: [number, number, number]) {
+  const initial = ZONE_ANCHORS[zone];
+  const anchor = point ? { x: point[0], y: point[1], z: point[2] } : initial;
   let origin: THREE.Vector3;
   let direction: THREE.Vector3;
 
@@ -464,6 +642,7 @@ function ZoneMarker({
 }
 
 interface EmbroideryDecalProps {
+  unitsPerCm: number;
   modelRoot: THREE.Object3D;
   placement: LogoPlacement;
   highlighted: boolean;
@@ -472,43 +651,20 @@ interface EmbroideryDecalProps {
 
 /** Projects the logo onto the cloth mesh, preserving the fabric contour. */
 function EmbroideryDecal({
+  unitsPerCm,
   modelRoot,
   placement,
   highlighted,
   onTextureLoaded,
 }: EmbroideryDecalProps) {
-  const anchor = ZONE_ANCHORS[placement.zone];
-  // Configurations saved before the anchor correction used z=±0.16, which is
-  // inside this GLB. Treat that exact former default as an anchor, so existing
-  // uploads move to the visible cloth surface without requiring re-upload.
-  const isLegacyChestAnchor =
-    (placement.zone === "left_chest" || placement.zone === "right_chest") &&
-    placement.surfacePoint != null &&
-    Math.abs(placement.surfacePoint[0] - anchor.x) < 0.001 &&
-    Math.abs(placement.surfacePoint[1] - anchor.y) < 0.001 &&
-    Math.abs(placement.surfacePoint[2] - 0.16) < 0.001;
-  const isLegacyBackAnchor =
-    (placement.zone === "upper_back" || placement.zone === "middle_back") &&
-    placement.surfacePoint != null &&
-    Math.abs(placement.surfacePoint[0] - anchor.x) < 0.001 &&
-    Math.abs(placement.surfacePoint[1] - anchor.y) < 0.001 &&
-    Math.abs(placement.surfacePoint[2] + 0.16) < 0.001;
-  const isCurrentAnchor =
-    placement.surfacePoint != null &&
-    Math.abs(placement.surfacePoint[0] - anchor.x) < 0.001 &&
-    Math.abs(placement.surfacePoint[1] - anchor.y) < 0.001 &&
-    Math.abs(placement.surfacePoint[2] - anchor.z) < 0.001;
-  const useAnchor = !placement.surfacePoint || isLegacyChestAnchor || isLegacyBackAnchor || isCurrentAnchor;
+  // Re-project after every position adjustment. A saved anchor depth belongs
+  // to the old garment, not necessarily the surface of a replacement GLB.
+  // Keeping that depth made moved logos disappear into KL-007's back panel.
   const projectedAnchor = useMemo(
-    () => projectZoneAnchor(modelRoot, placement.zone),
-    [modelRoot, placement.zone],
+    () => projectZoneAnchor(modelRoot, placement.zone, placement.surfacePoint),
+    [modelRoot, placement.zone, placement.surfacePoint],
   );
-  const position = useMemo(
-    () => useAnchor
-      ? projectedAnchor.position
-      : new THREE.Vector3(...placement.surfacePoint!),
-    [placement.surfacePoint, projectedAnchor.position, useAnchor],
-  );
+  const position = projectedAnchor.position;
   const orientation = useMemo(() => {
     const rotation = (placement.rotation * Math.PI) / 180;
     if (placement.zone === "upper_back" || placement.zone === "middle_back") {
@@ -519,14 +675,16 @@ function EmbroideryDecal({
     return new THREE.Euler(0, 0, rotation);
   }, [placement.rotation, placement.zone]);
 
-  const texture = placement.logoPreviewUrl
-    ? logoTexture(placement.logoPreviewUrl, onTextureLoaded)
+  const textPreview = useMemo(() => placement.textBordir && !placement.logoPreviewUrl ? renderNamePreview(placement.textBordir) : null, [placement.textBordir, placement.logoPreviewUrl]);
+  const textureUrl = placement.logoPreviewUrl || textPreview;
+  const texture = textureUrl
+    ? logoTexture(textureUrl, onTextureLoaded)
     : null;
   const imageSize = textureImageDimensions(texture);
   const aspect = imageSize.width > 0 && imageSize.height > 0
     ? imageSize.width / imageSize.height
     : placement.widthCm / placement.heightCm;
-  const width = (placement.widthCm / 30) * 0.9;
+  const width = placement.widthCm * unitsPerCm;
   const height = width / aspect;
 
   const geometries = useMemo(() => {
@@ -665,3 +823,4 @@ function createSolidEmbroideryTexture(image: HTMLImageElement): THREE.Texture {
   texture.needsUpdate = true;
   return texture;
 }
+import { renderNamePreview } from "@/lib/embroidery-names";

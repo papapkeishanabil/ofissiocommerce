@@ -165,7 +165,7 @@ export function AdminShipmentPanel({
             <div>
               <p className="font-black text-ink">{currentShipment.shipmentNumber}</p>
               <p className="mt-1 text-sm text-ink-muted">
-                {shipmentProviderLabel(currentShipment.provider)} · {currentShipment.service}
+                {shipmentProviderLabel(currentShipment.provider)}, {currentShipment.service}
               </p>
               <p className="mt-1 font-mono text-xs text-ink-muted">
                 Resi: {currentShipment.trackingNumber ?? "belum tersedia"}
@@ -271,7 +271,7 @@ export function AdminShipmentPanel({
           {latestEvents.map((event) => (
             <li key={event.id} className="rounded-2xl bg-slate-50 p-3 text-xs text-ink-muted">
               <span className="font-black text-ink">{event.eventType}</span>
-              {event.note ? ` · ${event.note}` : null}
+              {event.note ? `, ${event.note}` : null}
             </li>
           ))}
         </ol>

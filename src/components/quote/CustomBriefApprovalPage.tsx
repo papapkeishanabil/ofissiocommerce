@@ -153,11 +153,11 @@ export function CustomBriefApprovalPage({ id }: { id: string }) {
       <section className="overflow-hidden rounded-3xl border border-line bg-white shadow-soft-md">
         <header className="bg-brand-950 px-5 py-6 text-white sm:px-8">
           <div className="flex flex-wrap items-center gap-3">
-            <p className="type-eyebrow text-brand-200">Lembar approval desain — Full Custom</p>
+            <p className="type-eyebrow text-brand-200">Lembar approval desain: Full Custom</p>
             {revisionNo > 0 ? (
               <span className="rounded-full bg-amber-400/20 px-3 py-0.5 text-xs font-bold text-amber-200">
                 Revisi {String(revisionNo).padStart(2, "0")}
-                {productionBrief.revisedAt ? ` · ${formatDate(productionBrief.revisedAt)}` : ""}
+                {productionBrief.revisedAt ? `, ${formatDate(productionBrief.revisedAt)}` : ""}
               </span>
             ) : null}
           </div>
@@ -190,7 +190,7 @@ export function CustomBriefApprovalPage({ id }: { id: string }) {
             <div className="rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-700">Permintaan awal Anda</p>
               <p className="mt-1 text-xs leading-5 text-ink-muted">
-                Tercatat saat permintaan Anda diterima{initialRequest.capturedAt ? ` (${formatDate(initialRequest.capturedAt)})` : ""} — tetap disimpan sebagai pembanding atas lembar desain teknis di bawah.
+                Tercatat saat permintaan Anda diterima{initialRequest.capturedAt ? ` (${formatDate(initialRequest.capturedAt)})` : ""}. Tetap disimpan sebagai pembanding atas lembar desain teknis di bawah.
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {initialRequest.projectName ? <Summary label="Nama proyek" value={initialRequest.projectName} /> : null}
@@ -380,7 +380,7 @@ function GarmentSheet({
                     ) : null}
                   </td>
                   <td className="px-4 py-2.5 text-ink">
-                    {[spec.option, spec.detail, spec.notes].filter(Boolean).join(" · ") || "Memerlukan rekomendasi Ofissio"}
+                    {[spec.option, spec.detail, spec.notes].filter(Boolean).join(", ") || "Memerlukan rekomendasi Ofissio"}
                   </td>
                   <td className="px-4 py-2.5 text-ink-muted">{spec.measurements ?? "—"}</td>
                 </tr>
@@ -411,7 +411,7 @@ function GarmentSheet({
                     </td>
                     <td className="px-4 py-2.5 text-ink">
                       {zoneLabel(area.zone)}
-                      {area.positionNote ? ` — ${area.positionNote}` : ""}
+                      {area.positionNote ? ` (${area.positionNote})` : ""}
                       {area.offsetXCm != null || area.offsetYCm != null ? (
                         <span className="text-ink-muted"> (offset {area.offsetXCm ?? 0};{area.offsetYCm ?? 0} cm)</span>
                       ) : null}
@@ -533,14 +533,14 @@ function SignatureRow({ signature }: { signature: BriefSignature }) {
     >
       <span className="text-sm">
         <strong className={revoked ? "" : "text-emerald-900"}>{partyLabel(signature.party)}</strong>
-        {" · "}
-        {signature.signerName} — {signature.signerTitle}
+        {", "}
+        {signature.signerName}, {signature.signerTitle}
       </span>
       <span className={`text-xs font-semibold ${revoked ? "text-ink-muted" : "text-emerald-700"}`}>
         {revoked
           ? `dicabut ${formatDate(signature.revokedAt!)}`
           : `ditandatangani ${formatDate(signature.signedAt)}`}
-        {signature.revisionNo > 0 ? ` · Revisi ${String(signature.revisionNo).padStart(2, "0")}` : ""}
+        {signature.revisionNo > 0 ? `, Revisi ${String(signature.revisionNo).padStart(2, "0")}` : ""}
       </span>
     </li>
   );

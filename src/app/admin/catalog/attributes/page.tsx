@@ -59,7 +59,7 @@ export default async function AdminCatalogAttributesPage() {
                           className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-ink-muted ring-1 ring-line"
                         >
                           {term.name}
-                          {term.productCount ? ` · ${term.productCount}` : ""}
+                          {term.productCount ? `, ${term.productCount}` : ""}
                         </span>
                       ))
                     ) : (

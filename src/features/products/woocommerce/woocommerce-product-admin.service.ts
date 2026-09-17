@@ -17,6 +17,10 @@ import {
   sortQuantityPricingTiers,
 } from "../quantity-pricing";
 import { WOO_PROCESS_ROUTES } from "./woocommerce-product-management.types";
+import {
+  defaultModelOrientationY,
+  normalizeModelOrientationY,
+} from "@/types/uniform-3d";
 import { getProductReadiness } from "./woocommerce-product-readiness";
 import { fromSameOriginWordPressMediaUrl } from "./wordpress-media-proxy";
 import { getWordPressMediaRuntimeConfig } from "./wordpress-media-upload.service";
@@ -97,6 +101,16 @@ export async function getAdminWooCommerceProduct(
       model3DSource: getMetaString(meta, "model_3d_source"),
       model3DFilename: getMetaString(meta, "model_3d_filename"),
       model3DUpdatedAt: getMetaString(meta, "model_3d_updated_at"),
+      model3DExposure: getMetaNumber(meta, "model3d_exposure", 1.15),
+      model3DEmissive: getMetaNumber(meta, "model3d_emissive", 0.6),
+      model3DBrightness: getMetaNumber(meta, "model3d_brightness", 1),
+      model3DSaturation: getMetaNumber(meta, "model3d_saturation", 1),
+      model3DHue: getMetaNumber(meta, "model3d_hue", 0),
+      model3DTemperature: getMetaNumber(meta, "model3d_temperature", 0),
+      model3DRotationY: normalizeModelOrientationY(
+        getMetaNumber(meta, "model3d_rotation_y", defaultModelOrientationY(product.sku)),
+        defaultModelOrientationY(product.sku),
+      ),
       moq: getMetaNumber(meta, "moq", 0),
       leadTime: getMetaString(meta, "lead_time"),
       fulfillmentType: getMetaString(meta, "fulfillment_type"),
@@ -312,6 +326,13 @@ function buildWritePayload(
     ["always_orderable", payload.alwaysOrderable],
     ["replenishment_policy", payload.replenishmentPolicy],
     ["process_route", payload.processRoute],
+    ["model3d_exposure", payload.model3dExposure ?? 1.15],
+    ["model3d_emissive", payload.model3dEmissive ?? 0.6],
+    ["model3d_brightness", payload.model3dBrightness ?? 1],
+    ["model3d_saturation", payload.model3dSaturation ?? 1],
+    ["model3d_hue", payload.model3dHue ?? 0],
+    ["model3d_temperature", payload.model3dTemperature ?? 0],
+    ["model3d_rotation_y", payload.model3dRotationY ?? defaultModelOrientationY(payload.sku)],
     ["supports_embroidery", payload.supportsEmbroidery],
     ["supports_screen_print", payload.supportsScreenPrinting],
     ["supports_screen_printing", payload.supportsScreenPrinting],

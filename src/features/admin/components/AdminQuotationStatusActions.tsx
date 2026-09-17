@@ -495,7 +495,7 @@ export function AdminQuotationStatusActions({
               </legend>
               <div className="md:col-span-4 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-900">
                 Harga kalkulasi Ofissio: <strong>{formatIDR(item.unitPrice ?? item.finalUnitPrice ?? item.priceFrom)} / pcs</strong>
-                {item.quantityTierApplied && item.quantityTierLabel ? <> · Tier harga: <strong>{item.quantityTierLabel}</strong></> : <> · Harga regular</>}
+                {item.quantityTierApplied && item.quantityTierLabel ? <>, Tier harga: <strong>{item.quantityTierLabel}</strong></> : <>, Harga regular</>}
                 <span className="mt-1 block text-brand-700">Harga final tetap dapat di-override oleh admin sebelum quotation dikirim.</span>
               </div>
               <NumberField
@@ -523,7 +523,7 @@ export function AdminQuotationStatusActions({
               </div>
               {item.embroideryLines.length > 0 ? (
                 <div className="md:col-span-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-3">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-900">Breakdown bordir · kalkulasi awal {formatIDR(item.embroideryTotal)}</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-900">Breakdown bordir, kalkulasi awal {formatIDR(item.embroideryTotal)}</p>
                   <div className="mt-3 grid gap-3 md:grid-cols-2">
                     {item.embroideryLines.map((line) => (
                       <div key={line.zoneId} className="grid gap-3 rounded-xl bg-white p-3 ring-1 ring-amber-100 sm:grid-cols-2">

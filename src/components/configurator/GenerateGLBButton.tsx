@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/Button";
 interface GenerateGLBButtonProps {
   /** primary product photo URL (single-image mode) */
   imageUrl: string;
-  /** optional additional photo URLs for multi-image mode (1–4 total).
+  /** optional additional photo URLs for multi-image mode (1-4 total).
    *  When provided, the button triggers multi-image-to-3d → 1 solid GLB. */
   multiImageUrls?: string[];
   /** model3d id, used to label the generated model */

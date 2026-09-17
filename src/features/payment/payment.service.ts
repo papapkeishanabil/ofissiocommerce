@@ -131,6 +131,7 @@ export async function createPaymentFromCart(input: {
     id: orderId,
     orderNumber: referenceId,
     cartId: cart.id,
+    orderNote: cart.orderNote,
     companyId: cart.companyId,
     userId: cart.userId,
     items: cart.items,

@@ -168,7 +168,7 @@ export function Photo360Viewer({
 
       {/* Angle indicator + drag hint */}
       <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold text-ink-muted shadow-soft-xs backdrop-blur">
-        {Math.round(angle)}° · {activeFrame.label} · drag untuk putar
+        {Math.round(angle)}°, {activeFrame.label}, drag untuk putar
       </div>
 
       {/* Zoom controls */}

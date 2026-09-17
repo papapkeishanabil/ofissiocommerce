@@ -95,8 +95,8 @@ export function AdminEmailTestForm({ defaultTo }: { defaultTo: string }) {
                 <p className="font-bold">{result.message}</p>
                 {result.provider && result.status ? (
                   <p className="mt-1 text-xs">
-                    Provider {result.provider} · status {result.status}
-                    {result.emailLogId ? ` · log ${result.emailLogId}` : ""}
+                    Provider {result.provider}, status {result.status}
+                    {result.emailLogId ? `, log ${result.emailLogId}` : ""}
                   </p>
                 ) : null}
               </div>

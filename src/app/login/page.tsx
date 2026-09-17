@@ -3,6 +3,7 @@ import { Onest } from "next/font/google";
 import { redirect } from "next/navigation";
 
 import { LoginPageClient } from "@/components/auth/LoginPageClient";
+import { storefrontFont } from "@/components/shell/storefront-font";
 
 export const metadata: Metadata = { title: "Masuk" };
 
@@ -34,7 +35,7 @@ export default async function LoginPage({
   const fallback = mode === "admin" ? "/admin" : "/dashboard";
   const nextPath = safeNextPath(query.next, fallback);
   return (
-    <div className={`${onest.variable} font-[var(--font-admin)]`}>
+    <div className={mode === "admin" ? `${onest.variable} font-[var(--font-admin)]` : storefrontFont.className}>
       <LoginPageClient
         mode={mode}
         nextPath={nextPath}

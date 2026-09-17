@@ -55,7 +55,7 @@ export function LogoAssetCard({
             {logo.originalFilename}
           </p>
           <p className="mt-1 text-[10px] text-ink-muted">
-            {logo.extension.toUpperCase()} · {formatSize(logo.sizeBytes)} ·{" "}
+            {logo.extension.toUpperCase()}, {formatSize(logo.sizeBytes)},{" "}
             {logo.status}
           </p>
           {previewFailed && (

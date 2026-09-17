@@ -9,7 +9,7 @@ type Size = "sm" | "md" | "lg" | "icon";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900 focus-visible:outline-brand-700 disabled:bg-brand-300 shadow-soft-sm hover:shadow-glow-brand",
+    "bg-[var(--action-primary,var(--color-brand-700))] text-white hover:bg-[var(--action-hover,var(--color-brand-800))] active:bg-[var(--action-hover,var(--color-brand-900))] focus-visible:outline-brand-700 disabled:bg-[var(--action-disabled,var(--color-brand-300))] disabled:text-[var(--action-disabled-ink,white)]",
   secondary:
     "bg-ink text-white hover:bg-ink-strong focus-visible:outline-ink disabled:bg-slate-400 shadow-soft-sm",
   ghost:
@@ -28,7 +28,7 @@ const SIZES: Record<Size, string> = {
 };
 
 const BASE =
-  "inline-flex items-center justify-center rounded-full font-semibold tracking-tight transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-100 disabled:active:scale-100";
+  "inline-flex items-center justify-center rounded-[var(--control-radius,9999px)] font-semibold tracking-tight transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-100 disabled:active:scale-100";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;

@@ -48,7 +48,11 @@ import {
   HOMEPAGE_ICON_KEYS,
   resolveHomepageIcon,
 } from "@/features/site-content/icon-registry";
-import type { FieldDescriptor, SectionKey } from "@/features/site-content/content.schema";
+import { getSectionEntry } from "@/features/site-content/content.schema";
+import type { FieldDescriptor, SectionKey, IndustryInspirationData } from "@/features/site-content/content.schema";
+import { upsertInspirationDraft } from "@/features/site-content/industry-inspiration.draft";
+import { IndustryInspirationEditor } from "@/features/site-content/components/IndustryInspirationEditor";
+import { IndustryInspirationPagesEditor } from "@/features/site-content/components/IndustryInspirationPagesEditor";
 import { cn } from "@/lib/utils";
 
 export interface SiteContentEditorState {
@@ -91,6 +95,8 @@ function blankFromDescriptor(f: FieldDescriptor): unknown {
       return [];
     case "discriminated":
       return blankDiscriminated(f.discriminator, f.variants, Object.keys(f.variants)[0] ?? "");
+    case "industryInspiration":
+      return {};
   }
 }
 
@@ -120,6 +126,33 @@ function itemCount(data: unknown): number | null {
   return Array.isArray(items) ? items.length : null;
 }
 
+/** Rangkai issue validasi menjadi nama kolom yang dikenal admin, mis.
+ *  "Kartu Ulasan — ulasan #1: Tanggal". API menolak payload invalid dengan
+ *  pesan generik (kebijakan safe-error untuk permukaan publik), jadi editor
+ *  memvalidasi lokal dengan skema yang sama persis sebelum mengirim — admin
+ *  langsung tahu kolom mana yang harus dilengkapi. */
+function describeValidationIssues(
+  issues: readonly { path: readonly PropertyKey[] }[],
+  fields: readonly FieldDescriptor[],
+): string {
+  const parts = issues.slice(0, 4).map((issue) => {
+    const [root, index, leaf] = issue.path;
+    if (typeof root === "string" && typeof index === "number" && typeof leaf === "string") {
+      const list = fields.find(
+        (field): field is Extract<FieldDescriptor, { kind: "list" }> =>
+          field.kind === "list" && field.key === root,
+      );
+      const leafField = list?.itemFields?.find((field) => field.key === leaf);
+      if (list && leafField) {
+        return `${list.label} — ${list.itemLabel ?? "item"} #${index + 1}: ${leafField.label}`;
+      }
+    }
+    const rootField = fields.find((field) => field.key === root);
+    return rootField ? rootField.label : issue.path.join(".") || "data";
+  });
+  return `Data belum valid. Periksa: ${parts.join("; ")}.`;
+}
+
 export function SiteContentEditor({
   section,
   label,
@@ -147,6 +180,17 @@ export function SiteContentEditor({
 
   function save() {
     setMessage(null);
+    // Validasi lokal dulu dengan skema section yang sama persis — pesan
+    // kegagalan API sengaja generik, di sini kita bisa menyebut kolomnya.
+    const entry = getSectionEntry(section);
+    const parsed = entry ? entry.schema.safeParse(data) : null;
+    if (parsed && !parsed.success) {
+      setMessage({
+        kind: "err",
+        text: describeValidationIssues(parsed.error.issues, fields),
+      });
+      return;
+    }
     startTransition(async () => {
       const response = await fetch("/api/admin/site-content", {
         method: "PATCH",
@@ -226,7 +270,22 @@ export function SiteContentEditor({
       ) : null}
 
       <fieldset disabled={disabled} className="mt-5 space-y-5">
-        {fields.map((field) => (
+        {fields.map((field) => field.kind === "industryInspiration" ? (
+          <IndustryInspirationPagesEditor
+            key={field.key}
+            label={field.label}
+            help={field.help}
+            legacy={data[field.key]}
+            value={data.inspirationPages}
+            onChange={(next) => setData((current) => ({
+              ...current,
+              inspirationPages: upsertInspirationDraft(
+                Array.isArray(current.inspirationPages) ? current.inspirationPages as IndustryInspirationData[] : [],
+                next,
+              ),
+            }))}
+          />
+        ) : (
           <FieldRenderer
             key={field.key}
             field={field}
@@ -284,6 +343,17 @@ function FieldRenderer({
   onChange: (next: unknown) => void;
 }) {
   const id = useId();
+
+  if (field.kind === "industryInspiration") {
+    return (
+      <IndustryInspirationEditor
+        label={field.label}
+        help={field.help}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  }
 
   if (field.kind === "text") {
     return (

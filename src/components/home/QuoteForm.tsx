@@ -31,7 +31,7 @@ export function QuoteForm() {
         Pilih cara memulai
       </p>
       <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-ink-strong">
-        Kebutuhan Anda masuk jalur yang tepat sejak awal.
+        Mulai dari jalur yang sesuai dengan kebutuhan Anda.
       </h3>
       <p className="mt-2 text-sm leading-6 text-ink-muted">
         Tidak perlu mengisi formulir umum. Pilih jalur sesuai kebutuhan agar tim Ofissio

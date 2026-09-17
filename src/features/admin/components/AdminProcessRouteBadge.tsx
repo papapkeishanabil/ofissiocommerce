@@ -14,21 +14,21 @@ const ROUTE_APPEARANCE: Record<
   }
 > = {
   fulfillment: {
-    label: "STK · Ready Stock",
+    label: "STK, Ready Stock",
     description: "Picking, packing & shipping",
     Icon: PackageCheck,
     className: "bg-sky-50 text-sky-900 ring-sky-200",
     iconClassName: "bg-sky-700 text-white",
   },
   customization: {
-    label: "CUS · Custom",
+    label: "CUS, Custom",
     description: "Bordir, sablon & custom ringan",
     Icon: Scissors,
     className: "bg-violet-50 text-violet-900 ring-violet-200",
     iconClassName: "bg-violet-700 text-white",
   },
   production: {
-    label: "PRO · Production",
+    label: "PRO, Production",
     description: "Produksi khusus & SPK",
     Icon: Factory,
     className: "bg-amber-50 text-amber-950 ring-amber-200",

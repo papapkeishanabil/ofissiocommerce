@@ -1,11 +1,15 @@
 // src/components/configurator/EmbroideryZoneSelector.tsx
 "use client";
 
+import Image from "next/image";
 import { zoneLabel, type EmbroideryZone } from "@/types/uniform-3d";
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import styles from "./Studio.module.css";
 
 interface EmbroideryZoneSelectorProps {
+  heading: string;
+  description: string;
   selectedZone: EmbroideryZone | null;
   onSelect: (zone: EmbroideryZone) => void;
   placedZones: Set<EmbroideryZone>;
@@ -13,41 +17,97 @@ interface EmbroideryZoneSelectorProps {
 }
 
 export function EmbroideryZoneSelector({
+  heading,
+  description,
   selectedZone,
   onSelect,
   placedZones,
   zones,
 }: EmbroideryZoneSelectorProps) {
   return (
-    <div>
-      <p className="type-eyebrow mb-2 text-ink-subtle">Zona bordir</p>
-      <div className="grid grid-cols-2 gap-1.5">
+    <section aria-labelledby="embroidery-zone-heading">
+      <h3 id="embroidery-zone-heading" className={styles.label}>{heading}</h3>
+      <p className={styles.help}>{description}</p>
+      <div
+        role="group"
+        aria-label="Zona bordir"
+        className={styles.zones}
+      >
         {zones.map((z) => {
           const isPlaced = placedZones.has(z);
           const isSelected = selectedZone === z;
+          const label = customerZoneLabel(z);
           return (
             <button
               key={z}
               type="button"
               onClick={() => onSelect(z)}
               aria-pressed={isSelected}
-              className={cn(
-                "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-semibold transition-all",
-                isSelected
-                  ? "border-brand-700 bg-brand-50 text-brand-700 ring-1 ring-brand-200"
-                  : "border-line bg-surface text-ink hover:border-brand-300",
-              )}
+              aria-label={`${isPlaced ? "Edit" : "Tambah"} zona ${label}`}
+              className={cn("group", styles.zone)}
             >
+              <ZonePositionIcon zone={z} />
+              <span className={styles.zoneName}>{label}</span>
+              <span
+                className={styles.zoneState}
+                data-state={isPlaced ? "placed" : isSelected ? "selected" : "available"}
+              >
+                {isPlaced ? "Ditambahkan" : isSelected ? "Dipilih" : "Tambah"}
+              </span>
               {isPlaced ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-ochre-500" />
-              ) : (
-                <Circle className="h-3.5 w-3.5 text-ink-subtle" />
-              )}
-              {zoneLabel(z)}
+                <CheckCircle2
+                  className="absolute right-2 top-2 h-4 w-4 text-emerald-600"
+                  aria-hidden="true"
+                />
+              ) : null}
             </button>
           );
         })}
       </div>
-    </div>
+    </section>
+  );
+}
+
+function customerZoneLabel(zone: EmbroideryZone) {
+  if (zone === "left_sleeve") return "Lengan Kiri";
+  if (zone === "right_sleeve") return "Lengan Kanan";
+  return zoneLabel(zone);
+}
+
+const ZONE_ICON_ASSETS: Record<EmbroideryZone, string> = {
+  left_chest: "/assets/embroidery-zones/zone-right-chest.png",
+  right_chest: "/assets/embroidery-zones/zone-right-chest.png",
+  left_sleeve: "/assets/embroidery-zones/zone-left-sleeve.png",
+  right_sleeve: "/assets/embroidery-zones/zone-left-sleeve.png",
+  upper_back: "/assets/embroidery-zones/zone-upper-back.png",
+  middle_back: "/assets/embroidery-zones/zone-center-back-v2.png",
+};
+
+function ZonePositionIcon({ zone }: { zone: EmbroideryZone }) {
+  const isSleeve = zone === "left_sleeve" || zone === "right_sleeve";
+  const isMirrored = zone === "left_chest" || zone === "right_sleeve";
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "relative grid h-9 w-10 place-items-center overflow-hidden",
+        // Mirror the frame so the image's size/hover scale cannot override it.
+        isMirrored && "-scale-x-100",
+      )}
+    >
+      <Image
+        src={ZONE_ICON_ASSETS[zone]}
+        alt=""
+        width={96}
+        height={96}
+        className={cn(
+          "h-9 w-9 object-contain transition-transform duration-200",
+          isSleeve
+            ? "scale-[1.35] group-hover:scale-[1.42]"
+            : "scale-110 group-hover:scale-[1.16]",
+        )}
+      />
+    </span>
   );
 }

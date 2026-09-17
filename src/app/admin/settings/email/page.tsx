@@ -248,7 +248,7 @@ export default async function AdminEmailSettingsPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-bold text-ink">{log.subject}</p>
-                      <p className="mt-1 text-xs text-ink-muted">{log.type} · {log.provider}</p>
+                      <p className="mt-1 text-xs text-ink-muted">{log.type}, {log.provider}</p>
                     </div>
                     <EmailStatusBadge status={log.status} />
                   </div>

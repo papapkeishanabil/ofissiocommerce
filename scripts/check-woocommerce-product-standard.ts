@@ -54,7 +54,95 @@ async function run() {
   assertCustomerStockIsPrivate();
   console.log("PASS: payload dan UI customer tidak menampilkan atau memblokir order berdasarkan stok.");
 
+  assertModelOrientation();
+  console.log("PASS: orientasi model KK-006 dikoreksi 90 derajat dan dapat dioverride metadata.");
+
+  assertModelColorCalibration();
+  console.log("PASS: kalibrasi warna 3D memakai nilai netral dan metadata per produk.");
+
+  assertCanonicalSleeveSpecification();
+  console.log("PASS: spesifikasi lengan publik hanya memakai nilai kanonis dari Admin Ofissio.");
+
   await checkLiveWooCommerce();
+}
+
+function assertCanonicalSleeveSpecification() {
+  const fixture = standardFixture("KK-006").product;
+  fixture.attributes = [
+    ...(fixture.attributes ?? []),
+    {
+      id: 2,
+      name: "PANJANG LENGAN",
+      slug: "pa_panjang-lengan",
+      options: ["LENGAN PANJANG", "LENGAN PENDEK"],
+      visible: true,
+      variation: false,
+    },
+    {
+      id: 3,
+      name: "Tipe Lengan",
+      slug: "pa_tipe-lengan",
+      options: ["short"],
+      visible: true,
+      variation: false,
+    },
+  ];
+  fixture.meta_data = [
+    ...(fixture.meta_data ?? []),
+    { key: "sleeve_type", value: "short" },
+  ];
+
+  const mapped = mapWooCommerceProductToOfissioProduct(fixture);
+  const sleeveSpecs = mapped.specs.filter((spec) =>
+    /lengan/i.test(spec.label),
+  );
+  assert(sleeveSpecs.length === 1, "spesifikasi lengan lama tidak boleh tampil ganda");
+  assert(
+    sleeveSpecs[0]?.label === "Tipe Lengan" && sleeveSpecs[0]?.value === "Pendek",
+    "nilai sleeve_type short harus ditampilkan sebagai Tipe Lengan: Pendek",
+  );
+}
+
+function assertModelOrientation() {
+  const kk006 = mapWooCommerceProductToOfissioProduct(standardFixture("KK-006").product);
+  assert(kk006.model_3d?.orientationY === 90, "KK-006 lama harus memakai koreksi orientasi 90 derajat");
+
+  const overridden = standardFixture("KK-006").product;
+  overridden.meta_data = [
+    ...(overridden.meta_data ?? []),
+    { key: "model3d_rotation_y", value: 270 },
+  ];
+  assert(
+    mapWooCommerceProductToOfissioProduct(overridden).model_3d?.orientationY === 270,
+    "metadata orientasi harus mengalahkan koreksi bawaan SKU",
+  );
+
+  const kl007 = mapWooCommerceProductToOfissioProduct(standardFixture("KL-007").product);
+  assert(kl007.model_3d?.orientationY === 0, "model lain harus tetap memakai orientasi 0 derajat");
+}
+
+function assertModelColorCalibration() {
+  const legacy = mapWooCommerceProductToOfissioProduct(standardFixture("KK-006").product);
+  assert(legacy.model_3d?.brightness === 1, "brightness lama harus tetap netral");
+  assert(legacy.model_3d?.saturation === 1, "saturation lama harus tetap netral");
+  assert(legacy.model_3d?.hue === 0, "hue lama harus tetap netral");
+  assert(legacy.model_3d?.temperature === 0, "temperature lama harus tetap netral");
+
+  const calibrated = standardFixture("TG-055").product;
+  calibrated.meta_data = [
+    ...(calibrated.meta_data ?? []),
+    // WooCommerce returns numeric meta as strings after persistence. Negative
+    // signs must survive that round trip.
+    { key: "model3d_brightness", value: "1.1" },
+    { key: "model3d_saturation", value: "0.75" },
+    { key: "model3d_hue", value: "-6" },
+    { key: "model3d_temperature", value: "-0.1" },
+  ];
+  const mapped = mapWooCommerceProductToOfissioProduct(calibrated);
+  assert(mapped.model_3d?.brightness === 1.1, "brightness metadata tidak terbaca");
+  assert(mapped.model_3d?.saturation === 0.75, "saturation metadata tidak terbaca");
+  assert(mapped.model_3d?.hue === -6, "hue metadata tidak terbaca");
+  assert(mapped.model_3d?.temperature === -0.1, "temperature metadata tidak terbaca");
 }
 
 function assertReadinessPolicy() {

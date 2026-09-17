@@ -116,7 +116,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-soft-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="type-eyebrow text-amber-800">Tahap 1 dari 2 · approval brief</p>
+              <p className="type-eyebrow text-amber-800">Tahap 1 dari 2, approval brief</p>
               <h2 className="mt-1 text-lg font-black text-amber-950">
                 {briefApprovalStatus === "revision_requested"
                   ? "Customer meminta revisi spesifikasi"
@@ -179,7 +179,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                 : formatCustomerRequestNumber(quotation.quotationNumber, quotation.requestedProcessRoute)}
             </h1>
             <p className="mt-1 text-sm text-ink-muted">
-              {quotation.companyName} · {formatAdminDate(quotation.createdAt)}
+              {quotation.companyName}, {formatAdminDate(quotation.createdAt)}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -217,7 +217,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
           </div>
           <div className="rounded-2xl bg-slate-50 p-4">
             <dt className="text-xs font-bold uppercase tracking-[0.16em] text-ink-muted">Qty / Items</dt>
-            <dd className="mt-1 font-semibold text-ink">{quotation.totalQty} pcs · {quotation.items.length} item</dd>
+            <dd className="mt-1 font-semibold text-ink">{quotation.totalQty} pcs, {quotation.items.length} item</dd>
             <dd className="text-ink-muted">{quotation.embroideryPointCount} titik bordir</dd>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4">
@@ -257,9 +257,9 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                 label="Sumber brief"
                 value={quotation.productionBrief.intakeChannel === "customer_portal"
                   ? (briefEnriched
-                    ? "Customer portal · diperkaya sales"
+                    ? "Customer portal, diperkaya sales"
                     : "Customer portal")
-                  : `Sales-assisted · ${quotation.productionBrief.intakeChannel ?? "internal"}`}
+                  : `Sales-assisted, ${quotation.productionBrief.intakeChannel ?? "internal"}`}
               />
               {quotation.productionBrief.customerRequestSnapshot ? (
                 <BriefRow
@@ -313,7 +313,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         icon={Mail}
         tone="neutral"
         eyebrow="Email delivery"
-        title={emailConfig.enabled ? `Provider ${emailConfig.provider}` : "Email real belum aktif — mock/skipped"}
+        title={emailConfig.enabled ? `Provider ${emailConfig.provider}` : "Email real belum aktif (mock/skipped)"}
         description={`Status quotation saat ini: ${quotation.emailStatus}. Email failure tidak membatalkan quotation flow.`}
         actions={
           <>
@@ -505,7 +505,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                       <div className="min-w-0">
                         <h4 className="text-base font-extrabold tracking-tight text-ink">{item.productName}</h4>
                         <p className="text-sm text-ink-muted">
-                          SKU {item.sku} · {item.selectedColor} · {item.totalQty} pcs
+                          SKU {item.sku}, {item.selectedColor}, {item.totalQty} pcs
                         </p>
                       </div>
                       <AdminBadge tone="brand">{item.fulfillmentType}</AdminBadge>
@@ -561,7 +561,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                                           {placement.logoFileName}
                                         </p>
                                         <p className="text-xs text-ink-muted">
-                                          {embroideryTechniqueLabel(placement.technique)} · {placement.widthCm}×{placement.heightCm} cm · Rotasi {placement.rotation}°
+                                          {embroideryTechniqueLabel(placement.technique)}, {placement.widthCm}×{placement.heightCm} cm, Rotasi {placement.rotation}°
                                         </p>
                                       </div>
                                     </div>
@@ -598,7 +598,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                 </div>
                 <p className="mt-1 text-ink-muted">
                   {event.oldStatus ?? "-"} → {event.newStatus ?? "-"}
-                  {event.note ? ` · ${event.note}` : ""}
+                  {event.note ? `, ${event.note}` : ""}
                 </p>
               </li>
             ))}
@@ -674,7 +674,7 @@ function TechnicalSpecificationCard({
         <div>
           <p className="font-bold text-ink">{garment.garmentType}</p>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
-            {garment.category} · {garment.quantity} pcs
+            {garment.category}, {garment.quantity} pcs
           </p>
         </div>
         {garment.templateKey ? (
@@ -691,7 +691,7 @@ function TechnicalSpecificationCard({
                   ? "Minta rekomendasi Ofissio"
                   : [specification.option, specification.detail, specification.notes]
                       .filter(Boolean)
-                      .join(" · ") || "Digunakan"}
+                      .join(", ") || "Digunakan"}
               </dd>
             </div>
           ))}

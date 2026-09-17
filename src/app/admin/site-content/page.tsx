@@ -18,9 +18,9 @@ export default async function AdminSiteContentPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Homepage CMS"
-        title="Konten Homepage"
-        description="Ubah teks, statistik, dan kartu yang tampil di halaman utama. Perubahan tersimpan ke tabel site_content dan langsung tampil di publik setelah disimpan."
+        eyebrow="Website CMS"
+        title="Konten Website"
+        description="Ubah teks, media, kartu homepage, dan halaman inspirasi. Perubahan tersimpan ke site_content dan tampil di publik setelah disimpan."
       >
         <span
           className={cn(

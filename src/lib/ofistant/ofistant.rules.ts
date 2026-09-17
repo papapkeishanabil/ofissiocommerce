@@ -210,7 +210,7 @@ function estimateNeedsProduct(
     message:
       productReplies.length > 0
         ? "Estimasi butuh produk spesifik. Pilih salah satu produk di bawah, atau ketik namanya:"
-        : "Estimasi butuh produk spesifik. Saat ini belum ada produk aktif yang bisa saya hitungkan — coba buka katalog atau hubungi CS Ofissio.",
+        : "Estimasi butuh produk spesifik. Saat ini belum ada produk aktif yang bisa saya hitungkan. Coba buka katalog atau hubungi CS Ofissio.",
     quickReplies:
       productReplies.length > 0 ? productReplies : ["Lihat katalog", "Hubungi CS Ofissio"],
     contextPatch: {
@@ -657,7 +657,7 @@ const addToCart: Rule = ({ text, ctx, taxonomy }) => {
     Object.values(ctx.sizeMatrix).reduce((a, b) => a + b, 0);
   if (!ctx.sizeMatrix || sizeQty === 0) {
     return {
-      message: `Saya bisa bantu tambahkan ${product.name}. Mohon pastikan warna dan jumlah per ukuran sudah sesuai terlebih dahulu. Berikut pratinjau default (MOQ ${product.moq} pcs, terbagi per ukuran) — konfirmasi untuk menambahkan.`,
+      message: `Saya bisa bantu tambahkan ${product.name}. Mohon pastikan warna dan jumlah per ukuran sudah sesuai terlebih dahulu. Berikut pratinjau default (MOQ ${product.moq} pcs, terbagi per ukuran). Silakan konfirmasi untuk menambahkan.`,
       action,
       requiresConfirm: true,
       quickReplies: ["Konfirmasi", "Ubah ukuran dulu"],
@@ -687,7 +687,7 @@ const open3DConfigurator: Rule = ({ text, ctx, taxonomy }) => {
   if (!ctx.selectedProductSlug) {
     return {
       message:
-        "Untuk atur bordir logo via preview 3D, saya buka katalog dulu — pilih produk yang didukung konfigurator 3D (mis. Kemeja Lapangan Ripstop), lalu klik tombol “Preview 3D & Bordir Logo”.",
+        "Untuk atur bordir logo via preview 3D, saya buka katalog dulu. Pilih produk yang didukung konfigurator 3D (mis. Kemeja Lapangan Ripstop), lalu klik tombol “Preview 3D & Bordir Logo”.",
       action: { type: "SHOW_PRODUCTS", payload: {} },
       quickReplies: ["Kemeja Lapangan Ripstop", "Lihat keranjang"],
     };

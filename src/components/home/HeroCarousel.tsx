@@ -185,7 +185,7 @@ function PackagePanel({ panel }: { panel: HeroPackagePanel }) {
       <div className="mt-3 flex items-center gap-2 text-sm font-bold text-ochre-300">
         <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
         Siap bordir logo
-        <span className="font-semibold text-white/90">· {panel.pill}</span>
+        <span className="font-semibold text-white/90">, {panel.pill}</span>
       </div>
     </div>
   );
@@ -483,7 +483,7 @@ export function HeroCarousel({
 
                     <div className="mt-[clamp(1rem,2.5vh,2rem)] flex flex-wrap gap-2.5">
                       {s.chips
-                        .filter((chip) => !/(?:^|\s)8\s*pcs|2\s*[–-]\s*4\s*hari/i.test(chip.label))
+                        .filter((chip) => !/(?:^|\s)8\s*pcs|2\s*[--]\s*4\s*hari/i.test(chip.label))
                         .slice(0, 2)
                         .map((c) => {
                         const ChipIcon = resolveHomepageIcon(c.icon);

@@ -84,11 +84,11 @@ export function AdminBriefSignaturePanel({
           <h2 className="mt-2 text-lg font-bold text-ink">Tanda tangan &amp; revisi brief</h2>
           <p className="mt-1 text-sm leading-6 text-ink-muted">
             Status: <strong className={locked ? "text-emerald-700" : "text-amber-700"}>{statusLabel}</strong>
-            {revisionNo > 0 ? ` · Revisi ${String(revisionNo).padStart(2, "0")}` : ""}
+            {revisionNo > 0 ? `, Revisi ${String(revisionNo).padStart(2, "0")}` : ""}
           </p>
           {portalOrigin ? (
             <p className="mt-1 text-xs font-semibold text-brand-700">
-              Brief dari permintaan customer (portal){brief.enrichedAt ? ` · diperkaya ${formatDate(brief.enrichedAt)}` : ""}
+              Brief dari permintaan customer (portal){brief.enrichedAt ? `, diperkaya ${formatDate(brief.enrichedAt)}` : ""}
             </p>
           ) : null}
         </div>

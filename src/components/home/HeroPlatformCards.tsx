@@ -32,7 +32,7 @@ const CARD =
 export function HeroPlatformCards({ className }: Props) {
   return (
     <div className={`relative h-[560px] ${className ?? ""}`} aria-hidden="true">
-      {/* 1 · Product — hero card, biggest, right-center */}
+      {/* 1, Product — hero card, biggest, right-center */}
       <article
         className={`absolute right-0 top-1/2 z-30 w-[300px] -translate-y-1/2 rotate-[1.5deg] p-3.5 ${CARD}`}
       >
@@ -63,7 +63,7 @@ export function HeroPlatformCards({ className }: Props) {
             Kemeja Oxford
           </div>
           <div className="text-[11px] font-semibold tracking-wide text-ink-muted">
-            KK-006 · Slim / Regular
+            KK-006, Slim / Regular
           </div>
           <div className="mt-2.5">
             <span className="inline-flex items-center gap-1 rounded-lg bg-ochre-400 px-2.5 py-1 text-[11px] font-extrabold text-brand-950">
@@ -73,7 +73,7 @@ export function HeroPlatformCards({ className }: Props) {
         </div>
       </article>
 
-      {/* 2 · Quotation — smaller, peeks over product's top-left */}
+      {/* 2, Quotation — smaller, peeks over product's top-left */}
       <article
         className={`absolute right-[30%] top-[2%] z-40 w-[250px] -rotate-[2deg] ${CARD}`}
       >
@@ -83,7 +83,7 @@ export function HeroPlatformCards({ className }: Props) {
               Quotation #Q-2026-0148
             </div>
             <div className="truncate text-[10px] font-medium text-ink-muted">
-              PT Sumber Jaya · 12 Agu 2026
+              PT Sumber Jaya, 12 Agu 2026
             </div>
           </div>
           <span className="shrink-0 rounded-md bg-ochre-400 px-1.5 py-0.5 text-[9px] font-extrabold text-brand-950">
@@ -110,11 +110,11 @@ export function HeroPlatformCards({ className }: Props) {
         </div>
       </article>
 
-      {/* 3 · Batch — medium, tucked under product's bottom-right */}
+      {/* 3, Batch — medium, tucked under product's bottom-right */}
       <article className={`absolute bottom-0 right-0 z-20 w-[275px] rotate-[1.5deg] ${CARD}`}>
         <div className="flex items-center justify-between px-3.5 pt-2.5">
           <div className="text-[12px] font-extrabold text-brand-900">Batch #B-042</div>
-          <div className="text-[10px] font-bold tabular-nums text-ink-muted">Produksi · 62%</div>
+          <div className="text-[10px] font-bold tabular-nums text-ink-muted">Produksi 62%</div>
         </div>
         <div className="mx-3.5 mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
           <div className="h-full w-[62%] rounded-full bg-gradient-to-r from-brand-400 to-brand-600" />
@@ -150,7 +150,7 @@ export function HeroPlatformCards({ className }: Props) {
         </div>
       </article>
 
-      {/* 4 · Ofistant — compact, peeks over batch's top-left */}
+      {/* 4, Ofistant — compact, peeks over batch's top-left */}
       <article
         className={`absolute bottom-[6%] right-[40%] z-40 w-[225px] -rotate-[2deg] p-3.5 ${CARD}`}
       >
@@ -166,7 +166,7 @@ export function HeroPlatformCards({ className }: Props) {
               </span>
             </div>
             <div className="mt-0.5 text-[10px] leading-snug text-ink-muted">
-              Estimasi 100 pcs + bordir dada kiri —{" "}
+              Estimasi 100 pcs + bordir dada kiri,{" "}
               <span className="font-bold tabular-nums text-brand-900">Rp 14.000.000</span>
             </div>
           </div>

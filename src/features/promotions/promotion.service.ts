@@ -78,7 +78,7 @@ function toPublicPromotion(coupon: WooCommerceCoupon): PublicPromotion {
       validity,
     ]
       .filter(Boolean)
-      .join(" · "),
+      .join(", "),
   };
 }
 

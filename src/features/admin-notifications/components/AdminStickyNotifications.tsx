@@ -36,7 +36,7 @@ export function AdminStickyNotifications() {
           href="/admin/notifications"
           className="block rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-center text-sm font-semibold text-brand-700 shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
         >
-          +{more} notifikasi lainnya · Lihat Semua
+          +{more} notifikasi lainnya, Lihat Semua
         </Link>
       ) : null}
     </section>
@@ -92,7 +92,7 @@ function NotificationCard({
           <strong className="text-ink">
             {isQuotationRequest
               ? totalQty > 0
-                ? `${totalQty} pcs · ${requestPresentation.pendingLabel}`
+                ? `${totalQty} pcs, ${requestPresentation.pendingLabel}`
                 : requestPresentation.pendingLabel
               : formatNotificationMoney(total, currency)}
           </strong>

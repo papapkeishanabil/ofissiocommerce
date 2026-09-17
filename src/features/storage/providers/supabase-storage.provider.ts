@@ -29,6 +29,37 @@ function objectUrl(baseUrl: string, bucket: string, key: string) {
   return `${baseUrl}/storage/v1/object/${safeBucket}/${safeKey}`;
 }
 
+const STORAGE_READ_RETRY_DELAYS_MS = [0, 350, 1_000] as const;
+
+async function fetchStorageRead(url: string, init: RequestInit) {
+  let lastError: unknown = new Error("Supabase Storage belum dapat dihubungi.");
+
+  for (let attempt = 0; attempt < STORAGE_READ_RETRY_DELAYS_MS.length; attempt += 1) {
+    const delayMs = STORAGE_READ_RETRY_DELAYS_MS[attempt] ?? 0;
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+
+    try {
+      const response = await fetch(url, {
+        ...init,
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      });
+      const transientStatus = response.status === 429 || response.status >= 500;
+      if (!transientStatus || attempt === STORAGE_READ_RETRY_DELAYS_MS.length - 1) {
+        return response;
+      }
+      lastError = new Error(`Supabase Storage transient HTTP ${response.status}.`);
+    } catch (error) {
+      lastError = error;
+      if (attempt === STORAGE_READ_RETRY_DELAYS_MS.length - 1) break;
+    }
+  }
+
+  throw lastError;
+}
+
 async function assertOk(
   response: Response,
   action: string,
@@ -90,7 +121,7 @@ export const supabaseStorageProvider: StorageObjectProvider = {
     const safeKey = input.key.split("/").map(encodeURIComponent).join("/");
     let response: Response;
     try {
-      response = await fetch(`${url}/storage/v1/object/sign/${safeBucket}/${safeKey}`, {
+      response = await fetchStorageRead(`${url}/storage/v1/object/sign/${safeBucket}/${safeKey}`, {
         method: "POST",
         headers: headers("application/json"),
         body: JSON.stringify({ expiresIn: input.expiresInSeconds }),
@@ -145,10 +176,9 @@ export const supabaseStorageProvider: StorageObjectProvider = {
     const { url } = supabaseStorageConfig();
     let response: Response;
     try {
-      response = await fetch(objectUrl(url, input.bucket, input.key), {
+      response = await fetchStorageRead(objectUrl(url, input.bucket, input.key), {
         method: "HEAD",
         headers: headers(),
-        cache: "no-store",
       });
     } catch (error) {
       logInternalError(error, {

@@ -126,7 +126,7 @@ export function AddressesPage() {
                     {a.isDefaultBilling && <Badge tone="neutral">Tagih utama</Badge>}
                   </div>
                   <p className="mt-1 text-sm text-ink">
-                    {a.recipientName} · {a.recipientPhone}
+                    {a.recipientName}, {a.recipientPhone}
                   </p>
                   <p className="mt-0.5 text-xs text-ink-muted">
                     {a.street}, {a.city}, {a.province} {a.postalCode}

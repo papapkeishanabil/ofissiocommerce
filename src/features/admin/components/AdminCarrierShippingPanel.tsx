@@ -149,10 +149,10 @@ export function AdminCarrierShippingPanel(props: AdminCarrierShippingPanelProps)
             <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="font-extrabold text-ink">
-                  {props.selectedShippingRate.courierName} · {props.selectedShippingRate.serviceName}
+                  {props.selectedShippingRate.courierName}, {props.selectedShippingRate.serviceName}
                 </p>
                 <p className="text-sm text-ink-muted">
-                  {props.selectedShippingRate.serviceCode.toUpperCase()} · {props.selectedShippingRate.estimatedDays || "Estimasi mengikuti carrier"}
+                  {props.selectedShippingRate.serviceCode.toUpperCase()}, {props.selectedShippingRate.estimatedDays || "Estimasi mengikuti carrier"}
                 </p>
               </div>
               <p className="font-extrabold text-brand-800">{formatIDR(props.selectedShippingRate.price)}</p>
@@ -233,8 +233,8 @@ export function AdminCarrierShippingPanel(props: AdminCarrierShippingPanelProps)
                       />
                       <span className="flex items-start justify-between gap-3">
                         <span>
-                          <span className="block font-extrabold text-ink">{quote.courierCompany.toUpperCase()} · {quote.courierType.toUpperCase()}</span>
-                          <span className="mt-1 block text-xs text-ink-muted">{quote.courierService} · {quote.duration ?? "Estimasi mengikuti carrier"}</span>
+                          <span className="block font-extrabold text-ink">{quote.courierCompany.toUpperCase()}, {quote.courierType.toUpperCase()}</span>
+                          <span className="mt-1 block text-xs text-ink-muted">{quote.courierService}, {quote.duration ?? "Estimasi mengikuti carrier"}</span>
                         </span>
                         <span className="whitespace-nowrap font-extrabold text-brand-800">{formatIDR(quote.shippingPrice)}</span>
                       </span>

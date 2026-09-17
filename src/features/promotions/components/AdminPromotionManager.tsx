@@ -149,7 +149,7 @@ function SelectionPicker({ label, helper, items, selected, onChange, searchPlace
         const checked = selected.includes(item.id);
         return <label key={item.id} className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition ${checked ? "border-brand-200 bg-brand-50" : "border-transparent bg-white hover:border-slate-200"}`}>
           <input type="checkbox" checked={checked} onChange={() => onChange(checked ? selected.filter((id) => id !== item.id) : [...selected, item.id])} className="h-4 w-4 rounded border-line text-brand-700" />
-          <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-ink">{item.title}</strong><small className="block truncate text-[10px] text-ink-muted">{item.meta} · ID {item.id}</small></span>
+          <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-ink">{item.title}</strong><small className="block truncate text-[10px] text-ink-muted">{item.meta}, ID {item.id}</small></span>
         </label>;
       })}
       {!visible.length ? <p className="py-4 text-center text-[11px] text-ink-muted">Tidak ada data yang cocok.</p> : null}

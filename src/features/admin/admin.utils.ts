@@ -41,7 +41,7 @@ export function safeMetadataSummary(metadata: Record<string, unknown>) {
   return entries
     .slice(0, 4)
     .map(([key, value]) => `${key}: ${stringifySafeValue(value)}`)
-    .join(" · ");
+    .join(", ");
 }
 
 function stringifySafeValue(value: unknown) {

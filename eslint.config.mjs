@@ -19,6 +19,8 @@ export default defineConfig([
   globalIgnores([
     ".next/**",
     ".next-dev/**",
+    ".next-checkout-fixture/**",
+    ".next-inspiration-verify/**",
     "node_modules/**",
     "artifacts/**",
     ".webtest-results/**",

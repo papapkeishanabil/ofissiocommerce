@@ -5,7 +5,7 @@ import { PromotionShowcase } from "@/features/promotions/components/PromotionSho
 export const metadata: Metadata = {
   title: "Promo & Voucher Ofissio",
   description:
-    "Penawaran aktif Ofissio — pilih voucher untuk pesanan seragam kerja Anda.",
+    "Penawaran aktif Ofissio. Pilih voucher untuk pesanan seragam kerja Anda.",
 };
 
 export default function PromoPage() {

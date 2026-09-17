@@ -18,6 +18,20 @@ export const embroideryTechniqueSchema = z.enum([
 ]);
 
 export const logoPlacementSchema = z.object({
+  textBordir: z.object({
+    mode: z.enum(["same", "individual"]),
+    name: z.string().trim().max(40),
+    font: z.enum(["sans", "serif"]),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    allocations: z.array(z.object({
+      name: z.string().trim().min(1).max(40),
+      size: z.enum(["S", "M", "L", "XL", "2XL", "3XL"]),
+      quantity: z.number().int().min(1).max(100000),
+    })).max(500),
+  }).superRefine((value, ctx) => {
+    if (value.mode === "same" && !value.name) ctx.addIssue({ code: "custom", message: "Isi nama bordir.", path: ["name"] });
+    if (value.mode === "individual" && !value.allocations.length) ctx.addIssue({ code: "custom", message: "Tambahkan pembagian nama.", path: ["allocations"] });
+  }).optional(),
   zone: embroideryZoneSchema,
   logoFileId: z.string().min(1),
   logoFileName: z.string().min(1),
@@ -25,7 +39,7 @@ export const logoPlacementSchema = z.object({
   logoPreviewUrl: z.string().optional(),
   widthCm: z.coerce.number().min(3, "Lebar minimal 3 cm").max(30, "Lebar maksimal 30 cm"),
   heightCm: z.coerce.number().min(1, "Tinggi minimal 1 cm").max(30, "Tinggi maksimal 30 cm"),
-  rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]),
+  rotation: z.number().int().min(-360).max(360),
   technique: embroideryTechniqueSchema,
   surfacePoint: z.tuple([z.number(), z.number(), z.number()]).optional(),
   surfaceNormal: z.tuple([z.number(), z.number(), z.number()]).optional(),

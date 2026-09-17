@@ -69,7 +69,7 @@ export function SupportTicketWorkspace({ initialTicket, contact }: { initialTick
       <label className="mt-4 block text-sm font-bold text-ink">Jadwal follow-up berikutnya<input type="datetime-local" value={nextFollowupAt} onChange={(event) => setNextFollowupAt(event.target.value)} className="mt-2 block min-h-11 w-full max-w-sm rounded-xl border border-line px-3 text-sm" /></label>
       <div className="mt-5 flex flex-wrap gap-3"><button disabled={busy} onClick={() => void update("save_followup")} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-bold text-white disabled:opacity-50"><Save className="h-4 w-4" /> Simpan catatan</button><button disabled={busy} onClick={() => void update("waiting_customer")} className="min-h-11 rounded-xl border border-line px-4 text-sm font-bold text-ink">Menunggu jawaban customer</button><button disabled={busy} onClick={() => void update("resolve")} className="min-h-11 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-800">Tutup tiket</button></div>
       {message ? <p className="mt-3 text-sm font-semibold text-brand-700" role="status">{message}</p> : null}
-      {ticket.metadata.assignedTo ? <p className="mt-4 text-xs text-ink-muted">Ditangani oleh {String(ticket.metadata.assignedTo)}{ticket.metadata.contactedAt ? ` · follow-up dimulai ${new Date(String(ticket.metadata.contactedAt)).toLocaleString("id-ID")}` : ""}</p> : null}
+      {ticket.metadata.assignedTo ? <p className="mt-4 text-xs text-ink-muted">Ditangani oleh {String(ticket.metadata.assignedTo)}{ticket.metadata.contactedAt ? `, follow-up dimulai ${new Date(String(ticket.metadata.contactedAt)).toLocaleString("id-ID")}` : ""}</p> : null}
     </section>
   </div>;
 }

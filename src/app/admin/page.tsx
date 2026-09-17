@@ -20,19 +20,19 @@ export default async function AdminDashboardPage() {
     ...quotations.filter((item) => item.isRequestedNew || item.status === "under_review").slice(0, 2).map((item) => ({
       href: `/admin/quotations/${item.id}`,
       title: "Quotation perlu ditinjau",
-      detail: `${item.quotationNumber} · ${item.companyName}`,
+      detail: `${item.quotationNumber}, ${item.companyName}`,
       tone: "amber" as const,
     })),
     ...invoicePending.slice(0, 1).map((item) => ({
       href: `/admin/orders/${item.id}`,
       title: "Pembayaran invoice perlu ditindaklanjuti",
-      detail: `${item.orderNumber} · ${formatRupiah(item.total)}`,
+      detail: `${item.orderNumber}, ${formatRupiah(item.total)}`,
       tone: "red" as const,
     })),
     ...processOrders.filter((item) => item.priority === "urgent" || (item.deadline && Date.parse(item.deadline) <= Date.now() + 3 * 86_400_000)).slice(0, 1).map((item) => ({
       href: `/admin/process-orders/${item.id}`,
       title: "Produksi mendekati deadline",
-      detail: `${item.processOrderNumber} · ${item.companyName}`,
+      detail: `${item.processOrderNumber}, ${item.companyName}`,
       tone: "red" as const,
     })),
   ].slice(0, 4);
@@ -53,7 +53,7 @@ export default async function AdminDashboardPage() {
       <header className="flex flex-col gap-3 px-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-[-0.035em] text-ink md:text-3xl">Operations control grid</h2>
-          <p className="mt-1 text-xs text-ink-muted">Quotation, invoice, dan produksi—seluruh status dalam satu layar.</p>
+          <p className="mt-1 text-xs text-ink-muted">Quotation, invoice, dan produksi, seluruh status dalam satu layar.</p>
         </div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">Data operasional aktual Ofissio</p>
       </header>

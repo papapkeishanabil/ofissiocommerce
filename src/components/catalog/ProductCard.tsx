@@ -12,7 +12,8 @@ import { emptySizeMatrix, moqSizeSpread } from "@/types/cart";
 import { useCartStore } from "@/stores/cart-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { afterConfirmItemAdded } from "@/lib/ofistant/ofistant.rules";
-import { Clock, Layers, Plus } from "lucide-react";
+import { resolveOrderProcessingInfo } from "@/features/products/order-processing";
+import { Clock, Layers, PackageCheck, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -51,6 +52,11 @@ export function ProductCard({ product }: ProductCardProps) {
   }
 
   const color = product.colors[0] ?? "Default";
+  const processingInfo = resolveOrderProcessingInfo({
+    processRoute: product.processRoute,
+    fulfillmentType: product.fulfillment,
+    leadTimeDays: product.leadTimeDays,
+  });
 
   function handleQuickAdd() {
     // Spread MOQ evenly across M/L/XL as a starting point — total is exactly
@@ -79,7 +85,11 @@ export function ProductCard({ product }: ProductCardProps) {
       label: product.moq <= 1 ? "Min. Beli" : "MOQ",
       value: `${Math.max(1, product.moq)} pcs`,
     },
-    { icon: Clock, label: "Lead Time", value: `${product.leadTimeDays} hari` },
+    {
+      icon: processingInfo.kind === "ready_stock" ? PackageCheck : Clock,
+      label: processingInfo.label,
+      value: processingInfo.value,
+    },
   ];
 
   return (
