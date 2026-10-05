@@ -7,7 +7,9 @@ const COLOR_SWATCHES: Record<string, string> = {
   "Orange Safety": "#f97316",
   "Lime Safety": "#84cc16",
   Yellow: "#facc15",
-  Khaki: "#a16207",
+  Khaki: "#c3b091",
+  "Krem Khaki": "#d6c7a5",
+  Krem: "#f2e5c4",
   "Dark Green": "#166534",
   "Royal Blue": "#1d4ed8",
   Maroon: "#7f1d1d",
@@ -35,6 +37,7 @@ const COLOR_SWATCHES: Record<string, string> = {
 };
 
 const COLOR_ALIASES: Array<[string[], string]> = [
+  [["krem khaki", "cream khaki", "khaki cream", "khaki krem"], "#d6c7a5"],
   [["camel", "tan"], "#bc7f45"],
   [["navy", "biru dongker", "dongker"], "#1e3a8a"],
   [["black", "hitam"], "#0f172a"],
@@ -52,7 +55,9 @@ const COLOR_ALIASES: Array<[string[], string]> = [
   [["red", "merah"], "#dc2626"],
   [["dark grey", "dark gray", "abu tua"], "#475569"],
   [["grey", "gray", "abu-abu", "abu"], "#94a3b8"],
-  [["khaki", "cokelat", "brown"], "#92400e"],
+  [["khaki"], "#c3b091"],
+  [["krem", "cream"], "#f2e5c4"],
+  [["cokelat", "coklat", "brown"], "#92400e"],
   [["purple", "ungu"], "#7e22ce"],
   [["teal", "toska"], "#0d9488"],
   [["olive", "zaitun"], "#4d7c0f"],

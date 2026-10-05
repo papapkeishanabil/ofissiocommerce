@@ -6,11 +6,11 @@ import { productServerService } from "@/features/products/product.server-service
 import { getPublicSiteContent } from "@/features/site-content/site-content.service";
 import { resolveInspirationPage } from "@/features/site-content/industry-inspiration.content";
 import { INSPIRATION_PAGES, type InspirationPage } from "@/features/site-content/industry-inspiration.routes";
-import { CafeRestaurantInspiration } from "./CafeRestaurantInspiration";
+import { CafeRestaurantInspiration, type BusinessKind } from "./CafeRestaurantInspiration";
 
-export async function IndustryInspirationPage({ page }: { page: InspirationPage }) {
+export async function IndustryInspirationPage({ page, initialFoodBusiness }: { page: InspirationPage; initialFoodBusiness?: BusinessKind }) {
   if (page.industry === "F&B") {
-    return <CafeRestaurantInspiration />;
+    return <CafeRestaurantInspiration initialBusiness={initialFoodBusiness} />;
   }
 
   const [products, content] = await Promise.all([

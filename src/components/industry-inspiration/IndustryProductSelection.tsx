@@ -5,6 +5,7 @@ import type { OfissioProduct } from "@/features/products/product.types";
 import { formatIDR } from "@/types/product";
 import type { Industry } from "@/types/industry";
 import { INSPIRATION_ROUTES } from "@/features/site-content/industry-inspiration.routes";
+import { productCardDescription } from "@/lib/product-card-description";
 
 function productImage(product: OfissioProduct) {
   if (product.mainImage) return product.mainImage;
@@ -49,25 +50,32 @@ export function IndustryProductSelection({ products, industry = "Bengkel", secti
           <div className={`mt-7 grid gap-5 ${visibleProducts.length === 1 ? "mx-auto max-w-md" : visibleProducts.length === 2 ? "mx-auto max-w-4xl sm:grid-cols-2" : "md:grid-cols-3"}`}>
             {visibleProducts.map((product) => {
               const image = productImage(product)!;
+              const description = productCardDescription(product.short_description, product.name);
               return (
-                <Link key={product.id} href={`/product/${product.slug}`} className="group overflow-hidden rounded-2xl border border-[#e5dac5] bg-white shadow-[0_24px_60px_-44px_rgba(8,29,67,0.52)] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_32px_70px_-42px_rgba(8,29,67,0.46)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
-                  <div className="relative aspect-[4/5] overflow-hidden bg-[#eee9df]">
+                <Link key={product.id} href={`/product/${product.slug}`} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5dac5] bg-white shadow-[0_24px_60px_-44px_rgba(8,29,67,0.52)] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_32px_70px_-42px_rgba(8,29,67,0.46)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
+                  <div className="relative aspect-[4/5] shrink-0 overflow-hidden bg-[#eee9df]">
                     {/* Product media may come from the admin-configured WordPress host. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={image} alt={product.images?.[0]?.alt || product.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-5 transition-transform duration-500 group-hover:scale-[1.035]" />
                     <span className="absolute left-4 top-4 rounded-full border border-white/75 bg-white/85 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-brand-950 backdrop-blur-sm">{product.category}</span>
                   </div>
-                  <div className="p-5 sm:p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h4 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-brand-950">{product.name}</h4>
-                        <p className="mt-2 text-sm leading-relaxed text-ink-muted">{product.short_description}</p>
+                  <div className="flex flex-1 flex-col p-5 sm:p-6">
+                    <h4 className="text-xl font-bold leading-snug tracking-[-0.02em] text-brand-950">{product.name}</h4>
+                    {description ? (
+                      <p className="mt-3 line-clamp-3 text-[0.9375rem] leading-6 text-ink-muted">{description}</p>
+                    ) : null}
+                    <div className="mt-auto pt-6">
+                      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-t border-line pt-4">
+                        <p className="text-brand-950">
+                          <span className="block text-xs font-medium text-ink-muted">Mulai dari</span>
+                          <span className="mt-1 inline-block text-lg font-bold tracking-[-0.02em]">{formatIDR(product.priceFrom)}</span>
+                          <span className="ml-1 text-xs font-medium text-ink-muted">/ pcs</span>
+                        </p>
+                        <span className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand-800 transition-colors group-hover:text-brand-950">
+                          Lihat detail <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 motion-reduce:transition-none" aria-hidden="true" />
+                        </span>
                       </div>
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-ochre-500/50 text-brand-950 transition-colors group-hover:bg-brand-950 group-hover:text-white">
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                      </span>
                     </div>
-                    <p className="mt-5 border-t border-line pt-4 text-sm font-bold text-brand-950">Mulai {formatIDR(product.priceFrom)} / pcs</p>
                   </div>
                 </Link>
               );

@@ -463,12 +463,12 @@ export const DEFAULT_PAKET: PaketSectionData = {
   ctaLabel: "Konsultasikan Paket",
   scaleBadgeLabel: "Skala besar",
   items: [
-    { icon: "Wrench", name: "Paket Bengkel", photo: "/packages/paket-bengkel.png", items: "Polo kerja, kemeja, celana tahan noda", cocokUntuk: "Bengkel motor/mobil dan toko sparepart", opsiLogo: "Bordir dada atau dTF tahan panas", href: "/catalog?industri=Bengkel", scale: false },
-    { icon: "Store", name: "Paket Toko dan Retail", photo: "/packages/paket-toko-retail.png", items: "Kemeja/polo staf + name tag", cocokUntuk: "Toko retail, grosir, kelontong, toko mas", opsiLogo: "Bordir dada + nama pegawai", href: "/catalog?industri=Retail", scale: false },
-    { icon: "Plus", name: "Paket Apotek dan Klinik", photo: "/packages/paket-apotek-klinik.png", items: "Seragam medis dan jas lab higienis", cocokUntuk: "Apotek, klinik, praktek dokter", opsiLogo: "Bordir halus, kain mudah disterilkan", href: "/catalog?industri=Kesehatan", scale: false },
+    { icon: "Wrench", name: "Paket Bengkel", photo: "/packages/paket-bengkel.png", items: "Polo kerja, kemeja, celana tahan noda", cocokUntuk: "Bengkel motor/mobil dan toko sparepart", opsiLogo: "Bordir dada atau dTF tahan panas", href: "/inspirasi/bengkel-teknisi", scale: false },
+    { icon: "Store", name: "Paket Toko dan Retail", photo: "/packages/paket-toko-retail.png", items: "Kemeja/polo staf + name tag", cocokUntuk: "Toko retail, grosir, kelontong, toko mas", opsiLogo: "Bordir dada + nama pegawai", href: "/inspirasi/retail", scale: false },
+    { icon: "Plus", name: "Paket Apotek dan Klinik", photo: "/packages/paket-apotek-klinik.png", items: "Seragam medis dan jas lab higienis", cocokUntuk: "Apotek, klinik, praktek dokter", opsiLogo: "Bordir halus, kain mudah disterilkan", href: "/inspirasi/apotek-klinik", scale: false },
     { icon: "Coffee", name: "Paket Kafe dan Restoran", photo: "/packages/paket-cafe-service.png", items: "Apron, kemeja pelayan, polo barista", cocokUntuk: "Kafe, restoran, bakery, dan usaha jasa makanan", opsiLogo: "Bordir atau dTF tahan cuci panas", href: "/inspirasi/restoran-kafe", scale: false },
-    { icon: "Building2", name: "Paket Corporate", photo: "/packages/paket-corporate.png", items: "Kemeja oxford, polo, blazer, identitas divisi", cocokUntuk: "Kantor, koperasi, layanan, hospitality", opsiLogo: "Bordir custom multi-divisi", href: "/catalog?industri=Corporate", scale: true },
-    { icon: "HardHat", name: "Paket Lapangan / Konstruksi", photo: "/packages/paket-lapangan-konstruksi.png", items: "Wearpack, rompi safety, jaket lapangan", cocokUntuk: "Konstruksi, tambang, ekspedisi, lapangan", opsiLogo: "Bordir tahan cuaca dan abrasi", href: "/catalog?industri=Konstruksi", scale: true },
+    { icon: "Building2", name: "Paket Corporate", photo: "/packages/paket-corporate.png", items: "Kemeja oxford, polo, blazer, identitas divisi", cocokUntuk: "Kantor, koperasi, layanan, hospitality", opsiLogo: "Bordir custom multi-divisi", href: "/inspirasi/solusi-korporasi", scale: true },
+    { icon: "HardHat", name: "Paket Lapangan / Konstruksi", photo: "/packages/paket-lapangan-konstruksi.png", items: "Wearpack, rompi safety, jaket lapangan", cocokUntuk: "Konstruksi, tambang, ekspedisi, lapangan", opsiLogo: "Bordir tahan cuaca dan abrasi", href: "/inspirasi/konstruksi", scale: true },
   ],
 };
 

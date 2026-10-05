@@ -20,7 +20,7 @@ import { useMemo, useState } from "react";
 
 import styles from "./CafeRestaurantInspiration.module.css";
 
-type BusinessKind = "cafe" | "restaurant";
+export type BusinessKind = "cafe" | "restaurant";
 type RoleFocus = "barista" | "frontCounter" | "kitchen" | "supervisor";
 type PhotoMode = "uniform" | "team" | "allTeam";
 
@@ -149,10 +149,12 @@ const FOCUS_CLASSES: Record<RoleFocus, string> = {
   supervisor: styles.focusSupervisor!,
 };
 
-export function CafeRestaurantInspiration() {
-  const [business, setBusiness] = useState<BusinessKind>("cafe");
+export function CafeRestaurantInspiration({ initialBusiness = "cafe" }: { initialBusiness?: BusinessKind }) {
+  const [business, setBusiness] = useState<BusinessKind>(initialBusiness);
   const roles = business === "cafe" ? CAFE_ROLES : RESTAURANT_ROLES;
-  const [activeRoleId, setActiveRoleId] = useState(CAFE_ROLES[0]!.id);
+  const [activeRoleId, setActiveRoleId] = useState(
+    initialBusiness === "restaurant" ? RESTAURANT_ROLES[0]!.id : CAFE_ROLES[0]!.id,
+  );
   const [photoMode, setPhotoMode] = useState<PhotoMode>("allTeam");
 
   const activeIndex = Math.max(0, roles.findIndex((role) => role.id === activeRoleId));

@@ -6,7 +6,10 @@ import { resolveInspirationPage } from "@/features/site-content/industry-inspira
 import { getPublicSiteContent } from "@/features/site-content/site-content.service";
 
 export const dynamic = "force-dynamic";
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ business?: string | string[] }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const page = findInspirationPage((await params).slug);
@@ -16,8 +19,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: `Inspirasi Seragam ${page.label}`, description: data.lede };
 }
 
-export default async function InspirationPage({ params }: Props) {
+export default async function InspirationPage({ params, searchParams }: Props) {
   const page = findInspirationPage((await params).slug);
   if (!page) notFound();
-  return <IndustryInspirationPage page={page} />;
+  const requestedBusiness = (await searchParams).business;
+  const initialFoodBusiness = requestedBusiness === "restaurant" ? "restaurant" : "cafe";
+  return <IndustryInspirationPage page={page} initialFoodBusiness={initialFoodBusiness} />;
 }
