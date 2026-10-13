@@ -132,10 +132,12 @@
 .roleRail button.roleActive { background: #fffaf0; color: #a35e00; box-shadow: inset 3px 0 #de8e00; }
 
 .photoFrame {
+  display: grid;
+  align-items: center;
   position: relative;
   min-height: 600px;
   overflow: hidden;
-  background: #191a1c;
+  background: #e9e0d1;
 }
 
 .teamPhoto { object-fit: cover; object-position: center; }

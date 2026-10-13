@@ -9,6 +9,7 @@ import type { IndustryInspirationData } from "../content.schema";
 import { INSPIRATION_PAGES, INSPIRATION_ROUTES } from "../industry-inspiration.routes";
 import { resolveInspirationPage } from "../industry-inspiration.content";
 import { IndustryInspirationEditor } from "./IndustryInspirationEditor";
+import { CafeInspirationEditor } from "./CafeInspirationEditor";
 
 export function IndustryInspirationPagesEditor({ label, help, legacy, value, onChange }: {
   label: string;
@@ -45,13 +46,13 @@ export function IndustryInspirationPagesEditor({ label, help, legacy, value, onC
       <a href={`/inspirasi/${page.slug}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4">
         Buka halaman {page.label} yang tersimpan <ExternalLink className="h-4 w-4" aria-hidden="true" />
       </a>
-      <IndustryInspirationEditor
+      {page.industry === "F&B" ? <CafeInspirationEditor value={data} onChange={onChange} /> : <IndustryInspirationEditor
         key={page.slug}
         label={`Inspirasi ${page.label}`}
         help="Gambar bawaan adalah referensi tampilan. Unggah foto unggulan yang sesuai, sesuaikan manfaat dengan produknya, lalu periksa posisi pin sebelum menyimpan."
         value={data}
         onChange={(next) => onChange({ ...next, slug: page.slug, industry: page.industry })}
-      />
+      />}
     </div>
   );
 }

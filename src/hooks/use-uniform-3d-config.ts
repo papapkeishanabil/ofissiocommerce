@@ -17,6 +17,7 @@ import type {
 import { empty3DConfig } from "@/types/uniform-3d";
 import { logoPlacementSchema } from "@/schemas/uniform-3d";
 import { getModel3DForProduct } from "@/data/uniform-3d";
+import { requestCompanyLogoPreview } from "@/features/company-assets/company-logo-picker.client";
 
 export interface UseUniform3DConfig {
   config: Uniform3DConfig | null;
@@ -57,10 +58,9 @@ export function useUniform3DConfig(
     const controller = new AbortController();
     void Promise.all(initialConfig.placements.filter(p => !p.textBordir && !p.logoFileId.startsWith("pending-")).map(async placement => {
       try {
-        const response = await fetch(`/api/files/${encodeURIComponent(placement.logoFileId)}/signed-url`, { credentials: "same-origin", signal: controller.signal, headers: { "x-ofissio-company-id": session.company.id, "x-ofissio-user-id": session.user.id, "x-ofissio-role": session.user.role } });
-        const result = await response.json();
-        if (!response.ok || !result.ok || !result.signedUrl || controller.signal.aborted) return;
-        setConfig(current => current ? { ...current, placements: current.placements.map(p => p.zone === placement.zone && p.logoFileId === placement.logoFileId ? { ...p, logoPreviewUrl: result.signedUrl } : p) } : current);
+        const previewUrl = await requestCompanyLogoPreview({ fileId: placement.logoFileId, session, signal: controller.signal });
+        if (controller.signal.aborted) return;
+        setConfig(current => current ? { ...current, placements: current.placements.map(p => p.zone === placement.zone && p.logoFileId === placement.logoFileId ? { ...p, logoPreviewUrl: previewUrl } : p) } : current);
       } catch { /* Keep the saved file reference; retry on reopening the studio. */ }
     }));
     return () => controller.abort();

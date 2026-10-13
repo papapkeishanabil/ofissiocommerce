@@ -719,6 +719,7 @@ export interface IndustryInspirationData {
   focalX: number;
   focalY: number;
   annotations: IndustryInspirationAnnotation[];
+  cafePlacements?: { key: string; annotations: IndustryInspirationAnnotation[] }[];
 }
 
 const industryFieldSchema = z.enum(INDUSTRIES);
@@ -749,6 +750,10 @@ export const industryInspirationSchema = z.object({
   focalX: normalizedPercentSchema.default(50),
   focalY: normalizedPercentSchema.default(50),
   annotations: z.array(industryInspirationAnnotationSchema).min(1).max(8),
+  cafePlacements: z.array(z.object({
+    key: z.string().refine((key) => ["cafe:barista:team", "cafe:front-counter:team", "cafe:kitchen:team", "cafe:kitchen:uniform", "cafe:supervisor:team", "restaurant:service:team", "restaurant:host:team", "restaurant:chef:team", "restaurant:chef:uniform", "restaurant:manager:team"].includes(key), "Tampilan pin tidak dikenal"),
+    annotations: z.array(industryInspirationAnnotationSchema).length(3),
+  })).max(10).refine((items) => new Set(items.map((item) => item.key)).size === items.length, "Tampilan pin tidak boleh duplikat").optional(),
 });
 
 export const DEFAULT_INDUSTRY_INSPIRATION: IndustryInspirationData = {

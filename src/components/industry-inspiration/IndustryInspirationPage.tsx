@@ -10,7 +10,9 @@ import { CafeRestaurantInspiration, type BusinessKind } from "./CafeRestaurantIn
 
 export async function IndustryInspirationPage({ page, initialFoodBusiness }: { page: InspirationPage; initialFoodBusiness?: BusinessKind }) {
   if (page.industry === "F&B") {
-    return <CafeRestaurantInspiration initialBusiness={initialFoodBusiness} />;
+    const content = await getPublicSiteContent();
+    const inspiration = resolveInspirationPage(page, content.industri);
+    return <CafeRestaurantInspiration initialBusiness={initialFoodBusiness} placements={inspiration.cafePlacements} />;
   }
 
   const [products, content] = await Promise.all([
