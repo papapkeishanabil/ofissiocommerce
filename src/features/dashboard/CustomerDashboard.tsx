@@ -1,122 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/use-auth";
 import { useUIStore } from "@/stores/ui-store";
 import { DashboardOverview } from "./components/DashboardOverview";
-import {
-  cacheClientTrackingOrders,
-  getDashboardTrackingSnapshot,
-} from "@/features/tracking/tracking.service";
-import type {
-  CustomerQuotationTracking,
-  CustomerTrackingOrder,
-} from "@/features/tracking/tracking.types";
-
-import { mapQuotationToTracking } from "@/features/quotation/quotation.mapper";
-import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
+import { loadCustomerTrackingSnapshot } from "@/features/tracking/tracking-client";
+import type { DashboardTrackingSnapshot } from "@/features/tracking/tracking.types";
 import type { AuthSession } from "@/types/account";
+import type { AccountView } from "./components/AccountSidebar";
 
-export function CustomerDashboard() {
+export function CustomerDashboard({ initialView = "overview" }: { initialView?: AccountView }) {
   const { session, isAuthenticated, hydrated, isProfileComplete } = useAuth();
   const openAuth = useUIStore((s) => s.openAuth);
-  const [serverOrders, setServerOrders] = useState<CustomerTrackingOrder[]>([]);
-  const [serverQuotations, setServerQuotations] = useState<
-    CustomerQuotationTracking[]
-  >([]);
 
-  const snapshot = useMemo(
-    () =>
-      getDashboardTrackingSnapshot(
-        {
-          companyId: session?.company.id,
-          companyName: session?.company.companyName,
-        },
-        serverOrders,
-      ),
-    [serverOrders, session?.company.companyName, session?.company.id],
-  );
-  const dashboardQuotations = useMemo(() => {
-    const seen = new Set<string>();
-    return [...serverQuotations, ...snapshot.quotations].filter((quotation) => {
-      if (seen.has(quotation.id)) return false;
-      seen.add(quotation.id);
-      return true;
-    });
-  }, [serverQuotations, snapshot.quotations]);
-
-  useEffect(() => {
-    if (!session) return;
-    const activeSession = session;
-    const controller = new AbortController();
-      const params = new URLSearchParams({
-        companyId: activeSession.company.id,
-        userId: activeSession.user.id,
-        companyName: activeSession.company.companyName,
-      });
-
-    async function loadTrackingOrders() {
-      try {
-        const response = await fetch(`/api/tracking/orders?${params}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const result = (await response.json()) as {
-          ok: boolean;
-          dynamicOrders?: CustomerTrackingOrder[];
-        };
-        if (!response.ok || !result.ok) return;
-        const dynamicOrders = result.dynamicOrders ?? [];
-        setServerOrders(dynamicOrders);
-        cacheClientTrackingOrders(dynamicOrders);
-      } catch {
-        if (!controller.signal.aborted) setServerOrders([]);
-      }
-    }
-
-    async function loadQuotations() {
-      try {
-        const response = await fetch(`/api/quotation?${params}`, {
-          cache: "no-store",
-          headers: authHeaders(activeSession),
-          signal: controller.signal,
-        });
-        const result = (await response.json()) as {
-          ok: boolean;
-          quotations?: QuotationRequestRecord[];
-        };
-        if (!response.ok || !result.ok) return;
-        setServerQuotations(
-          (result.quotations ?? []).map((quotation) =>
-            mapQuotationToTracking(quotation),
-          ),
-        );
-      } catch {
-        if (!controller.signal.aborted) setServerQuotations([]);
-      }
-    }
-
-    void loadTrackingOrders();
-    void loadQuotations();
-    return () => controller.abort();
-  }, [session]);
-
-  if (!hydrated) {
-    return (
-      <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
-        <div className="h-10 w-64 animate-pulse rounded-xl bg-cool-200" />
-        <div className="mt-3 h-5 w-80 animate-pulse rounded-lg bg-cool-100" />
-        <div className="mt-8 grid grid-cols-3 gap-4" role="status" aria-label="Memuat dashboard">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="h-20 animate-pulse rounded-xl bg-cool-100" />
-          ))}
-        </div>
-        <div className="mt-8 h-64 animate-pulse rounded-2xl bg-cool-100" />
-      </div>
-    );
-  }
+  if (!hydrated) return <DashboardLoading />;
 
   if (!isAuthenticated || !session) {
     return (
@@ -135,16 +34,74 @@ export function CustomerDashboard() {
     );
   }
 
-  return <DashboardOverview session={session} profileComplete={isProfileComplete} orders={snapshot.activeOrders} history={snapshot.orderHistory} quotations={dashboardQuotations} />;
+  // Remount account data when the user/company changes; old responses and
+  // transaction state must not be displayed for the next session.
+  return <AuthenticatedDashboard
+    key={`${session.user.id}:${session.company.id}:${initialView}`}
+    initialView={initialView}
+    session={session}
+    profileComplete={isProfileComplete}
+  />;
 }
 
-function authHeaders(session: AuthSession): HeadersInit {
-  return {
-    "x-ofissio-company-id": session.company.id,
-    "x-ofissio-company-name": session.company.companyName,
-    "x-ofissio-user-id": session.user.id,
-    "x-ofissio-user-email": session.user.email,
-    "x-ofissio-user-name": session.user.fullName,
-    "x-ofissio-role": session.user.role,
-  };
+type DashboardLoadResult =
+  | { attempt: number; ok: true; snapshot: DashboardTrackingSnapshot }
+  | { attempt: number; ok: false };
+
+function AuthenticatedDashboard({ session, profileComplete, initialView }: {
+  initialView: AccountView;
+  session: AuthSession;
+  profileComplete: boolean;
+}) {
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<DashboardLoadResult | null>(null);
+  const companyId = session.company.id;
+  const companyName = session.company.companyName;
+  const userId = session.user.id;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadCustomerTrackingSnapshot({ companyId, companyName, userId, signal: controller.signal })
+      .then((snapshot) => {
+        if (!controller.signal.aborted) setResult({ attempt, ok: true, snapshot });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setResult({ attempt, ok: false });
+      });
+    return () => controller.abort();
+  }, [attempt, companyId, companyName, userId]);
+
+  if (!result || result.attempt !== attempt) return <DashboardLoading />;
+  if (!result.ok) {
+    return <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
+      <div role="alert" className="rounded-2xl border border-line bg-surface p-6">
+        <h1 className="text-lg font-bold text-ink">Data akun belum dapat dimuat</h1>
+        <p className="mt-2 text-sm text-ink-muted">Daftar pesanan dan penawaran belum dapat diperiksa. Silakan coba lagi.</p>
+        <Button className="mt-4" onClick={() => setAttempt((value) => value + 1)}>Coba lagi</Button>
+      </div>
+    </div>;
+  }
+  return <DashboardOverview
+    initialView={initialView}
+    session={session}
+    profileComplete={profileComplete}
+    orders={result.snapshot.activeOrders}
+    history={result.snapshot.orderHistory}
+    quotations={result.snapshot.quotations}
+  />;
+}
+
+function DashboardLoading() {
+  return (
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
+      <div className="h-10 w-64 animate-pulse rounded-xl bg-cool-200" />
+      <div className="mt-3 h-5 w-80 animate-pulse rounded-lg bg-cool-100" />
+      <div className="mt-8 grid grid-cols-3 gap-4" role="status" aria-label="Memuat dashboard">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="h-20 animate-pulse rounded-xl bg-cool-100" />
+        ))}
+      </div>
+      <div className="mt-8 h-64 animate-pulse rounded-2xl bg-cool-100" />
+    </div>
+  );
 }

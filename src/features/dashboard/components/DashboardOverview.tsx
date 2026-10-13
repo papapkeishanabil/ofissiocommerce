@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, Building2, CalendarDays, Check, ChevronRight, Circle, FileText, Home, ImageIcon, MapPin, Package, Truck } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronRight, Circle, FileText, Package, Truck } from "lucide-react";
+import { AccountSidebar, type AccountView } from "./AccountSidebar";
 import type { AuthSession } from "@/types/account";
 import type { CustomerTrackingOrder, CustomerQuotationTracking } from "@/features/tracking/tracking.types";
 import { trackingOrderStatusLabel, fulfillmentLabel } from "@/features/tracking/tracking-utils";
@@ -14,7 +15,7 @@ import { OrderHistoryList } from "./OrderHistoryList";
 import s from "./DashboardOverview.module.css";
 
 type Order = CustomerTrackingOrder;
-type View = "overview" | "orders" | "quotes" | "logos";
+type View = AccountView;
 type Filter = "all" | "production" | "shipping";
 
 export function orderPhase(order: Order) {
@@ -55,10 +56,11 @@ function OrderRow({ order }: { order: Order }) {
   </li>;
 }
 
-export function DashboardOverview({ session, profileComplete, orders, history, quotations }: {
+export function DashboardOverview({ session, profileComplete, orders, history, quotations, initialView = "overview" }: {
+  initialView?: View;
   session: AuthSession; profileComplete: boolean; orders: Order[]; history: Order[]; quotations: CustomerQuotationTracking[];
 }) {
-  const [view, setView] = useState<View>("overview");
+  const [view, setView] = useState<View>(initialView);
   const [filter, setFilter] = useState<Filter>("all");
   const [allActions, setAllActions] = useState(false);
   const tasks = [
@@ -69,16 +71,10 @@ export function DashboardOverview({ session, profileComplete, orders, history, q
   const production = orders.filter(o => orderPhase(o) === 1);
   const filtered = filter === "shipping" ? shipping : filter === "production" ? production : orders;
   const deliveries = [...orders].filter(o => arrival(o) && !o.actualDeliveredAt).sort((a,b) => new Date(arrival(a)!).getTime() - new Date(arrival(b)!).getTime()).slice(0,3);
-  const nav = [{ id: "overview", label: "Ringkasan", icon: Home }, { id: "orders", label: "Pesanan", icon: Package }, { id: "quotes", label: "Penawaran", icon: FileText }] as const;
   const title = view === "overview" ? "Ringkasan akun" : view === "orders" ? "Pesanan Anda" : view === "quotes" ? "Penawaran" : "Logo Library";
 
   return <main className={s.shell}>
-    <nav className={s.sidebar} aria-label="Menu akun">
-      {nav.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setView(id)} aria-current={view === id ? "page" : undefined}><Icon size={19} />{label}{id === "quotes" && <small>{quotations.length}</small>}</button>)}
-      <Link href="/dashboard/profile"><Building2 size={19} />Profil Perusahaan</Link>
-      <Link href="/dashboard/addresses"><MapPin size={19} />Alamat</Link>
-      <button onClick={() => setView("logos")} aria-current={view === "logos" ? "page" : undefined}><ImageIcon size={19} />Logo Library</button>
-    </nav>
+    <AccountSidebar active={view} onViewChange={setView} quotationCount={quotations.length} />
     <div className={s.content}>
       <header className={s.header}><div><h1>{title}</h1><p>Halo {session.user.fullName.split(" ")[0]}. Pantau pesanan, pengiriman, dan hal yang perlu Anda tinjau.</p></div><Link className={s.primary} href="/catalog">Buat Pesanan <ArrowRight size={16} /></Link></header>
       {!profileComplete && <p className={s.profileNotice}>Lengkapi profil perusahaan untuk memudahkan pemesanan. <Link href="/dashboard/profile">Lengkapi profil <ArrowRight size={14} /></Link></p>}
