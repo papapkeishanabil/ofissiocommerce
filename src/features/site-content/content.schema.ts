@@ -60,6 +60,8 @@ export type FieldDescriptor =
       kind: "model3d";
       key: string;
       label: string;
+      /** Folder tujuan unggah (pola scope video); default "hero". */
+      target?: "hero" | "produk";
       placeholder?: string;
       maxLength?: number;
       help?: string;
@@ -524,7 +526,7 @@ export const produkPilihanSectionSchema = z.object({
         tag: nonEmpty(60),
         href: nonEmpty(200),
         // Empty string = "no 3D model" → icon fallback renders. max(200) admits "".
-        glb: z.string().trim().max(200),
+        glb: z.string().trim().max(500),
         icon: iconFieldSchema,
       }),
     )
@@ -1637,7 +1639,7 @@ export const SECTION_REGISTRY: SectionEntry[] = [
           { kind: "textarea", key: "desc", label: "Deskripsi", rows: 2, maxLength: 200 },
           { kind: "text", key: "tag", label: "Tag", maxLength: 60 },
           { kind: "text", key: "href", label: "Link katalog", placeholder: "cth: /catalog?category=kemeja", maxLength: 200 },
-          { kind: "text", key: "glb", label: "Path model 3D (opsional)", placeholder: "cth: /3d/kk-006-mini.glb", maxLength: 200, help: "Kosongkan untuk memakai ikon." },
+          { kind: "model3d", key: "glb", label: "Model 3D (opsional)", target: "produk", placeholder: "Unggah file .glb atau masukkan path lama (cth: /3d/kk-006-mini.glb)", maxLength: 500, help: "Unggah GLB ke Supabase Storage. URL terisi otomatis dan baru tampil di homepage setelah Section ini disimpan. Kosongkan untuk memakai ikon." },
           { kind: "icon", key: "icon", label: "Ikon (fallback)", help: "Hanya tampil bila path 3D di atas kosong." },
         ],
       },

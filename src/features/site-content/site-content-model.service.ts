@@ -13,18 +13,27 @@ import { createApiError } from "@/lib/security/safe-error-response";
 import { isProbablyGlb, sanitizeFilename, validateUploadFile } from "@/lib/security/upload-security";
 
 const GLB_MIME_TYPES = ["model/gltf-binary", "application/octet-stream"];
-const HERO_MODEL_PREFIX = "site-content/hero/";
+/** Section yang boleh memiliki model 3D unggahan — folder Storage
+ *  mengikuti target (pola yang sama seperti scope video). */
+export type SiteModelTarget = "hero" | "produk";
+const MODEL_TARGET_PREFIXES: Record<SiteModelTarget, string> = {
+  hero: "site-content/hero/",
+  produk: "site-content/produk/",
+};
 
 export async function uploadSiteContentModel(input: {
   file: File;
   actorId: string;
   request?: Request;
+  target?: SiteModelTarget;
 }) {
   const config = getStorageRuntimeConfig();
   if (config.provider !== "supabase") {
     throw createApiError("PROVIDER_UNAVAILABLE", "Supabase Storage model 3D belum aktif.", 503);
   }
 
+  const target: SiteModelTarget = input.target ?? "hero";
+  const prefix = MODEL_TARGET_PREFIXES[target];
   const mimeType = input.file.type || "application/octet-stream";
   const validation = validateUploadFile({
     fileName: input.file.name,
@@ -35,7 +44,7 @@ export async function uploadSiteContentModel(input: {
     allowedExtensions: [".glb"],
     allowedMimeTypes: GLB_MIME_TYPES,
     maxBytes: config.maxUploadMb.glb * 1024 * 1024,
-    folder: "site-content/hero",
+    folder: prefix.replace(/\/$/, ""),
   });
   if (!validation.ok) {
     throw createApiError("VALIDATION_ERROR", validation.reason ?? "File GLB tidak valid.", 400);
@@ -47,8 +56,8 @@ export async function uploadSiteContentModel(input: {
   }
 
   const sanitizedBase = sanitizeFilename(input.file.name).replace(/\.glb$/i, "").slice(0, 100);
-  const safeFilename = `${sanitizedBase || "hero-model"}.glb`;
-  const storageKey = `${HERO_MODEL_PREFIX}${randomUUID()}-${safeFilename}`;
+  const safeFilename = `${sanitizedBase || `${target}-model`}.glb`;
+  const storageKey = `${prefix}${randomUUID()}-${safeFilename}`;
   const bucket = config.buckets["3d"];
   await uploadManagedStorageObject({
     bucket,
@@ -56,7 +65,7 @@ export async function uploadSiteContentModel(input: {
     mimeType,
     data: bytes,
     upsert: false,
-    metadata: { purpose: "hero-site-content", filename: safeFilename },
+    metadata: { purpose: `${target}-site-content-model`, filename: safeFilename },
   });
 
   logAuditEvent({
@@ -65,7 +74,7 @@ export async function uploadSiteContentModel(input: {
     actorType: "internal",
     action: "site_content_glb_uploaded",
     entityType: "site_content",
-    entityId: "hero",
+    entityId: target,
     metadata: { filename: safeFilename, sizeBytes: input.file.size, storageKey },
   });
 
@@ -78,8 +87,8 @@ export async function uploadSiteContentModel(input: {
 
 export async function resolveSiteContentModel(storagePath: string) {
   const storageKey = decodeURIComponent(storagePath);
-  if (!isAllowedHeroModelKey(storageKey)) {
-    throw createApiError("NOT_FOUND", "Model 3D Hero tidak tersedia.", 404);
+  if (!isAllowedSiteContentModelKey(storageKey)) {
+    throw createApiError("NOT_FOUND", "Model 3D tidak tersedia.", 404);
   }
   const bucket = getStorageRuntimeConfig().buckets["3d"];
   const object = await getManagedStorageObjectMetadata({ bucket, key: storageKey });
@@ -93,6 +102,9 @@ export async function resolveSiteContentModel(storagePath: string) {
   });
 }
 
-export function isAllowedHeroModelKey(key: string) {
-  return /^site-content\/hero\/[0-9a-f-]{36}-[a-z0-9._-]+\.glb$/i.test(key);
+/** Allowlist key model unggahan: hanya folder section yang dikenal, nama
+ *  file selalu "<uuid36>-<nama-sanitized>.glb" (uuid dibuat server, bukan
+ *  client), sehingga path traversal maupun key lain tertolak. */
+export function isAllowedSiteContentModelKey(key: string) {
+  return /^site-content\/(hero|produk)\/[0-9a-f-]{36}-[a-z0-9._-]+\.glb$/i.test(key);
 }

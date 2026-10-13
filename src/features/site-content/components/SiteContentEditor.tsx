@@ -603,6 +603,7 @@ function FieldRenderer({
         help={field.help}
         placeholder={field.placeholder}
         maxLength={field.maxLength}
+        target={field.target}
         value={String(value ?? "")}
         onChange={onChange}
       />
@@ -1034,6 +1035,7 @@ function Model3DFieldControl({
   help,
   placeholder,
   maxLength,
+  target,
   value,
   onChange,
 }: {
@@ -1042,6 +1044,7 @@ function Model3DFieldControl({
   help?: string;
   placeholder?: string;
   maxLength?: number;
+  target?: string;
   value: string;
   onChange: (next: unknown) => void;
 }) {
@@ -1058,6 +1061,7 @@ function Model3DFieldControl({
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (target) formData.append("target", target);
       const response = await fetch("/api/admin/site-content/model-3d", {
         method: "POST",
         headers: {
