@@ -24,6 +24,8 @@ import { SupabaseDatabaseError } from "@/features/database/database.errors";
 
 import {
   SECTION_REGISTRY,
+  DEFAULT_CARA_ORDER,
+  LEGACY_CARA_ORDER,
   SITE_CONTENT_SECTION_KEYS,
   getSectionEntry,
   type PublicSiteContent,
@@ -69,7 +71,16 @@ function resolveEffectiveData(key: SectionKey, raw: unknown): unknown {
   if (!entry) return undefined;
   if (raw !== undefined && raw !== null) {
     const parsed = entry.schema.safeParse(raw);
-    if (parsed.success) return parsed.data;
+    if (parsed.success) {
+      // Upgrade the original production-led seed, preserving admin-authored copy.
+      if (key === "cara_order") {
+        const previousReadyStock = { ...DEFAULT_CARA_ORDER, steps: DEFAULT_CARA_ORDER.steps.filter(step => step.icon !== "Scissors") };
+        if ([LEGACY_CARA_ORDER, previousReadyStock].some(previous => JSON.stringify(parsed.data) === JSON.stringify(previous))) {
+          return clone(DEFAULT_CARA_ORDER);
+        }
+      }
+      return parsed.data;
+    }
   }
   return clone(entry.default);
 }
