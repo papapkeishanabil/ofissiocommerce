@@ -7,6 +7,7 @@ import type {
   PaymentStatus,
 } from "./payment.types";
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
+import { selectPaymentForOrder } from "./payment-attempts";
 
 interface PaymentStoreState {
   payments: Map<string, PaymentRecord>;
@@ -101,12 +102,14 @@ export async function findPaymentByOrderPersisted(input: {
   const cached = [...state.payments.values()]
     .filter(
       (payment) => payment.companyId === input.companyId && payment.orderId === input.orderId,
-    )
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
-  if (cached) return cached;
-  const persisted = await repositoryRegistry.payments.getPaymentByOrderId?.(input);
-  if (persisted) state.payments.set(persisted.id, persisted);
-  return persisted ?? null;
+    );
+  const persisted = await repositoryRegistry.payments.listPaymentsByOrder?.(input);
+  for (const payment of persisted ?? []) state.payments.set(payment.id, payment);
+  return selectPaymentForOrder(
+    [...state.payments.values()].filter(
+      (payment) => payment.companyId === input.companyId && payment.orderId === input.orderId,
+    ),
+  ) ?? selectPaymentForOrder(cached);
 }
 
 export async function updateOrderPaymentTermsPersisted(

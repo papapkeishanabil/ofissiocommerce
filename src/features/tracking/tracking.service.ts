@@ -42,19 +42,21 @@ export interface TrackingScope {
 }
 
 function scopeOrDefault(scope?: TrackingScope) {
+  const production = process.env.NODE_ENV === "production";
   return {
-    companyId: scope?.companyId || DEFAULT_COMPANY_ID,
-    companyName: scope?.companyName || DEFAULT_COMPANY_NAME,
+    companyId: scope?.companyId || (production ? "" : DEFAULT_COMPANY_ID),
+    companyName: scope?.companyName || (production ? "" : DEFAULT_COMPANY_NAME),
   };
 }
 
 export function getDashboardTrackingSnapshot(
   scope?: TrackingScope,
   externalOrders: CustomerTrackingOrder[] = [],
+  externalQuotations: CustomerQuotationTracking[] = [],
 ): DashboardTrackingSnapshot {
   const resolved = scopeOrDefault(scope);
   const orders = getCustomerOrders(resolved, externalOrders);
-  const quotations = getAllQuotationTracking(resolved);
+  const quotations = getAllQuotationTracking(resolved, externalQuotations);
 
   return {
     companyId: resolved.companyId,
@@ -69,6 +71,15 @@ export function getCustomerOrders(
   externalOrders: CustomerTrackingOrder[] = [],
 ): CustomerTrackingOrder[] {
   const resolved = scopeOrDefault(scope);
+  if (!resolved.companyId) return [];
+  const companyOrders = externalOrders.filter(
+    (order) => order.companyId === resolved.companyId,
+  );
+  // Production reads authenticated API/repository results only. Demo orders,
+  // legacy checkout data and editable browser caches are not transactions.
+  if (process.env.NODE_ENV === "production") {
+    return mergeTrackingOrders([companyOrders]);
+  }
   const mock = createMockTrackingOrders(
     resolved.companyId,
     resolved.companyName,
@@ -76,7 +87,7 @@ export function getCustomerOrders(
   const legacy = readLegacyOrders(resolved.companyId, resolved.companyName);
   const cached = readClientTrackingOrders(resolved.companyId);
   return mergeTrackingOrders([
-    externalOrders,
+    companyOrders,
     cached,
     legacy,
     mock,
@@ -134,12 +145,26 @@ export function getPrimaryActiveOrder(
 
 export function getAllQuotationTracking(
   scope?: TrackingScope,
+  externalQuotations: CustomerQuotationTracking[] = [],
 ): CustomerQuotationTracking[] {
   const resolved = scopeOrDefault(scope);
-  return [
-    ...readLegacyQuotations(resolved.companyId, resolved.companyName),
-    ...createMockQuotationTracking(resolved.companyId, resolved.companyName),
-  ].sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt));
+  if (!resolved.companyId) return [];
+  const quotations = externalQuotations.filter(
+    (quotation) => quotation.companyId === resolved.companyId,
+  );
+  if (process.env.NODE_ENV !== "production") {
+    quotations.push(
+      ...readLegacyQuotations(resolved.companyId, resolved.companyName),
+      ...createMockQuotationTracking(resolved.companyId, resolved.companyName),
+    );
+  }
+  const byId = new Map<string, CustomerQuotationTracking>();
+  for (const quotation of quotations) {
+    if (!byId.has(quotation.id)) byId.set(quotation.id, quotation);
+  }
+  return [...byId.values()].sort(
+    (a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt),
+  );
 }
 
 export function getOfistantOrderStatusText(
@@ -244,6 +269,7 @@ export function formatTrackingDate(value?: string | null): string {
 }
 
 export function cacheClientTrackingOrders(orders: CustomerTrackingOrder[]) {
+  if (process.env.NODE_ENV === "production") return;
   if (typeof window === "undefined" || orders.length === 0) return;
   const existing = readJSON<CustomerTrackingOrder[]>(
     CLIENT_TRACKING_CACHE_KEY,

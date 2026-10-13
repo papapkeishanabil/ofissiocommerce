@@ -5,6 +5,7 @@ import type {
   PaymentRecord,
 } from "@/features/payment/payment.types";
 import { getSupabaseAdminClient } from "@/features/database/supabase-admin.client";
+import { selectPaymentForOrder } from "@/features/payment/payment-attempts";
 import type { PaymentRepository } from "../repository.types";
 
 type PaymentRow = {
@@ -56,7 +57,7 @@ export const supabasePaymentRepository: PaymentRepository = {
 
   async getPaymentByOrderId(input) {
     const rows = await this.listPaymentsByOrder?.(input);
-    return rows?.[0] ?? null;
+    return selectPaymentForOrder(rows ?? []);
   },
 
   async listPaymentsByOrder(input) {

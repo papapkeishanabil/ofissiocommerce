@@ -55,7 +55,7 @@ async function runIsolatedCallbackSmoke() {
   delete process.env.IPAYMU_CALLBACK_URL;
 
   const [
-    { buildCreatePaymentBody },
+    { buildCreatePaymentBody, mapIpaymuCreatePaymentResponse },
     { processIpaymuCallback },
     paymentService,
     store,
@@ -132,22 +132,31 @@ async function runIsolatedCallbackSmoke() {
   console.log("PASS: tombol, QR, dan URL invoice memiliki hyperlink PDF aktif.");
 
   const bodyOrder = buildOrder("body");
-  const createBody = buildCreatePaymentBody(
-    {
-      paymentId: "pay_check_body",
-      orderId: bodyOrder.id,
-      referenceId: bodyOrder.orderNumber!,
-      amount: bodyOrder.calculation.grandTotal,
-      currency: "IDR",
-      order: bodyOrder,
-      customer: { companyId: bodyOrder.companyId, userId: bodyOrder.userId },
-    },
-    60,
-  );
+  const createInput = {
+    paymentId: "pay_check_body",
+    orderId: bodyOrder.id,
+    referenceId: bodyOrder.orderNumber!,
+    amount: bodyOrder.calculation.grandTotal,
+    currency: "IDR" as const,
+    order: bodyOrder,
+    customer: { companyId: bodyOrder.companyId, userId: bodyOrder.userId },
+  };
+  const createBody = buildCreatePaymentBody(createInput, 60);
   assert.deepEqual(createBody.qty, [1]);
   assert.deepEqual(createBody.price, [bodyOrder.calculation.grandTotal]);
   assert.equal(createBody.notifyUrl, process.env.IPAYMU_NOTIFY_URL);
+  assert.equal(createBody.expired, 1);
+  assert.equal(buildCreatePaymentBody(createInput, 1440).expired, 24);
+  assert.equal(buildCreatePaymentBody(createInput, 90).expired, 2);
+  const beforeExpiry = Date.now();
+  const mappedExpiry = mapIpaymuCreatePaymentResponse(createInput, {
+    Status: 200,
+    Data: { Url: "https://sandbox-payment.ipaymu.com/payment/fixture" },
+  }, 90);
+  assert.ok(Date.parse(mappedExpiry.expiredAt!) - beforeExpiry >= 2 * 60 * 60 * 1000);
+  assert.ok(Date.parse(mappedExpiry.expiredAt!) - Date.now() <= 2 * 60 * 60 * 1000);
   console.log("PASS: create payload memakai grand total backend, bukan amount dari client.");
+  console.log("PASS: masa berlaku Ofissio dalam menit dikirim ke iPaymu sebagai jam.");
 
   const paid = buildPaymentAndOrder("paid", 330_000);
   await store.savePaymentPersisted(paid.payment, paid.order);
@@ -198,6 +207,138 @@ async function runIsolatedCallbackSmoke() {
     1,
   );
   console.log("PASS: duplicate callback idempotent dan tidak menggandakan payment_paid.");
+
+  const retry = buildPaymentAndOrder("retry-late", 92_000);
+  await store.savePaymentPersisted(retry.payment, retry.order);
+  const interrupted = await paymentService.createPaymentForOrder({
+    orderId: retry.order.id,
+    companyId: retry.order.companyId,
+    userId: retry.order.userId,
+  });
+  assert.equal(interrupted.paymentId, retry.payment.id);
+  assert.equal(interrupted.idempotent, true);
+
+  const firstFailure = callbackPayload(retry.payment.referenceId, 92_000, "-1", "gagal");
+  await processIpaymuCallback(firstFailure, signedHeaders(firstFailure, "evt-retry-failed"));
+  assert.equal(store.findPaymentById(retry.payment.id)?.status, "failed");
+  assert.equal(store.findPaymentOrder(retry.order.id)?.status, "payment_failed");
+  const replacement = {
+    ...retry.payment,
+    id: "pay_check_retry-late_2",
+    referenceId: `${retry.order.orderNumber}-PAY-2`,
+    status: "waiting_payment" as const,
+    createdAt: new Date(Date.parse(retry.payment.createdAt) + 1000).toISOString(),
+  };
+  await store.savePaymentPersisted(
+    replacement,
+    store.findPaymentOrder(retry.order.id)!,
+    { persistOrder: false },
+  );
+  const beforeLateSuccess = await paymentService.getPaymentStatus({
+    orderId: retry.order.id,
+    companyId: retry.order.companyId,
+  });
+  assert.equal(beforeLateSuccess?.paymentId, replacement.id);
+
+  const oldSuccess = callbackPayload(retry.payment.referenceId, 92_000, "1", "berhasil");
+  await processIpaymuCallback(oldSuccess, signedHeaders(oldSuccess, "evt-retry-old-paid"));
+  assert.equal(store.findPaymentOrder(retry.order.id)?.status, "payment_received");
+  const afterLateSuccess = await paymentService.getPaymentStatus({
+    orderId: retry.order.id,
+    companyId: retry.order.companyId,
+  });
+  assert.equal(afterLateSuccess?.paymentId, retry.payment.id);
+  assert.equal(afterLateSuccess?.status, "paid");
+  assert.equal((await repositoryRegistry.payments.getPaymentByOrderId?.({
+    orderId: retry.order.id,
+    companyId: retry.order.companyId,
+  }))?.id, retry.payment.id);
+  const retryAfterPaid = await paymentService.createPaymentForOrder({
+    orderId: retry.order.id,
+    companyId: retry.order.companyId,
+    userId: retry.order.userId,
+  });
+  assert.equal(retryAfterPaid.paymentId, retry.payment.id);
+  assert.equal(retryAfterPaid.idempotent, true);
+
+  const newerFailure = callbackPayload(replacement.referenceId, 92_000, "-1", "gagal");
+  await processIpaymuCallback(newerFailure, signedHeaders(newerFailure, "evt-retry-new-failed"));
+  assert.equal(store.findPaymentOrder(retry.order.id)?.status, "payment_received");
+  assert.equal((await paymentService.getPaymentStatus({
+    orderId: retry.order.id,
+    companyId: retry.order.companyId,
+  }))?.status, "paid");
+  console.log("PASS: koneksi putus memakai link sama; sukses link lama menang atas retry dan gagal terlambat.");
+
+  const olderFailure = buildPaymentAndOrder("retry-old-failed", 94_000);
+  await store.savePaymentPersisted(olderFailure.payment, olderFailure.order);
+  const olderFailedPayload = callbackPayload(olderFailure.payment.referenceId, 94_000, "-1", "gagal");
+  await processIpaymuCallback(olderFailedPayload, signedHeaders(olderFailedPayload, "evt-old-failed"));
+  assert.equal(store.findPaymentOrder(olderFailure.order.id)?.status, "payment_failed");
+  process.env.PAYMENT_PROVIDER = "mock";
+  const newerAttempt = await paymentService.createPaymentForOrder({
+    orderId: olderFailure.order.id,
+    companyId: olderFailure.order.companyId,
+    userId: olderFailure.order.userId,
+  });
+  process.env.PAYMENT_PROVIDER = "ipaymu";
+  assert.notEqual(newerAttempt.paymentId, olderFailure.payment.id);
+  assert.equal(store.findPaymentOrder(olderFailure.order.id)?.status, "waiting_payment");
+  // Retry may be created within the same millisecond as the previous attempt.
+  // The -PAY-2 reference must still outrank the old -PAY-1 callback.
+  await store.updatePaymentRecordPersisted(newerAttempt.paymentId, {
+    createdAt: olderFailure.payment.createdAt,
+  });
+  const lateFailure = callbackPayload(olderFailure.payment.referenceId, 94_000, "-2", "expired");
+  await processIpaymuCallback(lateFailure, signedHeaders(lateFailure, "evt-old-expired"));
+  assert.equal(store.findPaymentOrder(olderFailure.order.id)?.status, "waiting_payment");
+  assert.equal((await paymentService.getPaymentStatus({
+    orderId: olderFailure.order.id,
+    companyId: olderFailure.order.companyId,
+  }))?.paymentId, newerAttempt.paymentId);
+  console.log("PASS: retry baru mengembalikan order menunggu pembayaran; callback gagal link lama tidak menimpa statusnya.");
+
+  const doublePaid = buildPaymentAndOrder("retry-double", 93_000);
+  await store.savePaymentPersisted(doublePaid.payment, doublePaid.order);
+  const secondAttempt = {
+    ...doublePaid.payment,
+    id: "pay_check_retry-double_2",
+    referenceId: `${doublePaid.order.orderNumber}-PAY-2`,
+    createdAt: new Date(Date.parse(doublePaid.payment.createdAt) + 1000).toISOString(),
+  };
+  await store.savePaymentPersisted(secondAttempt, doublePaid.order, { persistOrder: false });
+  const firstPaid = callbackPayload(doublePaid.payment.referenceId, 93_000, "1", "berhasil");
+  await processIpaymuCallback(firstPaid, signedHeaders(firstPaid, "evt-double-first"));
+  const secondPaid = callbackPayload(secondAttempt.referenceId, 93_000, "1", "berhasil");
+  const doubleResult = await processIpaymuCallback(
+    secondPaid, signedHeaders(secondPaid, "evt-double-second"),
+  );
+  assert.equal(doubleResult.manualReview, true);
+  assert.equal(store.findPaymentById(secondAttempt.id)?.status, "manual_review");
+  assert.ok(store.findPaymentById(secondAttempt.id)?.paidAt);
+  assert.equal(store.findPaymentOrder(doublePaid.order.id)?.status, "payment_received");
+  assert.equal((await paymentService.getPaymentStatus({
+    orderId: doublePaid.order.id,
+    companyId: doublePaid.order.companyId,
+  }))?.status, "manual_review");
+  const doubleEvents = await store.listPaymentEvents({
+    companyId: doublePaid.order.companyId,
+    orderId: doublePaid.order.id,
+  });
+  assert.equal(doubleEvents.filter((event) => event.eventType === "payment_paid").length, 1);
+  console.log("PASS: pembayaran kedua pada order sama perlu verifikasi manual, bukan dua order lunas.");
+
+  const { selectPaymentForOrder } = await import("../src/features/payment/payment-attempts");
+  const deposit = { ...paid.payment, paymentPurpose: "deposit" as const, status: "paid" as const };
+  const balance = {
+    ...paid.payment,
+    id: "pay_balance_pending",
+    paymentPurpose: "balance" as const,
+    status: "waiting_payment" as const,
+    createdAt: new Date(Date.parse(paid.payment.createdAt) + 1000).toISOString(),
+  };
+  assert.equal(selectPaymentForOrder([deposit, balance])?.id, balance.id);
+  console.log("PASS: tagihan pelunasan aktif tetap ditampilkan setelah DP diterima.");
 
   const invalid = buildPaymentAndOrder("invalid-signature", 125_000);
   await store.savePaymentPersisted(invalid.payment, invalid.order);

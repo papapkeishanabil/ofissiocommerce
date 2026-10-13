@@ -132,7 +132,7 @@ export function mapIpaymuCreatePaymentResponse(
     uniqueCode: firstNumber(data, ["UniqueCode", "uniqueCode", "unique_code"]) ?? 0,
     expiredAt:
       firstString(data, ["ExpiredAt", "expiredAt", "expired_at"]) ??
-      new Date(Date.now() + expireMinutes * 60 * 1000).toISOString(),
+      new Date(Date.now() + expireHoursFromMinutes(expireMinutes) * 60 * 60 * 1000).toISOString(),
     rawResponse: safeCreateResponse(payload),
   };
 }
@@ -248,8 +248,13 @@ export function buildCreatePaymentBody(
     notifyUrl: config.notifyUrl,
     cancelUrl: config.cancelUrl,
     referenceId: input.referenceId,
-    expired: expireMinutes,
+    // The Ofissio setting is in minutes; iPaymu's `expired` field is in hours.
+    expired: expireHoursFromMinutes(expireMinutes),
   };
+}
+
+function expireHoursFromMinutes(expireMinutes: number) {
+  return Math.max(1, Math.ceil(expireMinutes / 60));
 }
 
 function createIpaymuApiSignature(input: {

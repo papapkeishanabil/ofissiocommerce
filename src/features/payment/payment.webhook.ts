@@ -9,6 +9,7 @@ import { upsertTrackingFromPaymentOrderPersisted } from "@/features/tracking/tra
 import { logInternalError } from "@/lib/security/safe-error-response";
 
 import { getPaymentRuntimeConfig } from "./payment.config";
+import { isNewerPaymentAttempt } from "./payment-attempts";
 import {
   cachePaymentOrder,
   findPaymentByReferencePersisted,
@@ -142,6 +143,58 @@ export async function processIpaymuCallback(
     };
   }
 
+  const attempts =
+    (await repositoryRegistry.payments.listPaymentsByOrder?.({
+      companyId: payment.companyId,
+      orderId: payment.orderId,
+    })) ?? [];
+  const settledSibling = attempts.find(
+    (attempt) =>
+      attempt.id !== payment.id &&
+      attempt.status === "paid" &&
+      (attempt.paymentPurpose ?? "full") === (payment.paymentPurpose ?? "full"),
+  );
+  const newerActiveSibling = attempts.some(
+    (attempt) =>
+      attempt.id !== payment.id &&
+      (attempt.paymentPurpose ?? "full") === (payment.paymentPurpose ?? "full") &&
+      ["pending", "waiting_payment"].includes(attempt.status) &&
+      isNewerPaymentAttempt(attempt, payment),
+  );
+
+  // A customer might settle an old link after a replacement was issued. Keep
+  // the order paid, but flag any second settlement for human reconciliation.
+  if (targetStatus === "paid" && settledSibling) {
+    const reviewed = await persistCallbackState({
+      payment,
+      callback,
+      status: "manual_review",
+    });
+    await updatePaymentRecordPersisted(reviewed.id, {
+      paidAt: callback.paidAt ?? reviewed.paidAt ?? new Date().toISOString(),
+    });
+    await savePaymentEventOnce(
+      buildPaymentEvent({
+        id: `${eventKey}:verification`,
+        payment: reviewed,
+        eventType: "payment_verification_failed",
+        oldStatus: payment.status,
+        newStatus: "manual_review",
+        metadataJson: {
+          eventKey,
+          reason: "another_attempt_already_paid",
+          settledPaymentId: settledSibling.id,
+        },
+      }),
+    );
+    return {
+      paymentId: payment.id,
+      idempotent: !claimed.inserted,
+      status: "manual_review",
+      manualReview: true,
+    };
+  }
+
   const updatedPayment = await persistCallbackState({
     payment,
     callback,
@@ -197,7 +250,12 @@ export async function processIpaymuCallback(
         order: updatedOrder,
       });
     }
-  } else if (["failed", "expired", "cancelled"].includes(targetStatus)) {
+  } else if (
+    ["failed", "expired", "cancelled"].includes(targetStatus) &&
+    order.status !== "payment_received" &&
+    !settledSibling &&
+    !newerActiveSibling
+  ) {
     const updatedOrder = await updateOrderAfterPaymentPersisted(
       payment.orderId,
       "payment_failed",

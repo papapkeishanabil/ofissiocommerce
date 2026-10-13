@@ -37,6 +37,20 @@ export function CustomerPaymentPanel({
   const [loaded, setLoaded] = useState(false);
   const [creatingBalance, setCreatingBalance] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const linkExpired = Boolean(
+    payment?.expiredAt && currentTime && Date.parse(payment.expiredAt) <= currentTime,
+  );
+
+  useEffect(() => {
+    const refresh = () => setCurrentTime(Date.now());
+    const initial = window.setTimeout(refresh, 0);
+    const interval = window.setInterval(refresh, 60_000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     if (!companyId || !userId) return;
@@ -141,7 +155,17 @@ export function CustomerPaymentPanel({
         </button>
       ) : null}
       {createError ? <p className="mt-2 text-xs font-semibold text-red-700">{createError}</p> : null}
-      {payment?.paymentUrl && ["pending", "waiting_payment"].includes(payment.status) ? (
+      {payment && ["failed", "expired", "cancelled"].includes(payment.status) ? (
+        <p className="mt-3 text-sm font-semibold text-amber-800">
+          Jangan bayar ulang jika saldo sudah terpotong. Hubungi tim Ofissio untuk memeriksa transaksi dan membuat tautan baru.
+        </p>
+      ) : null}
+      {linkExpired && payment && ["pending", "waiting_payment"].includes(payment.status) ? (
+        <p className="mt-3 text-sm font-semibold text-amber-800">
+          Tautan pembayaran telah melewati masa berlaku. Hubungi tim Ofissio untuk memeriksa status pembayaran sebelum meminta tautan baru.
+        </p>
+      ) : null}
+      {payment?.paymentUrl && !linkExpired && ["pending", "waiting_payment"].includes(payment.status) ? (
         <a
           href={payment.paymentUrl}
           target="_blank"
