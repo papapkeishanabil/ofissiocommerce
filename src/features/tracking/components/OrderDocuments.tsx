@@ -41,7 +41,7 @@ export function OrderDocuments({ orderId, documents }: OrderDocumentsProps) {
   }
 
   return (
-    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
+    <section id="order-documents" className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
       <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
         <FileText className="h-4 w-4 text-brand-700" />
         Dokumen order

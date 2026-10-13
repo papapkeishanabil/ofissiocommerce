@@ -5,6 +5,7 @@ import {
   getDashboardTrackingSnapshot,
   type TrackingScope,
 } from "@/features/tracking/tracking.service";
+import { enrichTrackingInvoices } from "@/features/tracking/tracking-invoice.server";
 import { listTrackingOrders } from "@/features/tracking/tracking.server-store";
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { logAuditEvent } from "@/lib/security/audit-log";
@@ -44,10 +45,10 @@ export async function GET(request: Request) {
     };
     const persistedOrders =
       await repositoryRegistry.tracking.listTrackingByCompany(session.companyId);
-    const dynamicOrders = mergeTrackingOrders([
+    const dynamicOrders = await enrichTrackingInvoices(session.companyId, mergeTrackingOrders([
       persistedOrders,
       listTrackingOrders(session.companyId),
-    ]);
+    ]));
     const snapshot = getDashboardTrackingSnapshot(scope, dynamicOrders);
     logAuditEvent({
       request,

@@ -5,6 +5,7 @@ import type {
   PaymentOrderRecord,
   PaymentRecord,
 } from "@/features/payment/payment.types";
+import { selectPaymentForOrder } from "@/features/payment/payment-attempts";
 import type { PaymentRepository } from "../repository.types";
 
 type PaymentGlobal = typeof globalThis & {
@@ -38,10 +39,10 @@ export const mockPaymentRepository: PaymentRepository = {
     return [...payments.values()].find((payment) => payment.referenceId === referenceId) ?? null;
   },
   async getPaymentByOrderId(input) {
-    return (
-      [...payments.values()].find(
+    return selectPaymentForOrder(
+      [...payments.values()].filter(
         (payment) => payment.companyId === input.companyId && payment.orderId === input.orderId,
-      ) ?? null
+      ),
     );
   },
   async listPaymentsByOrder(input) {

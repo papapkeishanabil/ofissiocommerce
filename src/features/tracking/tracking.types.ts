@@ -123,6 +123,12 @@ export interface CustomerTrackingOrder {
   fulfillmentType: TrackingFulfillmentType;
   paymentStatus: TrackingPaymentStatus;
   orderStatus?: string | null;
+  /** Successful invoice delivery, resolved server-side from company-scoped records. */
+  invoiceNotification?: {
+    documentId: string;
+    invoiceNumber: string;
+    sentAt: string;
+  } | null;
   currentStageId: string;
   nextStep?: string | null;
   estimatedCompletionDate?: string | null;

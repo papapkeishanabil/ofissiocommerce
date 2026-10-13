@@ -331,7 +331,7 @@ export const caraOrderSectionSchema = z.object({
     .max(10),
 });
 
-export const DEFAULT_CARA_ORDER: CaraOrderSectionData = {
+export const LEGACY_CARA_ORDER: CaraOrderSectionData = {
   eyebrow: "Cara Order Mudah",
   headline: [
     { text: "Lima Langkah, " },
@@ -345,6 +345,22 @@ export const DEFAULT_CARA_ORDER: CaraOrderSectionData = {
     { title: "Kirim Logo dan Ukuran", desc: "Upload logo usaha dan ukuran tiap pegawai.", icon: "Upload" },
     { title: "Terima Quotation", desc: "Harga jelas, lead time jelas, tanpa biaya tersembunyi.", icon: "FileText" },
     { title: "Produksi dan Tracking", desc: "Pantau proses produksi sampai seragam tiba di lokasi Anda.", icon: "Truck" },
+  ],
+};
+
+export const DEFAULT_CARA_ORDER: CaraOrderSectionData = {
+  eyebrow: "Cara Order Mudah",
+  headline: [
+    { text: "Stok Tersedia. " },
+    { text: "Tinggal Pilih & Order.", highlight: true },
+  ],
+  lede: "Temukan seragam ready stock untuk tim Anda. Pilih produk, cek ketersediaan ukuran, lalu selesaikan pesanan langsung dari katalog.",
+  steps: [
+    { title: "Pilih Produk Ready Stock", desc: "Jelajahi katalog dan pilih seragam dengan stok yang tersedia.", icon: "Shirt" },
+    { title: "Tentukan Varian & Jumlah", desc: "Pilih warna, ukuran, dan jumlah sesuai stok, lalu masukkan ke keranjang.", icon: "ShoppingBag" },
+    { title: "Perlu Bordir Logo?", desc: "Ya — unggah logo dan atur posisi bordir di Studio.\nTidak — langsung lanjut ke checkout.", icon: "Scissors" },
+    { title: "Checkout & Bayar", desc: "Lengkapi alamat pengiriman, cek ringkasan pesanan, dan lakukan pembayaran.", icon: "FileText" },
+    { title: "Pantau Pengiriman", desc: "Ikuti status pesanan hingga seragam tiba di alamat Anda.", icon: "Truck" },
   ],
 };
 

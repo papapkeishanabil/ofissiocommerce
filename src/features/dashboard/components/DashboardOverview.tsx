@@ -2,19 +2,22 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, Building2, CalendarDays, Check, ChevronRight, Circle, FileText, Home, ImageIcon, MapPin, Package, Truck } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronRight, Circle, FileText, Package, Truck } from "lucide-react";
+import { AccountSidebar, type AccountView } from "./AccountSidebar";
 import type { AuthSession } from "@/types/account";
 import type { CustomerTrackingOrder, CustomerQuotationTracking } from "@/features/tracking/tracking.types";
 import { trackingOrderStatusLabel, fulfillmentLabel } from "@/features/tracking/tracking-utils";
 import { formatTrackingDate } from "@/features/tracking/tracking.service";
 import { formatIDR } from "@/types/product";
 import { CompanyLogoLibrary } from "@/features/company-assets/components/CompanyLogoLibrary";
+import { getPendingInvoiceOrders } from "./invoice-notifications";
+import { InvoiceNotifications } from "./InvoiceNotifications";
 import { QuotationList } from "./QuotationList";
 import { OrderHistoryList } from "./OrderHistoryList";
 import s from "./DashboardOverview.module.css";
 
 type Order = CustomerTrackingOrder;
-type View = "overview" | "orders" | "quotes" | "logos";
+type View = AccountView;
 type Filter = "all" | "production" | "shipping";
 
 export function orderPhase(order: Order) {
@@ -55,13 +58,18 @@ function OrderRow({ order }: { order: Order }) {
   </li>;
 }
 
-export function DashboardOverview({ session, profileComplete, orders, history, quotations }: {
+export function DashboardOverview({ session, profileComplete, orders, history, quotations, refreshFailed = false, onRefresh, initialView = "overview" }: {
+  initialView?: View;
+  refreshFailed?: boolean;
+  onRefresh?: () => void;
   session: AuthSession; profileComplete: boolean; orders: Order[]; history: Order[]; quotations: CustomerQuotationTracking[];
 }) {
-  const [view, setView] = useState<View>("overview");
+  const [view, setView] = useState<View>(initialView);
   const [filter, setFilter] = useState<Filter>("all");
   const [allActions, setAllActions] = useState(false);
+  const invoiceOrders = getPendingInvoiceOrders(session.company.id, orders);
   const tasks = [
+    ...invoiceOrders.map(order => ({ id: `${order.id}-invoice-notice`, title: "Invoice tersedia — menunggu pembayaran", description: order.invoiceNotification!.invoiceNumber, number: order.orderNumber, href: `/orders/${encodeURIComponent(order.id)}#order-documents`, action: "Lihat invoice", order })),
     ...orders.flatMap(order => order.actionRequired.filter(action => action.required).map(action => ({ id: `${order.id}-${action.id}`, title: action.label, description: action.description, number: order.orderNumber, href: `/orders/${order.id}`, action: "Tinjau pesanan", order }))),
     ...quotations.filter(q => q.status === "sent" && q.isOfficialQuotation !== false).map(q => ({ id: q.id, title: "Penawaran siap ditinjau", description: `${q.items.length} item`, number: q.quotationNumber, href: `/quotes/${q.id}`, action: "Lihat penawaran", order: null })),
   ];
@@ -69,19 +77,15 @@ export function DashboardOverview({ session, profileComplete, orders, history, q
   const production = orders.filter(o => orderPhase(o) === 1);
   const filtered = filter === "shipping" ? shipping : filter === "production" ? production : orders;
   const deliveries = [...orders].filter(o => arrival(o) && !o.actualDeliveredAt).sort((a,b) => new Date(arrival(a)!).getTime() - new Date(arrival(b)!).getTime()).slice(0,3);
-  const nav = [{ id: "overview", label: "Ringkasan", icon: Home }, { id: "orders", label: "Pesanan", icon: Package }, { id: "quotes", label: "Penawaran", icon: FileText }] as const;
   const title = view === "overview" ? "Ringkasan akun" : view === "orders" ? "Pesanan Anda" : view === "quotes" ? "Penawaran" : "Logo Library";
 
   return <main className={s.shell}>
-    <nav className={s.sidebar} aria-label="Menu akun">
-      {nav.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setView(id)} aria-current={view === id ? "page" : undefined}><Icon size={19} />{label}{id === "quotes" && <small>{quotations.length}</small>}</button>)}
-      <Link href="/dashboard/profile"><Building2 size={19} />Profil Perusahaan</Link>
-      <Link href="/dashboard/addresses"><MapPin size={19} />Alamat</Link>
-      <button onClick={() => setView("logos")} aria-current={view === "logos" ? "page" : undefined}><ImageIcon size={19} />Logo Library</button>
-    </nav>
+    <AccountSidebar active={view} onViewChange={setView} quotationCount={quotations.length} invoiceCount={invoiceOrders.length} />
     <div className={s.content}>
       <header className={s.header}><div><h1>{title}</h1><p>Halo {session.user.fullName.split(" ")[0]}. Pantau pesanan, pengiriman, dan hal yang perlu Anda tinjau.</p></div><Link className={s.primary} href="/catalog">Buat Pesanan <ArrowRight size={16} /></Link></header>
       {!profileComplete && <p className={s.profileNotice}>Lengkapi profil perusahaan untuk memudahkan pemesanan. <Link href="/dashboard/profile">Lengkapi profil <ArrowRight size={14} /></Link></p>}
+      {refreshFailed && <p className={s.profileNotice} role="alert">Pembaruan data belum berhasil. Informasi di bawah adalah data terakhir yang dimuat. <button type="button" className={s.gold} onClick={onRefresh}>Coba lagi</button></p>}
+      <InvoiceNotifications orders={invoiceOrders} />
       {view === "overview" && <>
         <div className={s.summary}>
           {[{ count: orders.length, label: "Pesanan aktif", note: "Sedang diproses oleh tim Ofissio", icon: Package, action: () => setView("orders") }, { count: tasks.length, label: "Perlu ditinjau", note: "Menunggu tindakan Anda", icon: FileText, action: () => document.getElementById("dashboard-actions")?.scrollIntoView({ block: "center" }) }, { count: quotations.length, label: "Penawaran", note: "Permintaan dan penawaran perusahaan", icon: FileText, action: () => setView("quotes") }].map(({ count, label, note, icon: Icon, action }) => <button key={label} onClick={action}><span className={s.summaryIcon}><Icon size={23} /></span><span><strong>{count}</strong><b>{label}</b><small>{note}</small></span></button>)}

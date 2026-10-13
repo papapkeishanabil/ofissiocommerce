@@ -129,7 +129,7 @@ export async function registerWithSupabase(input: {
     );
   }
   const payload = (await response.json()) as Record<string, unknown>;
-  const rawUser = asRecord(payload.user);
+  const rawUser = asRecord(payload.user) ?? asRecord(payload);
   if (Array.isArray(rawUser?.identities) && rawUser.identities.length === 0) {
     throw createApiError(
       "VALIDATION_ERROR",
@@ -137,12 +137,12 @@ export async function registerWithSupabase(input: {
       400,
     );
   }
-  const user = authUserFromPayload(payload.user);
+  const user = authUserFromPayload(rawUser);
   if (!user) {
     throw createApiError(
-      "VALIDATION_ERROR",
-      "Email sudah terdaftar. Pilih Masuk dan gunakan password akun Anda.",
-      400,
+      "PROVIDER_UNAVAILABLE",
+      "Respons pendaftaran belum dapat diproses. Silakan coba lagi nanti.",
+      502,
     );
   }
 

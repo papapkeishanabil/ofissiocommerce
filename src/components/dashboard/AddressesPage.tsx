@@ -12,6 +12,8 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { CompanyAddressForm } from "@/components/company/CompanyAddressForm";
+import { AccountSidebar } from "@/features/dashboard/components/AccountSidebar";
+import s from "@/features/dashboard/components/DashboardOverview.module.css";
 
 export function AddressesPage() {
   const { session, isAuthenticated, hydrated, refresh } = useAuth();
@@ -65,7 +67,9 @@ export function AddressesPage() {
   const addresses = session.company.addresses;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 lg:px-8">
+    <div className={s.shell}>
+      <AccountSidebar active="addresses" />
+      <div className={s.content}>
       <Breadcrumbs
         items={[
           { label: "Beranda", href: "/" },
@@ -74,7 +78,7 @@ export function AddressesPage() {
         ]}
         className="mb-4"
       />
-      <header className="mb-5 flex items-center justify-between">
+      <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-ink">
             <Building2 className="h-6 w-6 text-brand-700" />
@@ -125,10 +129,10 @@ export function AddressesPage() {
                     {a.isDefaultShipping && <Badge tone="brand">Kirim utama</Badge>}
                     {a.isDefaultBilling && <Badge tone="neutral">Tagih utama</Badge>}
                   </div>
-                  <p className="mt-1 text-sm text-ink">
+                  <p className="mt-1 break-words text-sm text-ink">
                     {a.recipientName}, {a.recipientPhone}
                   </p>
-                  <p className="mt-0.5 text-xs text-ink-muted">
+                  <p className="mt-0.5 break-words text-xs text-ink-muted">
                     {a.street}, {a.city}, {a.province} {a.postalCode}
                   </p>
                 </div>
@@ -187,6 +191,7 @@ export function AddressesPage() {
           />
         )}
       </Modal>
+      </div>
     </div>
   );
 }

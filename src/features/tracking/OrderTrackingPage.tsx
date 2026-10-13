@@ -51,7 +51,13 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
       }),
     [id, session?.company.companyName, session?.company.id],
   );
-  const order = serverOrder ?? localOrder;
+  // A previous response must not survive a company or order navigation change.
+  const matchingServerOrder =
+    serverOrder && serverOrder.companyId === session?.company.id &&
+    [serverOrder.id.toLowerCase(), serverOrder.orderNumber.toLowerCase()].includes(id.toLowerCase())
+      ? serverOrder
+      : null;
+  const order = matchingServerOrder ?? localOrder;
 
   useEffect(() => {
     setOfistantContext({

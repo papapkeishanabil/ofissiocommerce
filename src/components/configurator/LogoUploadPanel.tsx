@@ -1,8 +1,8 @@
 // src/components/configurator/LogoUploadPanel.tsx
 "use client";
 
-import { useRef, useState } from "react";
-import { LoaderCircle, LogIn, UploadCloud, X } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Images, LoaderCircle, LogIn, UploadCloud, X } from "lucide-react";
 
 import {
   LOGO_UPLOAD_CONSTRAINTS,
@@ -12,13 +12,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { useUIStore } from "@/stores/ui-store";
 import type { AuthSession } from "@/types/account";
 import styles from "./Studio.module.css";
+import { CompanyLogoPicker } from "./CompanyLogoPicker";
 
 interface LogoUploadPanelProps {
-  /** current uploaded preview URL (object URL) */
+  /** Current preview URL from an upload or the company library. */
   previewUrl?: string;
   fileName?: string;
   onUploaded: (input: {
-    file: File;
+    file?: File;
     fileName: string;
     previewUrl: string;
     fileId: string;
@@ -41,6 +42,13 @@ export function LogoUploadPanel({
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryBusy, setLibraryBusy] = useState(false);
+  const busy = uploading || libraryBusy;
+  const handleLibraryBusy = useCallback((value: boolean) => {
+    setLibraryBusy(value);
+    onUploadStateChange?.(value);
+  }, [onUploadStateChange]);
   // Setelah sesi terhidrasi, guest diarahkan login dulu — upload logo
   // tersimpan ke akun perusahaan sehingga butuh sesi customer yang valid.
   const isGuest = hydrated && !session;
@@ -100,6 +108,7 @@ export function LogoUploadPanel({
   }
 
   function handleFile(file: File) {
+    if (busy) return;
     setError(null);
     if (!session) {
       setError("Masuk dulu untuk mengunggah logo Anda.");
@@ -114,8 +123,11 @@ export function LogoUploadPanel({
       setError(v.reason ?? "File tidak valid.");
       return;
     }
+    setLibraryOpen(false);
     const url = URL.createObjectURL(file);
     const localFileId = `pending-${Date.now().toString(36)}`;
+    setUploading(true);
+    onUploadStateChange?.(true);
     const image = new Image();
     image.onload = () => {
       const aspectRatio =
@@ -135,6 +147,8 @@ export function LogoUploadPanel({
     };
     image.onerror = () => {
       URL.revokeObjectURL(url);
+      setUploading(false);
+      onUploadStateChange?.(false);
       setError("Dimensi logo tidak dapat dibaca.");
     };
     image.src = url;
@@ -184,7 +198,7 @@ export function LogoUploadPanel({
             type="button"
             onClick={onClear}
             aria-label="Hapus logo"
-            disabled={uploading}
+            disabled={busy}
             className="grid h-11 w-11 place-items-center rounded-lg text-ink-muted hover:bg-red-50 hover:text-red-600"
           >
             <X className="h-4 w-4" />
@@ -195,10 +209,10 @@ export function LogoUploadPanel({
           <button
             type="button"
             onClick={() => uploadAllowed && inputRef.current?.click()}
-            disabled={!uploadAllowed}
+            disabled={!uploadAllowed || busy}
             onDragOver={(e) => {
               e.preventDefault();
-              if (uploadAllowed) setDragOver(true);
+              if (uploadAllowed && !busy) setDragOver(true);
             }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => {
@@ -218,6 +232,21 @@ export function LogoUploadPanel({
                 : "Role akun Anda belum memiliki izin upload logo bordir."}
             </span>
           </button>
+        </>
+      )}
+
+      {uploadAllowed && session && (
+        <>
+          <button type="button" disabled={busy} aria-expanded={libraryOpen}
+            onClick={() => { setError(null); setLibraryOpen(value => !value); }}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-50">
+            <Images aria-hidden="true" className="h-4 w-4" />Pilih dari Logo Library
+          </button>
+          {libraryOpen && <CompanyLogoPicker key={`${session.user.id}:${session.company.id}`}
+            session={session} onBusyChange={handleLibraryBusy}
+            onClose={() => setLibraryOpen(false)}
+            onSelected={(logo) => { onUploaded(logo); setLibraryOpen(false); }}
+          />}
         </>
       )}
 

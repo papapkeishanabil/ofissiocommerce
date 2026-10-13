@@ -27,6 +27,7 @@ import {
   savePaymentPersisted,
   savePaymentEvent,
   updateOrderAfterPayment,
+  updateOrderAfterPaymentPersisted,
   updateOrderPaymentTerms,
   updatePaymentOrderSync,
   updatePaymentRecord,
@@ -422,6 +423,9 @@ async function createPaymentForPreparedOrder(
     now,
   });
   await savePaymentPersisted(payment, order, options);
+  if (!options.persistOrder && order.status === "payment_failed") {
+    await updateOrderAfterPaymentPersisted(order.id, "waiting_payment");
+  }
   recordPaymentEvent(payment, "payment_created", {
     metadataJson: { provider: provider.name },
   });

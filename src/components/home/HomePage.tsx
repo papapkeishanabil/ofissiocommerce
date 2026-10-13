@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, MessageCircle, Phone, ShieldCheck, Sparkles } from "lucide-react";
 
+import { ReadyStockOrderSection } from "./ReadyStockOrderSection";
 import { HeroIntro } from "./HeroIntro";
 import { HomeSectionMarker } from "./HomeSectionMarker";
 import { IndustryScaleShowcase } from "./IndustryScaleShowcase";
@@ -137,63 +138,7 @@ export async function HomePage() {
         </div>
       </section>
 
-      {/* 05 — CARA ORDER MUDAH */}
-      <section id="cara" className="scroll-mt-24 overflow-hidden bg-[#06152e] pb-10 pt-16 text-white lg:pb-12 lg:pt-20">
-        <div className="mx-auto max-w-[1600px]">
-          <div className="px-6 lg:px-8">
-          <div className="max-w-3xl">
-            <HomeSectionMarker number="05" label={content.cara_order.eyebrow} tone="dark" />
-            <h2 className="mt-6 text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-[#f6f0e6] sm:text-6xl lg:text-[4rem]">
-              <Headline segments={content.cara_order.headline} highlightClass="text-ochre-400" />
-            </h2>
-            <p className="sr-only">
-              {content.cara_order.lede}
-            </p>
-          </div>
-          </div>
-
-          <div className="relative mt-12 lg:mt-14">
-            <ol className="relative grid gap-10 lg:grid-cols-5 lg:gap-0 lg:before:absolute lg:before:inset-x-0 lg:before:top-80 lg:before:z-10 lg:before:h-[3px] lg:before:bg-ochre-400 lg:before:content-['']">
-              {content.cara_order.steps.map((step, index) => {
-                return (
-                  <li
-                    key={step.title}
-                    className="group relative border-t border-white/10 lg:border-t-0"
-                  >
-                    <div className="relative h-72 overflow-hidden bg-brand-950 lg:h-80">
-                      <Image
-                        src="/process/order-filmstrip-ofissio-v3.png"
-                        alt=""
-                        width={1950}
-                        height={807}
-                        loading="eager"
-                        quality={95}
-                        sizes="100vw"
-                        className="absolute top-1/2 h-auto w-[500%] max-w-none -translate-y-1/2 transition-transform duration-700 ease-out group-hover:scale-[1.025]"
-                        style={{ left: `${index * -100}%` }}
-                      />
-                    </div>
-
-                    <div className="relative z-20 -mt-7 px-6 pb-2 lg:px-8">
-                      <span className="grid h-14 w-14 place-items-center rounded-full bg-ochre-400 text-xl font-extrabold text-brand-950 ring-4 ring-[#06152e] tabular-nums">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <div className="mt-6">
-                        <h3 className="text-xl font-extrabold leading-tight tracking-[-0.02em] text-[#f6f0e6] sm:text-2xl lg:text-xl xl:text-2xl">
-                          {step.title}
-                        </h3>
-                      </div>
-                      <p className="mt-4 text-base leading-relaxed text-[#c7d1df]">
-                        {step.desc}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        </div>
-      </section>
+      <ReadyStockOrderSection data={content.cara_order} />
 
       {/* 06 — executive corporate case study */}
       <section id="korporasi" className="scroll-mt-24 overflow-hidden border-t border-ochre-400/35 bg-[#06152e] text-white">

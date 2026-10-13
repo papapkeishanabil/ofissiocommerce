@@ -92,30 +92,30 @@ function drawInvoiceHero(doc: SimplePdfDocument, data: InvoicePdfData) {
     font: "bold",
     color: YELLOW,
   });
-  drawLimitedText(doc, data.companyName || "-", LEFT + 34, y + 43, 236, {
-    size: 14,
-    lineHeight: 16,
+  drawLimitedText(doc, data.companyName || "-", LEFT + 34, y + 38, 236, {
+    size: 12,
+    lineHeight: 14,
     font: "bold",
     color: "#ffffff",
   }, 2);
   drawLimitedText(
     doc,
-    data.companyAddress || data.locationLabel || "-",
+    data.companyAddress || "Alamat penagihan belum tersedia",
     LEFT + 34,
-    y + 78,
+    y + 68,
     226,
     {
-      size: 7.6,
-      lineHeight: 10,
+      size: 7.4,
+      lineHeight: 9,
       color: "#e7e8e9",
     },
     3,
   );
-  doc.text(formatPicLine(data), LEFT + 34, y + 100, {
+  drawLimitedText(doc, formatPicLine(data), LEFT + 34, y + 103, 236, {
     size: 7.4,
     font: "bold",
     color: YELLOW,
-  });
+  }, 1);
 
   doc.text("INVOICE", RIGHT - 24, y + 23, {
     size: 35,
@@ -127,8 +127,8 @@ function drawInvoiceHero(doc: SimplePdfDocument, data: InvoicePdfData) {
   drawHeroMeta(doc, "Date", formatInvoiceDate(data.invoiceDate), RIGHT - 24, y + 78);
   drawHeroMeta(
     doc,
-    "Due",
-    data.dueDate ? formatInvoiceDate(data.dueDate) : "-",
+    data.dueDate ? "Due" : "Link expires",
+    data.dueDate || data.paymentExpiry ? formatInvoiceDate((data.dueDate || data.paymentExpiry)!) : "-",
     RIGHT - 24,
     y + 96,
   );
@@ -235,7 +235,7 @@ function drawPaymentAndWords(doc: SimplePdfDocument, data: InvoicePdfData) {
   });
   drawLimitedText(doc, data.amountInWords || "-", rightX + 22, y + 37, rightWidth - 44, {
     size: 10.4,
-    lineHeight: 12.6,
+    lineHeight: 11,
     font: "bold",
     color: PRIMARY,
   }, 3);
