@@ -16,6 +16,7 @@
 // hanya diaktifkan ScrollRevealInit di homepage — di halaman lain footer
 // akan tetap opacity:0.
 
+import Image from "next/image";
 import Link from "next/link";
 import { Headset, Mail, MapPin } from "lucide-react";
 
@@ -62,9 +63,17 @@ export function WorkspaceFooter() {
           <div>
             <Link
               href="/"
-              className="text-3xl font-extrabold tracking-[-0.03em] text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre-400"
+              aria-label="Ofissio — kembali ke beranda"
+              className="inline-flex rounded-sm transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre-400"
             >
-              Ofissio<span className="text-ochre-400">.</span>
+              <Image
+                src="/brand/ofissio.png"
+                alt="Ofissio"
+                width={2172}
+                height={724}
+                sizes="132px"
+                className="h-auto w-[132px] brightness-0 invert"
+              />
             </Link>
             {/* Jahitan feston — menggemakan motif §05/§08; pengganti garis
                 pemisah polos milik footer lama. */}
