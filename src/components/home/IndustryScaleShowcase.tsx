@@ -5,7 +5,7 @@ import { ArrowRight, Building2, FileCheck2, TrendingUp, UsersRound } from "lucid
 import { resolveHomepageIcon } from "@/features/site-content/icon-registry";
 import type { IndustriGroup, IndustriSectionData, IndustriTile } from "@/features/site-content/content.schema";
 import { HomeSectionMarker } from "./HomeSectionMarker";
-import { inspirationHref } from "@/features/site-content/industry-inspiration.routes";
+import { INSPIRATION_ROUTES, inspirationHref } from "@/features/site-content/industry-inspiration.routes";
 
 const CAMPAIGN_PHOTOS: Record<string, string> = {
   "/industries/bengkel-model.jpg": "/industries/campaign/bengkel-teknisi.png",
@@ -23,7 +23,12 @@ function visibleTiles(group: IndustriGroup | undefined) {
   return (group?.tiles ?? []).filter((tile) => tile.hidden !== true);
 }
 
-function photoFor(tile: IndustriTile) {
+function photoFor(tile: IndustriTile, data: IndustriSectionData) {
+  const page = data.inspirationPages.find((item) =>
+    item.industry === tile.industry && item.slug === INSPIRATION_ROUTES[tile.industry].slug,
+  );
+  const inspiration = page ?? (tile.industry === "Bengkel" ? data.inspiration : undefined);
+  if (inspiration?.image.trim()) return inspiration.image.trim();
   return CAMPAIGN_PHOTOS[tile.photo] ?? tile.photo;
 }
 
@@ -38,9 +43,9 @@ function industryHref(tile: IndustriTile) {
   return inspirationHref(tile.industry);
 }
 
-function MiniIndustry({ tile }: { tile: IndustriTile }) {
+function MiniIndustry({ tile, data }: { tile: IndustriTile; data: IndustriSectionData }) {
   const Icon = resolveHomepageIcon(tile.icon);
-  const photo = photoFor(tile);
+  const photo = photoFor(tile, data);
   return (
     <Link href={industryHref(tile)} className="group grid min-h-40 grid-cols-[minmax(0,1.05fr)_minmax(8rem,0.95fr)] overflow-hidden rounded-xl bg-white/70 shadow-[0_18px_45px_-36px_rgba(8,29,67,0.55)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_55px_-34px_rgba(8,29,67,0.48)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
       <div className="relative min-h-40 overflow-hidden bg-[#e8e3da]">
@@ -85,10 +90,10 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
 
             <div className="mt-8 grid gap-3 sm:grid-cols-[1.08fr_0.92fr]">
               <Link href={lead ? industryHref(lead) : "/inspirasi"} className="group relative min-h-[34rem] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_68px_-38px_rgba(8,29,67,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 sm:min-h-[38rem] lg:min-h-[44rem]">
-                {lead && photoFor(lead) ? <Image src={photoFor(lead)} alt={`Seragam lengkap ${lead.label}`} fill unoptimized sizes="(max-width: 640px) 100vw, (max-width: 1024px) 55vw, 27vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]" /> : null}
+                {lead && photoFor(lead, data) ? <Image src={photoFor(lead, data)} alt={`Seragam lengkap ${lead.label}`} fill unoptimized sizes="(max-width: 640px) 100vw, (max-width: 1024px) 55vw, 27vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]" /> : null}
               </Link>
               <div className="grid gap-3">
-                {ordered.map((tile) => <MiniIndustry key={`${tile.industry}-${tile.label}`} tile={tile} />)}
+                {ordered.map((tile) => <MiniIndustry key={`${tile.industry}-${tile.label}`} tile={tile} data={data} />)}
               </div>
             </div>
             <Link href="/inspirasi#bisnis-naik-kelas" className="group mt-7 inline-flex min-h-11 items-center gap-3 border-b border-ochre-500 py-2 text-sm font-bold text-brand-950 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
