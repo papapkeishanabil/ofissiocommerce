@@ -129,13 +129,13 @@ export function WorkspaceFooter() {
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="h-4 w-4 shrink-0 text-ochre-400" strokeWidth={2} aria-hidden="true" />
-                <a href="mailto:halo@ofissio.id" className={footerLinkClass}>
-                  halo@ofissio.id
+                <a href="mailto:halo@ofissio.com" className={footerLinkClass}>
+                  halo@ofissio.com
                 </a>
               </li>
               <li className="flex items-center gap-2.5">
                 <MapPin className="h-4 w-4 shrink-0 text-ochre-400" strokeWidth={2} aria-hidden="true" />
-                <span>Jakarta, Indonesia</span>
+                <span>Kabupaten Bandung, Indonesia</span>
               </li>
             </ul>
           </div>
