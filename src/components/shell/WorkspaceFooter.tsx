@@ -4,6 +4,7 @@
 // rekomendasi. Footer ini hanya untuk hal yang tidak efisien lewat chat:
 // balik ke beranda, ke katalog, pahami cara order, hubungi CS Ofissio.
 
+import Image from "next/image";
 import Link from "next/link";
 import { Headset, Mail, MapPin } from "lucide-react";
 
@@ -28,8 +29,19 @@ export function WorkspaceFooter() {
         <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.75fr_0.9fr_1.35fr]">
           {/* Brand + tagline */}
           <div className="max-w-xs">
-            <Link href="/" className="text-2xl font-bold tracking-tight text-ink">
-              Ofissio<span className="text-ochre-500">.</span>
+            <Link
+              href="/"
+              aria-label="Ofissio — kembali ke beranda"
+              className="inline-flex rounded-sm transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600"
+            >
+              <Image
+                src="/brand/ofissio.png"
+                alt="Ofissio"
+                width={2172}
+                height={724}
+                sizes="132px"
+                className="h-auto w-[132px]"
+              />
             </Link>
             <p className="mt-2 text-xs leading-relaxed text-ink-muted">
               Workwear Ready Stock &amp; Bordir Logo untuk pengadaan seragam
