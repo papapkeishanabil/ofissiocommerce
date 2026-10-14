@@ -4,6 +4,7 @@
 "use client";
 
 import { useEffect, type MouseEvent } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogIn, LogOut, Search, ShoppingCart, Menu } from "lucide-react";
@@ -110,8 +111,20 @@ export function WorkspaceHeader({ onNavigate }: {
         }
       }}>
       <div className="mx-auto flex h-full w-full items-center gap-3 px-4 sm:px-6 lg:gap-4 lg:px-8">
-        <Link href="/" className="shrink-0 text-2xl font-bold tracking-tight text-white transition-opacity hover:opacity-80 lg:mr-5 lg:text-[26px]">
-          Ofissio<span className="text-ochre-500">.</span>
+        <Link
+          href="/"
+          aria-label="Ofissio — kembali ke beranda"
+          className="shrink-0 rounded-sm transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre-400 lg:mr-5"
+        >
+          <Image
+            src="/brand/ofissio.png"
+            alt="Ofissio"
+            width={2172}
+            height={724}
+            priority
+            sizes="(min-width: 1024px) 124px, 108px"
+            className="h-auto w-[108px] brightness-0 invert lg:w-[124px]"
+          />
         </Link>
         <nav className="hidden items-center gap-1 xl:flex" aria-label="Navigasi utama">
           {links.map((link) => <Link key={link.href} href={link.href} onClick={link.section ? (e) => handleSectionNav(e, link.section!) : undefined} className={navLink}>{link.label}</Link>)}
