@@ -5,7 +5,7 @@ import { ArrowRight, MessageCircle, Phone, ShieldCheck, Sparkles } from "lucide-
 import { ReadyStockOrderSection } from "./ReadyStockOrderSection";
 import { HeroIntro } from "./HeroIntro";
 import { HomeSectionMarker } from "./HomeSectionMarker";
-import { IndustryScaleShowcase } from "./IndustryScaleShowcase";
+import { corporatePhotoFor, IndustryScaleShowcase } from "./IndustryScaleShowcase";
 import { OfistantOpenButton } from "./OfistantOpenButton";
 import { OfistantMark } from "@/components/ofistant/OfistantMark";
 import { PaketSeragamShowcase } from "./PaketSeragamShowcase";
@@ -144,7 +144,7 @@ export async function HomePage() {
       <section id="korporasi" className="scroll-mt-24 overflow-hidden border-t border-ochre-400/35 bg-[#06152e] text-white">
         <div className="relative min-h-[40rem] overflow-hidden sm:min-h-[46rem] lg:min-h-[50rem]">
           <Image
-            src="/industries/ofissio-team-campaign-v2.png"
+            src={corporatePhotoFor(content.industri)}
             alt="Tim lintas divisi mengenakan seragam kerja Ofissio"
             fill
             sizes="100vw"

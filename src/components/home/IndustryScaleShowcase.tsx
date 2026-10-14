@@ -32,6 +32,13 @@ function photoFor(tile: IndustriTile, data: IndustriSectionData) {
   return CAMPAIGN_PHOTOS[tile.photo] ?? tile.photo;
 }
 
+export function corporatePhotoFor(data: IndustriSectionData) {
+  const page = data.inspirationPages.find((item) =>
+    item.industry === "Corporate" && item.slug === INSPIRATION_ROUTES.Corporate.slug,
+  );
+  return page?.image.trim() || "/industries/ofissio-team-campaign-v2.png";
+}
+
 function compactTitle(tile: IndustriTile) {
   if (tile.industry === "Bengkel") return "Bengkel dan Teknisi";
   if (tile.industry === "Kesehatan") return "Apotek dan Klinik";
@@ -110,7 +117,7 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
             <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">Pengadaan seragam terstruktur untuk perusahaan dan organisasi berskala besar dengan standar tinggi.</p>
 
             <Link href="/inspirasi/solusi-korporasi" className="relative mt-8 block min-h-[28rem] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700 sm:min-h-[34rem] lg:min-h-[38rem]">
-              <Image src="/industries/ofissio-team-campaign-v2.png" alt="Tim berseragam Ofissio untuk solusi korporasi" fill unoptimized sizes="(max-width: 1024px) 100vw, 46vw" className="object-cover object-center" />
+              <Image src={corporatePhotoFor(data)} alt="Tim berseragam Ofissio untuk solusi korporasi" fill unoptimized sizes="(max-width: 1024px) 100vw, 46vw" className="object-cover object-center" />
             </Link>
 
             <div className="mt-5 grid gap-0 sm:grid-cols-3">
