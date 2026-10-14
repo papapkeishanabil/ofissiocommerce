@@ -92,11 +92,11 @@ export function WorkspaceFooter() {
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5 text-brand-700" />
-                <span>halo@ofissio.id</span>
+                <span>halo@ofissio.com</span>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="h-3.5 w-3.5 text-brand-700" />
-                <span>Jakarta, Indonesia</span>
+                <span>Kabupaten Bandung, Indonesia</span>
               </li>
             </ul>
           </div>
