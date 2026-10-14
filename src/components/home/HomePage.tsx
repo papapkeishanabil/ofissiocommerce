@@ -153,11 +153,10 @@ export async function HomePage() {
           />
           <div aria-hidden className="absolute inset-0 bg-[#020b1d]/55 sm:bg-[#020b1d]/45" />
 
-          <div className="relative z-10 mx-auto flex min-h-[40rem] max-w-[1600px] flex-col justify-between px-6 py-14 sm:min-h-[46rem] sm:py-16 lg:min-h-[50rem] lg:px-8 lg:py-20">
-            <HomeSectionMarker number="06" label="Solusi Korporasi" tone="dark" />
-
+          <div className="relative z-10 mx-auto flex min-h-[40rem] max-w-[1600px] flex-col justify-end px-6 py-14 sm:min-h-[46rem] sm:py-16 lg:min-h-[50rem] lg:px-8 lg:py-20">
             <div className="max-w-5xl pb-3 sm:pb-5">
-              <h2 className="max-w-[18ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-[#f6f0e6] sm:text-6xl lg:text-[4rem]">
+              <HomeSectionMarker number="06" label="Solusi Korporasi" tone="dark" />
+              <h2 className="mt-6 max-w-[18ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-[#f6f0e6] sm:text-6xl lg:text-[4rem]">
                 Solusi Korporasi dengan <span className="text-ochre-400">Standar Pengadaan Profesional.</span>
               </h2>
               <p className="mt-7 max-w-[48ch] text-base leading-relaxed text-[#e2e8f0] sm:text-lg">
