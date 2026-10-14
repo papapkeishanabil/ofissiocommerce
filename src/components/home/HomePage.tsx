@@ -142,7 +142,7 @@ export async function HomePage() {
 
       {/* 06 — executive corporate case study */}
       <section id="korporasi" className="scroll-mt-24 overflow-hidden border-t border-ochre-400/35 bg-[#06152e] text-white">
-        <div className="relative min-h-[40rem] overflow-hidden sm:min-h-[46rem] lg:min-h-[50rem]">
+        <div className="relative h-[46rem] overflow-hidden sm:h-[50rem] lg:h-[66.667vw] lg:max-h-[80rem]">
           <Image
             src={corporatePhotoFor(content.industri)}
             alt="Tim lintas divisi mengenakan seragam kerja Ofissio"
@@ -151,9 +151,9 @@ export async function HomePage() {
             quality={95}
             className="object-cover object-[58%_top] sm:object-top"
           />
-          <div aria-hidden className="absolute inset-0 bg-[#020b1d]/55 sm:bg-[#020b1d]/45" />
+          <div aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,11,29,0.68)_0%,rgba(2,11,29,0.24)_45%,transparent_72%)] sm:bg-[linear-gradient(90deg,rgba(2,11,29,0.72)_0%,rgba(2,11,29,0.48)_30%,rgba(2,11,29,0.10)_52%,transparent_70%)]" />
 
-          <div className="relative z-10 mx-auto flex min-h-[40rem] max-w-[1600px] flex-col justify-start px-6 py-14 sm:min-h-[46rem] sm:py-16 lg:min-h-[50rem] lg:px-8 lg:py-20">
+          <div className="relative z-10 mx-auto flex h-full max-w-[1600px] flex-col justify-start px-6 py-14 sm:py-16 lg:px-8 lg:py-20">
             <div className="max-w-5xl pb-3 sm:pb-5">
               <HomeSectionMarker number="06" label="Solusi Korporasi" tone="dark" />
               <h2 className="mt-6 max-w-[18ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-[#f6f0e6] sm:text-6xl lg:text-[4rem]">
