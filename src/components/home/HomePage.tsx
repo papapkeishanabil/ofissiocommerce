@@ -149,11 +149,11 @@ export async function HomePage() {
             fill
             sizes="100vw"
             quality={95}
-            className="object-cover object-[58%_center] sm:object-center"
+            className="object-cover object-[58%_top] sm:object-top"
           />
           <div aria-hidden className="absolute inset-0 bg-[#020b1d]/55 sm:bg-[#020b1d]/45" />
 
-          <div className="relative z-10 mx-auto flex min-h-[40rem] max-w-[1600px] flex-col justify-end px-6 py-14 sm:min-h-[46rem] sm:py-16 lg:min-h-[50rem] lg:px-8 lg:py-20">
+          <div className="relative z-10 mx-auto flex min-h-[40rem] max-w-[1600px] flex-col justify-start px-6 py-14 sm:min-h-[46rem] sm:py-16 lg:min-h-[50rem] lg:px-8 lg:py-20">
             <div className="max-w-5xl pb-3 sm:pb-5">
               <HomeSectionMarker number="06" label="Solusi Korporasi" tone="dark" />
               <h2 className="mt-6 max-w-[18ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-[#f6f0e6] sm:text-6xl lg:text-[4rem]">
