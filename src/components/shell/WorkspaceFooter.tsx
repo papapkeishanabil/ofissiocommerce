@@ -1,8 +1,8 @@
-// Footer storefront — penutup editorial dengan CTA pengadaan yang jelas.
+// Footer storefront — kolofon editorial dengan navigasi dan kontak utama.
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Headset, Mail, MapPin } from "lucide-react";
+import { Headset, Mail, MapPin } from "lucide-react";
 
 const LINKS = [
   { label: "Beranda", href: "/" },
@@ -32,13 +32,20 @@ const footerLinkClass =
 export function WorkspaceFooter() {
   return (
     <footer className="border-t border-[#e8dfd2] bg-[#f7f3ec] text-brand-950">
-      <div className="mx-auto grid w-full max-w-[1600px] lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.75fr)]">
-        <div className="bg-brand-950 px-6 py-12 text-white sm:px-10 lg:px-12 lg:py-14">
-          <div className="flex h-full flex-col">
+      <div className="bg-[#092d68] px-6 py-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/90 sm:px-10 lg:px-12">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <span>Seragam kerja. Lebih mudah.</span>
+          <span>Solusi pengadaan seragam untuk bisnis Indonesia</span>
+        </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-[1600px] px-6 py-12 sm:px-10 lg:px-12 lg:py-14">
+        <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-[1.35fr_0.85fr_0.95fr_1.4fr] lg:gap-0">
+          <div className="lg:pr-10">
             <Link
               href="/"
               aria-label="Ofissio — kembali ke beranda"
-              className="inline-flex w-fit rounded-sm transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre-400"
+              className="inline-flex rounded-sm transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600"
             >
               <Image
                 src="/brand/ofissio.png"
@@ -46,97 +53,67 @@ export function WorkspaceFooter() {
                 width={2172}
                 height={724}
                 sizes="160px"
-                className="h-auto w-[160px] brightness-0 invert"
+                className="h-auto w-[160px]"
               />
             </Link>
-            <div aria-hidden className="mt-7 flex items-center">
-              <span className="h-1 w-16 bg-ochre-400" />
+            <p className="mt-5 max-w-[31ch] text-sm leading-relaxed text-brand-800">
+              Workwear Ready Stock &amp; Bordir Logo untuk pengadaan seragam perusahaan di Indonesia.
+            </p>
+            <div aria-hidden className="mt-6 flex items-center">
+              <span className="h-1 w-16 bg-ochre-500" />
             </div>
-            <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-100">
+            <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-800">
               Seragam kerja. Lebih mudah.
             </p>
-            <p className="mt-8 max-w-[25ch] text-base leading-relaxed text-brand-100/85">
-              Mitra pengadaan seragam perusahaan untuk tim yang terus berkembang.
-            </p>
-            <p className="mt-auto hidden max-w-[25ch] pt-10 text-sm leading-relaxed text-brand-200/75 lg:block">
-              Workwear ready stock dan bordir logo untuk kebutuhan perusahaan di Indonesia.
-            </p>
+          </div>
+
+          <nav aria-label="Navigasi footer" className="lg:border-l lg:border-ochre-300/80 lg:px-8">
+            <ColumnLabel>Jalan Pintas</ColumnLabel>
+            <ul className="mt-5 space-y-3">
+              {LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className={footerLinkClass}>{link.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="Informasi legal" className="lg:border-l lg:border-ochre-300/80 lg:px-8">
+            <ColumnLabel>Legal</ColumnLabel>
+            <ul className="mt-5 space-y-3">
+              {LEGAL_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className={footerLinkClass}>{link.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="lg:border-l lg:border-ochre-300/80 lg:pl-8">
+            <ColumnLabel>Bantuan</ColumnLabel>
+            <ul className="mt-5 space-y-4 text-sm text-brand-800">
+              <li className="flex items-center gap-2.5">
+                <Headset className="h-4 w-4 shrink-0 text-ochre-600" strokeWidth={2} aria-hidden="true" />
+                <span>Ofistant siap membantu di panel kiri</span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <Mail className="h-4 w-4 shrink-0 text-ochre-600" strokeWidth={2} aria-hidden="true" />
+                <a href="mailto:halo@ofissio.com" className={footerLinkClass}>halo@ofissio.com</a>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <MapPin className="h-4 w-4 shrink-0 text-ochre-600" strokeWidth={2} aria-hidden="true" />
+                <span>Kabupaten Bandung, Indonesia</span>
+              </li>
+            </ul>
           </div>
         </div>
 
-        <div className="px-6 py-12 sm:px-10 lg:px-14 lg:py-14">
-          <div className="flex flex-col gap-10">
-            <div className="flex flex-col gap-7 border-b border-[#e6dccc] pb-10 xl:flex-row xl:items-end xl:justify-between xl:gap-12">
-              <div className="max-w-[42rem]">
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-ochre-600">
-                  Solusi pengadaan, hasil nyata
-                </p>
-                <h2 className="mt-3 max-w-[22ch] text-3xl font-bold leading-[1.08] tracking-[-0.035em] text-brand-950 sm:text-4xl">
-                  Butuh seragam untuk tim Anda?
-                </h2>
-                <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-brand-800">
-                  Tim Ofissio siap membantu kebutuhan pengadaan seragam perusahaan dengan proses yang mudah, cepat, dan terpercaya.
-                </p>
-              </div>
-              <Link
-                href="/quote"
-                className="inline-flex shrink-0 items-center justify-center gap-4 rounded-xl bg-ochre-500 px-6 py-4 text-sm font-bold text-brand-950 transition-colors hover:bg-ochre-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600"
-              >
-                Mulai konsultasi
-                <ArrowRight className="h-5 w-5" aria-hidden="true" />
-              </Link>
-            </div>
-
-            <div className="grid gap-10 sm:grid-cols-2 xl:grid-cols-[0.8fr_0.9fr_1.5fr] xl:gap-12">
-              <nav aria-label="Navigasi footer">
-                <ColumnLabel>Jalan Pintas</ColumnLabel>
-                <ul className="mt-4 space-y-2.5">
-                  {LINKS.map((link) => (
-                    <li key={link.href}>
-                      <Link href={link.href} className={footerLinkClass}>{link.label}</Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-
-              <nav aria-label="Informasi legal">
-                <ColumnLabel>Legal</ColumnLabel>
-                <ul className="mt-4 space-y-2.5">
-                  {LEGAL_LINKS.map((link) => (
-                    <li key={link.href}>
-                      <Link href={link.href} className={footerLinkClass}>{link.label}</Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-
-              <div>
-                <ColumnLabel>Bantuan</ColumnLabel>
-                <ul className="mt-4 space-y-3 text-sm text-brand-800">
-                  <li className="flex items-center gap-2.5">
-                    <Headset className="h-4 w-4 shrink-0 text-ochre-600" strokeWidth={2} aria-hidden="true" />
-                    <span>Ofistant siap membantu di panel kiri</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Mail className="h-4 w-4 shrink-0 text-ochre-600" strokeWidth={2} aria-hidden="true" />
-                    <a href="mailto:halo@ofissio.com" className={footerLinkClass}>halo@ofissio.com</a>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <MapPin className="h-4 w-4 shrink-0 text-ochre-600" strokeWidth={2} aria-hidden="true" />
-                    <span>Kabupaten Bandung, Indonesia</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-10 flex flex-col items-start gap-3 border-t border-[#e6dccc] pt-6 text-xs text-brand-700 sm:flex-row sm:items-center sm:justify-between">
-            <p>&copy; {new Date().getFullYear()} Ofissio Workwear. All rights reserved.</p>
-            <p className="flex items-center gap-2">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-              Powered by conversational commerce
-            </p>
-          </div>
+        <div className="mt-12 flex flex-col items-start gap-3 border-t border-ochre-300/70 pt-6 text-xs text-brand-700 sm:flex-row sm:items-center sm:justify-between">
+          <p>&copy; {new Date().getFullYear()} Ofissio Workwear. All rights reserved.</p>
+          <p className="flex items-center gap-3 uppercase tracking-[0.16em]">
+            <span className="h-px w-8 bg-ochre-500" aria-hidden="true" />
+            Built for a more productive tomorrow
+          </p>
         </div>
       </div>
     </footer>
