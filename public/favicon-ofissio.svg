@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 560" role="img" aria-label="Ofissio">
+  <rect width="560" height="560" rx="128" fill="#0b2861"/>
+  <svg x="48" y="48" width="464" height="464" viewBox="20 70 500 500" aria-hidden="true">
+    <image
+      href="/brand/ofissio.png"
+      x="0"
+      y="0"
+      width="2172"
+      height="724"
+      preserveAspectRatio="none"
+      style="filter: brightness(0) invert(1)"
+    />
+  </svg>
+</svg>
