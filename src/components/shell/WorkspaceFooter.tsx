@@ -31,17 +31,10 @@ const footerLinkClass =
 
 export function WorkspaceFooter() {
   return (
-    <footer className="border-t border-[#e8dfd2] bg-[#f7f3ec] text-brand-950">
-      <div className="bg-[#092d68] px-6 py-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/90 sm:px-10 lg:px-12">
-        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-          <span>Seragam kerja. Lebih mudah.</span>
-          <span>Solusi pengadaan seragam untuk bisnis Indonesia</span>
-        </div>
-      </div>
-
-      <div className="mx-auto w-full max-w-[1600px] px-6 py-12 sm:px-10 lg:px-12 lg:py-14">
-        <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-[1.35fr_0.85fr_0.95fr_1.4fr] lg:gap-0">
-          <div className="lg:pr-10">
+    <footer className="border-t-[6px] border-brand-950 bg-[#f7f3ec] text-brand-950">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-10 sm:px-10 lg:px-12 lg:py-12">
+        <div className="grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.9fr_0.95fr_1.3fr] lg:gap-0">
+          <div className="lg:pr-12">
             <Link
               href="/"
               aria-label="Ofissio — kembali ke beranda"
@@ -52,11 +45,11 @@ export function WorkspaceFooter() {
                 alt="Ofissio"
                 width={2172}
                 height={724}
-                sizes="160px"
-                className="h-auto w-[160px]"
+                sizes="190px"
+                className="h-auto w-[190px]"
               />
             </Link>
-            <p className="mt-5 max-w-[31ch] text-sm leading-relaxed text-brand-800">
+            <p className="mt-4 max-w-[32ch] text-sm leading-relaxed text-brand-800">
               Workwear Ready Stock &amp; Bordir Logo untuk pengadaan seragam perusahaan di Indonesia.
             </p>
             <div aria-hidden className="mt-6 flex items-center">
@@ -67,9 +60,9 @@ export function WorkspaceFooter() {
             </p>
           </div>
 
-          <nav aria-label="Navigasi footer" className="lg:border-l lg:border-ochre-300/80 lg:px-8">
+          <nav aria-label="Navigasi footer" className="lg:border-l lg:border-ochre-300/70 lg:px-8">
             <ColumnLabel>Jalan Pintas</ColumnLabel>
-            <ul className="mt-5 space-y-3">
+            <ul className="mt-4 space-y-2.5">
               {LINKS.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className={footerLinkClass}>{link.label}</Link>
@@ -78,9 +71,9 @@ export function WorkspaceFooter() {
             </ul>
           </nav>
 
-          <nav aria-label="Informasi legal" className="lg:border-l lg:border-ochre-300/80 lg:px-8">
+          <nav aria-label="Informasi legal" className="lg:border-l lg:border-ochre-300/70 lg:px-8">
             <ColumnLabel>Legal</ColumnLabel>
-            <ul className="mt-5 space-y-3">
+            <ul className="mt-4 space-y-2.5">
               {LEGAL_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className={footerLinkClass}>{link.label}</Link>
@@ -89,9 +82,9 @@ export function WorkspaceFooter() {
             </ul>
           </nav>
 
-          <div className="lg:border-l lg:border-ochre-300/80 lg:pl-8">
+          <div className="lg:border-l lg:border-ochre-300/70 lg:pl-8">
             <ColumnLabel>Bantuan</ColumnLabel>
-            <ul className="mt-5 space-y-4 text-sm text-brand-800">
+            <ul className="mt-4 space-y-3.5 text-sm text-brand-800">
               <li className="flex items-center gap-2.5">
                 <Headset className="h-4 w-4 shrink-0 text-ochre-600" strokeWidth={2} aria-hidden="true" />
                 <span>Ofistant siap membantu di panel kiri</span>
@@ -108,11 +101,11 @@ export function WorkspaceFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-start gap-3 border-t border-ochre-300/70 pt-6 text-xs text-brand-700 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-10 flex flex-col items-start gap-3 border-t border-ochre-300/70 pt-5 text-xs text-brand-700 sm:flex-row sm:items-center sm:justify-between">
           <p>&copy; {new Date().getFullYear()} Ofissio Workwear. All rights reserved.</p>
-          <p className="flex items-center gap-3 uppercase tracking-[0.16em]">
+          <p className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.18em]">
             <span className="h-px w-8 bg-ochre-500" aria-hidden="true" />
-            Built for a more productive tomorrow
+            Ready stock · Bordir logo · Pengadaan korporasi
           </p>
         </div>
       </div>
