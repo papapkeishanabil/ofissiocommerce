@@ -34,7 +34,13 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1f4fe8",
+  // "only light" opts the storefront out of Chrome-for-Android's Auto Dark
+  // Theme. Without it, phones with forced dark mode invert the ivory design:
+  // the white header logo turns black on navy and the cream 3D viewer renders
+  // near-black. The site ships a light-only palette (no dark styles exist).
+  colorScheme: "only light",
+  // Match the storefront header navy so the Android address bar blends in.
+  themeColor: "#071c3a",
 };
 
 export default function RootLayout({

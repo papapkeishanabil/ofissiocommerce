@@ -139,7 +139,12 @@
 }
 
 /* ===== Base ===== */
+/* Light-only palette: this declaration plus the color-scheme meta in
+   layout.tsx opts the page out of Chrome-for-Android Auto Dark / forced dark
+   mode, which otherwise rewrites the ivory surfaces to near-black and turns
+   the CSS-inverted white header logo black on its navy bar. */
 html {
+  color-scheme: only light;
   scroll-behavior: smooth;
 }
 
