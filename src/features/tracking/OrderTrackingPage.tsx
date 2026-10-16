@@ -137,31 +137,19 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
   const status = trackingOrderStatusLabel(order);
 
   return (
-    <div className="relative isolate">
-      {/* Wash warna lembut di belakang kartu glass — navy, ochre, dan sky
-          samar agar transparansi kartu terbaca, tanpa mengganggu teks. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-cool-100/70 via-white/10 to-brand-50/60" />
-        <div className="absolute -top-24 left-[-8%] h-[26rem] w-[26rem] rounded-full bg-brand-300/30 blur-3xl" />
-        <div className="absolute top-1/3 right-[-6%] h-[30rem] w-[30rem] rounded-full bg-ochre-200/50 blur-3xl" />
-        <div className="absolute bottom-[-4rem] left-1/3 h-96 w-96 rounded-full bg-cool-200/60 blur-3xl" />
-      </div>
-      <main className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-w-0">
       <Link
-        href="/dashboard"
+        href="/dashboard?view=orders"
         className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-ink-muted hover:text-brand-700"
       >
         <ArrowLeft className="h-4 w-4" />
-        Dashboard
+        Semua pesanan
       </Link>
 
       <header className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-ink lg:text-3xl">
+            <h1 className="break-words text-2xl font-bold tracking-tight text-ink lg:text-3xl">
               {order.orderNumber}
             </h1>
             <p className="mt-1.5 text-sm text-ink-muted">
@@ -221,7 +209,6 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
           <CustomerActionRequired order={order} />
         </aside>
       </div>
-      </main>
     </div>
   );
 }

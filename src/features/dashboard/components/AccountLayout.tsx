@@ -7,7 +7,7 @@ import styles from "./DashboardOverview.module.css";
 
 /** Uses the same account navigation, spacing and palette as the dashboard. */
 export function AccountLayout({ active, children }: {
-  active: "profile" | "cart";
+  active: "profile" | "cart" | "orders";
   children: ReactNode;
 }) {
   const { isAuthenticated } = useAuth();

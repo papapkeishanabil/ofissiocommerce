@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 
 import { OrderTrackingPage } from "@/features/tracking/OrderTrackingPage";
+import { AccountLayout } from "@/features/dashboard/components/AccountLayout";
 
 export const metadata: Metadata = { title: "Detail Order" };
 
@@ -12,5 +13,5 @@ interface PageProps {
 
 export default async function Page({ params }: PageProps) {
   const { id } = await params;
-  return <OrderTrackingPage id={id} />;
+  return <AccountLayout active="orders"><OrderTrackingPage id={id} /></AccountLayout>;
 }
