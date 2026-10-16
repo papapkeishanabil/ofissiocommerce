@@ -5,8 +5,7 @@ import {
   getOrderTrackingById,
   type TrackingScope,
 } from "@/features/tracking/tracking.service";
-import { listTrackingOrders } from "@/features/tracking/tracking.server-store";
-import { repositoryRegistry } from "@/features/repositories/repository.factory";
+import { listCustomerTrackingOrders } from "@/features/tracking/customer-tracking-orders.service";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { requireAuth } from "@/lib/security/auth-guard";
 import { requireCompanyAccess } from "@/lib/security/company-access";
@@ -47,12 +46,7 @@ export async function GET(request: Request, context: RouteContext) {
       companyId: session.companyId,
       companyName: session.companyName ?? query.companyName,
     };
-    const persistedOrders =
-      await repositoryRegistry.tracking.listTrackingByCompany(session.companyId);
-    const dynamicOrders = mergeTrackingOrders([
-      persistedOrders,
-      listTrackingOrders(session.companyId),
-    ]);
+    const dynamicOrders = await listCustomerTrackingOrders(scope);
     const order = getOrderTrackingById(id, scope, dynamicOrders);
     if (!order) {
       throw createApiError("NOT_FOUND", "Tracking order tidak ditemukan.", 404);
@@ -71,12 +65,4 @@ export async function GET(request: Request, context: RouteContext) {
   } catch (error) {
     return safeErrorResponse(error, "Tracking order tidak ditemukan.", 404);
   }
-}
-
-function mergeTrackingOrders<T extends { id: string }>(sources: T[][]) {
-  const map = new Map<string, T>();
-  for (const order of sources.flat()) {
-    if (!map.has(order.id)) map.set(order.id, order);
-  }
-  return [...map.values()];
 }

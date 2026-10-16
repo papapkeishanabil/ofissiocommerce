@@ -329,14 +329,15 @@ export function CheckoutPage() {
       const result = (await response.json()) as {
         ok: boolean;
         paymentUrl?: string | null;
+        orderId?: string;
         message?: string;
       };
-      if (!response.ok || !result.ok) throw new Error(result.message);
+      if (!response.ok || !result.ok || !result.orderId) throw new Error(result.message);
       clearCart();
       if (result.paymentUrl) {
         router.push(result.paymentUrl);
       } else {
-        setCheckoutMessage("Payment dibuat dan sedang menunggu pembayaran.");
+        router.push(`/orders/${encodeURIComponent(result.orderId)}`);
       }
     } catch {
       setCheckoutMessage(

@@ -14,6 +14,7 @@ import { hasCartCustomization } from "@/types/cart";
 import { useGatedAction } from "@/hooks/use-gated-action";
 import { useRouter } from "next/navigation";
 import { CartSummary } from "./CartSummary";
+import { UnpaidOrders } from "./UnpaidOrders";
 
 export function CartPage() {
   const items = useCartItems();
@@ -48,6 +49,8 @@ export function CartPage() {
 
   if (items.length === 0) {
     return (
+      <div className="mx-auto w-full max-w-[1680px] px-4 py-6 lg:px-8">
+      <UnpaidOrders />
       <div className="mx-auto grid w-full max-w-2xl place-items-center px-4 py-16 text-center lg:px-8">
         <span className="grid h-16 w-16 place-items-center rounded-2xl bg-brand-50 text-brand-700">
           <ShoppingCart className="h-8 w-8" />
@@ -67,6 +70,7 @@ export function CartPage() {
           Keranjang tersimpan otomatis di browser ini.
         </p>
       </div>
+      </div>
     );
   }
 
@@ -84,6 +88,7 @@ export function CartPage() {
       </div>
       <h1 className="text-3xl font-bold tracking-tight">Keranjang Belanja</h1>
       <p className="mt-1 text-sm text-ink-muted">Periksa kembali produk dan quantity sebelum melanjutkan.</p>
+      <div className="mt-4"><UnpaidOrders /></div>
       <section aria-label="Produk dalam keranjang" className="mt-4 overflow-hidden rounded-lg border border-line bg-surface">
         <div aria-hidden="true" className="hidden grid-cols-[2fr_1.1fr_1.5fr_1.7fr] gap-4 border-b border-line bg-surface-muted px-4 py-3 text-xs font-semibold text-ink-muted md:grid"><span>Produk</span><span>Warna</span><span>Ukuran &amp; Jumlah</span><span>Total</span></div>
         {items.map(item=><CartPreviewLine key={item.id} item={item} />)}
