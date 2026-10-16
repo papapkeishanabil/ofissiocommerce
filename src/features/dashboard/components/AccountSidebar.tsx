@@ -7,10 +7,11 @@ import s from "./DashboardOverview.module.css";
 
 export type AccountView = "overview" | "orders" | "quotes" | "logos";
 
-export function AccountSidebar({ active, onViewChange, quotationCount }: {
+export function AccountSidebar({ active, onViewChange, quotationCount, invoiceCount = 0 }: {
   active: AccountView | "addresses" | "profile" | "cart";
   onViewChange?: (view: AccountView) => void;
   quotationCount?: number;
+  invoiceCount?: number;
 }) {
   const navigation = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -27,7 +28,7 @@ export function AccountSidebar({ active, onViewChange, quotationCount }: {
     { id: "logos", label: "Logo Library", icon: ImageIcon },
   ] as const;
   function item({ id, label, icon: Icon }: typeof items[number]) {
-    const content = <><Icon size={19} />{label}{id === "quotes" && quotationCount !== undefined && <small>{quotationCount}</small>}</>;
+    const content = <><Icon size={19} />{label}{id === "orders" && invoiceCount > 0 && <small aria-label={`${invoiceCount} invoice menunggu pembayaran`}>{invoiceCount}</small>}{id === "quotes" && quotationCount !== undefined && <small>{quotationCount}</small>}</>;
     return onViewChange
       ? <button key={id} onClick={() => onViewChange(id)} aria-current={active === id ? "page" : undefined}>{content}</button>
       : <Link key={id} href={`/dashboard?view=${id}`} aria-current={active === id ? "page" : undefined}>{content}</Link>;
