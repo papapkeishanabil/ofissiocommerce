@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { ButtonLink } from "@/components/ui/Button";
+import { ProductThumb } from "@/components/ui/ProductThumb";
+import { productColorDisplayLabel } from "@/lib/product-colors";
 import { formatIDR } from "@/types/product";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 
@@ -57,8 +59,20 @@ export function UnpaidOrders() {
           <li key={order.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
             <div className="min-w-0 flex-1 basis-52">
               <p className="break-words text-sm font-semibold">{order.orderNumber}</p>
-              <p className="mt-1 text-sm text-ink-muted">{order.items.map((item) => `${item.productName} (${item.totalQty} pcs)`).join(", ")}</p>
-              <p className="mt-1 text-sm font-semibold tabular-nums">{formatIDR(order.total)}</p>
+              <ul aria-label={`Produk dalam pesanan ${order.orderNumber}`} className="mt-3 space-y-3">
+                {order.items.map((item) => (
+                  <li key={item.id} className="flex min-w-0 items-center gap-3">
+                    <ProductThumb src={item.image} alt={item.productName} className="h-20 w-16" />
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-semibold text-ink">{item.productName}</p>
+                      <p className="mt-1 text-xs leading-5 text-ink-muted">
+                        {[item.sku, item.selectedColor ? productColorDisplayLabel(item.selectedColor) : null, `${item.totalQty} pcs`].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-sm font-semibold tabular-nums">{formatIDR(order.total)}</p>
             </div>
             <ButtonLink href={`/orders/${encodeURIComponent(order.id)}`} variant="outline" size="sm">Lihat pesanan &amp; pembayaran</ButtonLink>
           </li>
