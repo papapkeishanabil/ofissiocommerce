@@ -3,6 +3,7 @@ import { repositoryRegistry } from "../src/features/repositories/repository.fact
 import { listCustomerTrackingOrders } from "../src/features/tracking/customer-tracking-orders.service";
 import { getDashboardTrackingSnapshot, getOrderTrackingById } from "../src/features/tracking/tracking.service";
 import type { PaymentOrderRecord, PaymentRecord } from "../src/features/payment/payment.types";
+import { buildTimeline } from "../src/features/tracking/tracking-utils";
 
 const order: PaymentOrderRecord = {
   id: "ord_unpaid-recovery", orderNumber: "OF-UNPAID-RECOVERY", companyId: "recovery-company", userId: "recovery-user", cartId: "cart-recovery",
@@ -39,6 +40,12 @@ async function main() {
   repositoryRegistry.payments.getPaymentByOrderId = async () => ({ status: "paid", referenceId: order.orderNumber, paymentPurpose: "full" } as PaymentRecord);
   assert.equal((await listCustomerTrackingOrders(scope))[0]?.paymentStatus, "paid", "A settled payment must not reappear as unpaid");
   assert.deepEqual(await listCustomerTrackingOrders({}), []);
+  const readyToShip = { ...recovered[0]!, fulfillmentType: "MADE_TO_ORDER" as const, currentStageId: "ready_to_ship", productionTimeline: buildTimeline("MADE_TO_ORDER", "ready_to_ship") };
+  const shippingSnapshot = getDashboardTrackingSnapshot(scope, [readyToShip]);
+  assert.ok(shippingSnapshot.activeOrders.some(row => row.id === readyToShip.id), "Production at 100% must stay active until delivery");
+  assert.ok(!shippingSnapshot.orderHistory.some(row => row.id === readyToShip.id));
+  const deliveredSnapshot = getDashboardTrackingSnapshot(scope, [{ ...readyToShip, currentStageId: "delivered" }]);
+  assert.ok(deliveredSnapshot.orderHistory.some(row => row.id === readyToShip.id), "Delivered is the final customer stage");
   console.log("PASS: unpaid persisted orders appear in dashboard/detail; no duplicates, cross-company leaks, or overwritten production progress; paid status preserved.");
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });

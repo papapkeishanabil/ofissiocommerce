@@ -21,7 +21,7 @@ export function OrderItemProgressList({ items }: OrderItemProgressListProps) {
       <h2 className="text-sm font-bold text-ink">Item order</h2>
       <ul className="mt-4 space-y-3">
         {items.map((item) => {
-          const progress = calculateItemProgress(item);
+          const progress = ["delivered", "completed"].includes(item.currentStageId) ? 100 : Math.min(99, calculateItemProgress(item));
           return (
             <li
               key={item.id}

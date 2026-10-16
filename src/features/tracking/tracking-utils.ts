@@ -8,6 +8,7 @@ import type {
   TrackingStageState,
   WeightedTrackingStage,
 } from "./tracking.types";
+import { customerOrderDelivered, customerStageLabel } from "./customer-order-stages";
 
 export const STAGE_TEMPLATES: Record<
   TrackingFulfillmentType,
@@ -100,6 +101,10 @@ export function mapInternalStatusToCustomerStatus(
   paymentStatus?: TrackingPaymentStatus,
 ): string {
   if (paymentStatus === "failed") return "Pembayaran bermasalah";
+  if (fulfillmentType !== "QUOTATION_ONLY") {
+    const customerLabel = customerStageLabel(currentStageId, paymentStatus);
+    if (customerLabel) return customerLabel;
+  }
 
   const stage = STAGE_TEMPLATES[fulfillmentType].find(
     (candidate) => candidate.id === currentStageId,
@@ -132,8 +137,10 @@ export function trackingOrderStatusLabel(
     | "orderStatus"
     | "paymentStatus"
     | "statusNote"
+    | "actualDeliveredAt"
   >,
 ): string {
+  if (customerOrderDelivered(order)) return "Terkirim";
   const isConvertedQuotation =
     order.paymentStatus === "waiting_payment" &&
     order.orderStatus === "waiting_payment" &&
@@ -141,7 +148,7 @@ export function trackingOrderStatusLabel(
     order.documents.some((document) => document.type === "quotation") &&
     order.statusNote?.toLowerCase().includes("quotation");
 
-  if (isConvertedQuotation) return "Quotation disetujui";
+  if (isConvertedQuotation) return "Menunggu pembayaran";
 
   return mapInternalStatusToCustomerStatus(
     order.fulfillmentType,

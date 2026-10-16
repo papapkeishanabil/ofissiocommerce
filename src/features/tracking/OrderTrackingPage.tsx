@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { formatIDR } from "@/types/product";
 import account from "@/features/dashboard/components/DashboardOverview.module.css";
+import { customerOrderDelivered, getCustomerOrderStages } from "./customer-order-stages";
 
 import { CustomerActionRequired } from "./components/CustomerActionRequired";
 import { CustomerPaymentPanel } from "./components/CustomerPaymentPanel";
@@ -132,8 +133,8 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
     );
   }
 
-  const progress = calculateOrderProgress(order.productionTimeline);
-  const status = trackingOrderStatusLabel(order);
+  const progress = customerOrderDelivered(order) ? 100 : Math.min(99, calculateOrderProgress(order.productionTimeline));
+  const status = customerOrderDelivered(order) ? "Terkirim" : trackingOrderStatusLabel(order);
 
   return (
     <div className={account.detailPage}>
@@ -186,7 +187,7 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
       </header>
 
 
-      <OrderStageStepper stages={order.productionTimeline} />
+      <OrderStageStepper stages={getCustomerOrderStages(order)} />
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
           <OrderItemProgressList items={order.items} />

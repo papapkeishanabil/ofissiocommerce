@@ -7,6 +7,7 @@ import type {
   PaymentOrderStatus,
 } from "@/features/payment/payment.types";
 import type { ShippingRate } from "@/features/shipping/shipping.types";
+import { customerOrderDelivered } from "./customer-order-stages";
 
 import {
   createMockQuotationTracking,
@@ -256,11 +257,7 @@ function lowerFirst(value: string) {
 }
 
 export function isHistoryOrder(order: CustomerTrackingOrder): boolean {
-  return (
-    order.currentStageId === "completed" ||
-    order.currentStageId === "delivered" ||
-    calculateOrderProgress(order.productionTimeline) >= 100
-  );
+  return customerOrderDelivered(order);
 }
 
 export function formatTrackingDate(value?: string | null): string {
