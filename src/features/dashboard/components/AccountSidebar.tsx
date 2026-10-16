@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { Building2, FileText, Home, ImageIcon, MapPin, Package, ShoppingCart, Headphones, ArrowUpRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import s from "./DashboardOverview.module.css";
+import { customerWhatsappHref } from "@/lib/customer-support";
 
 export type AccountView = "overview" | "orders" | "quotes" | "logos";
 
@@ -16,6 +17,7 @@ export function AccountSidebar({ active, onViewChange, quotationCount, invoiceCo
 }) {
   const navigation = useRef<HTMLElement>(null);
   const { session } = useAuth();
+  const whatsappHref = customerWhatsappHref();
   useEffect(() => {
     const nav = navigation.current;
     const current = nav?.querySelector<HTMLElement>('[aria-current="page"]');
@@ -44,6 +46,6 @@ export function AccountSidebar({ active, onViewChange, quotationCount, invoiceCo
     {item(items[3])}
     <Link href="/cart" aria-current={active === "cart" ? "page" : undefined}><ShoppingCart size={19} />Keranjang</Link>
     </nav>
-    <div className={s.sidebarHelp}><Headphones size={20} aria-hidden="true" /><strong>Butuh bantuan?</strong><p>Tim Ofissio siap membantu kebutuhan seragam Anda.</p><a href="mailto:sales@ofissio.com">Hubungi tim Ofissio <ArrowUpRight size={14} aria-hidden="true" /></a></div>
+    <div className={s.sidebarHelp}><Headphones size={20} aria-hidden="true" /><strong>Butuh bantuan?</strong><p>Tim Ofissio siap membantu kebutuhan seragam Anda.</p><a href={whatsappHref ?? "mailto:sales@ofissio.com"} target={whatsappHref ? "_blank" : undefined} rel={whatsappHref ? "noopener noreferrer" : undefined}>{whatsappHref ? "Chat WhatsApp Ofissio" : "Email Ofissio"} <ArrowUpRight size={14} aria-hidden="true" /></a></div>
   </aside>;
 }

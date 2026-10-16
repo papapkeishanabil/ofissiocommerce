@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import account from "@/features/dashboard/components/DashboardOverview.module.css";
 import styles from "./OrderTrackingPage.module.css";
+import { customerWhatsappHref } from "@/lib/customer-support";
 import { getCustomerOrderStages } from "./customer-order-stages";
 
 import { CustomerActionRequired } from "./components/CustomerActionRequired";
@@ -128,6 +129,7 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
   }
 
   const requiredActions = order.actionRequired.filter((action) => action.required && !["REPEAT_ORDER", "CONTACT_SALES"].includes(action.type));
+  const whatsappHref = customerWhatsappHref(order.orderNumber);
 
   return (
     <div className={`${account.detailPage} ${styles.page}`}>
@@ -157,7 +159,10 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
       </div>
       <div className={styles.help}>
         <p>Butuh bantuan dengan pesanan ini?</p>
-        <a href="mailto:sales@ofissio.com" className="inline-flex items-center gap-2">Hubungi tim Ofissio <ArrowUpRight className="h-4 w-4" /></a>
+        <div className="flex flex-wrap items-center gap-5">
+          {whatsappHref ? <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2">Chat WhatsApp Ofissio <ArrowUpRight className="h-4 w-4" /></a> : null}
+          <a href="mailto:sales@ofissio.com">Email Ofissio</a>
+        </div>
       </div>
     </div>
   );
