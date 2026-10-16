@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, LoaderCircle } from "lucide-react";
 
+import styles from "./CustomerPaymentPanel.module.css";
 import { formatIDR } from "@/types/product";
 
 interface CustomerPaymentPanelProps {
   orderId: string;
   companyId?: string;
   userId?: string;
+  layout?: "card" | "strip";
+  orderTotal?: number;
 }
 
 interface PaymentStatusPayload {
@@ -32,6 +35,8 @@ export function CustomerPaymentPanel({
   orderId,
   companyId,
   userId,
+  layout = "card",
+  orderTotal,
 }: CustomerPaymentPanelProps) {
   const [payment, setPayment] = useState<PaymentStatusPayload | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -112,7 +117,7 @@ export function CustomerPaymentPanel({
 
   if (!loaded && companyId && userId) {
     return (
-      <section className="rounded-2xl border border-white/70 bg-white/65 p-4 shadow-soft-md backdrop-blur-xl">
+      <section aria-label="Pembayaran pesanan" className={layout === "strip" ? styles.strip : styles.card}>
         <div className="h-5 w-32 animate-pulse rounded bg-cool-200" />
         <div className="mt-3 h-16 animate-pulse rounded bg-cool-100" />
       </section>
@@ -120,16 +125,18 @@ export function CustomerPaymentPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-white/70 bg-white/65 p-4 shadow-soft-md backdrop-blur-xl">
+    <section aria-label="Pembayaran pesanan" className={layout === "strip" ? styles.strip : styles.card}>
+      {layout === "strip" ? <div className={styles.total}><p>{payment?.paymentPurpose === "deposit" ? "Tagihan DP" : payment?.paymentPurpose === "balance" ? "Tagihan pelunasan" : "Total pembayaran"}</p><strong>{formatIDR(payment?.amount ?? orderTotal ?? 0)}</strong></div> : null}
+      <div className={styles.description}>
       <h2 className="text-lg font-bold text-ink">
-        {payment ? paymentLabel(payment.status, payment.paymentTerms?.mode === "deposit_balance", payment.paymentPurpose) : "Belum ada payment link"}
+        {payment ? paymentLabel(payment.status, payment.paymentTerms?.mode === "deposit_balance", payment.paymentPurpose) : "Pembayaran"}
       </h2>
-      <p className="mt-2 text-sm text-ink-muted">
+      <p className={`${layout === "strip" && payment && payment.paymentTerms?.mode !== "deposit_balance" ? styles.redundant : ""} mt-2 text-sm text-ink-muted`}>
         {payment
           ? payment.paymentTerms?.mode === "deposit_balance"
             ? `DP ${payment.paymentTerms.depositPercent}% sebesar ${formatIDR(payment.paymentTerms.depositAmount)}. Sisa ${formatIDR(payment.paymentTerms.balanceAmount)} dilunasi setelah produksi selesai sebelum pengiriman.`
             : `Total tagihan ${formatIDR(payment.amount)}`
-          : "Payment link akan tersedia setelah invoice/payment dibuat oleh tim Ofissio."}
+          : "Tautan pembayaran akan tersedia setelah tagihan dibuat oleh tim Ofissio."}
       </p>
       {payment?.expiredAt ? (
         <p className="mt-1 text-xs font-semibold text-ink-muted">
@@ -141,6 +148,8 @@ export function CustomerPaymentPanel({
           {payment.paymentPurpose === "balance" ? "Pelunasan diterima" : payment.paymentTerms?.mode === "deposit_balance" ? "DP diterima" : "Lunas"} pada {new Date(payment.paidAt).toLocaleString("id-ID")}
         </p>
       ) : null}
+      </div>
+      <div className={styles.actions}>
       {payment?.paymentTerms?.mode === "deposit_balance" &&
       payment.paymentTerms.balanceStatus === "due" &&
       payment.status === "paid" ? (
@@ -176,6 +185,7 @@ export function CustomerPaymentPanel({
           Bayar Sekarang
         </a>
       ) : null}
+      </div>
     </section>
   );
 }

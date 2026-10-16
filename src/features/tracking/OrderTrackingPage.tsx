@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, ReceiptText, Truck } from "lucide-react";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 
-import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/use-auth";
 import { useOfistantStore } from "@/stores/ofistant-store";
-import { formatIDR } from "@/types/product";
 import account from "@/features/dashboard/components/DashboardOverview.module.css";
-import { customerOrderDelivered, getCustomerOrderStages } from "./customer-order-stages";
+import styles from "./OrderTrackingPage.module.css";
+import { getCustomerOrderStages } from "./customer-order-stages";
 
 import { CustomerActionRequired } from "./components/CustomerActionRequired";
 import { CustomerPaymentPanel } from "./components/CustomerPaymentPanel";
@@ -25,12 +24,7 @@ import {
   getTrackingOrder,
 } from "./tracking.service";
 import type { CustomerTrackingOrder } from "./tracking.types";
-import {
-  calculateOrderProgress,
-  fulfillmentLabel,
-  paymentStatusLabel,
-  trackingOrderStatusLabel,
-} from "./tracking-utils";
+import { fulfillmentLabel } from "./tracking-utils";
 
 interface OrderTrackingPageProps {
   id: string;
@@ -133,105 +127,38 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
     );
   }
 
-  const progress = customerOrderDelivered(order) ? 100 : Math.min(99, calculateOrderProgress(order.productionTimeline));
-  const status = customerOrderDelivered(order) ? "Terkirim" : trackingOrderStatusLabel(order);
+  const requiredActions = order.actionRequired.filter((action) => action.required && !["REPEAT_ORDER", "CONTACT_SALES"].includes(action.type));
 
   return (
-    <div className={account.detailPage}>
-      <Link
-        href="/dashboard?view=orders"
-        className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-ink-muted hover:text-brand-700"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Semua pesanan
+    <div className={`${account.detailPage} ${styles.page}`}>
+      <Link href="/dashboard?view=orders" className={styles.back}>
+        <ArrowLeft className="h-4 w-4" /> Semua pesanan
       </Link>
-
-      <header className="rounded-lg border border-line bg-white p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-5">
+      <div className={styles.overview}>
+        <header className={styles.identity}>
           <div className="min-w-0">
-            <h1 className="break-words text-2xl font-bold tracking-tight text-ink lg:text-3xl">
-              {order.orderNumber}
-            </h1>
-            <p className="mt-1.5 text-sm text-ink-muted">
-              {order.companyName} - {formatTrackingDate(order.orderDate)}
-            </p>
+            <h1>{order.orderNumber}</h1>
+            <p>{order.companyName} · {formatTrackingDate(order.orderDate)}</p>
+            <div className={styles.metadata}>
+              <span>{fulfillmentLabel(order.fulfillmentType)}</span>
+              {order.estimatedCompletionDate ? <span>Estimasi selesai {formatTrackingDate(order.estimatedCompletionDate)}</span> : null}
+            </div>
           </div>
-          <div className="w-full max-w-xs">
-            <RepeatOrderButton order={order} />
-          </div>
-        </div>
-
-        <dl className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <HeaderStat label="Status" value={status} tone="brand" />
-          <HeaderStat label="Progress" value={`${progress}%`} tone="ochre" />
-          <HeaderStat label="Jenis pesanan" value={fulfillmentLabel(order.fulfillmentType)} tone="cool" />
-          <HeaderStat label="Pembayaran" value={paymentStatusLabel(order.paymentStatus)} tone="plain" />
-        </dl>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Badge tone="brand">
-            <CalendarDays className="h-3 w-3" />
-            Selesai {formatTrackingDate(order.estimatedCompletionDate)}
-          </Badge>
-          <Badge tone="neutral">
-            <ReceiptText className="h-3 w-3" />
-            Total {formatIDR(order.total)}
-          </Badge>
-          <Badge tone={order.selectedShippingRate ? "brand" : "neutral"}>
-            <Truck className="h-3 w-3" />
-            {order.selectedShippingRate
-              ? `${order.selectedShippingRate.courierName} ${order.selectedShippingRate.serviceName}`
-              : "Ongkir belum aktif"}
-          </Badge>
-        </div>
-      </header>
-
-
-      <OrderStageStepper stages={getCustomerOrderStages(order)} />
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-4">
-          <OrderItemProgressList items={order.items} />
-        </div>
-
-        <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
-          <CustomerPaymentPanel
-            orderId={order.id}
-            companyId={session?.company.id}
-            userId={session?.user.id}
-          />
-          <ShipmentTrackingCard order={order} />
-          <OrderDocuments orderId={order.id} documents={order.documents} />
-          <CustomerActionRequired order={order} />
-        </aside>
+          <div className={styles.repeat}><RepeatOrderButton order={order} compact /></div>
+        </header>
+        <CustomerPaymentPanel key={order.id} orderId={order.id} companyId={session?.company.id} userId={session?.user.id} layout="strip" orderTotal={order.total} />
+        <OrderStageStepper stages={getCustomerOrderStages(order)} />
       </div>
-    </div>
-  );
-}
-
-type HeaderStatTone = "brand" | "ochre" | "cool" | "plain";
-
-const HEADER_STAT_TONE: Record<HeaderStatTone, string> = {
-  brand: "border border-brand-100 bg-brand-50/80",
-  ochre: "border border-ochre-100 bg-ochre-50/80",
-  cool: "border border-cool-200 bg-cool-100/70",
-  plain: "border border-white/60 bg-white/55",
-};
-
-function HeaderStat({
-  label,
-  value,
-  tone = "plain",
-}: {
-  label: string;
-  value: string;
-  tone?: HeaderStatTone;
-}) {
-  return (
-    <div className={`rounded-xl px-3 py-2 ${HEADER_STAT_TONE[tone]}`}>
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm font-bold text-ink">{value}</dd>
+      {requiredActions.length ? <CustomerActionRequired order={{ ...order, actionRequired: requiredActions }} /> : null}
+      <OrderItemProgressList items={order.items} />
+      <div className={styles.details}>
+        <ShipmentTrackingCard order={order} />
+        <OrderDocuments orderId={order.id} documents={order.documents} />
+      </div>
+      <div className={styles.help}>
+        <p>Butuh bantuan dengan pesanan ini?</p>
+        <a href="mailto:sales@ofissio.com" className="inline-flex items-center gap-2">Hubungi tim Ofissio <ArrowUpRight className="h-4 w-4" /></a>
+      </div>
     </div>
   );
 }

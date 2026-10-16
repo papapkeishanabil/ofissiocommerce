@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import type { TrackingDocument } from "@/features/tracking/tracking.types";
 import { useAuth } from "@/hooks/use-auth";
 import type { AuthSession } from "@/types/account";
+import styles from "./OrderDocuments.module.css";
 
 interface OrderDocumentsProps {
   orderId: string;
@@ -22,6 +23,7 @@ export function OrderDocuments({ orderId, documents }: OrderDocumentsProps) {
     if (!session || doc.type !== "invoice") return;
     setMessage(null);
     startTransition(async () => {
+      try {
       const response = await fetch(`/api/orders/${orderId}/invoice`, {
         headers: authHeaders(session),
         cache: "no-store",
@@ -36,18 +38,21 @@ export function OrderDocuments({ orderId, documents }: OrderDocumentsProps) {
         return;
       }
       window.open(result.signedUrl, "_blank", "noopener,noreferrer");
-      setMessage("Invoice dibuka lewat signed URL sementara.");
+      setMessage("Invoice berhasil dibuka.");
+      } catch {
+        setMessage("Invoice belum dapat diunduh. Periksa koneksi lalu coba lagi.");
+      }
     });
   }
 
   return (
-    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
+    <section className={styles.panel}>
       <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
         <FileText className="h-4 w-4 text-brand-700" />
-        Dokumen order
+        Dokumen pesanan
       </h2>
       <ul className="mt-4 space-y-2">
-        {documents.map((doc) => (
+        {documents.filter((doc) => doc.type === "invoice" || doc.type === "delivery_note" || doc.fileName || doc.status === "required").map((doc) => (
           <li
             key={doc.id}
             className="flex items-center justify-between gap-3 rounded-xl border border-white/60 bg-white/45 px-3 py-2 text-sm"
@@ -55,7 +60,7 @@ export function OrderDocuments({ orderId, documents }: OrderDocumentsProps) {
             <div className="min-w-0">
               <p className="truncate font-semibold text-ink">{doc.label}</p>
               <p className="text-[11px] text-ink-muted">
-                {doc.fileName ?? "Placeholder dokumen"}
+                {doc.fileName ?? (doc.type === "invoice" ? "Dokumen tagihan pembelian" : doc.type === "delivery_note" ? "Dokumen pengiriman barang" : "Dokumen belum tersedia")}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -64,21 +69,22 @@ export function OrderDocuments({ orderId, documents }: OrderDocumentsProps) {
                   ? "Ada"
                   : doc.status === "required"
                     ? "Wajib"
-                    : "Pending"}
+                  : "Belum tersedia"}
               </Badge>
-              <button
+              {doc.type === "invoice" ? <button
                 type="button"
-                className="grid h-8 w-8 place-items-center rounded-full border border-line-strong text-ink-muted disabled:opacity-45"
+                className={styles.download}
                 disabled={isPending || (doc.type !== "invoice" && doc.status !== "available")}
                 onClick={() => downloadDocument(doc)}
-                aria-label={`Download ${doc.label}`}
+                aria-label={`Unduh ${doc.label}`}
               >
                 {doc.status === "available" || doc.type === "invoice" ? (
                   <Download className="h-3.5 w-3.5" />
                 ) : (
                   <LockKeyhole className="h-3.5 w-3.5" />
                 )}
-              </button>
+                <span>{isPending ? "Menyiapkan…" : "Unduh PDF"}</span>
+              </button> : null}
             </div>
           </li>
         ))}

@@ -1,105 +1,37 @@
 import Image from "next/image";
 import { Shirt } from "lucide-react";
-
-import { Badge } from "@/components/ui/Badge";
-import { OrderLogoThumbnails } from "@/features/tracking/components/OrderLogoThumbnails";
-import type { OrderItemProgress } from "@/features/tracking/tracking.types";
-import {
-  calculateItemProgress,
-  summarizeSizeMatrix,
-} from "@/features/tracking/tracking-utils";
+import { OrderLogoThumbnails } from "./OrderLogoThumbnails";
+import type { OrderItemProgress } from "../tracking.types";
+import { summarizeSizeMatrix } from "../tracking-utils";
 import { zoneLabel } from "@/types/uniform-3d";
 import { formatIDR } from "@/types/product";
+import styles from "./OrderItemProgressList.module.css";
 
-interface OrderItemProgressListProps {
-  items: OrderItemProgress[];
-}
-
-export function OrderItemProgressList({ items }: OrderItemProgressListProps) {
+export function OrderItemProgressList({ items }: { items: OrderItemProgress[] }) {
   return (
-    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
-      <h2 className="text-sm font-bold text-ink">Item order</h2>
-      <ul className="mt-4 space-y-3">
-        {items.map((item) => {
-          const progress = ["delivered", "completed"].includes(item.currentStageId) ? 100 : Math.min(99, calculateItemProgress(item));
-          return (
-            <li
-              key={item.id}
-              className="grid grid-cols-1 gap-4 rounded-xl border border-white/60 bg-white/45 p-3 sm:grid-cols-[200px_minmax(0,1fr)]"
-            >
-              <div className="relative aspect-square overflow-hidden rounded-xl border border-white/60 bg-white/40">
+    <section className={styles.panel} aria-label="Item pesanan">
+      <h2>Item pesanan</h2>
+      <div className={styles.head} aria-hidden="true"><span>Produk</span><span>Ukuran</span><span>Jumlah</span><span>Bordir</span><span>Subtotal</span></div>
+      <ul className={styles.list}>
+        {items.map((item) => (
+          <li key={item.id} className={styles.row}>
+            <div className={styles.product}>
+              <div className={styles.image}>
                 {item.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={item.image}
-                    alt={item.productName}
-                    loading="lazy"
-                    className="h-full w-full object-cover"
-                  />
-                ) : item.snapshotUrl ? (
-                  <Image
-                    src={item.snapshotUrl}
-                    alt={`Snapshot ${item.productName}`}
-                    fill
-                    className="object-contain p-3"
-                    sizes="200px"
-                  />
-                ) : (
-                  <div className="grid h-full place-items-center text-brand-200">
-                    <Shirt className="h-16 w-16" />
-                  </div>
-                )}
+                  <img src={item.image} alt={item.productName} loading="lazy" />
+                ) : item.snapshotUrl ? <Image src={item.snapshotUrl} alt={`Snapshot ${item.productName}`} fill sizes="96px" className="object-contain" /> : <Shirt className="h-10 w-10 text-ink-muted" />}
               </div>
-
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-ink">{item.productName}</p>
-                    <p className="mt-0.5 text-xs text-ink-muted">
-                      {item.selectedColor} - {item.totalQty} pcs -{" "}
-                      {formatIDR(item.estimatedPrice)}
-                    </p>
-                  </div>
-                  <Badge tone="brand">{progress}%</Badge>
-                </div>
-
-                <dl className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-                  <Summary label="Size matrix" value={summarizeSizeMatrix(item.sizeMatrix)} />
-                  <Summary
-                    label="Bordir"
-                    value={
-                      item.embroideryPlacements.length
-                        ? item.embroideryPlacements
-                            .map((placement) => zoneLabel(placement.zone))
-                            .join(", ")
-                        : "Tidak ada"
-                    }
-                  />
-                  <Summary label="Catatan" value={item.notes ?? "-"} />
-                </dl>
-
-                <OrderLogoThumbnails placements={item.embroideryPlacements} />
-
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/70">
-                  <div
-                    className="h-full rounded-full bg-brand-700"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            </li>
-          );
-        })}
+              <div className="min-w-0"><h3>{item.productName}</h3><p>{item.selectedColor}</p></div>
+            </div>
+            <div className={styles.cell}><span className={styles.mobileLabel}>Ukuran</span>{summarizeSizeMatrix(item.sizeMatrix)}</div>
+            <div className={styles.cell}><span className={styles.mobileLabel}>Jumlah</span>{item.totalQty} pcs</div>
+            <div className={styles.cell}><span className={styles.mobileLabel}>Bordir</span>{item.embroideryPlacements.length ? item.embroideryPlacements.map((placement) => zoneLabel(placement.zone)).join(", ") : "Tidak ada"}</div>
+            <div className={`${styles.cell} ${styles.price}`}><span className={styles.mobileLabel}>Subtotal</span>{formatIDR(item.estimatedPrice)}</div>
+            {item.notes || item.embroideryPlacements.length ? <div className={styles.extra}>{item.notes ? <p><strong>Catatan:</strong> {item.notes}</p> : null}<OrderLogoThumbnails placements={item.embroideryPlacements} /></div> : null}
+          </li>
+        ))}
       </ul>
     </section>
-  );
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-white/60 bg-white/55 px-2.5 py-2">
-      <dt className="font-semibold text-ink-muted">{label}</dt>
-      <dd className="mt-0.5 line-clamp-2 text-ink">{value || "-"}</dd>
-    </div>
   );
 }
