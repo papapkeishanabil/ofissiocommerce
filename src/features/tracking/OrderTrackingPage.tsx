@@ -15,7 +15,7 @@ import { CustomerActionRequired } from "./components/CustomerActionRequired";
 import { CustomerPaymentPanel } from "./components/CustomerPaymentPanel";
 import { OrderDocuments } from "./components/OrderDocuments";
 import { OrderItemProgressList } from "./components/OrderItemProgressList";
-import { OrderStatusTimeline } from "./components/OrderStatusTimeline";
+import { OrderStageStepper } from "./components/OrderStageStepper";
 import { RepeatOrderButton } from "./components/RepeatOrderButton";
 import { ShipmentTrackingCard } from "./components/ShipmentTrackingCard";
 import {
@@ -186,13 +186,10 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
       </header>
 
 
+      <OrderStageStepper stages={order.productionTimeline} />
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
           <OrderItemProgressList items={order.items} />
-          <OrderStatusTimeline
-            title="Tahapan pesanan"
-            stages={order.productionTimeline}
-          />
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">

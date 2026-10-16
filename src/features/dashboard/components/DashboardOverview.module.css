@@ -3,7 +3,7 @@
 .shell a,.shell button { transition:background-color .15s,color .15s; }
 .shell :is(a,button):focus-visible { outline:2px solid #ad740c; outline-offset:3px; }
 .shell button { cursor:pointer; }
-.sidebar { border-right:1px solid var(--line); padding:29px 18px 24px; background:white; display:flex; flex-direction:column; align-self:stretch; }
+.sidebar { position:sticky; top:0; z-index:10; height:calc(100dvh - 56px); overflow-y:auto; overscroll-behavior:contain; border-right:1px solid var(--line); padding:29px 18px 24px; background:white; display:flex; flex-direction:column; align-self:start; }
 .sidebar>a,.sidebar>button { display:flex; align-items:center; gap:13px; padding:13px 12px; text-align:left; border-radius:7px; white-space:nowrap; }
 .sidebar [aria-current],.sidebar :is(a,button):hover { background:#edf2fc; }
 .sidebar [aria-current] { font-weight:700; }
@@ -98,5 +98,6 @@
 .accountFooter nav{display:flex;gap:18px;flex-wrap:wrap}
 @media(min-width:1600px){.shell{grid-template-columns:242px minmax(0,1fr)}.content{padding:40px 50px}}
 @media(max-width:1150px){.shell{grid-template-columns:205px minmax(0,1fr)}.content{padding:28px 25px}.columns,.quotationGrid{grid-template-columns:1fr}.sidebar{padding-inline:12px}}
-@media(max-width:950px){.shell{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid var(--line);padding:10px 14px;overflow:hidden}.accountIdentity,.sidebarHelp{display:none}.navigation{flex-direction:row;overflow:auto}.navigation>a,.navigation>button{flex-shrink:0}}
+@media(min-width:951px) and (max-width:1023px){.sidebar{height:calc(100dvh - 64px)}}
+@media(max-width:950px){.shell{display:block}.sidebar{height:auto;border-right:0;border-bottom:1px solid var(--line);padding:10px 14px;overflow:hidden}.accountIdentity,.sidebarHelp{display:none}.navigation{flex-direction:row;overflow:auto}.navigation>a,.navigation>button{flex-shrink:0}}
 @media(max-width:700px){.content{padding:25px 18px 30px}.header{align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:24px}.header h1{font-size:25px}.header p{font-size:12px}.columns{grid-template-columns:1fr}.panel{padding:18px 16px}.sectionHeading h2{font-size:14px}.sectionHeading>button{font-size:11px}.quoteHeading{align-items:flex-start;flex-wrap:wrap}.quoteFlow small{font-size:9px}.detailPage>header h1{font-size:21px}.filters{gap:16px}.filters button{font-size:11px}}
