@@ -6,6 +6,7 @@ import {
   type TrackingScope,
 } from "@/features/tracking/tracking.service";
 import { listCustomerTrackingOrders } from "@/features/tracking/customer-tracking-orders.service";
+import { enrichTrackingInvoices } from "@/features/tracking/tracking-invoice.server";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { requireAuth } from "@/lib/security/auth-guard";
 import { requireCompanyAccess } from "@/lib/security/company-access";
@@ -46,7 +47,7 @@ export async function GET(request: Request, context: RouteContext) {
       companyId: session.companyId,
       companyName: session.companyName ?? query.companyName,
     };
-    const dynamicOrders = await listCustomerTrackingOrders(scope);
+    const dynamicOrders = await enrichTrackingInvoices(session.companyId, await listCustomerTrackingOrders(scope));
     const order = getOrderTrackingById(id, scope, dynamicOrders);
     if (!order) {
       throw createApiError("NOT_FOUND", "Tracking order tidak ditemukan.", 404);
