@@ -1,0 +1,49 @@
+.page{background:#f6f7f9;color:#10245a;min-height:calc(100dvh - 56px)}
+.container{max-width:1300px;margin:auto;padding:32px 40px 64px}
+.intro{display:flex;justify-content:space-between;align-items:center;gap:24px;margin:24px 0 30px}
+.intro h1{font-size:32px;line-height:1.2;letter-spacing:-.025em;font-weight:650;margin-bottom:10px}
+.intro p,.muted{color:#5c6a7f;font-size:13px;line-height:1.7}
+.shopLink{display:inline-flex;align-items:center;gap:10px;font-size:13px;font-weight:600;flex-shrink:0}
+.tabs{display:flex;border-bottom:1px solid #dce2ea;gap:30px;margin-bottom:32px}
+.tab{display:flex;align-items:center;gap:9px;padding:0 0 16px;border-bottom:2px solid transparent;font-size:13px;color:#5c6a7f;cursor:pointer}
+.tab[aria-pressed=true]{border-color:#071c3a;color:#071c3a;font-weight:650}
+.count{background:#e9edf3;border-radius:5px;padding:1px 6px;font-size:11px;font-variant-numeric:tabular-nums}
+.split{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(310px,.9fr);gap:32px;align-items:start}
+.listHeading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}
+.listHeading h2,.summary h2{font-size:18px;font-weight:650;letter-spacing:-.02em}
+.listHeading span{font-size:12px;color:#5c6a7f}
+.orders{display:grid;gap:14px}
+.choice{display:flex;align-items:center;gap:18px;width:100%;padding:22px 20px;border:1px solid #dce2ea;border-radius:10px;background:#fff;text-align:left;cursor:pointer}
+.choice:hover{border-color:#8896aa}
+.choice[aria-pressed=true]{border-color:#071c3a;box-shadow:inset 0 0 0 .5px #071c3a}
+.radio{width:17px;height:17px;border:1px solid #aab3c1;border-radius:50%;flex-shrink:0}
+.choice[aria-pressed=true] .radio{border:5px solid #071c3a}
+.choiceBody{flex:1;min-width:0}
+.reference{display:block;font-size:10px;color:#5c6a7f;overflow-wrap:anywhere;margin-bottom:10px}
+.product{display:flex;align-items:center;gap:16px;min-width:0}
+.product+.product{margin-top:14px}
+.product .photo{height:88px;width:70px;object-fit:contain;background:#f7f7f5;border-radius:6px;border:0}
+.productText{min-width:0}
+.name{display:block;font-size:14px;line-height:1.5;font-weight:600;overflow-wrap:anywhere}
+.meta{display:block;color:#5c6a7f;font-size:11px;line-height:1.7;margin-top:5px}
+.amount{display:block;font-size:15px;font-weight:650;margin-top:10px;font-variant-numeric:tabular-nums}
+.summary{position:sticky;top:80px;border:1px solid #dce2ea;border-radius:12px;background:#fff;padding:25px;min-width:0}
+.status{display:flex;align-items:center;gap:6px;color:#916000;font-size:11px;margin-top:9px}
+.rule{border-top:1px solid #e3e7ed;margin:22px 0}
+.summary .photo{width:58px;height:72px}
+.summary .name{font-size:12px}
+.totalLabel{font-size:12px}
+.total{font-size:28px;line-height:1.3;letter-spacing:-.025em;font-weight:650;font-variant-numeric:tabular-nums;margin:7px 0}
+.fine{color:#5c6a7f;font-size:11px;line-height:1.8}
+.primary{display:flex;justify-content:center;align-items:center;gap:12px;background:#071c3a;color:white;border-radius:6px;padding:14px 16px;font-size:12px;font-weight:600;margin:22px 0 12px}
+.primary:hover{background:#17375f}
+.detailLink{display:block;text-align:center;font-size:12px;text-decoration:underline;text-underline-offset:4px;margin-top:20px}
+.shoppingNote{display:flex;align-items:center;gap:12px;border-top:1px solid #dce2ea;margin-top:25px;padding-top:22px;font-size:12px;color:#5c6a7f;flex-wrap:wrap}
+.shoppingNote a,.shoppingNote button{color:#10245a;font-weight:600;cursor:pointer;margin-left:auto}
+.empty{padding:42px 0;max-width:480px}
+.empty h2{font-size:22px;font-weight:650;margin:18px 0 8px}
+.empty .primary{width:fit-content}
+.notice{padding:24px;background:white;border:1px solid #dce2ea;border-radius:10px;font-size:14px;line-height:1.8}
+.page button:focus-visible,.page a:focus-visible{outline:3px solid #b68226;outline-offset:4px}
+@media(max-width:800px){.container{padding:24px 20px 40px}.split{grid-template-columns:1fr;gap:28px}.summary{position:static}.intro h1{font-size:28px}.intro{align-items:flex-start}.shopLink{font-size:12px}}
+@media(max-width:480px){.container{padding:20px 18px 36px}.intro{display:block;margin:22px 0 26px}.intro h1{font-size:26px}.shopLink{margin-top:16px}.tabs{gap:20px;margin-bottom:25px}.tab{font-size:12px;gap:6px}.choice{padding:18px 14px;gap:12px}.product{gap:12px}.product .photo{width:58px;height:74px}.name{font-size:13px}.choice>svg{display:none}.summary{padding:22px}.shoppingNote a,.shoppingNote button{margin-left:30px}}

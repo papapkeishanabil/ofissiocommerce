@@ -1,83 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { ButtonLink } from "@/components/ui/Button";
+import { useState } from "react";
+import Link from "next/link";
+import { ArrowRight, ChevronRight, Clock3, ShoppingCart } from "lucide-react";
 import { ProductThumb } from "@/components/ui/ProductThumb";
 import { productColorDisplayLabel } from "@/lib/product-colors";
 import { formatIDR } from "@/types/product";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
+import styles from "./CartPage.module.css";
 
-export function UnpaidOrders() {
-  const { session, hydrated } = useAuth();
-  const companyId = session?.company.id;
-  const userId = session?.user.id;
-  const scope = companyId && userId ? `${companyId}:${userId}` : "";
-  const [result, setResult] = useState<{
-    scope: string; orders: CustomerTrackingOrder[]; error: boolean;
-  } | null>(null);
+function Products({ order }: { order: CustomerTrackingOrder }) {
+  return <span>{order.items.map((item) => <span className={styles.product} key={item.id ?? `${item.sku}-${item.selectedColor}`}>
+    <ProductThumb src={item.image} alt={item.productName} className={styles.photo} />
+    <span className={styles.productText}><span className={styles.name}>{item.productName}</span>
+      <span className={styles.meta}>{[item.sku, item.selectedColor ? productColorDisplayLabel(item.selectedColor) : null, `${item.totalQty} pcs`].filter(Boolean).join(" · ")}</span>
+    </span>
+  </span>)}</span>;
+}
 
-  useEffect(() => {
-    if (!hydrated || !companyId || !userId) return;
-    let controller: AbortController | null = null;
-    async function load() {
-      controller?.abort();
-      const request = new AbortController();
-      controller = request;
-      try {
-        const params = new URLSearchParams({ companyId: companyId!, userId: userId! });
-        const response = await fetch(`/api/tracking/orders?${params}`, { cache: "no-store", signal: request.signal });
-        const body = await response.json();
-        if (!response.ok || body.ok !== true || !Array.isArray(body.dynamicOrders)) throw new Error("orders_unavailable");
-        const orders = (body.dynamicOrders as CustomerTrackingOrder[])
-          .filter((order) => order.companyId === companyId && order.paymentStatus === "waiting_payment" && order.orderStatus !== "cancelled")
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-        if (!request.signal.aborted) setResult({ scope, orders, error: false });
-      } catch {
-        if (!request.signal.aborted) setResult({ scope, orders: [], error: true });
-      }
-    }
-    void load();
-    window.addEventListener("focus", load);
-    return () => { controller?.abort(); window.removeEventListener("focus", load); };
-  }, [companyId, hydrated, scope, userId]);
-
-  if (!hydrated || !scope) return null;
-  if (result?.scope !== scope) {
-    return <p role="status" className="mb-5 text-sm text-ink-muted">Memeriksa pesanan yang belum dibayar…</p>;
-  }
-  if (result.error) {
-    return <div className="mb-5 rounded-lg border border-line p-4 text-sm"><p>Pesanan belum dapat dimuat. Periksa pesanan Anda sebelum checkout kembali.</p><ButtonLink href="/dashboard?view=orders" variant="outline" size="sm" className="mt-3">Lihat pesanan saya</ButtonLink></div>;
-  }
-  if (!result.orders.length) return null;
-  return (
-    <section aria-label="Pesanan belum dibayar" className="mb-5 rounded-lg border border-ochre-300 bg-ochre-50/40 p-4 sm:p-5">
-      <h2 className="text-lg font-semibold text-ink">Pesanan belum dibayar</h2>
-      <p className="mt-1 text-sm leading-6 text-ink-muted">Pesanan sudah tersimpan. Lanjutkan pembayaran dari pesanan yang sama tanpa checkout ulang.</p>
-      <ul className="mt-4 divide-y divide-line">
-        {result.orders.map((order) => (
-          <li key={order.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-            <div className="min-w-0 flex-1 basis-52">
-              <p className="break-words text-sm font-semibold">{order.orderNumber}</p>
-              <ul aria-label={`Produk dalam pesanan ${order.orderNumber}`} className="mt-3 space-y-3">
-                {order.items.map((item) => (
-                  <li key={item.id} className="flex min-w-0 items-center gap-3">
-                    <ProductThumb src={item.image} alt={item.productName} className="h-20 w-16" />
-                    <div className="min-w-0">
-                      <p className="break-words text-sm font-semibold text-ink">{item.productName}</p>
-                      <p className="mt-1 text-xs leading-5 text-ink-muted">
-                        {[item.sku, item.selectedColor ? productColorDisplayLabel(item.selectedColor) : null, `${item.totalQty} pcs`].filter(Boolean).join(" · ")}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-sm font-semibold tabular-nums">{formatIDR(order.total)}</p>
-            </div>
-            <ButtonLink href={`/orders/${encodeURIComponent(order.id)}`} variant="outline" size="sm">Lihat pesanan &amp; pembayaran</ButtonLink>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
+export function UnpaidOrders({ orders, cartCount, onShowCart }: {
+  orders: CustomerTrackingOrder[]; cartCount: number; onShowCart: () => void;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = orders.find(order => order.id === selectedId) ?? orders[0];
+  if (!selected) return <div className={styles.notice}>Tidak ada pesanan yang menunggu pembayaran.</div>;
+  const href = `/orders/${encodeURIComponent(selected.id)}`;
+  return <section aria-label="Pesanan belum dibayar" className={styles.split}>
+    <div>
+      <div className={styles.listHeading}><h2>Pilih pesanan</h2><span>{orders.length} belum dibayar</span></div>
+      <ul className={styles.orders}>{orders.map(order => <li key={order.id}>
+        <button type="button" className={styles.choice} aria-pressed={selected.id === order.id} onClick={() => setSelectedId(order.id)} aria-label={`Pilih pesanan ${order.orderNumber}`}>
+          <span className={styles.radio} aria-hidden="true" />
+          <span className={styles.choiceBody}><span className={styles.reference}>{order.orderNumber}</span><Products order={order} /><span className={styles.amount}>{formatIDR(order.total)}</span></span>
+          <ChevronRight size={17} aria-hidden="true" />
+        </button>
+      </li>)}</ul>
+      <div className={styles.shoppingNote}><ShoppingCart size={18} aria-hidden="true" /><span>{cartCount ? `${cartCount} produk di keranjang belanja.` : "Keranjang belanja Anda saat ini kosong."}</span>
+        {cartCount ? <button type="button" onClick={onShowCart}>Lihat keranjang →</button> : <Link href="/catalog">Tambah produk →</Link>}
+      </div>
+    </div>
+    <aside aria-label="Ringkasan pembayaran" className={styles.summary}>
+      <h2>Ringkasan pembayaran</h2><p className={styles.status}><Clock3 size={13} aria-hidden="true" />Menunggu pembayaran</p>
+      <div className={styles.rule} />
+      <span className={styles.reference}>{selected.orderNumber}</span><Products order={selected} />
+      <div className={styles.rule} />
+      <p className={styles.totalLabel}>Total pembayaran</p><p className={styles.total}>{formatIDR(selected.total)}</p>
+      <p className={styles.fine}>Rincian lengkap tersedia di halaman pembayaran.</p>
+      <Link href={href} className={styles.primary}>Lanjutkan pembayaran<ArrowRight size={16} aria-hidden="true" /></Link>
+      <p className={styles.fine}>Pesanan Anda sudah tersimpan. Lanjutkan pembayaran tanpa membuat pesanan baru.</p>
+      <Link href={href} className={styles.detailLink}>Lihat rincian pesanan</Link>
+    </aside>
+  </section>;
 }
