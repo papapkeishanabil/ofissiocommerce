@@ -7,7 +7,8 @@ import { ArrowRight, ShoppingCart, Sparkles } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { CartPreviewLine } from "./CartPreviewLine";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { AccountLayout } from "@/features/dashboard/components/AccountLayout";
+import account from "@/features/dashboard/components/DashboardOverview.module.css";
 import { useCartStore } from "@/stores/cart-store";
 import { formatIDR } from "@/types/product";
 import { hasCartCustomization } from "@/types/cart";
@@ -55,12 +56,11 @@ export function CartPage() {
   }
 
   return (
-    <div className={styles.page}><div className={styles.container}>
-      <Breadcrumbs items={[{ label: "Beranda", href: "/" }, { label: "Keranjang" }]} />
-      <div className={styles.intro}>
-        <div><h1>Selesaikan pesanan Anda</h1><p>{unpaid.orders.length > 0 ? `${unpaid.orders.length} pesanan tersimpan dan siap dilanjutkan pembayarannya.` : "Periksa produk dan pesanan Anda sebelum melanjutkan."}</p></div>
-        <Link href="/catalog" className={styles.shopLink}>Lanjut belanja <ArrowRight size={16} aria-hidden="true" /></Link>
-      </div>
+    <AccountLayout active="cart"><div className={styles.page}>
+      <header className={account.header}>
+        <div><h1>Keranjang Belanja</h1><p>{unpaid.orders.length > 0 ? `${unpaid.orders.length} pesanan tersimpan dan siap dilanjutkan pembayarannya.` : "Periksa produk dan pesanan Anda sebelum melanjutkan."}</p></div>
+        <Link href="/catalog" className={account.primary}>Lanjut belanja <ArrowRight size={16} aria-hidden="true" /></Link>
+      </header>
       <nav aria-label="Tampilan keranjang" className={styles.tabs}>
         <button type="button" className={styles.tab} aria-pressed={view === "cart"} onClick={() => setChosenView("cart")}>Keranjang <span className={styles.count}>{items.length}</span></button>
         <button type="button" className={styles.tab} aria-pressed={view === "pending"} onClick={() => setChosenView("pending")}>Menunggu pembayaran <span className={styles.count}>{unpaid.loading ? "…" : unpaid.error ? "—" : unpaid.orders.length}</span></button>
@@ -89,6 +89,6 @@ export function CartPage() {
         <div className="flex flex-wrap gap-2"><ButtonLink href="/catalog" variant="outline">Lanjutkan Belanja</ButtonLink><Button onClick={continueOrder}>{items.some(hasCartCustomization)?"Ajukan Penawaran Bordir":"Lanjut ke Checkout"}<ArrowRight className="h-4 w-4" /></Button></div>
       </footer>
       </>}
-    </div></div>
+    </div></AccountLayout>
   );
 }

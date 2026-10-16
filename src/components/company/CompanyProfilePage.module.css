@@ -1,0 +1,9 @@
+.columns{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(280px,1fr);gap:18px;align-items:start}
+.form{margin-top:24px}
+.formPanel input,.formPanel select{background:white;border-radius:7px}
+.formPanel button[type=submit]{background:#071c3a;color:#fff;border-radius:8px;width:auto;min-width:220px;margin-top:8px}
+.formPanel button[type=submit]:hover{background:#173766}
+.success{margin-top:16px;padding:10px 14px;border:1px solid #b9dfcd;border-radius:7px;background:#f0faf5;color:#226044;font-size:13px}
+.logos>div,.logos>section{border-radius:9px;background:white}
+@media(max-width:1100px){.columns{grid-template-columns:minmax(0,1fr)}.logos{max-width:650px}}
+@media(max-width:480px){.formPanel button[type=submit]{width:100%;min-width:0}}
