@@ -1,89 +1,65 @@
-import { Check, Clock3, ExternalLink, MapPin, Truck } from "lucide-react";
+"use client";
 
+import { useState } from "react";
+import { Check, Clock3, Copy, ExternalLink, MapPin, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import { formatTrackingDate } from "@/features/tracking/tracking.service";
+import { recordedShipmentUpdates, shipmentTrackingLink } from "../shipment-tracking-view";
 import { customerShipmentStatusLabel } from "@/features/shipments/shipment.config";
 import type { ShipmentStatus } from "@/features/shipments/shipment.types";
 import { carrierStatusLabel } from "@/features/carrier-shipping/carrier-shipping.status";
 import type { CarrierShipmentStatus } from "@/features/carrier-shipping/carrier-shipping.types";
+import styles from "./ShipmentTrackingCard.module.css";
 
-interface ShipmentTrackingCardProps {
-  order: CustomerTrackingOrder;
+function updateTime(value: string) {
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(value));
 }
 
-export function ShipmentTrackingCard({ order }: ShipmentTrackingCardProps) {
-  return (
-    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
-            <Truck className="h-4 w-4 text-brand-700" />
-            Tracking pengiriman
-          </h2>
-          <p className="mt-1 text-xs text-ink-muted">
-            Resi: {order.shippingTrackingNumber ?? "Belum tersedia"}
-          </p>
-          <p className="mt-0.5 text-xs text-ink-muted">
-            Layanan:{" "}
-            {order.shippingProviderLabel || order.shippingServiceName
-              ? `${order.shippingProviderLabel ?? "Manual"} ${order.shippingServiceName ?? ""}`.trim()
-              : order.selectedShippingRate
-              ? `${order.selectedShippingRate.courierName} ${order.selectedShippingRate.serviceName} - ${order.selectedShippingRate.estimatedDays}`
-              : "Belum aktif"}
-          </p>
-        </div>
-        <Badge tone={order.shippingTrackingNumber ? "brand" : "neutral"}>
-          {shipmentStatusLabel(order)}
-        </Badge>
-      </div>
+export function ShipmentTrackingCard({ order }: { order: CustomerTrackingOrder }) {
+  const trackingNumber = order.shippingTrackingNumber?.trim() || null;
+  const trackingUrl = shipmentTrackingLink(order.shippingTrackingUrl);
+  const updates = recordedShipmentUpdates(order.shipmentTimeline);
+  const scope = `${order.id}:${trackingNumber}`;
+  const [feedback, setFeedback] = useState<{ scope: string; error: boolean; message: string } | null>(null);
+  const currentFeedback = feedback?.scope === scope ? feedback : null;
+  const courier = order.shippingProviderLabel || order.selectedShippingRate?.courierName;
+  const service = order.shippingServiceName || order.selectedShippingRate?.serviceName;
+  const estimatedStart = order.estimatedArrivalStartDate || order.estimatedDeliveryDate;
+  const estimatedEnd = order.estimatedArrivalEndDate;
+  const delivered = Boolean(order.actualDeliveredAt) || ["delivered", "completed"].includes(order.currentStageId);
+  const hasShipment = Boolean(order.shipmentStatus && !["draft", "waiting_shipment"].includes(order.shipmentStatus)) || updates.length > 0 || Boolean(order.actualCourierPickupAt) || delivered || order.currentStageId === "in_transit";
+  const needsAttention = ["failed", "delivery_failed", "returned", "cancelled"].includes(order.shipmentStatus || "");
 
-      {order.shippingTrackingUrl ? (
-        <a
-          href={order.shippingTrackingUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-line-strong bg-white px-3 py-2 text-xs font-bold text-brand-700"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Buka tracking kurir
-        </a>
-      ) : null}
+  async function copyTrackingNumber() {
+    if (!trackingNumber) return;
+    try {
+      await navigator.clipboard.writeText(trackingNumber);
+      setFeedback({ scope, error: false, message: "Nomor resi disalin." });
+    } catch {
+      setFeedback({ scope, error: true, message: "Belum bisa menyalin otomatis. Pilih nomor resi untuk menyalinnya secara manual." });
+    }
+  }
 
-      <ol className="mt-4 space-y-3">
-        {order.shipmentTimeline.map((entry) => (
-          <li key={entry.id} className="flex gap-3">
-            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/60 text-ink-muted ring-1 ring-white/70">
-              {entry.state === "completed" ? (
-                <Check className="h-3.5 w-3.5 text-emerald-700" />
-              ) : entry.state === "current" ? (
-                <Clock3 className="h-3.5 w-3.5 text-brand-700" />
-              ) : (
-                <MapPin className="h-3.5 w-3.5" />
-              )}
-            </span>
-            <div className="min-w-0 flex-1 border-b border-line pb-3 last:border-0">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-semibold text-ink">{entry.label}</p>
-                <span className="text-[11px] text-ink-muted">
-                  {formatTrackingDate(entry.timestamp)}
-                </span>
-              </div>
-              <p className="text-[11px] text-ink-muted">{entry.location ?? "-"}</p>
-              {entry.description && (
-                <p className="mt-1 text-xs text-ink-muted">{entry.description}</p>
-              )}
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
+  return <section className={styles.panel} aria-label="Detail pengiriman">
+    <h2 className={styles.heading}><Truck size={17} aria-hidden="true" />Detail pengiriman</h2>
+    <dl className={styles.details}>
+      {(courier || service) && <div><dt>Kurir &amp; layanan</dt><dd>{[courier, service].filter(Boolean).join(" · ")}</dd></div>}
+      <div><dt>Nomor resi</dt><dd>{trackingNumber ? <div className={styles.trackingNumber}><code>{trackingNumber}</code><button type="button" className={styles.copy} onClick={copyTrackingNumber} aria-label="Salin nomor resi">{currentFeedback && !currentFeedback.error ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}Salin</button></div> : "Belum tersedia"}</dd></div>
+      {delivered ? order.actualDeliveredAt && <div><dt>Diterima pada</dt><dd>{formatTrackingDate(order.actualDeliveredAt)}</dd></div> : (estimatedStart || estimatedEnd) ? <div><dt>Estimasi tiba</dt><dd>{estimatedStart ? formatTrackingDate(estimatedStart) : formatTrackingDate(estimatedEnd)}{estimatedStart && estimatedEnd && estimatedEnd !== estimatedStart ? ` – ${formatTrackingDate(estimatedEnd)}` : ""}<small>Estimasi dapat berubah sesuai proses pengiriman.</small></dd></div> : order.selectedShippingRate?.estimatedDays && <div><dt>Estimasi layanan</dt><dd>{order.selectedShippingRate.estimatedDays.replace(/days?/gi, "hari")}<small>Dihitung sejak paket dikirim.</small></dd></div>}
+    </dl>
+    {currentFeedback && <p role="status" className={styles.feedback} data-error={currentFeedback.error}>{currentFeedback.message}</p>}
+    {trackingUrl && <a className={styles.trackLink} href={trackingUrl} target="_blank" rel="noopener noreferrer">Lacak pengiriman <ExternalLink size={14} aria-hidden="true" /></a>}
+    {(trackingNumber || hasShipment) && <div className={styles.status}><Badge tone={needsAttention ? "warning" : "neutral"}>{shipmentStatusLabel(order)}</Badge>{order.shipmentUpdatedAt && Number.isFinite(Date.parse(order.shipmentUpdatedAt)) && <p className={styles.updated}>Diperbarui {updateTime(order.shipmentUpdatedAt)} WIB</p>}</div>}
+    {!trackingNumber && <p className={styles.empty}>{hasShipment ? "Nomor resi belum tersedia. Detail pelacakan akan muncul setelah diperbarui." : "Pengiriman belum dimulai. Nomor resi akan muncul setelah tersedia."}</p>}
+    {trackingNumber && !trackingUrl && <p className={styles.empty}>Tautan pelacakan belum tersedia. Gunakan nomor resi di situs resmi kurir.</p>}
+    {updates.length > 0 ? <div className={styles.history}><h3>Pembaruan pengiriman</h3><ol className={styles.events}>{updates.map(entry => <li key={entry.id}><span className={styles.eventIcon}>{entry.state === "completed" ? <Check size={13} aria-hidden="true" /> : <MapPin size={13} aria-hidden="true" />}</span><div><h4>{entry.label}</h4>{entry.location && entry.location !== "-" && <p>{entry.location}</p>}{entry.description && <p>{entry.description}</p>}<time dateTime={entry.timestamp!}>{updateTime(entry.timestamp!)} WIB</time></div></li>)}</ol></div> : trackingNumber && <p className={styles.empty}><Clock3 size={13} aria-hidden="true" /> Belum ada pembaruan perjalanan paket.</p>}
+  </section>;
 }
 
 function shipmentStatusLabel(order: CustomerTrackingOrder) {
   if (!order.shipmentStatus) {
-    return order.shippingTrackingNumber ? "Terhubung" : "Menunggu";
+    return order.shippingTrackingNumber ? "Resi tersedia" : "Status belum tersedia";
   }
   const legacyStatuses: ShipmentStatus[] = [
     "draft",
