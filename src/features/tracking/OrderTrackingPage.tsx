@@ -9,14 +9,13 @@ import { ButtonLink } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/use-auth";
 import { useOfistantStore } from "@/stores/ofistant-store";
 import { formatIDR } from "@/types/product";
+import account from "@/features/dashboard/components/DashboardOverview.module.css";
 
 import { CustomerActionRequired } from "./components/CustomerActionRequired";
 import { CustomerPaymentPanel } from "./components/CustomerPaymentPanel";
 import { OrderDocuments } from "./components/OrderDocuments";
 import { OrderItemProgressList } from "./components/OrderItemProgressList";
-import { OrderStageStepper } from "./components/OrderStageStepper";
 import { OrderStatusTimeline } from "./components/OrderStatusTimeline";
-import { ProductionProgressCard } from "./components/ProductionProgressCard";
 import { RepeatOrderButton } from "./components/RepeatOrderButton";
 import { ShipmentTrackingCard } from "./components/ShipmentTrackingCard";
 import {
@@ -137,7 +136,7 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
   const status = trackingOrderStatusLabel(order);
 
   return (
-    <div className="min-w-0">
+    <div className={account.detailPage}>
       <Link
         href="/dashboard?view=orders"
         className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-ink-muted hover:text-brand-700"
@@ -146,7 +145,7 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
         Semua pesanan
       </Link>
 
-      <header className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl sm:p-6">
+      <header className="rounded-lg border border-line bg-white p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
             <h1 className="break-words text-2xl font-bold tracking-tight text-ink lg:text-3xl">
@@ -186,14 +185,12 @@ export function OrderTrackingPage({ id }: OrderTrackingPageProps) {
         </div>
       </header>
 
-      <OrderStageStepper stages={order.productionTimeline} />
 
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
-          <ProductionProgressCard order={order} />
           <OrderItemProgressList items={order.items} />
           <OrderStatusTimeline
-            title="Tahapan produksi"
+            title="Tahapan pesanan"
             stages={order.productionTimeline}
           />
         </div>

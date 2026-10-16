@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle2, FileImage, Trash2 } from "lucide-react";
 
 import type { CompanyLogoAsset } from "../company-assets.types";
+import styles from "./CompanyLogoLibrary.module.css";
 
 function formatSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -15,11 +16,13 @@ export function LogoAssetCard({
   selected,
   onSelect,
   onDelete,
+  tile = false,
 }: {
   logo: CompanyLogoAsset;
   selected: boolean;
   onSelect: (logo: CompanyLogoAsset) => void;
   onDelete?: (logo: CompanyLogoAsset) => void;
+  tile?: boolean;
 }) {
   const [previewFailed, setPreviewFailed] = useState(false);
   const canPreviewImage =
@@ -30,12 +33,12 @@ export function LogoAssetCard({
   return (
     <article
       className={
-        "rounded-xl border bg-surface p-3 transition-colors " +
+        (tile ? `${styles.tile} ` : "rounded-xl border bg-surface p-3 transition-colors ") +
         (selected ? "border-brand-500 ring-2 ring-brand-100" : "border-line")
       }
     >
-      <div className="flex items-start gap-3">
-        <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-[conic-gradient(at_top_left,_#fff_25%,_#e2e8f0_25%_50%,_#fff_50%_75%,_#e2e8f0_75%)] bg-[length:12px_12px]">
+      <div className={tile ? styles.tileTop : "flex items-start gap-3"}>
+        <div className={tile ? styles.art : "grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-surface-muted"}>
           {canPreviewImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

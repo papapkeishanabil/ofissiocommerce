@@ -9,11 +9,12 @@ import { formatIDR } from "@/types/product";
 import type { CustomerTrackingOrder } from "@/features/tracking/tracking.types";
 import styles from "./CartPage.module.css";
 
-function Products({ order }: { order: CustomerTrackingOrder }) {
-  return <span>{order.items.map((item) => <span className={styles.product} key={item.id ?? `${item.sku}-${item.selectedColor}`}>
+function Products({ order, showTotal = false }: { order: CustomerTrackingOrder; showTotal?: boolean }) {
+  return <span>{order.items.map((item, index) => <span className={styles.product} key={item.id ?? `${item.sku}-${item.selectedColor}`}>
     <ProductThumb src={item.image} alt={item.productName} className={styles.photo} />
-    <span className={styles.productText}><span className={styles.name}>{item.productName}</span>
+    <span className={styles.productText}>{showTotal && index === 0 && <span className={styles.reference}>{order.orderNumber}</span>}<span className={styles.name}>{item.productName}</span>
       <span className={styles.meta}>{[item.sku, item.selectedColor ? productColorDisplayLabel(item.selectedColor) : null, `${item.totalQty} pcs`].filter(Boolean).join(" · ")}</span>
+      {showTotal && index === order.items.length - 1 && <span className={styles.amount}>{formatIDR(order.total)}</span>}
     </span>
   </span>)}</span>;
 }
@@ -31,7 +32,7 @@ export function UnpaidOrders({ orders, cartCount, onShowCart }: {
       <ul className={styles.orders}>{orders.map(order => <li key={order.id}>
         <button type="button" className={styles.choice} aria-pressed={selected.id === order.id} onClick={() => setSelectedId(order.id)} aria-label={`Pilih pesanan ${order.orderNumber}`}>
           <span className={styles.radio} aria-hidden="true" />
-          <span className={styles.choiceBody}><span className={styles.reference}>{order.orderNumber}</span><Products order={order} /><span className={styles.amount}>{formatIDR(order.total)}</span></span>
+          <span className={styles.choiceBody}><Products order={order} showTotal /></span>
           <ChevronRight size={17} aria-hidden="true" />
         </button>
       </li>)}</ul>

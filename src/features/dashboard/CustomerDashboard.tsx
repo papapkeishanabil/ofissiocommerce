@@ -5,7 +5,7 @@ import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/use-auth";
 import { useUIStore } from "@/stores/ui-store";
-import { DashboardOverview } from "./components/DashboardOverview";
+import { CustomerAccountOverview } from "./components/CustomerAccountOverview";
 import { loadCustomerTrackingSnapshot } from "@/features/tracking/tracking-client";
 import type { DashboardTrackingSnapshot } from "@/features/tracking/tracking.types";
 import type { AuthSession } from "@/types/account";
@@ -45,7 +45,7 @@ export function CustomerDashboard({ initialView = "overview" }: { initialView?: 
 }
 
 type DashboardLoadResult =
-  | { attempt: number; ok: true; snapshot: DashboardTrackingSnapshot }
+  | { attempt: number; ok: true; snapshot: DashboardTrackingSnapshot; refreshFailed: boolean }
   | { attempt: number; ok: false };
 
 function AuthenticatedDashboard({ session, profileComplete, initialView }: {
@@ -61,14 +61,23 @@ function AuthenticatedDashboard({ session, profileComplete, initialView }: {
 
   useEffect(() => {
     const controller = new AbortController();
-    void loadCustomerTrackingSnapshot({ companyId, companyName, userId, signal: controller.signal })
-      .then((snapshot) => {
-        if (!controller.signal.aborted) setResult({ attempt, ok: true, snapshot });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setResult({ attempt, ok: false });
-      });
-    return () => controller.abort();
+    let loading = false;
+    async function refresh() {
+      if (loading || controller.signal.aborted || document.visibilityState === "hidden") return;
+      loading = true;
+      try {
+        const snapshot = await loadCustomerTrackingSnapshot({ companyId, companyName, userId, signal: controller.signal });
+        if (!controller.signal.aborted) setResult({ attempt, ok: true, snapshot, refreshFailed: false });
+      } catch {
+        if (!controller.signal.aborted) setResult(previous => previous?.ok && previous.attempt === attempt ? { ...previous, refreshFailed: true } : { attempt, ok: false });
+      } finally { loading = false; }
+    }
+    const onReturn = () => { void refresh(); };
+    void refresh();
+    window.addEventListener("focus", onReturn);
+    document.addEventListener("visibilitychange", onReturn);
+    const timer = window.setInterval(onReturn, 30_000);
+    return () => { controller.abort(); window.removeEventListener("focus", onReturn); document.removeEventListener("visibilitychange", onReturn); window.clearInterval(timer); };
   }, [attempt, companyId, companyName, userId]);
 
   if (!result || result.attempt !== attempt) return <DashboardLoading />;
@@ -81,13 +90,15 @@ function AuthenticatedDashboard({ session, profileComplete, initialView }: {
       </div>
     </div>;
   }
-  return <DashboardOverview
+  return <CustomerAccountOverview
     initialView={initialView}
     session={session}
     profileComplete={profileComplete}
     orders={result.snapshot.activeOrders}
     history={result.snapshot.orderHistory}
     quotations={result.snapshot.quotations}
+    refreshFailed={result.refreshFailed}
+    onRefresh={() => setAttempt(value => value + 1)}
   />;
 }
 

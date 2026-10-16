@@ -1,5 +1,5 @@
 .columns{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(280px,1fr);gap:18px;align-items:start}
-.form{margin-top:24px}
+.formPanel{padding:0;overflow:hidden}.notes{display:grid;gap:18px}.notes h2{font-size:14px;font-weight:600;margin:13px 0 8px}.notes p{font-size:12px;color:#627086;line-height:1.8}.notes a{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:600;margin-top:18px}.notes hr{border:0;border-top:1px solid #e2e7ee;margin:22px 0}
 .formPanel input,.formPanel select{background:white;border-radius:7px}
 .formPanel button[type=submit]{background:#071c3a;color:#fff;border-radius:8px;width:auto;min-width:220px;margin-top:8px}
 .formPanel button[type=submit]:hover{background:#173766}

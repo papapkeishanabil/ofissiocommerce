@@ -16,12 +16,14 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import styles from "./CompanyProfileForm.module.css";
 
 interface CompanyProfileFormProps {
   onSuccess?: () => void;
+  layout?: "account";
 }
 
-export function CompanyProfileForm({ onSuccess }: CompanyProfileFormProps) {
+export function CompanyProfileForm({ onSuccess, layout }: CompanyProfileFormProps) {
   const refresh = useAuthStore((s) => s.refresh);
   const session = useAuthStore((s) => s.session);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export function CompanyProfileForm({ onSuccess }: CompanyProfileFormProps) {
   });
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+    <form onSubmit={onSubmit} className={layout === "account" ? styles.accountForm : "space-y-4"} noValidate>
       {serverError && (
         <div
           role="alert"
@@ -87,6 +89,8 @@ export function CompanyProfileForm({ onSuccess }: CompanyProfileFormProps) {
         </div>
       )}
 
+      <fieldset className={layout === "account" ? styles.section : "contents"}>
+      {layout === "account" && <><h2>Informasi perusahaan</h2><p>Gunakan data perusahaan yang sesuai untuk dokumen pesanan.</p></>}
       <Field
         label="Nama Perusahaan"
         htmlFor="co-name"
@@ -150,9 +154,11 @@ export function CompanyProfileForm({ onSuccess }: CompanyProfileFormProps) {
         </Field>
       </div>
 
-      <div className="rounded-lg bg-surface-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+      </fieldset>
+      <fieldset className={layout === "account" ? styles.section : "contents"}>
+      {layout === "account" ? <><h2>Penanggung jawab (PIC)</h2><p>Kontak utama untuk komunikasi terkait pesanan.</p></> : <div className="rounded-lg bg-surface-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
         Penanggung Jawab (PIC)
-      </div>
+      </div>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field
@@ -181,9 +187,13 @@ export function CompanyProfileForm({ onSuccess }: CompanyProfileFormProps) {
         </Field>
       </div>
 
+      </fieldset>
+      <div className={layout === "account" ? styles.footer : "contents"}>
+      {layout === "account" && <span>* Kolom wajib diisi</span>}
       <Button type="submit" className="w-full" disabled={submitting}>
         {submitting ? "Menyimpan..." : "Simpan Profil Perusahaan"}
       </Button>
+      </div>
     </form>
   );
 }

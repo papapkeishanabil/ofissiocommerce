@@ -9,6 +9,7 @@ import type { AuthSession } from "@/types/account";
 import type { CompanyLogoAsset } from "../company-assets.types";
 import { LogoAssetCard } from "./LogoAssetCard";
 import { LogoUploadButton } from "./LogoUploadButton";
+import styles from "./CompanyLogoLibrary.module.css";
 
 function canUploadCompanyLogo(session: AuthSession) {
   return (
@@ -31,8 +32,10 @@ function authHeaders(session: AuthSession): HeadersInit {
 
 export function CompanyLogoLibrary({
   onSelectLogo,
+  fullPage = false,
 }: {
   onSelectLogo?: (logo: CompanyLogoAsset) => void;
+  fullPage?: boolean;
 }) {
   const { session, hydrated } = useAuth();
   const [logos, setLogos] = useState<CompanyLogoAsset[]>([]);
@@ -117,7 +120,7 @@ export function CompanyLogoLibrary({
 
   return (
     <section
-      className="rounded-2xl border border-line bg-surface p-5"
+      className={fullPage ? styles.full : "rounded-2xl border border-line bg-surface p-5"}
       aria-labelledby="company-logo-library-title"
     >
       <div className="flex items-start justify-between gap-3">
@@ -137,7 +140,8 @@ export function CompanyLogoLibrary({
         <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
       </div>
 
-      <div className="mt-4">
+      <div className={fullPage ? styles.uploadArea : "mt-4"}>
+        {fullPage && <><h3>Simpan logo perusahaan Anda</h3><p>Pilih file PNG, JPG, atau SVG untuk kebutuhan bordir.</p></>}
         {uploadAllowed ? (
           <LogoUploadButton
             session={session}
@@ -174,11 +178,12 @@ export function CompanyLogoLibrary({
           </p>
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-1 gap-3">
+        <div className={fullPage ? styles.grid : "mt-4 grid grid-cols-1 gap-3"}>
           {logos.map((logo) => (
             <LogoAssetCard
               key={logo.id}
               logo={logo}
+              tile={fullPage}
               selected={selectedLogoId === logo.id}
               onSelect={(selected) => {
                 setSelectedLogoId(selected.id);

@@ -18,7 +18,7 @@
 .reference{display:block;font-size:10px;color:#5c6a7f;overflow-wrap:anywhere;margin-bottom:10px}
 .product{display:flex;align-items:center;gap:16px;min-width:0}
 .product+.product{margin-top:14px}
-.product .photo{height:88px;width:70px;object-fit:contain;background:#f7f7f5;border-radius:6px;border:0}
+.product .photo{height:71px;width:57px;object-fit:contain;background:#f4f6f9;border-radius:6px;border:0}
 .productText{min-width:0}
 .name{display:block;font-size:14px;line-height:1.5;font-weight:600;overflow-wrap:anywhere}
 .meta{display:block;color:#5c6a7f;font-size:11px;line-height:1.7;margin-top:5px}

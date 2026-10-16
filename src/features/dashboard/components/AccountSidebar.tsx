@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { Building2, FileText, Home, ImageIcon, MapPin, Package, ShoppingCart } from "lucide-react";
+import { Building2, FileText, Home, ImageIcon, MapPin, Package, ShoppingCart, Headphones, ArrowUpRight } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import s from "./DashboardOverview.module.css";
 
 export type AccountView = "overview" | "orders" | "quotes" | "logos";
@@ -14,6 +15,7 @@ export function AccountSidebar({ active, onViewChange, quotationCount, invoiceCo
   invoiceCount?: number;
 }) {
   const navigation = useRef<HTMLElement>(null);
+  const { session } = useAuth();
   useEffect(() => {
     const nav = navigation.current;
     const current = nav?.querySelector<HTMLElement>('[aria-current="page"]');
@@ -33,11 +35,15 @@ export function AccountSidebar({ active, onViewChange, quotationCount, invoiceCo
       ? <button key={id} onClick={() => onViewChange(id)} aria-current={active === id ? "page" : undefined}>{content}</button>
       : <Link key={id} href={`/dashboard?view=${id}`} aria-current={active === id ? "page" : undefined}>{content}</Link>;
   }
-  return <nav ref={navigation} className={s.sidebar} aria-label="Menu akun">
+  return <aside className={s.sidebar}>
+    <div className={s.accountIdentity}><small>AKUN PERUSAHAAN</small><strong>{session?.company.companyName || "Akun perusahaan"}</strong><span>Ruang pengadaan Anda</span></div>
+    <nav ref={navigation} className={s.navigation} aria-label="Menu akun">
     {items.slice(0, 3).map(item)}
     <Link href="/dashboard/profile" aria-current={active === "profile" ? "page" : undefined}><Building2 size={19} />Profil Perusahaan</Link>
     <Link href="/dashboard/addresses" aria-current={active === "addresses" ? "page" : undefined}><MapPin size={19} />Alamat</Link>
     {item(items[3])}
     <Link href="/cart" aria-current={active === "cart" ? "page" : undefined}><ShoppingCart size={19} />Keranjang</Link>
-  </nav>;
+    </nav>
+    <div className={s.sidebarHelp}><Headphones size={20} aria-hidden="true" /><strong>Butuh bantuan?</strong><p>Tim Ofissio siap membantu kebutuhan seragam Anda.</p><a href="mailto:sales@ofissio.com">Hubungi tim Ofissio <ArrowUpRight size={14} aria-hidden="true" /></a></div>
+  </aside>;
 }

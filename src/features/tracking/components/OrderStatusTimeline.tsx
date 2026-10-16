@@ -3,7 +3,6 @@ import { Check, Clock3, Circle, TriangleAlert } from "lucide-react";
 import type { OrderTimelineStage } from "@/features/tracking/tracking.types";
 import {
   stageStateLabel,
-  trackingRoleLabel,
 } from "@/features/tracking/tracking-utils";
 import { formatTrackingDate } from "@/features/tracking/tracking.service";
 
@@ -14,7 +13,7 @@ interface OrderStatusTimelineProps {
 
 export function OrderStatusTimeline({ title, stages }: OrderStatusTimelineProps) {
   return (
-    <section className="rounded-2xl border border-white/70 bg-white/65 p-5 shadow-soft-md backdrop-blur-xl">
+    <section aria-label={title} className="rounded-lg border border-line bg-white p-5">
       <h2 className="text-sm font-bold text-ink">{title}</h2>
       <ol className="mt-4 space-y-3">
         {stages.map((stage) => (
@@ -28,8 +27,7 @@ export function OrderStatusTimeline({ title, stages }: OrderStatusTimelineProps)
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-ink-muted">
-                Role: {trackingRoleLabel(stage.updatedByRole)}
-                {stage.completedAt ? ` - ${formatTrackingDate(stage.completedAt)}` : ""}
+                {stage.completedAt ? `Selesai ${formatTrackingDate(stage.completedAt)}` : stage.description || stageStateLabel(stage.state)}
               </p>
               {stage.state === "current" &&
                 typeof stage.completedQty === "number" &&
