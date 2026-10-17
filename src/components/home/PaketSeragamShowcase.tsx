@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Coffee, UtensilsCrossed } from "lucide-react";
+import { ArrowRight, BadgeCheck, Coffee, ImageIcon, PackageOpen, UsersRound, UtensilsCrossed } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
 
 import type { PaketItem, PaketSectionData, TextSegment } from "@/features/site-content/content.schema";
@@ -26,6 +26,15 @@ const FALLBACK_VISUALS = [
   "/packages/paket-corporate.png",
   "/packages/paket-lapangan-konstruksi.png",
 ] as const;
+
+const PACKAGE_SUMMARIES: Record<string, string> = {
+  "Paket Bengkel": "Solusi seragam mekanik yang tangguh untuk aktivitas kerja harian di bengkel maupun lapangan.",
+  "Paket Toko dan Retail": "Seragam kasir dan staf toko dengan tampilan rapi dan nyaman dipakai seharian.",
+  "Paket Apotek dan Klinik": "Seragam untuk tenaga kesehatan dengan bahan nyaman dan profesional.",
+  "Paket Kafe dan Restoran": "Seragam kasual yang stylish dan nyaman untuk tim F&B.",
+  "Paket Corporate": "Pilihan seragam formal untuk tim kantor dengan tampilan profesional dan modern.",
+  "Paket Lapangan / Konstruksi": "Seragam untuk tim lapangan dengan bahan kuat dan nyaman di berbagai kondisi.",
+};
 
 type FoodBusiness = "cafe" | "restaurant";
 
@@ -72,6 +81,10 @@ function packageInspirationHref(href: string) {
 
 function visualFor(item: PaketItem, index: number) {
   return item.photo || FALLBACK_VISUAL_BY_ICON[item.icon] || FALLBACK_VISUALS[index % FALLBACK_VISUALS.length] || FALLBACK_VISUALS[0];
+}
+
+function summaryFor(item: PaketItem) {
+  return PACKAGE_SUMMARIES[item.name] ?? item.cocokUntuk;
 }
 
 function SegmentedHeadline({ segments }: { segments: TextSegment[] }) {
@@ -156,9 +169,12 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
           <article className="overflow-hidden rounded-2xl border border-ochre-600/25 bg-white shadow-[0_18px_45px_rgba(7,27,67,0.06)]">
             <div className="grid min-h-[34rem] lg:grid-cols-[minmax(19rem,0.86fr)_minmax(24rem,1.14fr)]">
               <div className="flex flex-col p-7 sm:p-9 lg:p-10">
-                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-700">Opsi {String(activeIndex + 1).padStart(2, "0")}</p>
-                <h3 className="mt-4 text-4xl font-extrabold leading-[1.02] tracking-[-0.04em] text-brand-950 sm:text-5xl">{visibleName}</h3>
-                <p className="mt-5 text-sm leading-relaxed text-ink-muted">{visibleFit}</p>
+                <div className="flex items-center gap-3 text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-700">
+                  <span>{String(activeIndex + 1).padStart(2, "0")}</span>
+                  <span className="h-px w-8 bg-ochre-500" aria-hidden="true" />
+                  <span className="truncate">{visibleName}</span>
+                </div>
+                <p className="mt-5 max-w-[34ch] text-sm leading-relaxed text-ink-muted">{summaryFor(activeItem)}</p>
 
                 {foodServiceActive ? (
                   <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-xl border border-brand-900/15" role="tablist" aria-label="Pilih jenis usaha">
@@ -182,27 +198,27 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
                   </div>
                 ) : null}
 
-                <dl className="mt-7 border-y border-ochre-600/20">
+                <dl className="mt-6 border-y border-ochre-600/20">
                   <div className="grid gap-2 border-b border-ochre-600/20 py-4 sm:grid-cols-[5.5rem_minmax(0,1fr)] sm:gap-4">
-                    <dt className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-ochre-700">{data.isiLabel}</dt>
+                    <dt className="flex items-center gap-2 text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-ochre-700"><PackageOpen className="h-5 w-5 shrink-0" strokeWidth={1.6} aria-hidden="true" />{data.isiLabel}</dt>
                     <dd className="text-sm font-semibold leading-relaxed text-brand-950">{visibleItems}</dd>
                   </div>
                   <div className="grid gap-2 border-b border-ochre-600/20 py-4 sm:grid-cols-[5.5rem_minmax(0,1fr)] sm:gap-4">
-                    <dt className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-ochre-700">{data.cocokUntukLabel}</dt>
+                    <dt className="flex items-center gap-2 text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-ochre-700"><UsersRound className="h-5 w-5 shrink-0" strokeWidth={1.6} aria-hidden="true" />{data.cocokUntukLabel}</dt>
                     <dd className="text-sm leading-relaxed text-ink-muted">{visibleFit}</dd>
                   </div>
                   <div className="grid gap-2 py-4 sm:grid-cols-[5.5rem_minmax(0,1fr)] sm:gap-4">
-                    <dt className="text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-ochre-700">{data.opsiLogoLabel}</dt>
+                    <dt className="flex items-center gap-2 text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-ochre-700"><ImageIcon className="h-5 w-5 shrink-0" strokeWidth={1.6} aria-hidden="true" />{data.opsiLogoLabel}</dt>
                     <dd className="text-sm leading-relaxed text-ink-muted">{activeItem.opsiLogo}</dd>
                   </div>
                 </dl>
 
                 <div className="mt-auto flex flex-wrap items-center gap-4 pt-7">
-                  <Link href={visibleHref} className="inline-flex min-h-11 items-center gap-4 rounded-full bg-ochre-500 px-5 text-sm font-extrabold text-brand-950 transition-colors hover:bg-ochre-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700">
+                  <Link href={visibleHref} className="inline-flex min-h-11 flex-1 items-center justify-between gap-4 rounded-full bg-ochre-500 px-5 text-sm font-extrabold text-brand-950 transition-colors hover:bg-ochre-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700">
                     {visibleCta}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
-                  <Link href={visibleHref} className="text-sm font-extrabold text-brand-950 underline decoration-ochre-500 underline-offset-4 hover:text-ochre-800">Lihat detail</Link>
+                  <Link href={visibleHref} className="inline-flex items-center gap-2 text-sm font-extrabold text-brand-950 underline decoration-ochre-500 underline-offset-4 hover:text-ochre-800">Lihat detail <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
                 </div>
               </div>
               <div className="relative min-h-[19rem] bg-[#e9dfd0] lg:min-h-0">
@@ -225,11 +241,11 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
                 <span className="flex flex-col p-6 sm:p-7">
                   <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-700">{String(index + 1).padStart(2, "0")}</span>
                   <span className="mt-3 text-xl font-extrabold leading-tight tracking-[-0.03em] text-brand-950">{item.name}</span>
-                  <span className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-muted">{item.cocokUntuk}</span>
-                  <span className="mt-auto flex items-center gap-2 pt-4 text-sm font-extrabold text-brand-950">Lihat paket <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
+                  <span className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-muted">{summaryFor(item)}</span>
                 </span>
                 <span className="relative min-h-full bg-[#e9dfd0]">
                   <Image src={visualFor(item, index)} alt={`Tampilan ${item.name}`} fill sizes="(max-width: 1023px) 45vw, 20vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]" />
+                  <span className="absolute bottom-4 right-4 grid h-10 w-10 place-items-center rounded-full bg-white text-ochre-700 shadow-sm transition-colors group-hover:bg-ochre-500 group-hover:text-brand-950"><ArrowRight className="h-4 w-4" aria-hidden="true" /></span>
                 </span>
               </button>
             ))}
@@ -250,10 +266,10 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
               <span className="flex flex-col p-5 sm:p-6">
                 <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-700">{String(index + 1).padStart(2, "0")}</span>
                 <span className="mt-3 text-lg font-extrabold leading-tight tracking-[-0.03em] text-brand-950">{item.name}</span>
-                <span className="mt-auto flex items-center gap-2 pt-4 text-xs font-extrabold text-brand-950">Lihat paket <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
               </span>
               <span className="relative min-h-full bg-[#e9dfd0]">
                 <Image src={visualFor(item, index)} alt={`Tampilan ${item.name}`} fill sizes="(max-width: 639px) 45vw, 25vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]" />
+                <span className="absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full bg-white text-ochre-700 shadow-sm transition-colors group-hover:bg-ochre-500 group-hover:text-brand-950"><ArrowRight className="h-4 w-4" aria-hidden="true" /></span>
               </span>
             </button>
           ))}
