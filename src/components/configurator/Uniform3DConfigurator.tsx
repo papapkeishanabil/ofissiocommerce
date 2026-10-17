@@ -367,6 +367,14 @@ export function Uniform3DConfigurator({
           ) : null}
           <div className={styles.viewerColumn}>
             <div className={`${styles.viewer} bg-[radial-gradient(circle_at_50%_40%,#fffdf9_0%,#f7f3ec_48%,#e9e3d7_100%)]`}>
+          <button
+            type="button"
+            onClick={onCancel}
+            className={styles.back}
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Kembali ke Produk
+          </button>
           {effectiveModel.depth3DQuad ? (
             <Depth3DViewer
               colorImageSrc={effectiveModel.depth3DQuad.front.colorImage}
@@ -521,14 +529,6 @@ export function Uniform3DConfigurator({
           <h2 className={styles.title}>Studio Bordir</h2>
           <p className={styles.productName}>{product.name}</p>
           <button type="button" onClick={onCancel} aria-label="Tutup konfigurator" className={styles.close}><X className="h-5 w-5" /></button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className={styles.back}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Kembali ke Produk
-          </button>
         </div>
         <div className="flex gap-2.5 rounded-lg border border-ochre-300 bg-ochre-50 px-3 py-2.5 text-xs leading-5 text-ochre-800" role="note">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

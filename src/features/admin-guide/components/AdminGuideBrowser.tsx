@@ -23,7 +23,12 @@ export function AdminGuideBrowser() {
 
   const menuGuides = useMemo(() => ADMIN_MENU_GUIDES.filter((guide) => {
     const roleMatches = audience === "Semua role" || guide.audience.includes("Semua tim") || guide.audience.includes(audience);
-    const text = [guide.title, guide.group, guide.purpose, guide.when, ...guide.steps, ...(guide.cautions ?? []), ...guide.keywords].join(" ").toLocaleLowerCase("id-ID");
+    const detailed = ADMIN_DETAILED_PROCEDURES.find((entry) => entry.href === guide.href);
+    const text = [guide.title, guide.group, guide.purpose, guide.when, ...guide.steps, ...(guide.cautions ?? []), ...guide.keywords,
+      ...(detailed?.prerequisites ?? []),
+      ...(detailed?.procedure.flatMap((stage) => [stage.title, ...stage.actions, stage.expected]) ?? []),
+      ...(detailed?.verification ?? []), ...(detailed?.troubleshooting ?? []),
+    ].join(" ").toLocaleLowerCase("id-ID");
     return roleMatches && (!normalized || text.includes(normalized));
   }), [audience, normalized]);
 

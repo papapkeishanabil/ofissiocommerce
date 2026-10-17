@@ -3,6 +3,7 @@ import "server-only";
 import { getCommerceRuntimeConfig } from "@/features/commerce/commerce.config";
 import { normalizeIndustrySlug } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import { logAuditEvent } from "@/lib/security/audit-log";
+import { createApiError } from "@/lib/security/safe-error-response";
 
 import { woocommerceClient } from "./woocommerce.client";
 import {
@@ -50,8 +51,33 @@ export async function listAdminWooCommerceProducts(): Promise<
     if (rows.length < ADMIN_PAGE_SIZE) break;
   }
   return products
+    .filter((product) => product.status !== "trash")
     .map(toAdminSummary)
     .sort((left, right) => right.id - left.id);
+}
+
+export async function deleteAdminWooCommerceProduct(input: {
+  id: number;
+  actorId: string;
+  request?: Request;
+}) {
+  try {
+    const product = await woocommerceClient.getProductById(input.id);
+    if (product.status !== "trash") {
+      await woocommerceClient.trashProduct(input.id);
+      // WooCommerce may return the pre-trash representation from DELETE.
+      // Confirm the persisted state with a fresh read instead.
+      const deleted = await woocommerceClient.getProductById(input.id);
+      if (deleted.status !== "trash") {
+        throw createApiError("BAD_REQUEST", "Penghapusan produk belum dikonfirmasi WooCommerce.", 502);
+      }
+    }
+    logProductAudit("product_trashed", input.id, input, { sku: product.sku });
+    return { id: input.id };
+  } catch (error) {
+    logProductAudit("product_delete_failed", input.id, input, { reason: "provider_error" });
+    throw error;
+  }
 }
 
 export async function getAdminWooCommerceProduct(

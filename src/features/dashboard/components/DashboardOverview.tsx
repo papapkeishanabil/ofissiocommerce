@@ -10,6 +10,8 @@ import { trackingOrderStatusLabel, fulfillmentLabel } from "@/features/tracking/
 import { formatTrackingDate } from "@/features/tracking/tracking.service";
 import { formatIDR } from "@/types/product";
 import { CompanyLogoLibrary } from "@/features/company-assets/components/CompanyLogoLibrary";
+import { getPendingInvoiceOrders } from "./invoice-notifications";
+import { InvoiceNotifications } from "./InvoiceNotifications";
 import { QuotationList } from "./QuotationList";
 import { OrderHistoryList } from "./OrderHistoryList";
 import s from "./DashboardOverview.module.css";
@@ -56,14 +58,18 @@ function OrderRow({ order }: { order: Order }) {
   </li>;
 }
 
-export function DashboardOverview({ session, profileComplete, orders, history, quotations, initialView = "overview" }: {
+export function DashboardOverview({ session, profileComplete, orders, history, quotations, refreshFailed = false, onRefresh, initialView = "overview" }: {
   initialView?: View;
+  refreshFailed?: boolean;
+  onRefresh?: () => void;
   session: AuthSession; profileComplete: boolean; orders: Order[]; history: Order[]; quotations: CustomerQuotationTracking[];
 }) {
   const [view, setView] = useState<View>(initialView);
   const [filter, setFilter] = useState<Filter>("all");
   const [allActions, setAllActions] = useState(false);
+  const invoiceOrders = getPendingInvoiceOrders(session.company.id, orders);
   const tasks = [
+    ...invoiceOrders.map(order => ({ id: `${order.id}-invoice-notice`, title: "Invoice tersedia — menunggu pembayaran", description: order.invoiceNotification!.invoiceNumber, number: order.orderNumber, href: `/orders/${encodeURIComponent(order.id)}#order-documents`, action: "Lihat invoice", order })),
     ...orders.flatMap(order => order.actionRequired.filter(action => action.required).map(action => ({ id: `${order.id}-${action.id}`, title: action.label, description: action.description, number: order.orderNumber, href: `/orders/${order.id}`, action: "Tinjau pesanan", order }))),
     ...quotations.filter(q => q.status === "sent" && q.isOfficialQuotation !== false).map(q => ({ id: q.id, title: "Penawaran siap ditinjau", description: `${q.items.length} item`, number: q.quotationNumber, href: `/quotes/${q.id}`, action: "Lihat penawaran", order: null })),
   ];
@@ -74,10 +80,12 @@ export function DashboardOverview({ session, profileComplete, orders, history, q
   const title = view === "overview" ? "Ringkasan akun" : view === "orders" ? "Pesanan Anda" : view === "quotes" ? "Penawaran" : "Logo Library";
 
   return <main className={s.shell}>
-    <AccountSidebar active={view} onViewChange={setView} quotationCount={quotations.length} />
+    <AccountSidebar active={view} onViewChange={setView} quotationCount={quotations.length} invoiceCount={invoiceOrders.length} />
     <div className={s.content}>
       <header className={s.header}><div><h1>{title}</h1><p>Halo {session.user.fullName.split(" ")[0]}. Pantau pesanan, pengiriman, dan hal yang perlu Anda tinjau.</p></div><Link className={s.primary} href="/catalog">Buat Pesanan <ArrowRight size={16} /></Link></header>
       {!profileComplete && <p className={s.profileNotice}>Lengkapi profil perusahaan untuk memudahkan pemesanan. <Link href="/dashboard/profile">Lengkapi profil <ArrowRight size={14} /></Link></p>}
+      {refreshFailed && <p className={s.profileNotice} role="alert">Pembaruan data belum berhasil. Informasi di bawah adalah data terakhir yang dimuat. <button type="button" className={s.gold} onClick={onRefresh}>Coba lagi</button></p>}
+      <InvoiceNotifications orders={invoiceOrders} />
       {view === "overview" && <>
         <div className={s.summary}>
           {[{ count: orders.length, label: "Pesanan aktif", note: "Sedang diproses oleh tim Ofissio", icon: Package, action: () => setView("orders") }, { count: tasks.length, label: "Perlu ditinjau", note: "Menunggu tindakan Anda", icon: FileText, action: () => document.getElementById("dashboard-actions")?.scrollIntoView({ block: "center" }) }, { count: quotations.length, label: "Penawaran", note: "Permintaan dan penawaran perusahaan", icon: FileText, action: () => setView("quotes") }].map(({ count, label, note, icon: Icon, action }) => <button key={label} onClick={action}><span className={s.summaryIcon}><Icon size={23} /></span><span><strong>{count}</strong><b>{label}</b><small>{note}</small></span></button>)}

@@ -3,6 +3,7 @@ import {
   slugifyTaxonomy,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import { SIZES } from "@/types/industry";
+import { sortProductSizes } from "@/lib/product-size-order";
 import {
   CAMERA_PRESETS,
   EMBROIDERY_ZONES,
@@ -356,7 +357,7 @@ function normalizeIndustries(values: string[]) {
 }
 
 function normalizeSizes(values: string[]) {
-  return values.filter((value): value is (typeof SIZES)[number] =>
+  return sortProductSizes(values).filter((value): value is (typeof SIZES)[number] =>
     SIZES.includes(value as never),
   );
 }
@@ -424,7 +425,11 @@ function buildSpecs(
       const slug = slugifyTaxonomy(attribute.slug || attribute.name).replace(/^pa-/, "");
       return !managedAttributeAliases.has(slug);
     }).flatMap((attribute) => {
-      const value = (attribute.options ?? []).join(", ");
+      const slug = slugifyTaxonomy(attribute.slug || attribute.name).replace(/^pa-/, "");
+      const options = attribute.options ?? [];
+      const value = (["size", "sizes", "ukuran"].includes(slug)
+        ? sortProductSizes(options)
+        : options).join(", ");
       return value ? [{ label: attribute.name, value }] : [];
     }),
     { label: "Tipe Lengan", value: sleeveType === "long" ? "Panjang" : "Pendek" },
