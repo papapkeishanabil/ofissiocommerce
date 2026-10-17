@@ -238,10 +238,10 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
                 onKeyDown={(event) => handlePackageKeyDown(event, index)}
                 className="group relative min-h-[16rem] overflow-hidden rounded-2xl border border-ochre-600/20 bg-[#e9dfd0] text-left transition-shadow hover:shadow-[0_16px_35px_rgba(7,27,67,0.08)] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700"
               >
-                <span className="absolute inset-0 bg-[#e9dfd0]">
-                  <Image src={visualFor(item, index)} alt={`Tampilan ${item.name}`} fill sizes="(max-width: 1023px) 100vw, 28vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]" />
+                <span className="absolute inset-y-0 right-0 w-[62%] bg-[#e9dfd0]">
+                  <Image src={visualFor(item, index)} alt={`Tampilan ${item.name}`} fill sizes="(max-width: 1023px) 100vw, 25vw" className="object-cover object-right transition-transform duration-500 group-hover:scale-[1.03]" />
                 </span>
-                <span className="relative z-10 flex h-full w-[68%] flex-col bg-[linear-gradient(90deg,#fbf8f2_0%,#fbf8f2_68%,rgba(251,248,242,0)_100%)] p-6 pr-8 sm:p-7 sm:pr-10">
+                <span className="relative z-10 flex h-full w-[58%] flex-col bg-[linear-gradient(90deg,#fbf8f2_0%,#fbf8f2_82%,rgba(251,248,242,0)_100%)] p-6 pr-8 sm:p-7 sm:pr-10">
                   <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-700">{String(index + 1).padStart(2, "0")}</span>
                   <span className="mt-3 text-xl font-extrabold leading-tight tracking-[-0.03em] text-brand-950">{item.name}</span>
                   <span className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-muted">{summaryFor(item)}</span>
@@ -263,12 +263,13 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
               onKeyDown={(event) => handlePackageKeyDown(event, index)}
               className="group relative min-h-[13rem] overflow-hidden rounded-2xl border border-ochre-600/20 bg-[#e9dfd0] text-left transition-shadow hover:shadow-[0_16px_35px_rgba(7,27,67,0.08)] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700"
             >
-              <span className="absolute inset-0 bg-[#e9dfd0]">
-                <Image src={visualFor(item, index)} alt={`Tampilan ${item.name}`} fill sizes="(max-width: 639px) 100vw, 30vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]" />
+              <span className="absolute inset-y-0 right-0 w-[62%] bg-[#e9dfd0]">
+                <Image src={visualFor(item, index)} alt={`Tampilan ${item.name}`} fill sizes="(max-width: 639px) 100vw, 28vw" className="object-cover object-right transition-transform duration-500 group-hover:scale-[1.03]" />
               </span>
-              <span className="relative z-10 flex h-full w-[68%] flex-col bg-[linear-gradient(90deg,#fbf8f2_0%,#fbf8f2_68%,rgba(251,248,242,0)_100%)] p-5 pr-7 sm:p-6 sm:pr-9">
+              <span className="relative z-10 flex h-full w-[58%] flex-col bg-[linear-gradient(90deg,#fbf8f2_0%,#fbf8f2_82%,rgba(251,248,242,0)_100%)] p-5 pr-7 sm:p-6 sm:pr-9">
                 <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-700">{String(index + 1).padStart(2, "0")}</span>
                 <span className="mt-3 text-lg font-extrabold leading-tight tracking-[-0.03em] text-brand-950">{item.name}</span>
+                <span className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-muted">{summaryFor(item)}</span>
               </span>
               <span className="absolute bottom-4 right-4 z-20 grid h-9 w-9 place-items-center rounded-full bg-white text-ochre-700 shadow-sm transition-colors group-hover:bg-ochre-500 group-hover:text-brand-950"><ArrowRight className="h-4 w-4" aria-hidden="true" /></span>
             </button>
