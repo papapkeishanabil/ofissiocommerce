@@ -22,6 +22,7 @@ import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing
 import { calculateEmbroideryPricing, normalizeEmbroideryZoneId, type EmbroideryPricing, type EmbroideryPricingZoneId } from "@/features/products/embroidery-pricing";
 
 import { validateNameAllocations } from "@/lib/embroidery-names";
+import { colorVariantIssue, colorVariantSnapshot } from "@/features/products/color-variants";
 
 interface CartState {
   orderNote: string;
@@ -64,6 +65,9 @@ export const useCartStore = create<CartState>()(
       add: ({ replaceLineId, product, color, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing, moqSettings }) => {
         const validation = validateProductForCart(product);
         if (!validation.ok) return { ok: false, reason: validation.reason };
+        const variantIssue = colorVariantIssue(product, color);
+        if (variantIssue) return { ok: false, reason: variantIssue };
+        const variantSnapshot = colorVariantSnapshot(product, color);
         const totalQty = sumSizeMatrix(sizes);
         if (totalQty <= 0) {
           return { ok: false, reason: "Quantitas belum diisi." };
@@ -135,8 +139,8 @@ export const useCartStore = create<CartState>()(
           });
           next[idx] = {
             ...cur,
+            ...variantSnapshot,
             color,
-            image: product.mainImage ?? cur.image,
             fulfillmentType: product.fulfillment,
             processRoute: product.processRoute,
             leadTimeDays: product.leadTimeDays,
@@ -175,8 +179,8 @@ export const useCartStore = create<CartState>()(
           productId: product.id,
           productSlug: product.slug,
           productName: product.name,
-          sku: product.sku,
           ...mapOfissioProductToCartItem(product),
+          ...variantSnapshot,
           color,
           sizes,
           totalQty,

@@ -1,4 +1,6 @@
 import "server-only";
+import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "../color-variants";
+import { withLiveColorVariants } from "./color-variants.service";
 
 import { getCommerceRuntimeConfig } from "@/features/commerce/commerce.config";
 import { normalizeIndustrySlug } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
@@ -83,7 +85,7 @@ export async function deleteAdminWooCommerceProduct(input: {
 export async function getAdminWooCommerceProduct(
   id: string | number,
 ): Promise<AdminWooCommerceProductDetail> {
-  const product = await woocommerceClient.getProductById(id);
+  const product = await withLiveColorVariants(await woocommerceClient.getProductById(id));
   const summary = toAdminSummary(product);
   const meta = product.meta_data ?? [];
   const quantityPricing = normalizeQuantityPricing({
@@ -96,6 +98,10 @@ export async function getAdminWooCommerceProduct(
   const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
   return {
     ...summary,
+    colorVariants: readColorVariants(product),
+    colorVariantsEnabled: getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false),
+    colorVariantsReady: getMetaBoolean(meta, COLOR_VARIANTS_READY_META, false),
+    defaultColor: getMetaString(meta, DEFAULT_COLOR_META),
     description: product.description ?? "",
     shortDescription: product.short_description ?? "",
     weightGram: shippingNumber(meta, "ofissio_weight_gram", Number(product.weight) * 1000),
@@ -344,6 +350,7 @@ function buildWritePayload(
     payload.industries.map(normalizeIndustrySlug).filter(Boolean),
   );
   const entries: Array<[string, unknown]> = [
+    [BASE_PRICE_META, payload.regularPrice],
     ["industries", JSON.stringify(industries)],
     ["moq", payload.moq],
     ["lead_time", `${payload.leadTimeDays} hari`],
@@ -413,8 +420,8 @@ function buildWritePayload(
       };
     }),
     attributes: mergeManagedAttributes(current?.attributes ?? [], [
-      managedAttribute("Warna", "warna", payload.colors, managedAttributes, ["warna", "color"]),
-      managedAttribute("Ukuran", "ukuran", payload.sizes, managedAttributes, ["ukuran", "size"]),
+      { ...managedAttribute("Warna", "warna", payload.colors, managedAttributes, ["warna", "color"]), variation: getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false) || Boolean(current?.attributes?.find((attribute) => ["warna", "color"].includes(normalizeAttributeSlug(attribute.slug || attribute.name)))?.variation) },
+      { ...managedAttribute("Ukuran", "ukuran", payload.sizes, managedAttributes, ["ukuran", "size"]), variation: Boolean(current?.attributes?.find((attribute) => ["ukuran", "size"].includes(normalizeAttributeSlug(attribute.slug || attribute.name)))?.variation) },
       managedAttribute("Material", "material", payload.materials, managedAttributes, ["material", "bahan"]),
       managedAttribute("Gender", "gender", [payload.gender], managedAttributes, ["gender"]),
       managedAttribute("Tipe Lengan", "tipe-lengan", [payload.sleeveType], managedAttributes, ["tipe-lengan", "sleeve"]),
@@ -549,7 +556,9 @@ function toAdminSummary(product: WooCommerceProduct): AdminWooCommerceProduct {
     name: productName,
     slug: product.slug,
     sku: product.sku?.trim() ?? "",
-    price: parseMoney(product.regular_price || product.price || product.sale_price),
+    price: getMetaBoolean(product.meta_data ?? [], COLOR_VARIANTS_ENABLED_META, false)
+      ? getMetaNumber(product.meta_data ?? [], BASE_PRICE_META, parseMoney(product.regular_price || product.price || product.sale_price))
+      : parseMoney(product.regular_price || product.price || product.sale_price),
     status: product.status,
     categories: (product.categories ?? []).map((category) => ({
       id: category.id,

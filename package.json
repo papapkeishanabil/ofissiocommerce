@@ -11,6 +11,7 @@
     "start": "next start -p 8000 -H 0.0.0.0",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:color-variants": "tsx --require ./scripts/register-server-only.cjs scripts/test-color-variants.ts",
     "test:product-import": "tsx scripts/test-product-import.ts",
     "test:product-import-phase2": "tsx --require ./scripts/register-server-only.cjs scripts/test-product-import-phase2.ts",
     "provision:super-admin": "tsx scripts/provision-super-admin.ts",

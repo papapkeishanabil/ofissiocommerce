@@ -1,4 +1,5 @@
 import "server-only";
+import { isManagedColorVariant } from "@/features/products/color-variants";
 
 import { woocommerceClient } from "@/features/products/woocommerce/woocommerce.client";
 import type {
@@ -36,7 +37,19 @@ export async function getWooStockBySku(
   }
 
   const direct = await findProductBySku(normalizedSku, source);
-  return direct ? mapParentStock(direct, new Date().toISOString()) : null;
+  if (direct) return mapParentStock(direct, new Date().toISOString());
+  // Color SKUs may have several words (FRM-Abu-Asap); only accept an exact
+  // managed variation match under a parent, never guess the requested stock.
+  const segments = normalizedSku.split("-");
+  for (let end = segments.length - 1; end > 0; end--) {
+    const candidate = segments.slice(0, end).join("-");
+    if (candidate === parentSku) continue;
+    const result = await readParentStock(candidate, source);
+    const managedIds = new Set(result.variations.filter(isManagedColorVariant).map((row) => row.id));
+    const match = result.rows.find((row) => normalizeSku(row.stockSku) === normalizedSku && row.wooCommerceVariationId != null && managedIds.has(row.wooCommerceVariationId));
+    if (match) return match;
+  }
+  return null;
 }
 
 export async function getWooStockByParentSku(
@@ -79,8 +92,19 @@ export function getOrderStockRequirement(
 
   for (const item of order.items) {
     if (item.source === "custom") continue;
-    const parentSku = normalizeSku(item.sku);
+    const parentSku = normalizeSku(item.parentSku || item.sku);
     if (!parentSku) continue;
+    if (item.variationId && item.parentSku) {
+      const stockSku = normalizeSku(item.sku);
+      const key = `${item.productId}|${stockSku}`;
+      const current = grouped.get(key);
+      grouped.set(key, {
+        orderId: order.id, companyId: order.companyId, productId: item.productId,
+        productName: item.productName, parentSku, stockSku, sizeLabel: null,
+        requiredQty: (current?.requiredQty ?? 0) + positiveInteger(item.totalQty),
+      });
+      continue;
+    }
     const sizeEntries = Object.entries(item.sizeMatrix ?? {}).filter(
       ([, quantity]) => positiveInteger(quantity) > 0,
     );
@@ -192,7 +216,7 @@ async function readParentStock(
 
   const variations = await listAllVariations(product.id, source);
   const rows = variations.length
-    ? variations.map((variation) => mapVariationStock(product, variation, checkedAt))
+    ? variations.filter((variation) => variation.status !== "private").map((variation) => mapVariationStock(product, variation, checkedAt))
     : [mapParentStock(product, checkedAt)];
   return { product, variations, rows };
 }
@@ -341,6 +365,7 @@ function hasSizeOptions(product: WooCommerceProduct | null) {
 }
 
 function variationSize(variation: WooCommerceProductVariation, parentSku: string) {
+  if (isManagedColorVariant(variation)) return null;
   const attribute = variation.attributes?.find((item) =>
     /(size|ukuran)/i.test(`${item.name ?? ""}`),
   );

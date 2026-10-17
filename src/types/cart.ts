@@ -22,6 +22,8 @@ export interface CartLineItem {
   productSlug: string;
   productName: string;
   sku: string;
+  variationId?: number;
+  parentSku?: string;
   /** catalog main image snapshot (index 0 of the product images) */
   image?: string | null;
   /** immutable purchasing snapshot from the canonical product service */

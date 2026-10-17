@@ -162,6 +162,8 @@ export function normalizeQuotationItem(input: {
       productSlug: item.productSlug,
       productName: item.productName,
       sku: item.sku,
+      variationId: item.variationId,
+      parentSku: item.parentSku,
       image: item.image ?? null,
       selectedColor: item.selectedColor,
       sizeMatrix: item.sizeMatrix,

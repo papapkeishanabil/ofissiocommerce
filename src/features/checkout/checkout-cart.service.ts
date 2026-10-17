@@ -1,4 +1,5 @@
 import "server-only";
+import { colorVariantIssue, colorVariantSnapshot } from "@/features/products/color-variants";
 
 import { randomUUID } from "node:crypto";
 
@@ -51,9 +52,9 @@ async function validateAndPriceItem(
   const validation = productServerService.validateProductForCart(product);
   if (!validation.ok) throw new Error(validation.reason);
   if (!product.model_3d) throw new Error("Model GLB produk tidak valid.");
-  if (!product.available_colors.includes(input.selectedColor)) {
-    throw new Error("Warna produk tidak tersedia.");
-  }
+  const variantIssue = colorVariantIssue(product, input.selectedColor);
+  if (variantIssue) throw createApiError("VALIDATION_ERROR", variantIssue, 400);
+  const variantSnapshot = colorVariantSnapshot(product, input.selectedColor);
 
   // Satu helper untuk MOQ produk + batas keras bordir — dipakai juga oleh
   // cart-store client sehingga pesan blokir identik.
@@ -109,8 +110,7 @@ async function validateAndPriceItem(
     sourceId: product.source_id,
     productSlug: product.slug,
     productName: product.name,
-    sku: product.sku,
-    image: product.mainImage ?? null,
+    ...variantSnapshot,
     selectedColor: input.selectedColor,
     sizeMatrix: input.sizeMatrix,
     totalQty,

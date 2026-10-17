@@ -148,6 +148,7 @@ export interface WooCommerceProductVariationWritePayload {
 
 export interface WooCommerceProductWritePayload {
   type?: "simple" | "variable";
+  default_attributes?: Array<{ id?: number; name?: string; option: string }>;
   name?: string;
   slug?: string;
   sku?: string;
@@ -197,6 +198,7 @@ export interface WooCommerceOrderMeta {
 
 export interface WooCommerceOrderLineItem {
   product_id?: number;
+  variation_id?: number;
   name?: string;
   sku?: string;
   quantity: number;
