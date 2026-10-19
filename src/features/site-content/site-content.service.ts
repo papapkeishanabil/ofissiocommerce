@@ -25,6 +25,7 @@ import { SupabaseDatabaseError } from "@/features/database/database.errors";
 import {
   SECTION_REGISTRY,
   DEFAULT_CARA_ORDER,
+  DEFAULT_PAKET,
   LEGACY_CARA_ORDER,
   SITE_CONTENT_SECTION_KEYS,
   getSectionEntry,
@@ -78,6 +79,15 @@ function resolveEffectiveData(key: SectionKey, raw: unknown): unknown {
         if ([LEGACY_CARA_ORDER, previousReadyStock].some(previous => JSON.stringify(parsed.data) === JSON.stringify(previous))) {
           return clone(DEFAULT_CARA_ORDER);
         }
+      }
+      if (key === "paket" && parsed.data.eyebrow === "Paket Seragam Populer") {
+        return {
+          ...parsed.data,
+          eyebrow: DEFAULT_PAKET.eyebrow,
+          headline: clone(DEFAULT_PAKET.headline),
+          lede: DEFAULT_PAKET.lede,
+          ctaLabel: DEFAULT_PAKET.ctaLabel,
+        };
       }
       return parsed.data;
     }

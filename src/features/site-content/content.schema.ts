@@ -415,7 +415,7 @@ export const DEFAULT_CTA: CtaSectionData = {
 };
 
 // ---------------------------------------------------------------------------
-// paket (§03 Paket Seragam Populer) — headline + lede + inline labels + visual selector
+// paket (§03 Rencana Paket Seragam) — headline + lede + inline labels + visual selector
 // The catalog `href` is editable copy (a URL, admin-owned like the CTA whatsapp
 // href); the `scale` boolean toggles the "Skala besar" badge.
 // ---------------------------------------------------------------------------
@@ -469,16 +469,16 @@ export const paketSectionSchema = z.object({
 });
 
 export const DEFAULT_PAKET: PaketSectionData = {
-  eyebrow: "Paket Seragam Populer",
+  eyebrow: "Rencana Paket Seragam",
   headline: [
-    { text: "Paket Siap Pakai: " },
-    { text: "Cukup Pilih, Kirim Logo, Jadi.", highlight: true },
+    { text: "Paket Seragam untuk Berbagai Bidang. " },
+    { text: "Segera Hadir.", highlight: true },
   ],
-  lede: "Setiap paket sudah dipadukan dengan bahan dan model yang cocok untuk jenis usahanya. Mulai dari jumlah kecil dan dapat diulang kapan saja saat pegawai bertambah.",
+  lede: "Kami sedang menyiapkan paket seragam untuk berbagai bidang usaha. Konsultasikan kebutuhan Anda untuk mendapatkan informasi paket dan jadwal ketersediaannya.",
   isiLabel: "Isi:",
   cocokUntukLabel: "Cocok untuk:",
   opsiLogoLabel: "Logo:",
-  ctaLabel: "Konsultasikan Paket",
+  ctaLabel: "Konsultasikan Kebutuhan",
   scaleBadgeLabel: "Skala besar",
   items: [
     { icon: "Wrench", name: "Paket Bengkel", photo: "/packages/paket-bengkel.png", items: "Polo kerja, kemeja, celana tahan noda", cocokUntuk: "Bengkel motor/mobil dan toko sparepart", opsiLogo: "Bordir dada atau dTF tahan panas", href: "/inspirasi/bengkel-teknisi", scale: false },
@@ -1571,12 +1571,12 @@ export const SECTION_REGISTRY: SectionEntry[] = [
   },
   {
     key: "paket",
-    label: "§03 Paket Seragam Populer",
-    description: "Eyebrow, judul, paragraf, label detail, dan daftar paket (ikon, nama, gambar, isi, target, opsi logo, link katalog, badge skala).",
+    label: "§03 Rencana Paket Seragam",
+    description: "Eyebrow, judul, paragraf, label detail, dan daftar rencana paket (ikon, nama, gambar, isi, target, opsi logo, link inspirasi, badge skala).",
     schema: paketSectionSchema,
     default: DEFAULT_PAKET,
     fields: [
-      { kind: "text", key: "eyebrow", label: "Eyebrow", placeholder: "cth: Paket Seragam Populer", maxLength: 60 },
+      { kind: "text", key: "eyebrow", label: "Eyebrow", placeholder: "cth: Rencana Paket Seragam", maxLength: 60 },
       {
         kind: "segments",
         key: "headline",

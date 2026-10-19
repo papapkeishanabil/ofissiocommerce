@@ -6,7 +6,6 @@ import { ArrowRight, BadgeCheck, Coffee, ImageIcon, PackageOpen, UsersRound, Ute
 import { useState, type KeyboardEvent } from "react";
 
 import type { PaketItem, PaketSectionData, TextSegment } from "@/features/site-content/content.schema";
-import { INSPIRATION_PAGES } from "@/features/site-content/industry-inspiration.routes";
 import { HomeSectionMarker } from "./HomeSectionMarker";
 
 const FALLBACK_VISUAL_BY_ICON: Record<string, string> = {
@@ -68,17 +67,6 @@ function isFoodServicePackage(item: PaketItem) {
   return item.icon === "Coffee" || item.href.includes("/inspirasi/restoran-kafe");
 }
 
-function packageInspirationHref(href: string) {
-  if (!href.startsWith("/") || href.startsWith("//")) return null;
-  const url = new URL(href, "https://ofissio.local");
-  const page = INSPIRATION_PAGES.find((entry) =>
-    url.pathname === `/inspirasi/${entry.slug}` ||
-    (url.pathname === "/catalog" && url.searchParams.get("industri") === entry.industry),
-  );
-  if (!page) return null;
-  return url.pathname === "/catalog" ? `/inspirasi/${page.slug}` : href;
-}
-
 function visualFor(item: PaketItem, index: number) {
   return item.photo || FALLBACK_VISUAL_BY_ICON[item.icon] || FALLBACK_VISUALS[index % FALLBACK_VISUALS.length] || FALLBACK_VISUALS[0];
 }
@@ -121,12 +109,8 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
   const visibleName = foodServiceActive ? foodVariant.name : activeItem.name;
   const visibleItems = foodServiceActive ? foodVariant.items : activeItem.items;
   const visibleFit = foodServiceActive ? foodVariant.cocokUntuk : activeItem.cocokUntuk;
-  const visibleHref = foodServiceActive ? foodVariant.href : packageInspirationHref(activeItem.href) ?? activeItem.href;
-  const visibleCta = foodServiceActive
-    ? `Lihat inspirasi ${foodBusiness === "cafe" ? "Kafe" : "Restoran"}`
-    : packageInspirationHref(activeItem.href)
-      ? `Lihat inspirasi ${activeItem.name.replace(/^Paket\s+/i, "")}`
-      : data.ctaLabel;
+  const visibleCta = data.ctaLabel;
+  const consultationHref = "/quote";
   const activeVisual = foodServiceActive ? foodVariant.image : visualFor(activeItem, activeIndex);
   const secondaryItems = data.items.map((item, index) => ({ item, index })).filter(({ index }) => index !== activeIndex);
 
@@ -160,7 +144,7 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
           <div className="border-b border-ochre-500/70 pb-6 lg:mb-1">
             <p className="max-w-[58ch] text-base leading-relaxed text-ink-muted sm:text-lg">{data.lede}</p>
             <p className="mt-6 text-xs font-extrabold uppercase tracking-[0.14em] text-ochre-700 sm:text-sm">
-              {String(data.items.length).padStart(2, "0")} pilihan paket
+              {String(data.items.length).padStart(2, "0")} rencana paket
             </p>
           </div>
         </header>
@@ -174,6 +158,7 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
                   <span className="h-px w-8 bg-ochre-500" aria-hidden="true" />
                   <span className="truncate">{visibleName}</span>
                 </div>
+                <span className="mt-4 inline-flex w-fit items-center rounded-full bg-ochre-50 px-3 py-1 text-[0.68rem] font-extrabold uppercase tracking-[0.14em] text-ochre-800">Segera hadir</span>
                 <p className="mt-5 max-w-[34ch] text-sm leading-relaxed text-ink-muted">{summaryFor(activeItem)}</p>
 
                 {foodServiceActive ? (
@@ -214,11 +199,11 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
                 </dl>
 
                 <div className="mt-auto flex flex-wrap items-center gap-4 pt-7">
-                  <Link href={visibleHref} className="inline-flex min-h-11 flex-1 items-center justify-between gap-4 rounded-full bg-ochre-500 px-5 text-sm font-extrabold text-brand-950 transition-colors hover:bg-ochre-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700">
+                  <Link href={consultationHref} className="inline-flex min-h-11 flex-1 items-center justify-between gap-4 rounded-full bg-ochre-500 px-5 text-sm font-extrabold text-brand-950 transition-colors hover:bg-ochre-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700">
                     {visibleCta}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
-                  <Link href={visibleHref} className="inline-flex items-center gap-2 text-sm font-extrabold text-brand-950 underline decoration-ochre-500 underline-offset-4 hover:text-ochre-800">Lihat detail <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+                  <Link href={consultationHref} className="inline-flex items-center gap-2 text-sm font-extrabold text-brand-950 underline decoration-ochre-500 underline-offset-4 hover:text-ochre-800">Tanya paket <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
                 </div>
               </div>
               <div className="relative min-h-[19rem] bg-[#e9dfd0] lg:min-h-0">
