@@ -5,6 +5,7 @@ import type {
   QuantityPricingTier,
 } from "../quantity-pricing";
 import type { ModelOrientationY } from "@/types/uniform-3d";
+import type { ProductColorVariant } from "../color-variants";
 
 export interface AdminWooCommerceProduct {
   id: number;
@@ -21,6 +22,10 @@ export interface AdminWooCommerceProduct {
 }
 
 export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
+  colorVariants?: ProductColorVariant[];
+  colorVariantsEnabled?: boolean;
+  colorVariantsReady?: boolean;
+  defaultColor?: string;
   description: string;
   shortDescription: string;
   weightGram: number;

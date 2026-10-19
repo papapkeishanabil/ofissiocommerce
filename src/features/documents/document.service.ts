@@ -4,6 +4,8 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
+import { getAdminOrderCustomerSnapshot } from "@/features/admin/admin-order-workbench.service";
+import type { AdminOrderCustomerSnapshot } from "@/features/admin/admin.types";
 import { getPaymentQrForInvoice } from "@/features/payment/payment-qr.service";
 import {
   ensurePaymentForInvoice,
@@ -69,7 +71,7 @@ import {
   uploadGeneratedPdf,
 } from "./providers/storage-document.provider";
 
-const INVOICE_RENDERER_VERSION = "invoice-payment-links-v1";
+const INVOICE_RENDERER_VERSION = "invoice-customer-details-v2";
 const EMBROIDERY_WORK_ORDER_RENDERER_VERSION = "bwo-ofissio-v1";
 const PRODUCTION_WORK_ORDER_RENDERER_VERSION = "pwo-ofissio-v1";
 
@@ -223,6 +225,12 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
     const order = await getOrderGlobal(input.orderId);
     if (!order) throw createApiError("NOT_FOUND", "Order tidak ditemukan.", 404);
     companyId = order.companyId;
+    const customer = await getAdminOrderCustomerSnapshot({ order, tracking: null });
+    const recipient = invoiceRecipient(order, customer);
+    if (repositoryRegistry.provider === "supabase" &&
+        (!recipient.companyName || !recipient.companyAddress)) {
+      throw createApiError("BAD_REQUEST", "Lengkapi nama perusahaan dan alamat penagihan sebelum membuat invoice.", 400);
+    }
     const payment = await ensurePaymentForInvoice({
       orderId: order.id,
       companyId: order.companyId,
@@ -280,6 +288,7 @@ export async function generateInvoicePdf(input: GenerateInvoicePdfInput) {
     });
     const data = mapOrderToInvoicePdfData({
       order,
+      customer,
       payment,
       invoiceNumber: documentNumber,
       generatedAt: now,
@@ -1071,11 +1080,13 @@ function quotationCustomizationSummary(
 
 export function mapOrderToInvoicePdfData(input: {
   order: PaymentOrderRecord;
+  customer?: AdminOrderCustomerSnapshot;
   payment: PaymentRecord | null;
   invoiceNumber: string;
   generatedAt: string;
 }): InvoicePdfData {
   const config = getDocumentRuntimeConfig();
+  const recipient = invoiceRecipient(input.order, input.customer);
   const orderNumber = input.order.orderNumber ?? input.order.id;
   const subtotal = input.order.items.reduce(
     (total, item) =>
@@ -1117,10 +1128,10 @@ export function mapOrderToInvoicePdfData(input: {
     paymentQr: paymentQrValue,
     paymentQrKind: paymentQr.kind,
     paymentExpiry: input.payment?.expiredAt ?? null,
-    companyName: input.order.companyId,
-    companyAddress: null,
-    picName: input.order.userId,
-    picPhone: null,
+    companyName: recipient.companyName ?? "Customer Ofissio",
+    companyAddress: recipient.companyAddress,
+    picName: recipient.picName,
+    picPhone: recipient.picPhone,
     locationLabel: config.companyLocationLabel,
     items: input.order.items.map((item) => ({
       description: invoiceItemDescription(item),
@@ -1227,6 +1238,31 @@ export function mapProcessOrderToProductionWorkOrderPdfData(input:{
     revisionNote:brief.approvalRevisionNote??null,
     technicalSpecifications:(brief.technicalSpecifications??[]).flatMap(group=>group.specifications.filter(spec=>spec.status!=="not_used").map(spec=>({label:`${group.garmentType} / ${spec.label}`,value:[spec.option,spec.detail,spec.notes].filter(Boolean).join(" / ")||spec.status}))),
     referenceFiles:(brief.referenceFiles??[]).map(file=>({label:"Referensi desain",fileName:file.filename})),
+  };
+}
+
+function invoiceRecipient(order: PaymentOrderRecord, customer?: AdminOrderCustomerSnapshot) {
+  if (customer && customer.companyId !== order.companyId) {
+    throw createApiError("FORBIDDEN", "Data penerima invoice tidak sesuai perusahaan order.", 403);
+  }
+  // Internal identifiers must never be printed as a recipient's name.
+  const displayText = (value: string | null | undefined) => {
+    const text = value?.trim();
+    if (!text || text === "-" || text === order.companyId || text === order.userId ||
+        /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(text)) return null;
+    return text;
+  };
+  const address = customer?.billingAddress;
+  const street = displayText(address?.street);
+  const companyAddress = street
+    ? [street, displayText(address?.city), displayText(address?.province), displayText(address?.postalCode)]
+        .filter(Boolean).join(", ")
+    : null;
+  return {
+    companyName: displayText(customer?.companyName),
+    companyAddress,
+    picName: displayText(customer?.picName) ?? displayText(address?.recipientName),
+    picPhone: displayText(customer?.picWhatsapp) ?? displayText(address?.recipientPhone) ?? displayText(customer?.phone),
   };
 }
 

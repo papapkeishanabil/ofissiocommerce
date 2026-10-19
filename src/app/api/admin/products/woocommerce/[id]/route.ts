@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { requireInternalAdmin } from "@/features/admin/admin.service";
 import { adminWooProductIdParamSchema } from "@/features/admin/admin.validation";
 import {
   getAdminWooCommerceProduct,
+  deleteAdminWooCommerceProduct,
   updateAdminWooCommerceProduct,
 } from "@/features/products/woocommerce/woocommerce-product-admin.service";
 import { adminWooProductPayloadSchema } from "@/features/products/woocommerce/woocommerce-product-management.validation";
@@ -16,6 +18,23 @@ export const runtime = "nodejs";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
+}
+
+export async function DELETE(request: Request, context: RouteContext) {
+  try {
+    rateLimitOrThrow({
+      key: createRateLimitKey(request, "admin.products.woocommerce.delete"),
+      limit: 10,
+      windowMs: 60_000,
+    });
+    const actor = requireInternalAdmin(request, "admin:catalog:update");
+    const { id } = validateInput(adminWooProductIdParamSchema, await context.params);
+    validateInput(z.object({ confirmed: z.literal(true) }), await request.json().catch(() => null));
+    const product = await deleteAdminWooCommerceProduct({ id, actorId: actor.id, request });
+    return NextResponse.json({ ok: true, product }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    return safeErrorResponse(error, "Produk belum dapat dihapus.", 400);
+  }
 }
 
 export async function PATCH(request: Request, context: RouteContext) {

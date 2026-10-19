@@ -40,6 +40,7 @@ export const woocommerceClient = {
   updateProductVariation,
   createProduct,
   deleteProduct,
+  trashProduct,
   deleteProductAndConfirm,
   updateProduct,
   getCategories,
@@ -103,6 +104,10 @@ async function createProduct(payload: WooCommerceProductWritePayload) {
 
 async function deleteProduct(id: string | number) {
   return wcFetch<WooCommerceProduct>(`/products/${encodeURIComponent(String(id))}`, { force: "true" }, { method: "DELETE" });
+}
+
+async function trashProduct(id: string | number) {
+  return wcFetch<WooCommerceProduct>(`/products/${encodeURIComponent(String(id))}`, { force: "false" }, { method: "DELETE" });
 }
 
 async function deleteProductAndConfirm(id: string | number) {

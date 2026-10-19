@@ -2,6 +2,7 @@ import type { InternalAdminUser } from "../admin.types";
 import { AdminNotificationBell } from "@/features/admin-notifications/components/AdminNotificationBell";
 import { AdminPushToggle } from "@/features/admin-notifications/components/AdminPushToggle";
 import { AdminLogoutButton } from "./AdminLogoutButton";
+import { AdminHeaderProductNavigation } from "./AdminHeaderProductNavigation";
 
 export function AdminHeader({ user }: { user: InternalAdminUser }) {
   return (
@@ -9,7 +10,7 @@ export function AdminHeader({ user }: { user: InternalAdminUser }) {
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-subtle">Ofissio / Internal Operations</p>
-          <h1 className="mt-0.5 text-base font-bold tracking-[-0.025em] text-ink">Operations workbench</h1>
+          <AdminHeaderProductNavigation />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="hidden min-h-9 items-center gap-2 rounded-lg bg-emerald-50 px-3 text-[11px] font-semibold text-emerald-700 sm:inline-flex">

@@ -29,7 +29,9 @@ export async function AdminLayout({ children }: { children: ReactNode }) {
       <AdminNotificationProvider role={user.role} userId={user.id}>
         <div className="relative flex min-h-dvh min-w-0 flex-col lg:items-start lg:flex-row lg:gap-2 lg:p-2">
           <AdminSidebar user={user} />
-          <div className="min-w-0 flex-1 overflow-hidden bg-[#f8f9fb] lg:min-h-[calc(100vh-1rem)] lg:rounded-2xl">
+          {/* Clip rounded corners without creating a scroll container that
+              prevents the admin header from sticking to the viewport. */}
+          <div className="min-w-0 flex-1 overflow-clip bg-[#f8f9fb] lg:min-h-[calc(100vh-1rem)] lg:rounded-2xl">
             <AdminHeader user={user} />
             <main
               id="admin-main"

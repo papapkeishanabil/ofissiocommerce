@@ -33,6 +33,10 @@ import { clearResolvedProduct3DUrlCache } from "@/features/products/product-3d-u
 import { defaultModelOrientationY } from "@/types/uniform-3d";
 import { DEFAULT_MODEL_COLOR_ADJUSTMENT } from "@/types/model-color-adjustment";
 import { productColorDisplayLabel, productColorSwatchStyle } from "@/lib/product-colors";
+import { ColorVariantEditor } from "./ColorVariantEditor";
+import { colorKey, type ColorVariantInput } from "../color-variants";
+import { adminColorVariantsSchema } from "../woocommerce/color-variants.validation";
+import type { AdminProductImage } from "../woocommerce/woocommerce-product-admin.types";
 
 // Preview 3D live untuk penyesuaian warna — bundle three.js hanya dimuat
 // saat panel dibuka (produk dengan model GLB).
@@ -100,6 +104,15 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
   const imageManagerRef = useRef<ProductImageManagerHandle>(null);
   const initial = useMemo(() => initialForm(product, routeMoqDefaults), [product, routeMoqDefaults]);
   const [form, setForm] = useState<AdminWooProductInput>(initial);
+  const [variantsEnabled, setVariantsEnabled] = useState(product?.colorVariantsEnabled ?? false);
+  const [variantDrafts, setVariantDrafts] = useState<ColorVariantInput[]>(product?.colorVariants ?? []);
+  const [defaultVariantColor, setDefaultVariantColor] = useState(product?.defaultColor ?? "");
+  const [variantImages, setVariantImages] = useState<AdminProductImage[]>(product?.images ?? []);
+  const resolvedVariantImages = useRef<Record<string, string>>({});
+  const visibleVariants = form.colors.map((color) => variantDrafts.find((row) => colorKey(row.color) === colorKey(color)) ?? {
+    color, sku: `${form.sku}-${color.trim().replace(/\s+/g, "-")}`, imageSrc: "", stockQuantity: null,
+  });
+  const selectedDefaultColor = form.colors.includes(defaultVariantColor) ? defaultVariantColor : form.colors[0] ?? "";
   const [glbFile, setGlbFile] = useState<File | null>(null);
   const [glbVersion, setGlbVersion] = useState(product?.ofissioMeta.model3DVersion || "v1");
   const [activeGlb, setActiveGlb] = useState(() => ({
@@ -191,6 +204,16 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (variantsEnabled) {
+      const result = adminColorVariantsSchema.safeParse({ variants: visibleVariants, defaultColor: selectedDefaultColor });
+      const missingImage = visibleVariants.find((variant) => !variantImages.some((image) => image.src === variant.imageSrc));
+      const parentSkuUsed = visibleVariants.some((variant) => colorKey(variant.sku) === colorKey(form.sku));
+      if (!visibleVariants.length || !result.success || missingImage || parentSkuUsed) {
+        setMessage({ tone: "error", text: !visibleVariants.length ? "Pilih warna pada bagian Katalog dan atribut." : parentSkuUsed ? "SKU varian harus berbeda dari SKU produk induk." : missingImage ? `Pilih foto galeri untuk warna ${missingImage.color}.` : result.error?.issues[0]?.message ?? "Lengkapi varian warna." });
+        document.getElementById("color-variants")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+    }
     setShowPricingValidation(true);
     if (!pricingValidation.valid) {
       setMessage({ tone: "error", text: pricingValidation.errors[0]?.message ?? "Tier harga quantity belum valid." });
@@ -228,6 +251,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       const uploadWarnings: string[] = [];
       let uploadedGlbLabel = "";
       let uploadedGlb: ApiGlbUploadResponse["upload"];
+      let variantsFailed = false;
 
       try {
         const savedImages = await imageManagerRef.current?.save(saved.id);
@@ -236,6 +260,26 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         }
       } catch {
         uploadWarnings.push("foto gagal diupload");
+      }
+
+      if (variantsEnabled || product?.colorVariantsEnabled || saved.colorVariantsEnabled) {
+        try {
+          if (uploadWarnings.length) throw new Error("Foto belum berhasil disimpan. Simpan kembali setelah upload foto berhasil.");
+          const variants = variantsEnabled ? visibleVariants.map((variant) => ({ ...variant, imageSrc: resolvedVariantImages.current[variant.imageSrc] ?? variant.imageSrc })) : [];
+          // Preserve uploaded photo references even if the provider rejects a SKU.
+          setVariantDrafts(variants);
+          const response = await fetch(`/api/admin/products/woocommerce/${saved.id}/color-variants`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Accept: "application/json", ...MOCK_INTERNAL_HEADERS },
+            body: JSON.stringify({ variants, defaultColor: selectedDefaultColor }),
+          });
+          const result = await response.json().catch(() => null) as { ok?: boolean; message?: string; variants?: ColorVariantInput[] } | null;
+          if (!response.ok || !result?.ok || !result.variants) throw new Error(result?.message || "Varian warna belum tersimpan.");
+          setVariantDrafts(result.variants);
+        } catch (error) {
+          variantsFailed = true;
+          uploadWarnings.push(`varian warna gagal: ${error instanceof Error ? error.message : "Simpan ulang varian."}`);
+        }
       }
 
       if (glbFile) {
@@ -286,6 +330,11 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       const readiness = refreshedProduct?.readiness ?? saved.readiness;
       if (refreshedProduct) {
         setForm(initialForm(refreshedProduct));
+        if (!variantsFailed) {
+          setVariantsEnabled(refreshedProduct.colorVariantsEnabled ?? false);
+          setVariantDrafts(refreshedProduct.colorVariants ?? []);
+          setDefaultVariantColor(refreshedProduct.defaultColor ?? "");
+        }
         // Prefer the upload response for this submit. It is authoritative and
         // prevents a briefly stale WooCommerce read from restoring the old
         // filename/version in the form immediately after a replacement.
@@ -315,6 +364,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           text: `Produk tersimpan, tetapi belum tampil di Ofissio: ${readiness.blockingIssues.map((issue) => issue.label).join(", ")}.`,
         });
       }
+      if (variantsFailed) return;
       if (mode === "create") {
         const warning = uploadWarnings.some((item) => item.startsWith("foto"))
           ? "image"
@@ -511,6 +561,11 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           initialImages={product?.images ?? []}
           maxFileMb={productImageMaxMb}
           disabled={busy}
+          onDraftImagesChange={setVariantImages}
+          onImageSourcesResolved={(sources) => {
+            Object.assign(resolvedVariantImages.current, sources);
+            setVariantDrafts((current) => current.map((variant) => ({ ...variant, imageSrc: sources[variant.imageSrc] ?? variant.imageSrc })));
+          }}
           onImagesChange={(images) =>
             set("imageUrls", images.map((image) => image.src))
           }
@@ -534,6 +589,21 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           </div>
         </details>
       </FormSection>
+
+      <div id="color-variants" className="scroll-mt-28">
+        <FormSection icon={Shirt} title="Varian Warna" description="Pasangkan setiap warna dengan SKU dan foto yang sesuai.">
+          <ColorVariantEditor
+            enabled={variantsEnabled}
+            onEnabledChange={setVariantsEnabled}
+            variants={visibleVariants}
+            onChange={(variant) => setVariantDrafts((current) => [...current.filter((row) => colorKey(row.color) !== colorKey(variant.color)), variant])}
+            defaultColor={selectedDefaultColor}
+            onDefaultColorChange={setDefaultVariantColor}
+            images={variantImages}
+            disabled={busy}
+          />
+        </FormSection>
+      </div>
 
       <div id="quantity-pricing" className="scroll-mt-28">
         <FormSection

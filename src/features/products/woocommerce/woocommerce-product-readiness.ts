@@ -1,4 +1,5 @@
 import type { OfissioProduct } from "../product.types";
+import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, colorKey, readColorVariants } from "../color-variants";
 import {
   getMetaBoolean,
   getMetaNumber,
@@ -142,7 +143,7 @@ function getRawWooCommerceReadiness(
   if (!product.sku?.trim()) {
     blockingIssues.push(blocking("sku", "SKU belum diisi", "Buka WooCommerce Product"));
   }
-  if (parseMoney(product.sale_price || product.price || product.regular_price) <= 0) {
+  if ((getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false) ? getMetaNumber(meta, BASE_PRICE_META, parseMoney(product.sale_price || product.price || product.regular_price)) : parseMoney(product.sale_price || product.price || product.regular_price)) <= 0) {
     blockingIssues.push(blocking("price", "Harga belum diisi", "Buka WooCommerce Product"));
   }
   if (!product.categories?.length) {
@@ -201,6 +202,13 @@ function getRawWooCommerceReadiness(
     warnings.push(warning("shipping_dimensions", "Dimensi pengiriman belum lengkap", "Isi Logistik & Pengiriman"));
   }
   pushAttributeWarning(warnings, product.attributes, ["warna", "color"], "colors", "Atribut warna belum lengkap");
+  if (getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false)) {
+    const variants = readColorVariants(product);
+    const colors = getMetaStringArray(meta, "available_colors");
+    if (!getMetaBoolean(meta, COLOR_VARIANTS_READY_META, false) || colors.some((color) => !variants.some((variant) => colorKey(variant.color) === colorKey(color)))) {
+      blockingIssues.push(blocking("color_variants", "Varian warna belum selesai disimpan", "Simpan ulang Varian Warna"));
+    }
+  }
   pushAttributeWarning(warnings, product.attributes, ["bahan", "material"], "material", "Atribut bahan belum lengkap");
   pushAttributeWarning(warnings, product.attributes, ["ukuran", "size"], "sizes", "Atribut ukuran belum lengkap");
   const quantityPricing = normalizeQuantityPricing({
@@ -232,6 +240,9 @@ function getRawWooCommerceReadiness(
 function getMappedProductReadiness(product: OfissioProduct): ProductReadiness {
   const blockingIssues: ProductReadinessIssue[] = [];
   const warnings: ProductReadinessIssue[] = [];
+  if (product.colorVariantsEnabled && (!product.colorVariantsReady || product.available_colors.some((color) => !product.colorVariants?.some((variant) => colorKey(variant.color) === colorKey(color))))) {
+    blockingIssues.push(blocking("color_variants", "Varian warna belum selesai disimpan", "Simpan ulang Varian Warna"));
+  }
   const model = product.model_3d;
   const modelUrl = model?.url ?? product.model_3d_url ?? "";
   const hasModelReference = Boolean(modelUrl);

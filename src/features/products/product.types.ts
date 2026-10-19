@@ -7,6 +7,7 @@ import type {
 import type { QuantityPricing } from "./quantity-pricing";
 import type { EmbroideryPricing } from "./embroidery-pricing";
 import type { ModelColorAdjustment } from "@/types/model-color-adjustment";
+import type { ProductColorVariant } from "./color-variants";
 
 export type ProductStatus = "draft" | "published" | "archived";
 export type TransactionMode = "DIRECT_CHECKOUT" | "REQUEST_QUOTATION" | "HYBRID";
@@ -36,6 +37,10 @@ export interface ProductImageReference {
 
 /** Canonical product contract. UI-compatible fields remain from Product. */
 export interface OfissioProduct extends Product {
+  colorVariants?: ProductColorVariant[];
+  colorVariantsEnabled?: boolean;
+  colorVariantsReady?: boolean;
+  defaultColor?: string;
   source: "mock" | "woocommerce"; source_id: string; short_description: string;
   /**
    * HTML deskripsi tersanitasi untuk render storefront (dangerouslySetInnerHTML

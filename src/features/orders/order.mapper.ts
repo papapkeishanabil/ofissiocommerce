@@ -45,6 +45,7 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
           (item.embroideryTotal ?? 0);
       return {
         product_id: productId,
+        ...(productId && item.variationId ? { variation_id: item.variationId } : {}),
         name: item.productName,
         sku: item.sku,
         quantity: item.totalQty,

@@ -3,6 +3,8 @@ import {
   slugifyTaxonomy,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import { SIZES } from "@/types/industry";
+import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "./color-variants";
+import { sortProductSizes } from "@/lib/product-size-order";
 import {
   CAMERA_PRESETS,
   EMBROIDERY_ZONES,
@@ -139,7 +141,8 @@ export function mapWooCommerceProductToOfissioProduct(
     ["short", "long"],
     "short",
   );
-  const priceFrom = parseMoney(raw.regular_price || raw.price || raw.sale_price) || 0;
+  const standardPrice = parseMoney(raw.regular_price || raw.price || raw.sale_price) || 0;
+  const priceFrom = getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false) ? getMetaNumber(meta, BASE_PRICE_META, standardPrice) : standardPrice;
   const moq = getMetaNumber(meta, "moq", 12);
   const leadTime = getMetaString(meta, "lead_time") || "Hubungi tim Ofissio";
   const quantityPricing = normalizeQuantityPricing({
@@ -168,6 +171,10 @@ export function mapWooCommerceProductToOfissioProduct(
     id: `wc-${raw.id}`,
     source: "woocommerce",
     source_id: String(raw.id),
+    colorVariants: readColorVariants(raw),
+    colorVariantsEnabled: getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false),
+    colorVariantsReady: getMetaBoolean(meta, COLOR_VARIANTS_READY_META, false),
+    defaultColor: getMetaString(meta, DEFAULT_COLOR_META),
     name: stripHtml(raw.name).trim(),
     sku: raw.sku?.trim() ?? "",
     slug: raw.slug,
@@ -356,7 +363,7 @@ function normalizeIndustries(values: string[]) {
 }
 
 function normalizeSizes(values: string[]) {
-  return values.filter((value): value is (typeof SIZES)[number] =>
+  return sortProductSizes(values).filter((value): value is (typeof SIZES)[number] =>
     SIZES.includes(value as never),
   );
 }
@@ -424,7 +431,11 @@ function buildSpecs(
       const slug = slugifyTaxonomy(attribute.slug || attribute.name).replace(/^pa-/, "");
       return !managedAttributeAliases.has(slug);
     }).flatMap((attribute) => {
-      const value = (attribute.options ?? []).join(", ");
+      const slug = slugifyTaxonomy(attribute.slug || attribute.name).replace(/^pa-/, "");
+      const options = attribute.options ?? [];
+      const value = (["size", "sizes", "ukuran"].includes(slug)
+        ? sortProductSizes(options)
+        : options).join(", ");
       return value ? [{ label: attribute.name, value }] : [];
     }),
     { label: "Tipe Lengan", value: sleeveType === "long" ? "Panjang" : "Pendek" },

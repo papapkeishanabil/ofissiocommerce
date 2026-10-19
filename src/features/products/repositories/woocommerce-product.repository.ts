@@ -1,4 +1,5 @@
 import "server-only";
+import { withLiveColorVariants } from "../woocommerce/color-variants.service";
 
 import { logAuditEvent } from "@/lib/security/audit-log";
 import {
@@ -35,13 +36,13 @@ async function getPublishedProducts() {
 
 async function getProductById(id: string) {
   const sourceId = id.replace(/^wc-/, "");
-  const product = await woocommerceClient.getProductById(sourceId);
+  const product = await withLiveColorVariants(await woocommerceClient.getProductById(sourceId));
   return mapAndFilter([product])[0];
 }
 
 async function getProductBySlug(slug: string) {
   const product = await woocommerceClient.getProductBySlug(slug);
-  return product ? mapAndFilter([product])[0] : undefined;
+  return product ? mapAndFilter([await withLiveColorVariants(product)])[0] : undefined;
 }
 
 async function getProductsByIndustry(industry: string) {

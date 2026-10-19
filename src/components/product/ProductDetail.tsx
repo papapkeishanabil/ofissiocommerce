@@ -3,7 +3,8 @@
 "use client";
 import { garmentReference } from "@/components/configurator/garment-scale";
 
-import { productColorDisplayLabel, productColorSwatchStyle } from "@/lib/product-colors";
+import { productColorDisplayLabel } from "@/lib/product-colors";
+import { colorVariantGallery } from "@/features/products/color-variants";
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -53,6 +54,7 @@ import { useFloatingPreviewState } from "@/features/product-preview/hooks/useFlo
 import { useProductHeroVisibility } from "@/features/product-preview/hooks/useProductHeroVisibility";
 import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
 import { ProductGallery } from "./ProductGallery";
+import { ProductColorPicker } from "./ProductColorPicker";
 import { StudioShell } from "@/components/configurator/StudioShell";
 
 // Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
@@ -86,7 +88,9 @@ interface ProductDetailProps {
 
 export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, sizeChartStandardName, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
   const router = useRouter();
-  const [color, setColor] = useState<string>(product.colors[0] ?? "Default");
+  const [color, setColor] = useState<string>(product.defaultColor && product.colors.includes(product.defaultColor) ? product.defaultColor : product.colors[0] || "Default");
+  const galleryImages = useMemo(() => colorVariantGallery(product, color), [product, color]);
+  const galleryProduct = useMemo(() => ({ ...product, images: galleryImages }), [product, galleryImages]);
   const [sizes, setSizes] = useState<SizeMatrix>(() => emptySizeMatrix());
   const [customization, setCustomization] = useState<string>("");
   const [added, setAdded] = useState(false);
@@ -289,7 +293,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
     !authModalOpen &&
     !cartDrawerOpen;
   const floatingPreviewData = {
-    product,
+    product: { ...galleryProduct, mainImage: galleryImages[0]?.src ?? product.mainImage },
     color,
     totalQty,
     embroideryCount: uniform3DConfig?.placements.length ?? 0,
@@ -371,7 +375,8 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
         <div className="contents xl:block xl:space-y-4">
           <div ref={heroRef} className="order-1">
             <ProductGallery
-              product={product}
+              key={`${product.id}-${color}`}
+              product={galleryProduct}
               immersive
               has3DSupport={has3DSupport}
               onOpen3D={() => setShow3D(true)}
@@ -487,42 +492,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
               </details>
             ) : null}
 
-            {/* Color picker */}
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <p className="text-xs font-bold text-brand-900">
-                Warna: <span>{productColorDisplayLabel(color)}</span>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {product.colors.map((c) => {
-                  const active = c === color;
-                  const colorLabel = productColorDisplayLabel(c);
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setColor(c)}
-                      aria-label={`Pilih warna ${colorLabel}`}
-                      aria-pressed={active}
-                      title={colorLabel}
-                      className={
-                        "relative h-9 w-9 rounded-full border transition pointer-coarse:h-10 pointer-coarse:w-10 " +
-                        (active
-                          ? "ring-2 ring-brand-900 ring-offset-2"
-                          : "border-line hover:scale-110")
-                      }
-                      style={productColorSwatchStyle(c)}
-                    >
-                      {active && (
-                        <CheckCircle2
-                          className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full fill-brand-900 text-white ring-2 ring-white"
-                          strokeWidth={3}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <ProductColorPicker product={product} color={color} onChange={setColor} />
 
             {/* Size matrix */}
             <div className="mt-3">

@@ -56,6 +56,8 @@ interface ProductImageManagerProps {
   maxFileMb?: number;
   disabled?: boolean;
   onImagesChange?: (images: AdminProductImage[]) => void;
+  onDraftImagesChange?: (images: AdminProductImage[]) => void;
+  onImageSourcesResolved?: (sources: Record<string, string>) => void;
 }
 
 export const ProductImageManager = forwardRef<
@@ -69,6 +71,8 @@ export const ProductImageManager = forwardRef<
     maxFileMb = 10,
     disabled = false,
     onImagesChange,
+    onDraftImagesChange,
+    onImageSourcesResolved,
   },
   ref,
 ) {
@@ -86,6 +90,12 @@ export const ProductImageManager = forwardRef<
     text: string;
   } | null>(null);
   const [fileErrors, setFileErrors] = useState<string[]>([]);
+
+  useEffect(() => {
+    onDraftImagesChange?.(items.map((item) => item.image ?? {
+      id: null, src: item.previewUrl, name: item.file?.name ?? "Foto baru", alt: item.file?.name ?? "Foto baru",
+    }));
+  }, [items, onDraftImagesChange]);
 
   useEffect(
     () => () => {
@@ -156,6 +166,7 @@ export const ProductImageManager = forwardRef<
         if (!uploaded) throw new Error("Foto upload belum tersedia.");
         return uploaded;
       });
+      onImageSourcesResolved?.(Object.fromEntries(items.map((item, index) => [item.previewUrl, finalImages[index]!.src])));
       if (pending.length > 0) {
         // The POST already persisted these images in WooCommerce. Convert the
         // local previews to remote rows now so a PATCH retry cannot duplicate

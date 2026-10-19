@@ -139,7 +139,12 @@
 }
 
 /* ===== Base ===== */
+/* Light-only palette: this declaration plus the color-scheme meta in
+   layout.tsx opts the page out of Chrome-for-Android Auto Dark / forced dark
+   mode, which otherwise rewrites the ivory surfaces to near-black and turns
+   the CSS-inverted white header logo black on its navy bar. */
 html {
+  color-scheme: only light;
   scroll-behavior: smooth;
 }
 
@@ -147,6 +152,11 @@ html,
 body {
   height: 100%;
   min-width: 320px;
+}
+
+/* Admin pages scroll with the document so sticky navigation has one scroll root. */
+body:has(.admin-shell) {
+  overflow-x: clip;
 }
 
 body {

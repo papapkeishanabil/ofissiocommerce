@@ -34,6 +34,8 @@ export interface ValidatedCheckoutCartItem {
   productSlug: string;
   productName: string;
   sku: string;
+  variationId?: number;
+  parentSku?: string;
   /** catalog main image snapshot — rides inside order_json, no schema column */
   image?: string | null;
   selectedColor: string;

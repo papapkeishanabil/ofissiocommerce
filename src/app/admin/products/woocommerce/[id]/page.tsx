@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { ADMIN_ROLE_PERMISSIONS } from "@/features/admin/admin.config";
+import { DeleteProductButton } from "@/features/products/components/DeleteProductButton";
 
 import {
   canRequestStockReplenishment,
@@ -53,11 +55,14 @@ export default async function AdminWooProductDetailPage({ params, searchParams }
           eyebrow={`WooCommerce Product #${product.id}`}
           title={product.name}
           description="Edit data WooCommerce, metadata Ofissio, customization, dan file GLB dari satu halaman."
-          actions={product.wooEditUrl ? (
+          actions={<div className="flex flex-wrap items-start gap-3">
+            {ADMIN_ROLE_PERMISSIONS[actor.role].includes("admin:catalog:update") ? <DeleteProductButton id={product.id} name={product.name} /> : null}
+            {product.wooEditUrl ? (
             <a href={product.wooEditUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-brand-200 bg-white px-4 text-sm font-black text-brand-700 hover:bg-brand-50">
               Lihat di WooCommerce
             </a>
           ) : null}
+          </div>}
         />
         <ProductReadinessPanel readiness={product.readiness} />
         {uploadWarning ? (
