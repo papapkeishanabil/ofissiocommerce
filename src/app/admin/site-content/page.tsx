@@ -4,7 +4,7 @@
 // (requireInternalAdminServer -> service read -> AdminPageHeader + content)
 // but lists multiple sections instead of a single editor.
 import Link from "next/link";
-import { CheckCircle2, ChevronRight, ShieldAlert } from "lucide-react";
+import { CheckCircle2, ChevronRight, Info, ShieldAlert } from "lucide-react";
 
 import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { AdminPageHeader } from "@/features/admin/components/AdminSurface";
@@ -48,6 +48,15 @@ export default async function AdminSiteContentPage() {
           Editor menampilkan nilai bawaan; penyimpanan Supabase aktif setelah migrasi dijalankan.
         </div>
       ) : null}
+
+      <div className="flex gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
+        <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" aria-hidden />
+        <p>
+          Nomor pada menu Konten Website mengikuti struktur section asli. Nomor yang tampil di
+          homepage mengikuti section yang sedang ditampilkan; jika section 03 disembunyikan,
+          nomor visual setelahnya bergeser, tetapi menu CMS tetap memakai nomor aslinya.
+        </p>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {state.sections.map((section) => {
