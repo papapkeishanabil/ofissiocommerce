@@ -107,12 +107,16 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
   const [variantsEnabled, setVariantsEnabled] = useState(product?.colorVariantsEnabled ?? false);
   const [variantDrafts, setVariantDrafts] = useState<ColorVariantInput[]>(product?.colorVariants ?? []);
   const [defaultVariantColor, setDefaultVariantColor] = useState(product?.defaultColor ?? "");
+  const [previewVariantColor, setPreviewVariantColor] = useState("");
   const [variantImages, setVariantImages] = useState<AdminProductImage[]>(product?.images ?? []);
   const resolvedVariantImages = useRef<Record<string, string>>({});
   const visibleVariants = form.colors.map((color) => variantDrafts.find((row) => colorKey(row.color) === colorKey(color)) ?? {
     color, sku: `${form.sku}-${color.trim().replace(/\s+/g, "-")}`, imageSrc: "", stockQuantity: null,
   });
   const selectedDefaultColor = form.colors.includes(defaultVariantColor) ? defaultVariantColor : form.colors[0] ?? "";
+  const previewColor = form.colors.includes(previewVariantColor) ? previewVariantColor : selectedDefaultColor;
+  const previewVariant = variantsEnabled ? visibleVariants.find((variant) => variant.color === previewColor) : undefined;
+  const previewImage = previewVariant?.imageSrc || form.imageUrls[0];
   const [glbFile, setGlbFile] = useState<File | null>(null);
   const [glbVersion, setGlbVersion] = useState(product?.ofissioMeta.model3DVersion || "v1");
   const [activeGlb, setActiveGlb] = useState(() => ({
@@ -765,6 +769,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
 
       <div id="model-3d" className="scroll-mt-28">
       <FormSection icon={FileBox} title="Model 3D GLB" description="File disimpan privat di Supabase Storage. Viewer meminta signed URL baru saat diperlukan.">
+        <p className="mb-4 text-xs leading-5 text-ink-muted">Cukup unggah satu model untuk semua warna jika area kainnya sudah disiapkan. Atur warna kain di bagian Varian Warna, lalu cek hasilnya pada preview di bawah.</p>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
           <Field label={activeGlb.filename ? "Ganti file GLB" : "Upload file GLB"} hint={`Hanya .glb, maksimal ${glbMaxMb} MB sesuai batas Storage aktif.`}>
             <input key={glbInputKey} className={`${INPUT} file:mr-4 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-700`} type="file" accept=".glb,model/gltf-binary,application/octet-stream" onChange={(e) => selectGlbFile(e.target.files?.[0] ?? null)} />
@@ -816,12 +821,18 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
               </button>
             </div>
             <div className="mx-auto max-w-5xl">
+            {variantsEnabled && form.colors.length ? <label className="mt-4 block max-w-sm text-sm font-semibold text-ink">Warna preview 3D
+              <select className={`${INPUT} mt-2`} value={previewColor} onChange={(event) => setPreviewVariantColor(event.target.value)}>
+                {form.colors.map((color) => <option key={color} value={color}>{color}</option>)}
+              </select>
+            </label> : null}
             <div className="mt-4 grid gap-2 @min-[40rem]:grid-cols-2" aria-label="Perbandingan model 3D dan foto produk">
               <div className="min-w-0 overflow-hidden rounded-lg border border-line bg-white">
                 <div className="aspect-[4/5] bg-[#f5f2ec] @min-[40rem]:aspect-auto @min-[40rem]:h-[min(52vh,36rem,60cqw)]">
                   <ModelPreviewCanvas
                     model={colorPreviewModel}
-                    color={form.colors[0] ?? "#d9c39a"}
+                    color={previewColor || "#d9c39a"}
+                    fabricColor={previewVariant?.fabricColor}
                     placements={[]}
                     activeCamera="front"
                   />
@@ -830,9 +841,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
               </div>
               <div className="min-w-0 overflow-hidden rounded-lg border border-line bg-white">
                 <div className="aspect-[4/5] @min-[40rem]:aspect-auto @min-[40rem]:h-[min(52vh,36rem,60cqw)]">
-                {form.imageUrls[0] ? (
+                {previewImage ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={form.imageUrls[0]} alt="Foto produk" className="h-full w-full bg-white object-contain" />
+                  <img src={previewImage} alt={`Foto produk ${previewColor}`} className="h-full w-full bg-white object-contain" />
                 ) : (
                   <div className="grid h-full place-items-center text-xs text-ink-muted">Foto produk belum ada</div>
                 )}

@@ -79,7 +79,7 @@ function fixture() {
 
 const input = {
   variants: [
-    { color: "Hitam", sku: "FRM-Hitam", imageSrc: "https://images.example/hitam.jpg", stockQuantity: 5 },
+    { color: "Hitam", sku: "FRM-Hitam", imageSrc: "https://images.example/hitam.jpg", stockQuantity: 5, fabricColor: "#242424" },
     { color: "Putih", sku: "FRM-Putih", imageSrc: "https://images.example/putih.jpg", stockQuantity: null },
   ], defaultColor: "Putih",
 };
@@ -90,6 +90,8 @@ async function run() {
   assert(!adminColorVariantsSchema.safeParse({ ...input, variants: [input.variants[0], { ...input.variants[1], sku: "frm-hitam" }] }).success, "case-insensitive duplicate SKUs must fail");
   assert(!adminColorVariantsSchema.safeParse({ ...input, defaultColor: "Navy" }).success);
   assert(!adminColorVariantsSchema.safeParse({ ...input, variants: [{ ...input.variants[0], stockQuantity: -1 }] }).success);
+  assert(!adminColorVariantsSchema.safeParse({ ...input, variants: [{ ...input.variants[0], fabricColor: "red" }] }).success);
+  assert.equal(adminColorVariantsSchema.parse({ ...input, defaultColor: "Hitam", variants: [{ ...input.variants[0], fabricColor: "#ABCDEF" }] }).variants[0]?.fabricColor, "#abcdef");
   await assert.rejects(saveColorVariants(900, { ...payload, variants: [{ ...payload.variants[0]!, imageSrc: "https://foreign.example/image.jpg" }, payload.variants[1]!] }, f.source), /Foto warna/);
   assert.equal(f.writes, 0, "foreign images must fail before writes");
   await assert.rejects(saveColorVariants(900, { ...payload, variants: [{ ...payload.variants[0]!, id: 123 }, payload.variants[1]!] }, f.source), /ID varian/);
@@ -110,6 +112,8 @@ async function run() {
 
   const raw = await withLiveColorVariants(f.product, f.source);
   const product = mapWooCommerceProductToOfissioProduct(raw);
+  assert.equal(product.colorVariants?.[0]?.fabricColor, "#242424", "3D swatch survives native WooCommerce save and live read");
+  assert.equal(product.colorVariants?.[1]?.fabricColor, undefined, "older variants without a swatch remain compatible");
   f.rows[0]!.stock_quantity = 1;
   const liveStock = mapWooCommerceProductToOfissioProduct(await withLiveColorVariants(f.product, f.source));
   assert.equal(liveStock.colorVariants?.[0]?.stockQuantity, 1, "detail/checkout must read native stock rather than cached metadata");

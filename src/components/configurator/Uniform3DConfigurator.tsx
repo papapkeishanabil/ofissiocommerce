@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Info, Plus, ShoppingCart, Sparkles, X } from "lucide-react";
 
 import type { OfissioProduct } from "@/features/products/product.types";
+import { selectedColorVariant } from "@/features/products/color-variants";
 import {
   zoneLabel,
   type CameraPreset,
@@ -435,6 +436,7 @@ export function Uniform3DConfigurator({
                 onScaleReady={onScaleReady}
                 model={effectiveModel!}
                 color={config.color}
+                fabricColor={selectedColorVariant(product, config.color)?.fabricColor}
                 placements={config.placements}
                 activeCamera={config.activeCamera}
                 onThumbnailsReady={setModelThumbnails}

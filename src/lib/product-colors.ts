@@ -104,6 +104,16 @@ export function productColorSwatch(colorName: string) {
   return resolveColor(colorName) ?? UNKNOWN_COLOR;
 }
 
+/** Neutral garment swatches; admins can override these for each variant. */
+export function fabricColorForName(name: string) {
+  const colors: Record<string, string> = {
+    hitam: "#242424", black: "#242424", putih: "#ffffff", white: "#ffffff",
+    "abu asap": "#a1aab6", "baby blue": "#a6c5df", army: "#535d44",
+    navy: "#24354c", "abu tua": "#555963", maroon: "#712f3c",
+  };
+  return colors[normalized(name)] ?? productColorSwatch(name);
+}
+
 export function productColorPalette(colorName: string) {
   const parts = combinationParts(colorName);
   const colors = parts.map((part) => resolveColor(part) ?? UNKNOWN_COLOR);

@@ -22,6 +22,8 @@ import { ProceduralShirt } from "./ProceduralShirt";
 import { renderModelThumbnails } from "./model-thumbnails";
 import { configureStudioGLTFLoader } from "./configure-gltf-loader";
 import { fitGarmentModel } from "./fit-garment-model";
+import { FABRIC_RECOLOR_GLSL, hasFabricMask, updateFabricColor } from "./fabric-recolor";
+import { fabricColorForName } from "@/lib/product-colors";
 import { modelUnitsPerCm } from "./garment-scale";
 import {
   DEFAULT_MODEL_COLOR_ADJUSTMENT,
@@ -33,6 +35,7 @@ interface Uniform3DViewerProps {
   onScaleReady?: (unitsPerCm: number) => void;
   model: Model3DEntry;
   color: string;
+  fabricColor?: string;
   placements: LogoPlacement[];
   activeCamera: CameraPreset;
   highlightZone?: string | null;
@@ -47,6 +50,7 @@ export function Uniform3DViewer({
   onScaleReady,
   model,
   color,
+  fabricColor,
   placements,
   activeCamera,
   highlightZone,
@@ -139,6 +143,7 @@ export function Uniform3DViewer({
             orientationY={model.orientationY}
             onScaleReady={onScaleReady}
             url={resolvedGlbUrl}
+            fabricColor={fabricColor ?? fabricColorForName(color)}
             placements={placements}
             highlightZone={highlightZone}
             adjustment={model.adjustment}
@@ -278,6 +283,7 @@ function CameraRig({
 // GLB loader — auto-centers + scales + supports raycast click for logo.
 
 interface GLBModelProps {
+  fabricColor: string;
   referenceLengthCm?: number;
   orientationY?: number;
   onScaleReady?: (unitsPerCm: number) => void;
@@ -290,7 +296,7 @@ interface GLBModelProps {
   onSurfaceClick?: (hit: { point: [number, number, number]; normal: [number, number, number] }) => void;
 }
 
-function GLBModel({ url, placements = [], highlightZone, adjustment, onModelReady, onSurfaceClick, onThumbnailsReady, referenceLengthCm, orientationY, onScaleReady }: GLBModelProps) {
+function GLBModel({ url, fabricColor, placements = [], highlightZone, adjustment, onModelReady, onSurfaceClick, onThumbnailsReady, referenceLengthCm, orientationY, onScaleReady }: GLBModelProps) {
   // Keep Draco decoding same-origin. Production CSP intentionally does not
   // allow third-party decoder scripts from the default Google CDN.
   const { scene } = useGLTF(url, "/draco/", true, configureStudioGLTFLoader);
@@ -322,7 +328,8 @@ function GLBModel({ url, placements = [], highlightZone, adjustment, onModelRead
   );
   useLayoutEffect(() => {
     updateGarmentColorCalibration(fitted, normalizedAdjustment);
-  }, [fitted, normalizedAdjustment]);
+    updateFabricColor(fitted, fabricColor);
+  }, [fitted, normalizedAdjustment, fabricColor]);
 
   useEffect(() => () => {
     fitted.traverse((child) => {
@@ -353,7 +360,7 @@ function GLBModel({ url, placements = [], highlightZone, adjustment, onModelRead
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [renderer, fitted, onThumbnailsReady]);
+  }, [renderer, fitted, onThumbnailsReady, fabricColor, normalizedAdjustment]);
 
   // Raycast click → get surface point + normal
   const handleClick = (e: any) => {
@@ -522,6 +529,14 @@ function prepareGarmentMaterial(
   }
   cloned.emissiveIntensity = adjustment.emissiveIntensity;
   cloned.userData.ofissioColorAdjustment = { ...adjustment };
+  const fabricMasked = hasFabricMask(cloned) && cloned.vertexColors && !!cloned.map && !cloned.transparent;
+  if (fabricMasked) {
+    // Generated metallic/roughness maps can make cotton look like polished
+    // leather. Prepared fabric uses a stable matte finish in every color.
+    cloned.roughnessMap = null;
+    cloned.metalnessMap = null;
+    cloned.roughness = 0.92;
+  }
 
   const originalOnBeforeCompile = cloned.onBeforeCompile.bind(cloned);
   const originalProgramCacheKey = cloned.customProgramCacheKey.bind(cloned);
@@ -534,19 +549,22 @@ function prepareGarmentMaterial(
     shader.uniforms.ofissioSaturation = { value: currentAdjustment.saturation };
     shader.uniforms.ofissioHue = { value: THREE.MathUtils.degToRad(currentAdjustment.hue) };
     shader.uniforms.ofissioTemperature = { value: currentAdjustment.temperature };
+    if (fabricMasked) {
+      shader.uniforms.ofissioFabricColor = { value: cloned.userData.ofissioFabricColor ?? new THREE.Color("#ffffff") };
+    }
     shader.fragmentShader = shader.fragmentShader
-      .replace("void main() {", `${COLOR_GRADE_CHUNK}\nvoid main() {`)
+      .replace("void main() {", `${COLOR_GRADE_CHUNK}\n${fabricMasked ? FABRIC_RECOLOR_GLSL : ""}\nvoid main() {`)
       .replace(
         "#include <map_fragment>",
-        "#include <map_fragment>\ndiffuseColor.rgb = ofissioGradeColor(diffuseColor.rgb);",
+        `#include <map_fragment>\ndiffuseColor.rgb = ofissioGradeColor(${fabricMasked ? "ofissioRecolorFabric(diffuseColor.rgb)" : "diffuseColor.rgb"});`,
       )
       .replace(
         "#include <emissivemap_fragment>",
-        "#include <emissivemap_fragment>\ntotalEmissiveRadiance = ofissioGradeColor(totalEmissiveRadiance);",
+        `#include <emissivemap_fragment>\ntotalEmissiveRadiance = ofissioGradeColor(${fabricMasked ? "ofissioRecolorFabric(totalEmissiveRadiance)" : "totalEmissiveRadiance"});`,
       );
     cloned.userData.ofissioColorGradeShader = shader;
   };
-  cloned.customProgramCacheKey = () => `${originalProgramCacheKey()}|ofissio-color-grade-v1`;
+  cloned.customProgramCacheKey = () => `${originalProgramCacheKey()}|ofissio-color-grade-v2|fabric:${fabricMasked}`;
   cloned.needsUpdate = true;
   return cloned;
 }

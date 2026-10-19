@@ -7,6 +7,7 @@ export const adminColorVariantsSchema = z.object({
     color: z.string().trim().min(1).max(100),
     sku: z.string().trim().min(1).max(100).regex(/^[A-Za-z0-9._-]+$/, "SKU hanya boleh berisi huruf, angka, titik, garis bawah, dan tanda hubung."),
     imageSrc: z.string().trim().min(1, "Pilih foto untuk setiap warna.").max(2000),
+    fabricColor: z.string().regex(/^#[0-9a-f]{6}$/i, "Pilih warna kain 3D yang valid.").transform((value) => value.toLowerCase()).optional(),
     stockQuantity: z.number().int().min(0).max(1_000_000_000).nullable(),
   })).max(60),
   defaultColor: z.string().trim().max(100).default(""),

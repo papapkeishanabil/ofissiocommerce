@@ -9,12 +9,15 @@ export const COLOR_VARIANTS_READY_META = "ofissio_color_variants_ready";
 export const COLOR_VARIANT_MARKER = "ofissio_color_variant";
 export const BASE_PRICE_META = "ofissio_base_regular_price";
 export const DEFAULT_COLOR_META = "ofissio_default_color";
+export const FABRIC_COLOR_META = "ofissio_fabric_color";
 
 export interface ProductColorVariant {
   id: number;
   color: string;
   sku: string;
   imageSrc: string;
+  /** Optional sRGB swatch for prepared, fabric-masked 3D models. */
+  fabricColor?: string;
   /** null means stock is not tracked; otherwise stock is shared by all sizes. */
   stockQuantity: number | null;
 }
@@ -39,6 +42,7 @@ export function mapNativeColorVariants(product: WooCommerceProduct, rows: WooCom
       (colorAttribute?.id && attribute.id === colorAttribute.id) || /^(pa_)?(warna|color)$/i.test(attribute.name ?? ""),
     )?.option || getMetaString(row.meta_data ?? [], "ofissio_color"),
     sku: row.sku,
+    fabricColor: readFabricColor(getMetaString(row.meta_data ?? [], FABRIC_COLOR_META)),
     imageSrc: toProxiedWordPressMediaUrl(row.image?.src ?? "", process.env.WORDPRESS_MEDIA_BASE_URL?.trim() ?? ""),
     stockQuantity: row.manage_stock && row.stock_quantity != null ? row.stock_quantity : null,
   }));
@@ -54,10 +58,15 @@ export function readColorVariants(product: WooCommerceProduct): ProductColorVari
     if (!row || !Number.isInteger(row.id) || (row.id ?? 0) <= 0 || typeof row.color !== "string" || typeof row.sku !== "string" || !row.sku.trim() || typeof row.imageSrc !== "string") return [];
     return [{
       id: row.id!, color: row.color, sku: row.sku,
+      fabricColor: readFabricColor(row.fabricColor),
       imageSrc: toProxiedWordPressMediaUrl(row.imageSrc, process.env.WORDPRESS_MEDIA_BASE_URL?.trim() ?? ""),
       stockQuantity: typeof row.stockQuantity === "number" && Number.isFinite(row.stockQuantity) ? row.stockQuantity : null,
     }];
   });
+}
+
+export function readFabricColor(value: unknown): string | undefined {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined;
 }
 
 export function selectedColorVariant(product: Pick<OfissioProduct, "colorVariants">, color: string) {
