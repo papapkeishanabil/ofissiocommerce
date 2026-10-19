@@ -1,4 +1,4 @@
-import { garmentLightingForColor } from "./garment-lighting";
+import { garmentLightingForColor, garmentLightAzimuth } from "./garment-lighting";
 import * as THREE from "three";
 import { CAMERA_PRESETS, type CameraPreset } from "@/types/uniform-3d";
 import { CAMERA_PRESET_VIEWS } from "@/data/uniform-3d";
@@ -16,7 +16,9 @@ export function renderModelThumbnails(renderer: THREE.WebGLRenderer, garment: TH
   key.position.set(3, 5, 4);
   const fill = new THREE.DirectionalLight(0xdbeafe, lighting.fill);
   fill.position.set(-4, 2, -3);
-  scene.add(key, fill);
+  const lights = new THREE.Group();
+  lights.add(key, fill);
+  scene.add(lights);
   const target = new THREE.WebGLRenderTarget(size, size);
   target.texture.colorSpace = THREE.SRGBColorSpace;
   const previousTarget = renderer.getRenderTarget();
@@ -36,6 +38,7 @@ export function renderModelThumbnails(renderer: THREE.WebGLRenderer, garment: TH
       camera.position.set(...view.position);
       camera.lookAt(...view.target);
       camera.updateMatrixWorld();
+      lights.rotation.y = garmentLightAzimuth(fabricColor, camera.position.x, camera.position.z);
       renderer.setRenderTarget(target);
       renderer.clear();
       renderer.render(scene, camera);

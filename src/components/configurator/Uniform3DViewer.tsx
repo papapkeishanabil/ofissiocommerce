@@ -19,7 +19,7 @@ import type {
 import { CAMERA_PRESET_VIEWS, ZONE_ANCHORS, type Model3DEntry } from "@/data/uniform-3d";
 import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { ProceduralShirt } from "./ProceduralShirt";
-import { garmentLightingForColor } from "./garment-lighting";
+import { garmentLightingForColor, garmentLightAzimuth } from "./garment-lighting";
 import { renderModelThumbnails } from "./model-thumbnails";
 import { configureStudioGLTFLoader } from "./configure-gltf-loader";
 import { fitGarmentModel } from "./fit-garment-model";
@@ -60,7 +60,6 @@ export function Uniform3DViewer({
   onThumbnailsReady,
   onSurfaceClick,
 }: Uniform3DViewerProps) {
-  const lighting = garmentLightingForColor(fabricColor ?? fabricColorForName(color));
   const view = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
   const [resolvedGlbUrl, setResolvedGlbUrl] = useState<string | null>(() =>
     model.glbUrl?.startsWith("/api/products/woocommerce/") ? null : model.glbUrl ?? null,
@@ -128,14 +127,7 @@ export function Uniform3DViewer({
       />
       <ExposureSync exposure={model.adjustment?.exposure ?? 1.15} />
       <TemporaryZoomReset zoomUntil={zoomUntil} />
-      {/* Lighting */}
-      <ambientLight intensity={lighting.ambient} />
-      <hemisphereLight args={["#ffffff", "#cbd5e1", lighting.hemisphere]} />
-      <directionalLight
-        position={[3, 5, 4]}
-        intensity={lighting.key}
-      />
-      <directionalLight position={[-4, 2, -3]} intensity={lighting.fill} color="#dbeafe" />
+      <GarmentLights fabricColor={fabricColor ?? fabricColorForName(color)} />
 
       <Suspense fallback={null}>
         {/* Real GLB path (Phase 8+) — guarded by glbUrl */}
@@ -176,6 +168,22 @@ export function Uniform3DViewer({
     </Canvas>
   );
 }
+
+  function GarmentLights({ fabricColor }: { fabricColor?: string }) {
+    const group = useRef<THREE.Group>(null);
+    const lighting = garmentLightingForColor(fabricColor);
+    useFrame(({ camera }) => {
+      if (group.current) {
+        group.current.rotation.y = garmentLightAzimuth(fabricColor, camera.position.x, camera.position.z);
+      }
+    });
+    return <group ref={group}>
+      <ambientLight intensity={lighting.ambient} />
+      <hemisphereLight args={["#ffffff", "#cbd5e1", lighting.hemisphere]} />
+      <directionalLight position={[3, 5, 4]} intensity={lighting.key} />
+      <directionalLight position={[-4, 2, -3]} intensity={lighting.fill} color="#dbeafe" />
+    </group>;
+  }
 
 /** Sinkronkan tone-mapping exposure saat adjustment berubah (slider admin). */
 function ExposureSync({ exposure }: { exposure: number }) {
