@@ -47,7 +47,7 @@ function Stars({ rating }: { rating: TestimoniItem["rating"] }) {
   );
 }
 
-export function TestimoniSection({ data }: { data: TestimoniSectionData }) {
+export function TestimoniSection({ data, sectionNumber = "08" }: { data: TestimoniSectionData; sectionNumber?: string }) {
   const [shot, setShot] = useState<TestimoniItem | null>(null);
   const items = data.items.filter((item) => !item.hidden);
 
@@ -60,7 +60,7 @@ export function TestimoniSection({ data }: { data: TestimoniSectionData }) {
     <section id="testimoni" className="scroll-reveal scroll-mt-24 bg-surface py-20 lg:py-28">
       <div className="mx-auto max-w-[1600px] px-6">
         <div className="max-w-3xl">
-          <HomeSectionMarker number="08" label={data.eyebrow} />
+          <HomeSectionMarker number={sectionNumber} label={data.eyebrow} />
           <h2 className="mt-6 text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-ink-strong sm:text-6xl lg:text-[4rem]">
             <TestimoniHeadline segments={data.headline} />
           </h2>

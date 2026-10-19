@@ -5,12 +5,12 @@ import type { CaraOrderSectionData } from "@/features/site-content/content.schem
 import { HomeSectionMarker } from "./HomeSectionMarker";
 import { OfistantOpenButton } from "./OfistantOpenButton";
 
-export function ReadyStockOrderSection({ data }: { data: CaraOrderSectionData }) {
+export function ReadyStockOrderSection({ data, sectionNumber = "05" }: { data: CaraOrderSectionData; sectionNumber?: string }) {
   return (
     <section id="cara" aria-labelledby="cara-heading" className="scroll-mt-24 overflow-hidden bg-[#06152e] pb-10 pt-16 text-white lg:pb-12 lg:pt-20">
       <div className="mx-auto max-w-[1600px]">
         <div className="px-6 lg:px-8">
-          <HomeSectionMarker number="05" label={data.eyebrow} tone="dark" />
+          <HomeSectionMarker number={sectionNumber} label={data.eyebrow} tone="dark" />
           <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
             <h2 id="cara-heading" className="max-w-[20ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-[#f6f0e6] sm:text-6xl lg:text-[4rem]">
               {data.headline.map((segment, index) => (

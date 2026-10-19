@@ -21,6 +21,8 @@ export async function HomePage() {
   // save from /admin/site-content). Falls back to the registry defaults if
   // the table is absent or a row is corrupt, so this page never breaks.
   const content = await getPublicSiteContent();
+  const sectionNumberOffset = content.paket.hidden ? -1 : 0;
+  const sectionNumber = (baseNumber: number) => String(baseNumber + sectionNumberOffset).padStart(2, "0");
   return (
     <div className="bg-surface">
       <HeroIntro trustItems={content.trust.items} />
@@ -85,7 +87,7 @@ export async function HomePage() {
           <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden w-[42%] bg-gradient-to-l from-black/70 via-black/35 to-transparent xl:block" />
           <div className="relative mx-auto w-full max-w-[1600px] px-6 lg:px-8">
             <div className="max-w-3xl">
-              <HomeSectionMarker number="04" label={content.bordir.eyebrow} tone="dark" />
+              <HomeSectionMarker number={sectionNumber(4)} label={content.bordir.eyebrow} tone="dark" />
               <h2 className="mt-6 text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-white sm:text-6xl lg:text-[4rem]">
                 <Headline segments={content.bordir.headline} highlightClass="text-ochre-400" />
               </h2>
@@ -138,13 +140,13 @@ export async function HomePage() {
         </div>
       </section>
 
-      <ReadyStockOrderSection data={content.cara_order} />
+      <ReadyStockOrderSection data={content.cara_order} sectionNumber={sectionNumber(5)} />
 
       {/* 06 — executive corporate case study */}
       <section id="korporasi" className="scroll-mt-24 overflow-hidden border-t border-ochre-400/35 bg-[#06152e] text-white">
         <div className="mx-auto grid max-w-[1600px] gap-8 px-6 py-14 sm:py-16 lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)] lg:items-end lg:gap-16 lg:px-8 lg:py-20">
           <div className="max-w-5xl">
-            <HomeSectionMarker number="06" label="Solusi Korporasi" tone="dark" />
+            <HomeSectionMarker number={sectionNumber(6)} label="Solusi Korporasi" tone="dark" />
             <h2 className="mt-6 max-w-[18ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-[#f6f0e6] sm:text-6xl lg:text-[4rem]">
               Solusi Korporasi dengan <span className="text-ochre-400">Standar Pengadaan Profesional.</span>
             </h2>
@@ -196,7 +198,7 @@ export async function HomePage() {
       <section id="produk" className="scroll-mt-24 overflow-hidden bg-[#f8f4ec] py-16 lg:py-24">
         <div className="mx-auto grid max-w-[1600px] gap-12 px-6 lg:grid-cols-[minmax(22rem,0.85fr)_minmax(0,1.35fr)] lg:items-center lg:gap-8 lg:px-8">
           <div className="relative z-10">
-            <HomeSectionMarker number="07" label={content.produk_pilihan.eyebrow} />
+            <HomeSectionMarker number={sectionNumber(7)} label={content.produk_pilihan.eyebrow} />
             <h2 className="mt-6 max-w-[15ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-950 sm:text-6xl lg:text-[4rem]">
               <Headline segments={content.produk_pilihan.headline} highlightClass="text-ochre-600" />
             </h2>
@@ -253,7 +255,7 @@ export async function HomePage() {
 
       {/* 08 — TESTIMONI (hanya tampil setelah admin mempublikasikan ulasan
           pertama; nilai bawaan kosong agar tidak ada ulasan contoh palsu) */}
-      <TestimoniSection data={content.testimoni} />
+      <TestimoniSection data={content.testimoni} sectionNumber={sectionNumber(8)} />
 
       {/* CTA penutup — kartu krem berisi jendela percakapan ringkas Ofistant
           ("show, don't tell") di atas dua tombol. Prinsip: tenang dan lega —
