@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {
   BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META,
-  COLOR_VARIANT_MARKER, colorVariantGallery, colorVariantIssue, colorVariantSnapshot,
+  COLOR_VARIANT_MARKER, colorVariantGallery, colorVariantIssue, colorVariantSnapshot, updateVariantModelAdjustment, readVariantModelAdjustment,
 } from "../src/features/products/color-variants";
 import { saveColorVariants, withLiveColorVariants } from "../src/features/products/woocommerce/color-variants.service";
 import { adminColorVariantsSchema } from "../src/features/products/woocommerce/color-variants.validation";
@@ -17,6 +17,7 @@ import { mapPaymentOrderToWooCommerceOrder } from "../src/features/orders/order.
 import { compareOrderRequirementWithWooStock, getOrderStockRequirement, getWooSizeStockMatrix, getWooStockBySku } from "../src/features/stock-monitoring/woocommerce-stock.service";
 import type { WooCommerceProduct, WooCommerceProductVariation, WooCommerceProductVariationWritePayload, WooCommerceProductWritePayload } from "../src/features/products/woocommerce/woocommerce.types";
 import type { PaymentOrderRecord, PaymentRecord } from "../src/features/payment/payment.types";
+import { DEFAULT_MODEL_COLOR_ADJUSTMENT } from "../src/types/model-color-adjustment";
 
 // No env file or live provider: all writes below use an in-memory WooCommerce double.
 process.env.DATABASE_PROVIDER = "mock";
@@ -79,18 +80,30 @@ function fixture() {
 
 const input = {
   variants: [
-    { color: "Hitam", sku: "FRM-Hitam", imageSrc: "https://images.example/hitam.jpg", stockQuantity: 5, fabricColor: "#242424" },
+    { color: "Hitam", sku: "FRM-Hitam", imageSrc: "https://images.example/hitam.jpg", stockQuantity: 5, fabricColor: "#242424", modelAdjustment: { ...DEFAULT_MODEL_COLOR_ADJUSTMENT, brightness: 0.65, exposure: 0.85 } },
     { color: "Putih", sku: "FRM-Putih", imageSrc: "https://images.example/putih.jpg", stockQuantity: null },
   ], defaultColor: "Putih",
 };
 
 async function run() {
+  const whiteBefore = structuredClone(input.variants[1]!);
+  let drafts = updateVariantModelAdjustment(input.variants, input.variants[0]!, { hue: 12 }, DEFAULT_MODEL_COLOR_ADJUSTMENT);
+  assert.equal(drafts[0]?.modelAdjustment?.brightness, 0.65, "changing one slider preserves the color's other settings");
+  assert.deepEqual(drafts[1], whiteBefore, "adjusting black must not alter white");
+  drafts = updateVariantModelAdjustment(drafts, drafts[1]!, { brightness: 1.2 }, DEFAULT_MODEL_COLOR_ADJUSTMENT);
+  assert.equal(drafts[0]?.modelAdjustment?.hue, 12, "switching colors preserves black's adjustment");
+  drafts = updateVariantModelAdjustment(drafts, drafts[0]!, DEFAULT_MODEL_COLOR_ADJUSTMENT, DEFAULT_MODEL_COLOR_ADJUSTMENT);
+  assert.equal(drafts[0]?.modelAdjustment?.hue, 0);
+  assert.equal(drafts[1]?.modelAdjustment?.brightness, 1.2, "reset black leaves white untouched");
+  assert.equal(readVariantModelAdjustment("invalid json"), undefined);
+  assert.equal(readVariantModelAdjustment({ brightness: 1 }), undefined);
   const f = fixture();
   const payload = adminColorVariantsSchema.parse(input);
   assert(!adminColorVariantsSchema.safeParse({ ...input, variants: [input.variants[0], { ...input.variants[1], sku: "frm-hitam" }] }).success, "case-insensitive duplicate SKUs must fail");
   assert(!adminColorVariantsSchema.safeParse({ ...input, defaultColor: "Navy" }).success);
   assert(!adminColorVariantsSchema.safeParse({ ...input, variants: [{ ...input.variants[0], stockQuantity: -1 }] }).success);
   assert(!adminColorVariantsSchema.safeParse({ ...input, variants: [{ ...input.variants[0], fabricColor: "red" }] }).success);
+  assert(!adminColorVariantsSchema.safeParse({ ...input, defaultColor: "Hitam", variants: [{ ...input.variants[0], modelAdjustment: { ...DEFAULT_MODEL_COLOR_ADJUSTMENT, exposure: 99 } }] }).success);
   assert.equal(adminColorVariantsSchema.parse({ ...input, defaultColor: "Hitam", variants: [{ ...input.variants[0], fabricColor: "#ABCDEF" }] }).variants[0]?.fabricColor, "#abcdef");
   await assert.rejects(saveColorVariants(900, { ...payload, variants: [{ ...payload.variants[0]!, imageSrc: "https://foreign.example/image.jpg" }, payload.variants[1]!] }, f.source), /Foto warna/);
   assert.equal(f.writes, 0, "foreign images must fail before writes");
@@ -114,6 +127,9 @@ async function run() {
   const product = mapWooCommerceProductToOfissioProduct(raw);
   assert.equal(product.colorVariants?.[0]?.fabricColor, "#242424", "3D swatch survives native WooCommerce save and live read");
   assert.equal(product.colorVariants?.[1]?.fabricColor, undefined, "older variants without a swatch remain compatible");
+  assert.equal(product.colorVariants?.[0]?.modelAdjustment?.brightness, 0.65, "per-color adjustment survives save and live reload");
+  assert.equal(product.colorVariants?.[0]?.modelAdjustment?.exposure, 0.85);
+  assert.equal(product.colorVariants?.[1]?.modelAdjustment, undefined, "unadjusted colors keep the product defaults");
   f.rows[0]!.stock_quantity = 1;
   const liveStock = mapWooCommerceProductToOfissioProduct(await withLiveColorVariants(f.product, f.source));
   assert.equal(liveStock.colorVariants?.[0]?.stockQuantity, 1, "detail/checkout must read native stock rather than cached metadata");

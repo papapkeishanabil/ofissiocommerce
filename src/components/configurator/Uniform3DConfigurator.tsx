@@ -160,12 +160,16 @@ export function Uniform3DConfigurator({
   // When Meshy.ai generates a real GLB, override the registry entry so the
   // viewer swaps from depth/photo360 mode into true GLB rendering.
   const [generatedGlbUrl, setGeneratedGlbUrl] = useState<string | null>(null);
+  const variantAdjustment = selectedColorVariant(product, config?.color ?? initialColor)?.modelAdjustment;
   const effectiveModel = useMemo(
-    () =>
-      generatedGlbUrl && model
-        ? { ...model, glbUrl: generatedGlbUrl, depth3D: null, depth3DDual: null, photo360: null }
-        : model,
-    [generatedGlbUrl, model],
+    () => {
+      if (!model) return model;
+      const selected = variantAdjustment ? { ...model, adjustment: variantAdjustment } : model;
+      return generatedGlbUrl
+        ? { ...selected, glbUrl: generatedGlbUrl, depth3D: null, depth3DDual: null, photo360: null }
+        : selected;
+    },
+    [generatedGlbUrl, model, variantAdjustment],
   );
 
   useEffect(() => {

@@ -3,7 +3,7 @@ import "server-only";
 import { createApiError } from "@/lib/security/safe-error-response";
 import {
   BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_META,
-  COLOR_VARIANTS_READY_META, COLOR_VARIANT_MARKER, DEFAULT_COLOR_META, FABRIC_COLOR_META,
+  COLOR_VARIANTS_READY_META, COLOR_VARIANT_MARKER, DEFAULT_COLOR_META, FABRIC_COLOR_META, MODEL_ADJUSTMENT_META,
   colorKey, isManagedColorVariant, mapNativeColorVariants, readColorVariants,
 } from "../color-variants";
 import type { AdminColorVariantsPayload } from "./color-variants.validation";
@@ -88,7 +88,7 @@ export async function saveColorVariants(productId: number, input: AdminColorVari
       stock_status: variant.stockQuantity === 0 ? "outofstock" as const : "instock" as const,
       image: image.id ? { id: image.id } : { src: canonicalImage(image.src) },
       attributes: [{ ...(colorAttribute?.id ? { id: colorAttribute.id } : { name: colorAttribute!.name }), option: variant.color }],
-      meta_data: [{ key: COLOR_VARIANT_MARKER, value: true }, { key: "ofissio_color", value: variant.color }, { key: FABRIC_COLOR_META, value: variant.fabricColor ?? "" }],
+      meta_data: [{ key: COLOR_VARIANT_MARKER, value: true }, { key: "ofissio_color", value: variant.color }, { key: FABRIC_COLOR_META, value: variant.fabricColor ?? "" }, { key: MODEL_ADJUSTMENT_META, value: variant.modelAdjustment ? JSON.stringify(variant.modelAdjustment) : "" }],
     };
     const saved = existing
       ? await source.updateProductVariation(productId, existing.id, payload)
@@ -104,7 +104,7 @@ export async function saveColorVariants(productId: number, input: AdminColorVari
   const fresh = mapNativeColorVariants(freshProduct, await listColorVariationRows(productId, source));
   if (fresh.length !== input.variants.length || input.variants.some((variant) => !fresh.some((row) =>
     row.sku === variant.sku && colorKey(row.color) === colorKey(variant.color) &&
-    canonicalImage(row.imageSrc) === canonicalImage(variant.imageSrc) && row.stockQuantity === variant.stockQuantity && row.fabricColor === variant.fabricColor,
+    canonicalImage(row.imageSrc) === canonicalImage(variant.imageSrc) && row.stockQuantity === variant.stockQuantity && row.fabricColor === variant.fabricColor && JSON.stringify(row.modelAdjustment) === JSON.stringify(variant.modelAdjustment),
   ))) {
     throw createApiError("BAD_REQUEST", "WooCommerce belum mengonfirmasi seluruh varian. Simpan ulang untuk melanjutkan.", 502);
   }

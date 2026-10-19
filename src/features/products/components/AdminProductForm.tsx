@@ -31,10 +31,10 @@ import type { MoqSettings } from "@/features/moq-settings/moq-settings.types";
 import type { Model3DEntry } from "@/data/uniform-3d";
 import { clearResolvedProduct3DUrlCache } from "@/features/products/product-3d-url.client";
 import { defaultModelOrientationY } from "@/types/uniform-3d";
-import { DEFAULT_MODEL_COLOR_ADJUSTMENT } from "@/types/model-color-adjustment";
+import { DEFAULT_MODEL_COLOR_ADJUSTMENT, normalizeModelColorAdjustment, type ModelColorAdjustment } from "@/types/model-color-adjustment";
 import { productColorDisplayLabel, productColorSwatchStyle } from "@/lib/product-colors";
 import { ColorVariantEditor } from "./ColorVariantEditor";
-import { colorKey, type ColorVariantInput } from "../color-variants";
+import { colorKey, updateVariantModelAdjustment, type ColorVariantInput } from "../color-variants";
 import { adminColorVariantsSchema } from "../woocommerce/color-variants.validation";
 import type { AdminProductImage } from "../woocommerce/woocommerce-product-admin.types";
 
@@ -143,6 +143,15 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
   );
 
   // Preview penyesuaian warna 3D — hanya untuk produk yang punya model GLB.
+  const previewAdjustment = useMemo(() => normalizeModelColorAdjustment(previewVariant?.modelAdjustment ?? {
+    exposure: form.model3dExposure,
+    emissiveIntensity: form.model3dEmissive,
+    brightness: form.model3dBrightness,
+    saturation: form.model3dSaturation,
+    hue: form.model3dHue,
+    temperature: form.model3dTemperature,
+  }), [previewVariant?.modelAdjustment, form.model3dExposure, form.model3dEmissive, form.model3dBrightness, form.model3dSaturation, form.model3dHue, form.model3dTemperature]);
+
   const colorPreviewModel = useMemo<Model3DEntry | null>(() => {
     const baseGlbUrl =
       product?.ofissioMeta.model3DUrl ||
@@ -163,30 +172,31 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       depth3DDual: null,
       depth3DQuad: null,
       fallbackColor: "#d9c39a",
-      adjustment: {
-        exposure: form.model3dExposure ?? 1.15,
-        emissiveIntensity: form.model3dEmissive ?? 0.6,
-        brightness: form.model3dBrightness ?? 1,
-        saturation: form.model3dSaturation ?? 1,
-        hue: form.model3dHue ?? 0,
-        temperature: form.model3dTemperature ?? 0,
-      },
+      adjustment: previewAdjustment,
     };
   }, [
     product,
     activeGlb.updatedAt,
-    form.model3dBrightness,
-    form.model3dEmissive,
-    form.model3dExposure,
-    form.model3dHue,
+    previewAdjustment,
     form.model3dRotationY,
-    form.model3dSaturation,
-    form.model3dTemperature,
     form.sku,
   ]);
 
   const set = <K extends keyof AdminWooProductInput>(key: K, value: AdminWooProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+
+  function setPreviewAdjustment(key: keyof ModelColorAdjustment, value: number) {
+    if (variantsEnabled && previewVariant) {
+      setVariantDrafts((current) => updateVariantModelAdjustment(current, previewVariant, { [key]: value }, previewAdjustment));
+      return;
+    }
+    const fields = {
+      exposure: "model3dExposure", emissiveIntensity: "model3dEmissive",
+      brightness: "model3dBrightness", saturation: "model3dSaturation",
+      hue: "model3dHue", temperature: "model3dTemperature",
+    } as const;
+    set(fields[key], value);
+  }
 
   function selectGlbFile(file: File | null) {
     setGlbUploadError(null);
@@ -801,12 +811,18 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
               <div>
                 <p className="flex items-center gap-2 text-sm font-bold text-ink"><SunMedium className="h-4 w-4 text-brand-700" aria-hidden="true" />Penyesuaian Model 3D</p>
                 <p className="mt-1 text-xs leading-5 text-ink-muted">
-                  Cocokkan sisi depan model dengan foto produk, lalu sesuaikan pencahayaannya. Berlaku di Studio Bordir setelah disimpan.
+                  {variantsEnabled && previewVariant
+                    ? `Penyesuaian warna dan pencahayaan hanya berlaku untuk ${previewColor}. Pilih warna lain untuk mengaturnya secara terpisah. Simpan agar berlaku di Studio Bordir.`
+                    : "Cocokkan sisi depan model dengan foto produk, lalu sesuaikan pencahayaannya. Berlaku di Studio Bordir setelah disimpan."}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => {
+                  if (variantsEnabled && previewVariant) {
+                    setVariantDrafts((current) => updateVariantModelAdjustment(current, previewVariant, DEFAULT_MODEL_COLOR_ADJUSTMENT, previewAdjustment));
+                    return;
+                  }
                   set("model3dRotationY", defaultModelOrientationY(form.sku));
                   set("model3dExposure", DEFAULT_MODEL_COLOR_ADJUSTMENT.exposure);
                   set("model3dEmissive", DEFAULT_MODEL_COLOR_ADJUSTMENT.emissiveIntensity);
@@ -854,7 +870,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
             <fieldset className="mt-4">
               <legend className="text-xs font-bold text-ink">Orientasi sisi depan model</legend>
               <p className="mt-1 text-xs leading-5 text-ink-muted">
-                Pilih rotasi yang membuat tampilan live menunjukkan bagian depan pakaian.
+                Pilih rotasi yang membuat tampilan live menunjukkan bagian depan pakaian. Orientasi berlaku untuk seluruh warna.
               </p>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {WOO_MODEL_ORIENTATION_Y_OPTIONS.map((degrees) => {
@@ -881,41 +897,41 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
               <div className="mt-3 grid gap-x-5 gap-y-4 sm:grid-cols-2">
                 <RangeControl
                   label="Kecerahan kain"
-                  value={form.model3dBrightness ?? 1}
+                  value={previewAdjustment.brightness}
                   min={0.5}
                   max={1.5}
                   step={0.05}
                   description="Mengubah terang-gelap tekstur tanpa mengubah pencahayaan ruang."
-                  onChange={(value) => set("model3dBrightness", value)}
+                  onChange={(value) => setPreviewAdjustment("brightness", value)}
                 />
                 <RangeControl
                   label="Saturasi warna"
-                  value={form.model3dSaturation ?? 1}
+                  value={previewAdjustment.saturation}
                   min={0}
                   max={1.5}
                   step={0.05}
                   description="Turunkan bila warna model terlalu pekat dibanding foto."
-                  onChange={(value) => set("model3dSaturation", value)}
+                  onChange={(value) => setPreviewAdjustment("saturation", value)}
                 />
                 <RangeControl
                   label="Rona warna"
-                  value={form.model3dHue ?? 0}
+                  value={previewAdjustment.hue}
                   min={-60}
                   max={60}
                   step={1}
                   formatValue={(value) => `${Math.round(value)}°`}
                   description="Geser rona saat warna dasarnya berbeda, misalnya terlalu jingga."
-                  onChange={(value) => set("model3dHue", value)}
+                  onChange={(value) => setPreviewAdjustment("hue", value)}
                 />
                 <RangeControl
                   label="Temperatur warna"
-                  value={form.model3dTemperature ?? 0}
+                  value={previewAdjustment.temperature}
                   min={-1}
                   max={1}
                   step={0.05}
                   formatValue={formatTemperature}
                   description="Arah negatif lebih dingin; arah positif lebih hangat."
-                  onChange={(value) => set("model3dTemperature", value)}
+                  onChange={(value) => setPreviewAdjustment("temperature", value)}
                 />
               </div>
             </div>
@@ -929,21 +945,21 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
               <div className="mt-3 grid gap-x-5 gap-y-4 sm:grid-cols-2">
                 <RangeControl
                   label="Eksposur render"
-                  value={form.model3dExposure ?? 1.15}
+                  value={previewAdjustment.exposure}
                   min={0.5}
                   max={1.8}
                   step={0.05}
                   description="Menerangkan atau menggelapkan seluruh hasil render."
-                  onChange={(value) => set("model3dExposure", value)}
+                  onChange={(value) => setPreviewAdjustment("exposure", value)}
                 />
                 <RangeControl
                   label="Cahaya pengisi kain"
-                  value={form.model3dEmissive ?? 0.6}
+                  value={previewAdjustment.emissiveIntensity}
                   min={0}
                   max={1}
                   step={0.05}
                   description="Turunkan bila kain terang terlihat pudar atau tercuci."
-                  onChange={(value) => set("model3dEmissive", value)}
+                  onChange={(value) => setPreviewAdjustment("emissiveIntensity", value)}
                 />
               </div>
             </details>
