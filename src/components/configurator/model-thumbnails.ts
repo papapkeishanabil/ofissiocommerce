@@ -1,3 +1,4 @@
+import { garmentLightingForColor } from "./garment-lighting";
 import * as THREE from "three";
 import { CAMERA_PRESETS, type CameraPreset } from "@/types/uniform-3d";
 import { CAMERA_PRESET_VIEWS } from "@/data/uniform-3d";
@@ -5,14 +6,15 @@ import { CAMERA_PRESET_VIEWS } from "@/data/uniform-3d";
 /** Render the actual loaded garment using the existing WebGL context.
  * No extra viewers, catalog-image guesses, uploads, or stored cart snapshots.
  */
-export function renderModelThumbnails(renderer: THREE.WebGLRenderer, garment: THREE.Object3D) {
+export function renderModelThumbnails(renderer: THREE.WebGLRenderer, garment: THREE.Object3D, fabricColor?: string) {
+  const lighting = garmentLightingForColor(fabricColor);
   const size = 192;
   const scene = new THREE.Scene();
   const model = garment.clone(true);
-  scene.add(model, new THREE.AmbientLight(0xffffff, .9), new THREE.HemisphereLight(0xffffff, 0xcbd5e1, .7));
-  const key = new THREE.DirectionalLight(0xffffff, 1.45);
+  scene.add(model, new THREE.AmbientLight(0xffffff, lighting.ambient), new THREE.HemisphereLight(0xffffff, 0xcbd5e1, lighting.hemisphere));
+  const key = new THREE.DirectionalLight(0xffffff, lighting.key);
   key.position.set(3, 5, 4);
-  const fill = new THREE.DirectionalLight(0xdbeafe, .55);
+  const fill = new THREE.DirectionalLight(0xdbeafe, lighting.fill);
   fill.position.set(-4, 2, -3);
   scene.add(key, fill);
   const target = new THREE.WebGLRenderTarget(size, size);

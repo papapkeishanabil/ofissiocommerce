@@ -19,6 +19,7 @@ import type {
 import { CAMERA_PRESET_VIEWS, ZONE_ANCHORS, type Model3DEntry } from "@/data/uniform-3d";
 import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
 import { ProceduralShirt } from "./ProceduralShirt";
+import { garmentLightingForColor } from "./garment-lighting";
 import { renderModelThumbnails } from "./model-thumbnails";
 import { configureStudioGLTFLoader } from "./configure-gltf-loader";
 import { fitGarmentModel } from "./fit-garment-model";
@@ -59,6 +60,7 @@ export function Uniform3DViewer({
   onThumbnailsReady,
   onSurfaceClick,
 }: Uniform3DViewerProps) {
+  const lighting = garmentLightingForColor(fabricColor ?? fabricColorForName(color));
   const view = CAMERA_PRESET_VIEWS[activeCamera] ?? CAMERA_PRESET_VIEWS.front!;
   const [resolvedGlbUrl, setResolvedGlbUrl] = useState<string | null>(() =>
     model.glbUrl?.startsWith("/api/products/woocommerce/") ? null : model.glbUrl ?? null,
@@ -127,13 +129,13 @@ export function Uniform3DViewer({
       <ExposureSync exposure={model.adjustment?.exposure ?? 1.15} />
       <TemporaryZoomReset zoomUntil={zoomUntil} />
       {/* Lighting */}
-      <ambientLight intensity={0.9} />
-      <hemisphereLight args={["#ffffff", "#cbd5e1", 0.7]} />
+      <ambientLight intensity={lighting.ambient} />
+      <hemisphereLight args={["#ffffff", "#cbd5e1", lighting.hemisphere]} />
       <directionalLight
         position={[3, 5, 4]}
-        intensity={1.45}
+        intensity={lighting.key}
       />
-      <directionalLight position={[-4, 2, -3]} intensity={0.55} color="#dbeafe" />
+      <directionalLight position={[-4, 2, -3]} intensity={lighting.fill} color="#dbeafe" />
 
       <Suspense fallback={null}>
         {/* Real GLB path (Phase 8+) — guarded by glbUrl */}
@@ -353,7 +355,7 @@ function GLBModel({ url, fabricColor, placements = [], highlightZone, adjustment
   useEffect(() => {
     if (!onThumbnailsReady) return;
     const frame = requestAnimationFrame(() => {
-      try { onThumbnailsReady(renderModelThumbnails(renderer, fitted)); }
+      try { onThumbnailsReady(renderModelThumbnails(renderer, fitted, fabricColor)); }
       catch (error) {
         console.warn("[Studio Bordir] Camera thumbnails could not be rendered:", error);
         onThumbnailsReady({});
