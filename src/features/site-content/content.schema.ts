@@ -431,6 +431,7 @@ export interface PaketItem {
   scale: boolean;
 }
 export interface PaketSectionData {
+  hidden: boolean;
   eyebrow: string;
   headline: TextSegment[];
   lede: string;
@@ -443,6 +444,7 @@ export interface PaketSectionData {
 }
 
 export const paketSectionSchema = z.object({
+  hidden: z.boolean().default(false),
   eyebrow: nonEmpty(60),
   headline: textSegmentsSchema,
   lede: nonEmpty(400),
@@ -469,6 +471,7 @@ export const paketSectionSchema = z.object({
 });
 
 export const DEFAULT_PAKET: PaketSectionData = {
+  hidden: false,
   eyebrow: "Rencana Paket Seragam",
   headline: [
     { text: "Paket Seragam untuk Berbagai Bidang. " },
@@ -1585,6 +1588,7 @@ export const SECTION_REGISTRY: SectionEntry[] = [
         help: "Tandai potongan yang ingin ditebalkan dengan warna aksen.",
       },
       { kind: "textarea", key: "lede", label: "Paragraf pengantar", rows: 3, maxLength: 400 },
+      { kind: "boolean", key: "hidden", label: "Status tampil", toggleLabel: "Sembunyikan dari homepage", help: "Section tidak dirender di homepage sampai toggle ini dimatikan; seluruh data paket tetap tersimpan." },
       { kind: "text", key: "isiLabel", label: "Label 'Isi'", maxLength: 40 },
       { kind: "text", key: "cocokUntukLabel", label: "Label 'Cocok untuk'", maxLength: 40 },
       { kind: "text", key: "opsiLogoLabel", label: "Label 'Logo'", maxLength: 40 },

@@ -102,7 +102,7 @@ export function PaketSeragamShowcase({ data }: { data: PaketSectionData }) {
   const [foodBusiness, setFoodBusiness] = useState<FoodBusiness>("cafe");
   const activeItem = data.items[activeIndex] ?? data.items[0];
 
-  if (!activeItem) return null;
+  if (data.hidden || !activeItem) return null;
 
   const foodServiceActive = isFoodServicePackage(activeItem);
   const foodVariant = FOOD_SERVICE_VARIANTS[foodBusiness];
