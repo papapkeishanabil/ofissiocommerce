@@ -94,17 +94,12 @@ export function getOrderStockRequirement(
     if (item.source === "custom") continue;
     const parentSku = normalizeSku(item.parentSku || item.sku);
     if (!parentSku) continue;
-    if (item.variationId && item.parentSku) {
-      const stockSku = normalizeSku(item.sku);
-      const key = `${item.productId}|${stockSku}`;
-      const current = grouped.get(key);
-      grouped.set(key, {
-        orderId: order.id, companyId: order.companyId, productId: item.productId,
-        productName: item.productName, parentSku, stockSku, sizeLabel: null,
-        requiredQty: (current?.requiredQty ?? 0) + positiveInteger(item.totalQty),
-      });
-      continue;
-    }
+    // Color variations identify the garment color; inventory is held per size.
+    // Keep the parent for grouping, but build stock SKUs from the chosen color.
+    const stockSkuBase = item.variationId && item.parentSku
+      ? normalizeSku(item.sku)
+      : parentSku;
+    if (!stockSkuBase) continue;
     const sizeEntries = Object.entries(item.sizeMatrix ?? {}).filter(
       ([, quantity]) => positiveInteger(quantity) > 0,
     );
@@ -118,8 +113,8 @@ export function getOrderStockRequirement(
     for (const requirement of requirements) {
       if (requirement.quantity <= 0) continue;
       const stockSku = requirement.sizeLabel
-        ? `${parentSku}-${requirement.sizeLabel}`
-        : parentSku;
+        ? `${stockSkuBase}-${requirement.sizeLabel}`
+        : stockSkuBase;
       const key = `${item.productId}|${stockSku}`;
       const current = grouped.get(key);
       grouped.set(key, {

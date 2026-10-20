@@ -4,7 +4,7 @@
 import { garmentReference } from "@/components/configurator/garment-scale";
 
 import { productColorDisplayLabel } from "@/lib/product-colors";
-import { colorVariantGallery } from "@/features/products/color-variants";
+import { colorVariantGallery, selectedColorVariant } from "@/features/products/color-variants";
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -435,7 +435,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                   {product.name}
                 </h1>
                 <p className="mt-1 font-mono text-xs text-ink-muted">
-                  SKU: {product.sku}
+                  SKU: {selectedColorVariant(product, color)?.sku || product.sku}
                 </p>
               </div>
               <Badge
@@ -498,6 +498,8 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             {/* Size matrix */}
             <div className="mt-3">
               <SizeQuantityMatrix
+                productId={product.id}
+                color={color}
                 value={sizes}
                 onChange={setSizes}
                 moq={product.moq}

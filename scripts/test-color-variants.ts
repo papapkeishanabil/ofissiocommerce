@@ -174,15 +174,23 @@ async function run() {
     assert.equal(mapped.line_items[0]?.variation_id, variants[1]?.id);
     assert.equal(mapped.line_items[0]?.sku, "FRM-Putih");
     const requirements = getOrderStockRequirement({ ...order, items: [{ ...cart.items[0]!, sku: "FRM-Hitam", variationId: variants[0]?.id }] });
-    assert.equal(requirements.length, 1, "color stock must aggregate sizes");
-    assert.equal(requirements[0]?.stockSku, "FRM-HITAM");
+    assert.equal(requirements.length, 2, "color stock must keep sizes separate");
+    assert.equal(requirements[0]?.stockSku, "FRM-HITAM-S");
     assert.equal(requirements[0]?.parentSku, "FRM");
-    assert.equal(requirements[0]?.requiredQty, 6);
+    assert.equal(requirements[0]?.requiredQty, 2);
+    assert.equal(requirements[1]?.stockSku, "FRM-HITAM-M");
+    assert.equal(requirements[1]?.requiredQty, 4);
+    const snRequirements = getOrderStockRequirement({ ...order, items: [{ ...cart.items[0]!, sku: "SN-NAVY", parentSku: "SN-Blue", variationId: 1227 }] });
+    assert.deepEqual(snRequirements.map(({ stockSku, requiredQty, sizeLabel }) => ({ stockSku, requiredQty, sizeLabel })), [
+      { stockSku: "SN-NAVY-S", requiredQty: 2, sizeLabel: "S" },
+      { stockSku: "SN-NAVY-M", requiredQty: 4, sizeLabel: "M" },
+    ]);
     const matrix = await getWooSizeStockMatrix("FRM", f.source);
     assert.equal(matrix.rows[0]?.sizeLabel, null, "Hitam must not be interpreted as a size");
     assert.equal((await getWooStockBySku("FRM-Hitam", f.source))?.stockQuantity, 5);
     const comparison = await compareOrderRequirementWithWooStock({ ...order, items: [{ ...cart.items[0]!, sku: "FRM-Hitam", variationId: variants[0]?.id }] }, f.source);
-    assert.equal(comparison.requirements[0]?.shortageQty, 1);
+    assert.equal(comparison.requirements[0]?.shortageQty, null, "color-level stock cannot stand in for size-level stock");
+    assert.equal(comparison.hasUnsyncedSku, true);
   } finally {
     productServerService.getProductById = originalRead;
   }

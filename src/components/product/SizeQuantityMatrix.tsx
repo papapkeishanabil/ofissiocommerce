@@ -3,7 +3,8 @@
 
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
+import type { ProductSizeStock } from "@/features/stock-monitoring/product-size-stock.types";
 
 import { SIZES, type Size, type SizeMatrix } from "@/types/industry";
 import { sumSizeMatrix } from "@/types/cart";
@@ -21,6 +22,8 @@ interface SizeQuantityMatrixProps {
   embroideryMoq?: number;
   /** Line ini meminta bordir (placement 3D atau note ber-keyword bordir). */
   hasEmbroidery?: boolean;
+  productId?: string;
+  color?: string;
 }
 
 export function SizeQuantityMatrix({
@@ -31,7 +34,29 @@ export function SizeQuantityMatrix({
   disabled,
   embroideryMoq,
   hasEmbroidery,
+  productId,
+  color,
 }: SizeQuantityMatrixProps) {
+  const stockKey = productId && color ? `${productId}:${color}` : "";
+  const [stockState, setStockState] = useState<{ key: string; stock: ProductSizeStock | null }>({ key: "", stock: null });
+  useEffect(() => {
+    if (!productId || !color) return;
+    const controller = new AbortController();
+    let disposed = false;
+    const timeout = window.setTimeout(() => controller.abort(), 20_000);
+    fetch(`/api/products/${encodeURIComponent(productId)}/size-stock?color=${encodeURIComponent(color)}`, { signal: controller.signal, cache: "no-store" })
+      .then(async response => {
+        if (!response.ok) throw new Error("Stock unavailable");
+        const result = await response.json() as { ok: boolean; stock: ProductSizeStock };
+        if (!result.ok || !Array.isArray(result.stock?.rows)) throw new Error("Invalid stock response");
+        if (!controller.signal.aborted) setStockState({ key: stockKey, stock: result.stock });
+      })
+      .catch(() => { if (!disposed) setStockState({ key: stockKey, stock: null }); })
+      .finally(() => window.clearTimeout(timeout));
+    return () => { disposed = true; controller.abort(); window.clearTimeout(timeout); };
+  }, [productId, color, stockKey]);
+  const stockLoading = !!stockKey && stockState.key !== stockKey;
+  const currentStock = stockState.key === stockKey ? stockState.stock : null;
   const total = sumSizeMatrix(value);
   const meetsMoq = total >= moq;
   const effectiveFloor = hasEmbroidery && embroideryMoq != null
@@ -59,6 +84,8 @@ export function SizeQuantityMatrix({
         {SIZES.map((s) => {
           const chart = sizeChart?.find((c) => c.size === s);
           const qty = value[s] ?? 0;
+          const stock = currentStock?.rows.find(row => row.size.toUpperCase() === s);
+          const available = stock?.availableQty;
           return (
             <li key={s} className="min-w-0 rounded-lg border border-line bg-surface p-2">
               <div className="mb-1 flex items-baseline justify-between">
@@ -88,6 +115,7 @@ export function SizeQuantityMatrix({
                   type="number"
                   inputMode="numeric"
                   min={0}
+                  aria-describedby={stockKey ? `${listId}-${s}-stock` : undefined}
                   step={1}
                   value={qty === 0 ? "" : qty}
                   placeholder="0"
@@ -105,6 +133,10 @@ export function SizeQuantityMatrix({
                   <Plus className="h-3.5 w-3.5" />
                 </button>
               </div>
+              {stockKey ? <p id={`${listId}-${s}-stock`} className={`mt-1.5 text-[11px] leading-snug ${available === 0 ? "font-semibold text-red-700" : "text-ink-muted"}`} title={stock?.sku} aria-live="polite">
+                {stockLoading ? "Memeriksa stok…" : available == null ? "Stok belum tersedia" : available === 0 ? "Stok habis" : `Stok: ${available.toLocaleString("id-ID")} pcs`}
+                {available != null && qty > available ? <span className="mt-1 block text-amber-700">Jumlah melebihi stok tersedia.</span> : null}
+              </p> : null}
             </li>
           );
         })}

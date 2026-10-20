@@ -773,6 +773,8 @@ export function Uniform3DConfigurator({
               </button>
             </div>
             <SizeQuantityMatrix
+              productId={product.id}
+              color={config.color}
               value={sizes}
               onChange={onSizesChange}
               moq={product.moq}
