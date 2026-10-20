@@ -41,14 +41,14 @@
 .close { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--studio-line); border-radius: 50%; background: #f5f5f3; }
 .close:hover { background: #eaeef4; }
 .label { display: block; margin-bottom: 8px; color: var(--studio-ink); font-size: 13px; font-weight: 650; line-height: 1.3; letter-spacing: -0.02em; }
-.colors { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.colors { display: flex; flex-wrap: wrap; gap: 8px; }
 .color { display: flex; align-items: center; gap: 14px; min-height: 66px; padding: 10px 14px; border: 1px solid var(--studio-line); border-radius: 12px; background: #fff; text-align: left; font-size: 13px; font-weight: 600; }
 .color[aria-pressed="true"] { border-color: var(--studio-gold); }
 .swatch { width: 42px; height: 42px; flex-shrink: 0; border: 3px solid white; border-radius: 50%; outline: 1px solid var(--studio-line); }
 .color[aria-pressed="true"] .swatch { outline: 2px solid var(--studio-gold); outline-offset: 2px; }
 .zones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .zone { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 100px; padding: 8px 4px; border: 1px solid var(--studio-line); border-radius: 12px; background: #fff; font-size: 13px; font-weight: 600; line-height: 1.25; }
-.zone[aria-pressed="true"] { border-color: var(--studio-gold); box-shadow: inset 0 0 0 1px var(--studio-gold); }
+.zone[aria-pressed="true"] { border-color: var(--studio-gold); box-shadow: inset 0 0 0 1px var(--studio-gold); background: #fff8e9; }
 .zone:hover { border-color: var(--studio-gold); background: #fffcf5; }
 .zoneName { text-align: center; line-height: 1.2; }
 .zoneState { font-size: 10px; font-weight: 500; color: #63728c; }
@@ -107,10 +107,13 @@
 .productName { font-size: 13px; margin-top: 2px; }
 .close { width: 32px; height: 32px; }
 .label { font-size: 12px; margin-bottom: 5px; }
-.color { min-height: 42px; padding: 6px 10px; gap: 10px; font-size: 12px; border-radius: 8px; }
+.color { min-height: 44px; padding: 6px 10px; gap: 8px; font-size: 12px; border-radius: 8px; }
 .swatch { width: 26px; height: 26px; border-width: 2px; }
-.zones { gap: 6px; }
-.zone { min-height: 76px; padding: 6px 3px; gap: 2px; font-size: 11px; border-radius: 8px; }
+.zones { grid-template-columns: repeat(3, minmax(0, 126px)); gap: 8px; margin-top: 10px; }
+.zone { min-height: 88px; padding: 10px 6px; gap: 7px; font-size: 11px; border-radius: 8px; }
+.zoneIcon { position: relative; display: grid; width: 44px; height: 44px; flex: none; place-items: center; overflow: hidden; }
+.zoneCheck { position: absolute; right: 6px; top: 6px; width: 15px; height: 15px; color: #fff; fill: var(--studio-gold); }
+.zoneCheckPlaced { fill: #087454; }
 .upload { min-height: 76px; padding: 8px; gap: 3px; border-radius: 8px; }
 .upload svg { width: 22px; height: 22px; }
 .upload strong { font-size: 12px; }
@@ -124,16 +127,18 @@
 .add { min-width: 220px; }
 @media (min-width: 1024px) {
   .body { overflow: hidden; }
-  .layout { height: 100%; grid-template-columns: minmax(0, 1.86fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  /* Three 126px cards, two 8px gaps and the panel's 40px horizontal padding. */
+  .layout { height: 100%; grid-template-columns: minmax(0, 1fr) clamp(434px, 36vw, 520px); grid-template-rows: minmax(0, 1fr) auto; }
   .stage { grid-template-columns: clamp(116px, 11.3vw, 172px) minmax(0, 1fr); overflow: hidden; border-top-right-radius: 12px; }
   .rail { order: 0; overflow-y: auto; padding: 24px 20px; scrollbar-width: thin; scrollbar-color: #94a7c8 #f5f2ec; }
   .viewer { height: 100%; }
-  .panel { overflow-y: auto; padding: 16px; }
+  .panel { overflow-y: auto; padding: 18px 20px; }
   .footer { position: relative; }
 }
 @media (max-width: 639px) {
   .breadcrumb { padding: 10px 16px; gap: 8px; font-size: 12px; }
   .panel { padding: 16px; }
+  .zones { grid-template-columns: repeat(2, minmax(0, 126px)); }
   .productName { font-size: 13px; }
   .footer { padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); gap: 8px; }
   .price { font-size: 23px; }

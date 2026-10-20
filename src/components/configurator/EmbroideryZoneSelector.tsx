@@ -49,14 +49,14 @@ export function EmbroideryZoneSelector({
               <ZonePositionIcon zone={z} />
               <span className={styles.zoneName}>{label}</span>
               <span
-                className={styles.zoneState}
+                className={styles.srOnly}
                 data-state={isPlaced ? "placed" : isSelected ? "selected" : "available"}
               >
                 {isPlaced ? "Ditambahkan" : isSelected ? "Dipilih" : "Tambah"}
               </span>
-              {isPlaced ? (
+              {isPlaced || isSelected ? (
                 <CheckCircle2
-                  className="absolute right-2 top-2 h-4 w-4 text-emerald-600"
+                  className={cn(styles.zoneCheck, isPlaced && styles.zoneCheckPlaced)}
                   aria-hidden="true"
                 />
               ) : null}
@@ -91,7 +91,7 @@ function ZonePositionIcon({ zone }: { zone: EmbroideryZone }) {
     <span
       aria-hidden="true"
       className={cn(
-        "relative grid h-9 w-10 place-items-center overflow-hidden",
+        styles.zoneIcon,
         // Mirror the frame so the image's size/hover scale cannot override it.
         isMirrored && "-scale-x-100",
       )}
@@ -102,10 +102,10 @@ function ZonePositionIcon({ zone }: { zone: EmbroideryZone }) {
         width={96}
         height={96}
         className={cn(
-          "h-9 w-9 object-contain transition-transform duration-200",
+          "h-11 w-11 object-contain transition-transform duration-200",
           isSleeve
-            ? "scale-[1.35] group-hover:scale-[1.42]"
-            : "scale-110 group-hover:scale-[1.16]",
+            ? "scale-125 group-hover:scale-[1.3]"
+            : "scale-105 group-hover:scale-110",
         )}
       />
     </span>
