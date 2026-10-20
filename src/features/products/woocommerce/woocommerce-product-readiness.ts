@@ -321,6 +321,15 @@ function finishReadiness(input: {
   isDraft: boolean;
   invalidModel: boolean;
 }): ProductReadiness {
+  // An absent upload is allowed for plain products; malformed uploads still block.
+  if (input.model3DStatus === "glb_missing") {
+    const optionalFields = new Set(["has_3d_model", "model_3d", "model_3d_id", "model_3d_version", "model_3d_source", "model_3d_filename", "embroidery_zones"]);
+    input.blockingIssues = input.blockingIssues.filter((issue) => {
+      if (!optionalFields.has(issue.field)) return true;
+      input.warnings.push({ ...issue, severity: "warning" });
+      return false;
+    });
+  }
   const isVisibleInOfissio = input.blockingIssues.length === 0;
   const status: ProductReadinessStatus = isVisibleInOfissio
     ? "valid"

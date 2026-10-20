@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, Clock, Layers, Box, PackageCheck } from "lucide-react";
 import type { OfissioProduct } from "@/features/products/product.types";
+import { validateProduct3DModel } from "@/features/products/product.validation";
 import { resolveOrderProcessingInfo } from "@/features/products/order-processing";
 import { formatIDR } from "@/types/product";
 import { fulfillmentLabel } from "@/types/industry";
@@ -22,7 +23,7 @@ export function CatalogProductCard({ product }: { product: OfissioProduct }) {
       ) : <ProductImagePlaceholder name={product.name} category={product.category} accentColor={product.accentColor} className="h-full w-full" />}
       <span className="catalog-photo-badges">
         <span className={product.fulfillment === "READY_STOCK" ? "catalog-stock-ready" : "catalog-stock-order"}>{fulfillmentLabel(product.fulfillment)}</span>
-        {product.has_3d_model && <span className="catalog-model-badge"><Box size={12} />3D tersedia</span>}
+        {validateProduct3DModel(product).ok && <span className="catalog-model-badge"><Box size={12} />3D tersedia</span>}
       </span>
     </Link>
     <div className="catalog-card-content">

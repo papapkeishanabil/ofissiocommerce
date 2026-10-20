@@ -15,11 +15,13 @@ export function validateWooCommerceProductForOfissio(product: OfissioProduct) {
   if (!product.sku.trim()) {
     return { ok: false as const, reason: "Produk WooCommerce tanpa SKU." };
   }
-  if (!product.model_3d?.filename || !product.model_3d.filename.toLowerCase().endsWith(".glb")) {
+  if ((product.model_3d || product.model_3d_url) && (!product.model_3d?.filename || !product.model_3d.filename.toLowerCase().endsWith(".glb"))) {
     return { ok: false as const, reason: "Filename GLB WooCommerce tidak valid." };
   }
-  const modelValidation = validateProduct3DModel(product);
-  if (!modelValidation.ok) return modelValidation;
+  if (product.model_3d || product.model_3d_url) {
+    const modelValidation = validateProduct3DModel(product);
+    if (!modelValidation.ok) return modelValidation;
+  }
   const catalogValidation = validateProductForCatalog(product);
   if (!catalogValidation.ok) return catalogValidation;
   return { ok: true as const };

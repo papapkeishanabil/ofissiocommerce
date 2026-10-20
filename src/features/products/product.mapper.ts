@@ -3,8 +3,9 @@ import {
   slugifyTaxonomy,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import { SIZES } from "@/types/industry";
-import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "./color-variants";
 import { sortProductSizes } from "@/lib/product-size-order";
+import { validateProduct3DModel } from "./product.validation";
+import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "./color-variants";
 import {
   CAMERA_PRESETS,
   EMBROIDERY_ZONES,
@@ -62,7 +63,7 @@ export function mapWooCommerceProductToOfissioProduct(
   const modelSource = normalizeModelSource(getMetaString(meta, "model_3d_source"));
   const has3DModel = getMetaBoolean(meta, "has_3d_model", false);
   const model: Product3DModel | null =
-    modelUrl || modelId || modelVersion || modelFilename
+    modelUrl
       ? {
           id: modelId,
           url: modelUrl,
@@ -261,8 +262,8 @@ export function mapWooCommerceProductToOfissioProduct(
   };
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
-  if (!product.model_3d) throw new Error("Produk tanpa GLB tidak dapat dipetakan ke cart.");
-  return { source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, processRoute: product.processRoute, leadTimeDays: product.leadTimeDays, transactionMode: product.transaction_mode, model3dId: product.model_3d.id, model3dUrl: product.model_3d.url, quantityPricing: product.quantityPricing };
+  const canAddEmbroidery = product.supports_embroidery && validateProduct3DModel(product).ok;
+  return { canAddEmbroidery, source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, processRoute: product.processRoute, leadTimeDays: product.leadTimeDays, transactionMode: product.transaction_mode, model3dId: product.model_3d?.id, model3dUrl: product.model_3d?.url, quantityPricing: product.quantityPricing };
 }
 
 function stripHtml(value = "") {

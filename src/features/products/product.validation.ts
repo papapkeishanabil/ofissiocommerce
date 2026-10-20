@@ -47,7 +47,9 @@ export function validateProductForCatalog(product: OfissioProduct): ProductValid
   if (!product.fulfillment || !product.transaction_mode) {
     return { ok: false, reason: "Fulfillment dan transaction mode wajib." };
   }
-  return validateProduct3DModel(product);
+  return product.model_3d || product.model_3d_url
+    ? validateProduct3DModel(product)
+    : { ok: true };
 }
 export function validateProductForCart(product: OfissioProduct): ProductValidation {
   const catalog = validateProductForCatalog(product);

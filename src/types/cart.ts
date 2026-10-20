@@ -35,6 +35,7 @@ export interface CartLineItem {
   transactionMode?: string;
   model3dId?: string;
   model3dUrl?: string;
+  canAddEmbroidery?: boolean;
   color: string;
   /** quantity per size */
   sizes: SizeMatrix;

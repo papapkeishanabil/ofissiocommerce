@@ -31,7 +31,7 @@ export function CartPreviewLine({ item }: { item: CartLineItem }) {
     <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-line px-4 py-1 text-xs font-semibold">
       <button className="inline-flex min-h-9 items-center gap-2" onClick={()=>setEditing(!editing)} aria-expanded={editing}><Pencil className="h-3.5 w-3.5" />{editing?"Selesai":"Ubah jumlah"}</button>
       <button className="inline-flex min-h-9 items-center gap-2 text-ink-muted hover:text-red-600" onClick={()=>remove(item.id)}><Trash2 className="h-3.5 w-3.5" />Hapus</button>
-      <Link className="inline-flex min-h-9 items-center gap-2 md:border-l md:border-line md:pl-6" href={`/product/${item.productSlug}?studio=1&line=${encodeURIComponent(item.id)}`}><Box className="h-4 w-4" />Tambah Bordir</Link>
+      {item.canAddEmbroidery && item.model3dId && item.model3dUrl && <Link className="inline-flex min-h-9 items-center gap-2 md:border-l md:border-line md:pl-6" href={`/product/${item.productSlug}?studio=1&line=${encodeURIComponent(item.id)}`}><Box className="h-4 w-4" />Tambah Bordir</Link>}
     </div>
     {editing && <div className="border-t border-line p-4"><SizeQuantityMatrix value={item.sizes} onChange={sizes=>update(item.id,sizes)} moq={item.moq??1} /></div>}
     <div className="px-4"><EmbroiderySummary placements={item.embroideryPlacements} sizes={item.sizes} /></div>

@@ -28,7 +28,7 @@ export async function RolePackageRoute({ business, role }: { business: string; r
     colors: product.available_colors.length ? product.available_colors : product.colors,
     availableSizes: product.available_sizes,
     supportsEmbroidery: product.supports_embroidery,
-    has3DModel: product.has_3d_model,
+    has3DModel: productServerService.validateProduct3DModel(product).ok,
     searchableTerms: product.searchableTerms ?? [],
     categorySlugs: product.categorySlugs ?? [],
   }));

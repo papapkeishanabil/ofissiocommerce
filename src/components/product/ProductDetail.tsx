@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatIDR } from "@/types/product";
 import type { OfissioProduct } from "@/features/products/product.types";
+import { validateProduct3DModel } from "@/features/products/product.validation";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 import { calculateEmbroideryPricing, type EmbroideryPricing } from "@/features/products/embroidery-pricing";
 import { resolveProduct3DUrl } from "@/features/products/product-3d-url.client";
@@ -104,10 +105,10 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
     const params = new URLSearchParams(window.location.search);
     const line = useCartStore.getState().items.find(item => item.id === params.get("line") && item.productId === product.id);
     if (line) { setEditingLineId(line.id); setSizes(line.sizes); setColor(line.color); setUniform3DConfig(line.uniform3DConfig || null); }
-    if (params.get("studio") === "1" && product.model_3d) {
+    if (params.get("studio") === "1" && product.supports_embroidery && validateProduct3DModel(product).ok) {
       setShow3D(true);
     }
-  }, [product.id, product.model_3d]);
+  }, [product]);
   const [showFloatingPreviewModal, setShowFloatingPreviewModal] = useState(false);
 
   const heroRef = useRef<HTMLDivElement>(null);
@@ -122,7 +123,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
   const cartDrawerOpen = useUIStore((s) => s.cartDrawerOpen);
   const product3DModel = useMemo(
     () => {
-      if (!product.model_3d) return undefined;
+      if (!product.model_3d || !validateProduct3DModel(product).ok) return undefined;
       const registered = getModel3DForProduct(product.id);
       return {
         referenceLengthCm: garmentReference(product.sku)?.lengthCm,
@@ -570,7 +571,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
 
             {/* Customization: 3D configurator for supported products,
                 plain-text notes for the rest. */}
-            {has3DSupport ? (
+            {has3DSupport && product.supports_embroidery ? (
               <div className="mt-3 space-y-3">
                 <button
                   type="button"
@@ -639,13 +640,13 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
               <div className="mt-5 rounded-xl border border-dashed border-line bg-surface-muted p-3">
                 <p className="flex items-center gap-1.5 text-xs font-bold text-ink">
                   <Sparkles className="h-3.5 w-3.5 text-brand-700" />
-                  Catatan kustomisasi
+                  Catatan pesanan
                 </p>
                 <input
                   type="text"
                   value={customization}
                   onChange={(e) => setCustomization(e.target.value)}
-                  placeholder="cth: bordir logo di dada kiri, 8cm"
+                  placeholder="Tambahkan catatan untuk pesanan ini"
                   maxLength={120}
                   className="mt-2 h-9 w-full rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 />
@@ -765,7 +766,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
         }}
       />
 
-      {show3D && (
+        {show3D && has3DSupport && product.supports_embroidery && (
         <StudioShell product={product} onClose={() => setShow3D(false)}>              <Uniform3DConfigurator
                 orderUnavailableReason={pricingUnavailable || purchasingUnavailable ? "Informasi pemesanan belum dapat dimuat. Kembali ke produk dan pilih Coba lagi sebelum menambahkan ke keranjang." : undefined}
                 sizes={sizes}

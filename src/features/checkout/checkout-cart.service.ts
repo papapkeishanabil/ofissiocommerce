@@ -51,7 +51,9 @@ async function validateAndPriceItem(
 
   const validation = productServerService.validateProductForCart(product);
   if (!validation.ok) throw new Error(validation.reason);
-  if (!product.model_3d) throw new Error("Model GLB produk tidak valid.");
+  if (hasEmbroideryRequest(input) && (!product.supports_embroidery || !productServerService.validateProduct3DModel(product).ok)) {
+    throw createApiError("VALIDATION_ERROR", "Fitur bordir belum tersedia untuk produk ini.", 400);
+  }
   const variantIssue = colorVariantIssue(product, input.selectedColor);
   if (variantIssue) throw createApiError("VALIDATION_ERROR", variantIssue, 400);
   const variantSnapshot = colorVariantSnapshot(product, input.selectedColor);
@@ -133,8 +135,8 @@ async function validateAndPriceItem(
     moq: product.moq,
     fulfillmentType: product.fulfillment,
     transactionMode: product.transaction_mode,
-    model3dId: product.model_3d.id,
-    model3dUrl: product.model_3d.url,
+    model3dId: product.model_3d?.id ?? "",
+    model3dUrl: product.model_3d?.url ?? "",
     customization: input.customization,
     embroideryPlacements,
   };
