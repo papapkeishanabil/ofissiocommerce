@@ -1,0 +1,15 @@
+.preview { position: relative; }
+.link { position: absolute; inset: 0; display: block; }
+.link:focus-visible { outline: 3px solid #b7791f; outline-offset: -3px; }
+.image { object-fit: contain; }
+.preview .primary, .preview .secondary { transition: opacity 250ms ease-out; }
+.controls { position: absolute; z-index: 1; bottom: 4px; left: 50%; transform: translateX(-50%); display: flex; border-radius: 24px; background: #ffffffed; }
+.controls button { display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; border-radius: 24px; }
+.controls button:focus-visible { outline: 2px solid #10245a; outline-offset: -3px; }
+.dot, .activeDot { width: 9px; height: 9px; border: 1px solid #10245a; border-radius: 50%; }
+.activeDot { background: #10245a; }
+@media (hover: hover) and (pointer: fine) {
+  .controls { opacity: 0; }
+  .preview:hover .controls, .preview:focus-within .controls { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .preview .primary, .preview .secondary { transition: none; } }

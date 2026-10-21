@@ -17,7 +17,7 @@ import { Clock, Layers, PackageCheck, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { ProductImagePlaceholder } from "./ProductImagePlaceholder";
+import { ProductImagePreview } from "./ProductImagePreview";
 
 interface ProductCardProps {
   product: OfissioProduct;
@@ -32,7 +32,6 @@ export function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
   const addToCart = useCartStore((s) => s.add);
   const [error, setError] = useState<string | null>(null);
-  const [imageFailed, setImageFailed] = useState(false);
 
   // Notify Ofistant via its store (rule-based era: just push a message).
   function notifyOfistantPostAdd(name: string) {
@@ -94,38 +93,17 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <article className="hover-lift group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft-sm hover:border-brand-200 hover:shadow-soft-lg">
-      <button
-        type="button"
-        onClick={() => router.push(`/product/${product.slug}`)}
+      <ProductImagePreview
+        product={product}
         className="relative block aspect-[4/3] w-full overflow-hidden bg-cool-50"
-        aria-label={`Lihat detail ${product.name}`}
       >
-        {product.mainImage && !imageFailed ? (
-          // Dynamic WooCommerce/Supabase image host.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.mainImage}
-            alt={product.images?.[0]?.alt || product.name}
-            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.04]"
-            loading="lazy"
-            decoding="async"
-            onError={() => setImageFailed(true)}
-          />
-        ) : (
-          <ProductImagePlaceholder
-            name={product.name}
-            accentColor={product.accentColor}
-            category={product.category}
-            className="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
-          />
-        )}
         <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1">
           <Badge tone={product.fulfillment === "READY_STOCK" ? "success" : "amber"}>
             {fulfillmentLabel(product.fulfillment)}
           </Badge>
           <Badge tone="slate">3D tersedia</Badge>
         </div>
-      </button>
+      </ProductImagePreview>
 
       <div className="flex flex-1 flex-col p-4">
         {/* Category eyebrow + SKU */}

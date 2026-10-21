@@ -38,7 +38,7 @@ export function AccountSidebar({ active, onViewChange, quotationCount, invoiceCo
       : <Link key={id} href={`/dashboard?view=${id}`} aria-current={active === id ? "page" : undefined}>{content}</Link>;
   }
   return <aside className={s.sidebar}>
-    <div className={s.accountIdentity}><small>AKUN PERUSAHAAN</small><strong>{session?.company.companyName || "Akun perusahaan"}</strong><span>Ruang pengadaan Anda</span></div>
+    <div className={s.accountIdentity}><span className={s.accountMark}><Building2 size={23} aria-hidden="true" /></span><strong>{session?.company.companyName || "Akun perusahaan"}</strong><span>Ruang pengadaan Anda</span></div>
     <nav ref={navigation} className={s.navigation} aria-label="Menu akun">
     {items.slice(0, 3).map(item)}
     <Link href="/dashboard/profile" aria-current={active === "profile" ? "page" : undefined}><Building2 size={19} />Profil Perusahaan</Link>

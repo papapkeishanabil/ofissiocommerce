@@ -8,7 +8,6 @@ import { ArrowRight, ShoppingCart, Sparkles } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { CartPreviewLine } from "./CartPreviewLine";
 import { AccountLayout } from "@/features/dashboard/components/AccountLayout";
-import account from "@/features/dashboard/components/DashboardOverview.module.css";
 import { useCartStore } from "@/stores/cart-store";
 import { formatIDR } from "@/types/product";
 import { hasCartCustomization } from "@/types/cart";
@@ -56,10 +55,10 @@ export function CartPage() {
   }
 
   return (
-    <AccountLayout active="cart"><div className={styles.page}>
-      <header className={account.header}>
+    <AccountLayout active="cart"><div className={styles.page} data-cart-page>
+      <header className={styles.header}>
         <div><h1>Keranjang Belanja</h1><p>{unpaid.orders.length > 0 ? `${unpaid.orders.length} pesanan tersimpan dan siap dilanjutkan pembayarannya.` : "Periksa produk dan pesanan Anda sebelum melanjutkan."}</p></div>
-        <Link href="/catalog" className={account.primary}>Lanjut belanja <ArrowRight size={16} aria-hidden="true" /></Link>
+        <Link href="/catalog" className={styles.shopLink}>Lanjut belanja <ArrowRight size={16} aria-hidden="true" /></Link>
       </header>
       <nav aria-label="Tampilan keranjang" className={styles.tabs}>
         <button type="button" className={styles.tab} aria-pressed={view === "cart"} onClick={() => setChosenView("cart")}>Keranjang <span className={styles.count}>{items.length}</span></button>
@@ -75,16 +74,14 @@ export function CartPage() {
           <ButtonLink href="/custom-request" variant="outline" size="sm"><Sparkles className="h-4 w-4" />Ajukan Seragam Full Custom</ButtonLink>
         </section>
       ) : <>
-      <section aria-label="Produk dalam keranjang" className="mt-4 overflow-hidden rounded-lg border border-line bg-surface">
-        <div aria-hidden="true" className="hidden grid-cols-[2fr_1.1fr_1.5fr_1.7fr] gap-4 border-b border-line bg-surface-muted px-4 py-3 text-xs font-semibold text-ink-muted md:grid"><span>Produk</span><span>Warna</span><span>Ukuran &amp; Jumlah</span><span>Total</span></div>
+      <div className={styles.workspace}><div className={styles.itemsColumn}>
+      <section aria-label="Produk dalam keranjang" className={styles.items}>
+        <div className={styles.listHeading}><h2>Produk pilihan Anda</h2><span>{items.length} produk · {totalQty} pcs</span></div>
         {items.map(item=><CartPreviewLine key={item.id} item={item} />)}
       </section>
-      <div className="mb-5 mt-4 grid gap-5 md:grid-cols-[1.5fr_1fr]">
-        <div><label htmlFor="order-note" className="mb-2 block text-xs font-semibold">Catatan (opsional)</label><textarea id="order-note" maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} placeholder="Tulis catatan untuk pesanan ini..." className="min-h-24 w-full resize-y rounded-lg border border-line bg-white p-3 text-sm" /></div>
-        <div><div className="flex items-center justify-between gap-4 rounded-lg border border-ochre-100 bg-ochre-50/40 p-4"><span className="text-sm font-semibold">Subtotal ({totalQty} pcs)</span><strong className="text-xl tabular-nums">{formatIDR(subtotal)}</strong></div>
-        <details open className="mt-3"><summary className="cursor-pointer text-xs font-semibold">Rincian biaya, promo &amp; quotation</summary><div className="mt-2"><CartSummary /><Button className="mt-2 w-full" variant="outline" onClick={()=>{if(attempt("request_quote")) router.push("/quote");}}>Request Quotation</Button></div></details></div>
-      </div>
-      <footer className="sticky bottom-0 z-20 -mx-4 mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-line bg-surface px-4 py-3 lg:-mx-8 lg:px-8">
+      <section className={styles.note}><label htmlFor="order-note" className="mb-2 block text-sm font-semibold">Catatan pesanan <span className={styles.muted}>(opsional)</span></label><textarea id="order-note" maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} placeholder="Tulis catatan untuk pesanan ini..." className="min-h-24 w-full resize-y rounded-lg border border-line bg-white p-3 text-sm" /></section>
+      </div><aside className={styles.orderSummary} aria-label="Ringkasan dan promo"><CartSummary showActions /></aside></div>
+      <footer className={styles.checkoutBar}>
         <div><p className="text-xl font-bold tabular-nums">{formatIDR(Math.round(estimatedTotal))} <span className="text-xs">/ {totalQty} pcs</span></p><p className="text-[11px] text-ink-muted">{items.length} produk di keranjang, termasuk estimasi PPN</p></div>
         <div className="flex flex-wrap gap-2"><ButtonLink href="/catalog" variant="outline">Lanjutkan Belanja</ButtonLink><Button onClick={continueOrder}>{items.some(hasCartCustomization)?"Ajukan Penawaran Bordir":"Lanjut ke Checkout"}<ArrowRight className="h-4 w-4" /></Button></div>
       </footer>

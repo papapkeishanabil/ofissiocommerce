@@ -1,0 +1,12 @@
+.theme.theme:global(.storefront-scope) {
+  --color-surface:#fff; --color-surface-muted:#eff4ff; --color-cool-50:#f5f7ff;
+  --color-ink:#142766; --color-ink-strong:#0b1c30; --color-ink-muted:#52617d; --color-ink-subtle:#64748b;
+  --color-line:#dbe3f1; --color-line-strong:#a8b5d2;
+  --action-primary:#142766; --action-hover:#10245f; --action-disabled:#e0e6f2; --action-disabled-ink:#52617d;
+  --color-ochre-50:#eff4ff; --color-ochre-100:#e5eeff; --color-ochre-400:#324382; --color-ochre-500:#142766; --color-ochre-600:#142766; --color-ochre-700:#142766;
+  --control-radius:10px; background:#eef2fb; color:#142766; accent-color:#142766;
+}
+.theme.theme [data-workspace-scroll],.theme.theme footer { background:#eef2fb; }
+.theme.theme :is(button,a,input,select,textarea,summary):focus-visible { outline:2px solid #324382; outline-offset:3px; }
+.theme.theme ::selection { background:#d3e4fe; color:#142766; }
+.theme.theme [data-workspace-scroll]>div>div:has([data-cart-page]) { background:#eef2fb; }

@@ -57,6 +57,7 @@ import { useProductHeroVisibility } from "@/features/product-preview/hooks/usePr
 import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
 import { ProductGallery } from "./ProductGallery";
 import { ProductColorPicker } from "./ProductColorPicker";
+import styles from "./ProductDetailTheme.module.css";
 import { StudioShell } from "@/components/configurator/StudioShell";
 
 // Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
@@ -354,7 +355,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
   }
 
   return (
-    <div className="min-h-full w-full bg-surface px-3 pb-5 sm:px-5 lg:px-6 xl:px-8">
+    <div className={`${styles.page} product-detail-page min-h-full w-full px-3 pb-5 sm:px-5 lg:px-6 xl:px-8`}>
       {(pricingUnavailable || purchasingUnavailable) && <div role="status" className="mx-auto my-3 flex max-w-[1680px] flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><p>{purchasingUnavailable ? "Informasi minimum pesanan belum tersedia. Pemesanan sementara tidak dapat dilanjutkan." : "Tarif bordir belum dapat dimuat. Anda tetap bisa melihat produk; pemesanan dengan bordir menunggu tarif tersedia."}</p><button type="button" className="font-semibold underline" onClick={() => router.refresh()}>Coba lagi</button></div>}
       <div className="commerce-breadcrumb-row mx-auto flex w-full max-w-[1680px] flex-wrap items-center gap-x-3 gap-y-2">
         <Button
@@ -388,7 +389,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             />
           </div>
 
-          <section className="order-3 rounded-2xl border border-line bg-surface p-5 sm:p-6 xl:order-none">
+          <section className={`${styles.description} order-3 p-5 sm:p-6 xl:order-none`}>
             <h2 className="type-display text-lg font-bold text-brand-900">Deskripsi Produk</h2>
             {product.descriptionHtml ? (
               // HTML sudah tersanitasi di jalur server (repository) sebelum
@@ -428,7 +429,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
 
         {/* Right: configurator (sticky) */}
         <div className="order-2 space-y-4 xl:order-none xl:sticky xl:top-5">
-          <div className="storefront-product-panel rounded-2xl border border-line bg-surface p-4">
+          <div className={`${styles.purchase} storefront-product-panel`}>
             {/* Title block */}
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -451,14 +452,14 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             </div>
 
             {/* Harga utama menampilkan tier masuk, bukan harga tier termurah. */}
-            <div className="mt-3 border-y border-[#df9f22] py-2">
+            <div className={styles.price}>
               <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-ink-muted">
                 Harga saat ini
               </p>
               <p className="storefront-product-price mt-1 font-bold leading-tight tracking-tight text-ink">
                 {formatIDR(entryPrice)} <span className="text-base font-bold tracking-normal">/ pcs</span>
               </p>
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-[#f3eee5] px-2 py-1.5 text-xs font-bold text-brand-900">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-[#eff4ff] px-2 py-1.5 text-xs font-bold text-brand-900">
                 <span>{entryTier?.label ?? `Mulai ${Math.max(1, product.moq)} pcs`}</span>
                 {lowestTier && lowestTier.unitPrice < entryPrice ? (
                   <span className="font-semibold text-ink-muted">
@@ -468,7 +469,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 border-b border-[#df9f22] py-2">
+            <div className={`${styles.stats} grid grid-cols-2 gap-2`}>
               <Stat
                 icon={<Layers className="h-5 w-5" />}
                 label={product.moq <= 1 ? "Min. Beli" : "MOQ"}
@@ -484,11 +485,11 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             </div>
 
             {product.quantityPricing?.enabled && product.quantityPricing.tiers.length > 1 ? (
-              <details className="border-b border-[#eadcbc] py-2 text-xs">
+              <details className="border-b border-[#dbe3f1] py-2 text-xs">
                 <summary className="cursor-pointer font-bold text-brand-900">Lihat semua harga bertingkat</summary>
                 <dl className="mt-3 grid gap-x-5 gap-y-2 sm:grid-cols-2">
                   {product.quantityPricing.tiers.map((tier) => (
-                    <div key={`${tier.minQty}-${tier.maxQty ?? "plus"}`} className="flex items-center justify-between border-b border-[#eadcbc] py-2 text-xs">
+                    <div key={`${tier.minQty}-${tier.maxQty ?? "plus"}`} className="flex items-center justify-between border-b border-[#dbe3f1] py-2 text-xs">
                       <dt className="font-semibold text-ink-muted">{tier.label}</dt>
                       <dd className="font-bold text-brand-900">{formatIDR(tier.unitPrice)} / pcs</dd>
                     </div>
@@ -528,7 +529,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             {/* Size chart reference — expand inline di panel pembelian,
                 hanya saat standar ukuran terpasang. */}
             {product.sizeChart.length > 0 && (
-              <div className="mt-2 border-y border-[#eadcbc] py-2">
+              <div className="mt-2 border-y border-[#dbe3f1] py-2">
                 <button
                   type="button"
                   onClick={() => setShowSizeChart((open) => !open)}
@@ -596,7 +597,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                   onClick={() => setShow3D(true)}
                   className="group flex min-h-[60px] w-full items-center gap-3 rounded-xl border border-ochre-600 bg-white px-3 py-2 text-left transition-colors hover:bg-ochre-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ochre-500"
                 >
-                  <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#f3eee5]">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#eff4ff]">
                     {product.images?.[0]?.src ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={product.images[0].src} alt="" className="h-full w-full object-contain p-1" />

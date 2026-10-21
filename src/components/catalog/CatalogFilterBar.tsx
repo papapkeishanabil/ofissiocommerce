@@ -1,187 +1,61 @@
-// src/components/catalog/CatalogFilterBar.tsx
-// Baris filter horizontal: satu dropdown per dimensi (industri, jenis, warna).
-// Memilih nilai mempertahankan dimensi lain — kombinasi berlaku sekaligus;
-// memilih kembali "Semua …" melepas dimensi itu saja.
-
 "use client";
-
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { RotateCcw } from "lucide-react";
-
-export interface FilterOption {
-  slug: string;
-  label: string;
-  count: number;
-}
-
-interface CatalogFilterBarProps {
-  industry?: string;
-  category?: string;
-  color?: string;
-  industries: FilterOption[];
-  categories: FilterOption[];
-  colors: FilterOption[];
-  sort?: string;
-  onSortChange?: (value: string) => void;
-}
-
-function buildCatalogHref(active: {
-  industry?: string;
-  category?: string;
-  color?: string;
-}) {
-  const params = new URLSearchParams();
-  if (active.industry) params.set("industri", active.industry);
-  if (active.category) params.set("kategori", active.category);
-  if (active.color) params.set("warna", active.color);
-  const qs = params.toString();
-  return qs ? `/catalog?${qs}` : "/catalog";
-}
-
-export function CatalogFilterBar({
-  industry,
-  category,
-  color,
-  industries,
-  categories,
-  colors,
-  sort = "default",
-  onSortChange,
-}: CatalogFilterBarProps) {
+import { useEffect, useState, useTransition } from "react";
+import { ChevronDown, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { productColorDisplayLabel } from "@/lib/product-colors";
+import { CATALOG_COLOR_FAMILIES, catalogColorFamily, catalogColorSwatchStyle } from "./catalog-colors";
+import colorStyles from "./CatalogColorOptions.module.css";
+export interface FilterOption { slug: string; label: string; count: number }
+interface Props { industry?: string; category?: string; color?: string; industries: FilterOption[]; colors: FilterOption[]; total: number; facets: Record<string,string[]>; selected: Record<string,string>; onFacetChange: (key:string,value:string) => void; onReset: () => void }
+export function CatalogFilterBar({ industry, category, color, industries, colors, total, facets, selected, onFacetChange, onReset }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-
-  function apply(
-    key: "industry" | "category" | "color",
-    value: string,
-  ) {
-    const next = {
-      industry,
-      category,
-      color,
-      [key]: value || undefined,
-    };
-    startTransition(() => {
-      router.push(buildCatalogHref(next));
-    });
+  const [open, setOpen] = useState(true);
+  const [expandedColors, setExpandedColors] = useState<Record<string, boolean>>({});
+  const colorGroups = CATALOG_COLOR_FAMILIES.map(family => ({
+    ...family, shades: colors.filter(item => catalogColorFamily(item.label) === family.slug),
+  })).filter(family => family.shades.length > 0);
+  useEffect(() => { setOpen(window.matchMedia("(min-width: 851px)").matches); }, []);
+  function apply(key: "industry" | "color", value: string) {
+    const next = { industry, category, color, [key]: value };
+    const params = new URLSearchParams();
+    if(next.industry) params.set("industri",next.industry);
+    if(next.category) params.set("kategori",next.category);
+    if(next.color) params.set("warna",next.color);
+    startTransition(() => router.push("/catalog" + (params.size ? "?" + params : ""), {scroll:false}));
   }
-
-  const selectClass =
-    "h-10 w-full appearance-none rounded-xl border border-line bg-white px-3 pr-8 text-sm font-semibold text-ink transition-colors hover:border-brand-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:opacity-60";
-
-  return (
-    <div
-      className={`catalog-filter-bar flex flex-col gap-3 rounded-xl border border-line bg-white p-4 sm:flex-row sm:items-end${pending ? " opacity-70" : ""}`}
-      role="group"
-      aria-label="Filter katalog"
-    >
-      <FilterSelect
-        id="filter-industri"
-        label="Industri"
-        allLabel="Semua industri"
-        value={industry ?? ""}
-        options={industries}
-        disabled={pending}
-        onChange={(v) => apply("industry", v)}
-        selectClass={selectClass}
-      />
-      {categories.length > 0 && <FilterSelect
-        id="filter-jenis"
-        label="Jenis produk"
-        allLabel="Semua jenis"
-        value={category ?? ""}
-        options={categories}
-        disabled={pending}
-        onChange={(v) => apply("category", v)}
-        selectClass={selectClass}
-      />}
-      <FilterSelect
-        id="filter-warna"
-        label="Warna"
-        allLabel="Semua warna"
-        value={color ?? ""}
-        options={colors}
-        disabled={pending}
-        onChange={(v) => apply("color", v)}
-        selectClass={selectClass}
-      />
-      {onSortChange && <div className="min-w-0 flex-1"><label htmlFor="catalog-sort" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-subtle">Urutkan</label><select id="catalog-sort" value={sort} onChange={e=>onSortChange(e.target.value)} className={selectClass}><option value="default">Rekomendasi</option><option value="price-asc">Harga terendah</option><option value="price-desc">Harga tertinggi</option><option value="name">Nama A-Z</option></select></div>}
-      {(industry || category || color) && (
-        <button
-          type="button"
-          onClick={() =>
-            startTransition(() => {
-              router.push("/catalog");
-            })
-          }
-          disabled={pending}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-bold text-ink-muted transition-colors hover:bg-cool-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-        >
-          <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          Reset
-        </button>
-      )}
-    </div>
-  );
-}
-
-function FilterSelect({
-  id,
-  label,
-  allLabel,
-  value,
-  options,
-  disabled,
-  onChange,
-  selectClass,
-}: {
-  id: string;
-  label: string;
-  allLabel: string;
-  value: string;
-  options: FilterOption[];
-  disabled?: boolean;
-  onChange: (value: string) => void;
-  selectClass: string;
-}) {
-  return (
-    <div className="min-w-0 flex-1">
-      <label
-        htmlFor={id}
-        className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-subtle"
-      >
-        {label}
-      </label>
-      <div className="relative">
-        <select
-          id={id}
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-          className={selectClass}
-        >
-          <option value="">{allLabel}</option>
-          {options.map((option) => (
-            <option key={option.slug} value={option.slug}>
-              {option.label} ({option.count})
-            </option>
-          ))}
-        </select>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle"
-          aria-hidden="true"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </div>
-    </div>
-  );
+  return <details open={open} onToggle={event => setOpen(event.currentTarget.open)} className="catalog-filter-drawer">
+    <summary><SlidersHorizontal size={18}/> Filter produk <ChevronDown size={16}/></summary>
+    <aside className="catalog-filter-bar" aria-label="Filter katalog" aria-busy={pending}>
+      <div className="catalog-filter-title"><b>Filter Produk</b><button type="button" disabled={pending} onClick={() => { onReset(); startTransition(() => router.push("/catalog",{scroll:false})); }}><RotateCcw size={16}/> Reset</button></div>
+      <details open className="catalog-filter-section"><summary>Pria / Wanita <ChevronDown size={18}/></summary>
+        <fieldset><legend className="sr-only">Filter gender produk</legend>
+          {["", "Pria", "Wanita"].map(value => <label key={value}><input type="radio" name="catalog-gender" value={value} checked={(selected.Gender ?? "") === value} disabled={pending} onChange={() => onFacetChange("Gender", value)}/><span>{value || "Semua"}</span></label>)}
+        </fieldset>
+        <p className="mt-2 text-xs leading-relaxed text-ink-muted">Produk unisex tersedia pada kedua pilihan.</p>
+      </details>
+      {industries.length > 0 && <details open className="catalog-filter-section"><summary>Industri <ChevronDown size={18}/></summary>
+        <div className="catalog-industry-options"><label><input type="radio" name="industry" checked={!industry} disabled={pending} onChange={() => apply("industry","")}/><span>Semua industri</span><small>{total}</small></label>
+        {industries.map(item => <label key={item.slug}><input type="radio" name="industry" checked={industry === item.slug} disabled={pending} onChange={() => apply("industry",item.slug)}/><span>{item.label}</span><small>{item.count}</small></label>)}
+      </div></details>}
+      {colors.length > 0 && <details open className="catalog-filter-section"><summary>Warna <ChevronDown size={18}/></summary><div className={`catalog-color-swatches ${colorStyles.colors}`}>
+        {colorGroups.map(family => {
+          const shadeSelected = family.shades.some(item => item.slug === color);
+          const expanded = expandedColors[family.slug] ?? (shadeSelected || color === family.slug);
+          return <div key={family.slug} className={colorStyles.family}>
+            <div className={colorStyles.familyRow}>
+              <button type="button" disabled={pending} className={colorStyles.familySelect} aria-pressed={color === family.slug} onClick={() => apply("color", color === family.slug ? "" : family.slug)}>
+                <span aria-hidden="true" className={colorStyles.sample} style={catalogColorSwatchStyle(family.sample)}/><span>{family.label}</span>
+              </button>
+              <button type="button" className={colorStyles.expand} aria-label={`Lihat shade ${family.label}`} aria-expanded={expanded} onClick={() => setExpandedColors(previous => ({...previous, [family.slug]: !expanded}))}><ChevronDown size={16}/></button>
+            </div>
+            {expanded && <div role="group" aria-label={`Shade ${family.label}`} className={colorStyles.shades}>
+              {family.shades.map(item => <button key={item.slug} type="button" disabled={pending} title={item.label} aria-label={item.label + " (" + item.count + " produk)"} aria-pressed={color === item.slug} onClick={() => apply("color", color === item.slug ? "" : item.slug)} className={colorStyles.option}><span aria-hidden="true" className={`catalog-color-sample ${colorStyles.sample}`} style={catalogColorSwatchStyle(item.label)}/><span>{productColorDisplayLabel(item.label)}</span></button>)}
+            </div>}
+          </div>;
+        })}
+      </div></details>}
+      {Object.entries(facets).filter(([key,values]) => key !== "Gender" && values.length > 0).map(([key,values]) => <details className="catalog-filter-section" key={key}><summary>{key}<ChevronDown size={18}/></summary><label><input type="radio" name={key} checked={!selected[key]} onChange={() => onFacetChange(key,"")}/>Semua</label>{values.map(value => <label key={value}><input type="radio" name={key} checked={selected[key] === value} onChange={() => onFacetChange(key,value)}/><span>{value}</span></label>)}</details>)}
+    </aside>
+  </details>;
 }
