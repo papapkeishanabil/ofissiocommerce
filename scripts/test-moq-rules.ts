@@ -129,12 +129,12 @@ assert.equal(hasEmbroideryRequest({}), false);
 // --- moqSizeSpread ---------------------------------------------------------
 
 // moq 1 → exactly 1 pc (previously produced 2 via Math.max(1, floor(1/3))).
-assert.deepEqual(moqSizeSpread(1), { S: 0, M: 1, L: 0, XL: 0, "2XL": 0, "3XL": 0 });
+assert.deepEqual(moqSizeSpread(1), { XS: 0, S: 0, M: 1, L: 0, XL: 0, "2XL": 0, "3XL": 0, "4XL": 0, "5XL": 0 });
 assert.equal(sumSizeMatrix(moqSizeSpread(1)), 1);
 
-assert.deepEqual(moqSizeSpread(2), { S: 0, M: 2, L: 0, XL: 0, "2XL": 0, "3XL": 0 });
-assert.deepEqual(moqSizeSpread(3), { S: 0, M: 1, L: 1, XL: 1, "2XL": 0, "3XL": 0 });
-assert.deepEqual(moqSizeSpread(13), { S: 0, M: 4, L: 4, XL: 5, "2XL": 0, "3XL": 0 });
+assert.deepEqual(moqSizeSpread(2), { XS: 0, S: 0, M: 2, L: 0, XL: 0, "2XL": 0, "3XL": 0, "4XL": 0, "5XL": 0 });
+assert.deepEqual(moqSizeSpread(3), { XS: 0, S: 0, M: 1, L: 1, XL: 1, "2XL": 0, "3XL": 0, "4XL": 0, "5XL": 0 });
+assert.deepEqual(moqSizeSpread(13), { XS: 0, S: 0, M: 4, L: 4, XL: 5, "2XL": 0, "3XL": 0, "4XL": 0, "5XL": 0 });
 
 // Totals always equal the requested moq.
 for (const moq of [1, 2, 3, 7, 8, 12, 20, 48, 100, 251]) {
