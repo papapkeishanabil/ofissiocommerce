@@ -82,6 +82,7 @@ export function SizeQuantityMatrix({
 
       <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2" role="list">
         {SIZES.map((s) => {
+          const sizeLabel = s === "2XL" ? "XXL" : s;
           const chart = sizeChart?.find((c) => c.size === s);
           const qty = value[s] ?? 0;
           const stock = currentStock?.rows.find(row => row.size.toUpperCase() === s);
@@ -89,7 +90,7 @@ export function SizeQuantityMatrix({
           return (
             <li key={s} className="min-w-0 rounded-lg border border-line bg-surface p-2">
               <div className="mb-1 flex items-baseline justify-between">
-                <span className="text-xs font-bold text-ink">{s}</span>
+                <span className="text-xs font-bold text-ink">{sizeLabel}</span>
                 {chart && (chart.chest > 0 || chart.length > 0) && (
                   <span className="text-[10px] text-ink-muted">
                     {chart.chest > 0 ? `${chart.chest}cm` : "—"} ×{" "}
@@ -100,7 +101,7 @@ export function SizeQuantityMatrix({
               <div className="grid grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] items-center rounded-md border border-line bg-surface focus-within:border-ochre-600">
                 <button
                   type="button"
-                  aria-label={`Kurangi ${s}`}
+                  aria-label={`Kurangi ${sizeLabel}`}
                   onClick={() => bump(s, -1)}
                   disabled={disabled || qty <= 0}
                   className="grid h-8 w-7 place-items-center rounded-l-md text-ink hover:bg-surface-muted disabled:opacity-40 pointer-coarse:h-11"
@@ -108,7 +109,7 @@ export function SizeQuantityMatrix({
                   <Minus className="h-3.5 w-3.5" />
                 </button>
                 <label htmlFor={`${listId}-${s}`} className="sr-only">
-                  Quantity ukuran {s}
+                  Quantity ukuran {sizeLabel}
                 </label>
                 <input
                   id={`${listId}-${s}`}
@@ -125,7 +126,7 @@ export function SizeQuantityMatrix({
                 />
                 <button
                   type="button"
-                  aria-label={`Tambah ${s}`}
+                  aria-label={`Tambah ${sizeLabel}`}
                   onClick={() => bump(s, 1)}
                   disabled={disabled}
                   className="grid h-8 w-7 place-items-center rounded-r-md text-ink hover:bg-surface-muted disabled:opacity-40 pointer-coarse:h-11"
