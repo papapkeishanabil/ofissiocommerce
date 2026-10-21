@@ -1,4 +1,5 @@
 import "server-only";
+import { COLOR_SIZE_ENABLED_META, COLOR_SIZE_ROWS_META, mapNativeColorSizeVariants } from "../color-size-variants";
 
 import { createApiError } from "@/lib/security/safe-error-response";
 import {
@@ -13,7 +14,7 @@ import { fromSameOriginWordPressMediaUrl } from "./wordpress-media-proxy";
 import { getWordPressMediaRuntimeConfig } from "./wordpress-media-upload.service";
 import type { WooCommerceMetaData, WooCommerceProduct, WooCommerceProductVariation } from "./woocommerce.types";
 
-type VariantSource = Pick<typeof woocommerceClient, "getProductById" | "getProductVariations" | "createProductVariation" | "updateProductVariation" | "updateProduct">;
+export type VariantSource = Pick<typeof woocommerceClient, "getProductById" | "getProductVariations" | "createProductVariation" | "updateProductVariation" | "updateProduct">;
 
 export async function listColorVariationRows(productId: number, source: VariantSource = woocommerceClient) {
   const rows: WooCommerceProductVariation[] = [];
@@ -31,12 +32,16 @@ export async function withLiveColorVariants(product: WooCommerceProduct, source:
   const rows = await listColorVariationRows(product.id, source);
   const order = readColorVariants(product).map((variant) => variant.id);
   const variants = mapNativeColorVariants(product, rows).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-  return { ...product, meta_data: [...(product.meta_data ?? []).filter((row) => row.key !== COLOR_VARIANTS_META), { key: COLOR_VARIANTS_META, value: JSON.stringify(variants) }] };
+  return { ...product, meta_data: [...(product.meta_data ?? []).filter((row) => row.key !== COLOR_VARIANTS_META && row.key !== COLOR_SIZE_ROWS_META), { key: COLOR_VARIANTS_META, value: JSON.stringify(variants) }, { key: COLOR_SIZE_ROWS_META, value: JSON.stringify(mapNativeColorSizeVariants(rows)) }] };
 }
 
 /** A failed multi-request save stays unready; retry reuses native rows instead of duplicating them. */
 export async function saveColorVariants(productId: number, input: AdminColorVariantsPayload, source: VariantSource = woocommerceClient) {
   const product = await source.getProductById(productId);
+  if (getMetaBoolean(product.meta_data ?? [], COLOR_SIZE_ENABLED_META, false)) {
+    const { saveColorSizeVariants } = await import("./color-size-variants.service");
+    return saveColorSizeVariants(product, input, source);
+  }
   const rows = await listColorVariationRows(productId, source);
   const ownRows = rows.filter(isManagedColorVariant);
   if (rows.some((row) => !isManagedColorVariant(row))) {

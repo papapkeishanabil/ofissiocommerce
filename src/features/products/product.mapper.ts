@@ -2,6 +2,7 @@ import {
   normalizeIndustrySlug,
   slugifyTaxonomy,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
+import { COLOR_SIZE_ENABLED_META, readColorSizeVariants } from "./color-size-variants";
 import { SIZES } from "@/types/industry";
 import { sortProductSizes } from "@/lib/product-size-order";
 import { validateProduct3DModel } from "./product.validation";
@@ -173,6 +174,8 @@ export function mapWooCommerceProductToOfissioProduct(
     source: "woocommerce",
     source_id: String(raw.id),
     colorVariants: readColorVariants(raw),
+    colorSizeVariantsEnabled: getMetaBoolean(meta, COLOR_SIZE_ENABLED_META, false),
+    colorSizeVariants: readColorSizeVariants(raw),
     colorVariantsEnabled: getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false),
     colorVariantsReady: getMetaBoolean(meta, COLOR_VARIANTS_READY_META, false),
     defaultColor: getMetaString(meta, DEFAULT_COLOR_META),

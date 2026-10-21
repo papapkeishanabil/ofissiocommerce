@@ -4,6 +4,7 @@ import type {
   PaymentStatus,
 } from "@/features/payment/payment.types";
 import { ensureOrderProcessRouting } from "./order-routing.service";
+import { splitOrderSizeVariants } from "./order-size-variants";
 import type {
   WooCommerceCreateOrderInput,
   WooCommerceOrderLineItem,
@@ -35,7 +36,7 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
       company: input.companyName ?? undefined,
       phone: input.picWhatsapp ?? undefined,
     },
-    line_items: order.items.map((item, index): WooCommerceOrderLineItem => {
+    line_items: order.items.flatMap(splitOrderSizeVariants).map((item, index): WooCommerceOrderLineItem => {
       const productId =
         item.source === "woocommerce" && /^\d+$/.test(item.sourceId)
           ? Number(item.sourceId)

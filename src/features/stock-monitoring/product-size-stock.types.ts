@@ -12,5 +12,6 @@ export interface ProductSizeStock {
 }
 
 export function sizeStockSku(colorSku: string, size: string) {
-  return `${colorSku.trim()}-${size.trim()}`.toUpperCase().replace(/\s+/g, "-");
+  const label = size.trim().toUpperCase();
+  return `${colorSku.trim()}-${label === "2XL" ? "XXL" : label === "XXXL" ? "3XL" : label}`.toUpperCase().replace(/\s+/g, "-");
 }

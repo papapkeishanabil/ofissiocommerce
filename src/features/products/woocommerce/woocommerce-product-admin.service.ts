@@ -100,6 +100,7 @@ export async function getAdminWooCommerceProduct(
     ...summary,
     colorVariants: readColorVariants(product),
     colorVariantsEnabled: getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false),
+    colorSizeVariantsEnabled: getMetaBoolean(meta, "ofissio_color_size_variants_enabled", false),
     colorVariantsReady: getMetaBoolean(meta, COLOR_VARIANTS_READY_META, false),
     defaultColor: getMetaString(meta, DEFAULT_COLOR_META),
     description: product.description ?? "",

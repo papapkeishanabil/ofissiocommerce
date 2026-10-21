@@ -36,6 +36,7 @@ export interface ValidatedCheckoutCartItem {
   sku: string;
   variationId?: number;
   parentSku?: string;
+  sizeVariants?: import("@/features/products/color-size-variants").SelectedSizeVariant[];
   /** catalog main image snapshot — rides inside order_json, no schema column */
   image?: string | null;
   selectedColor: string;

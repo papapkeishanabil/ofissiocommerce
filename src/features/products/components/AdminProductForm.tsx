@@ -607,6 +607,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       <div id="color-variants" className="scroll-mt-28">
         <FormSection icon={Shirt} title="Varian Warna" description="Pasangkan setiap warna dengan SKU dan foto yang sesuai.">
           <ColorVariantEditor
+            stockPerSize={product?.colorSizeVariantsEnabled}
             enabled={variantsEnabled}
             onEnabledChange={setVariantsEnabled}
             variants={visibleVariants}

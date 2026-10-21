@@ -1,5 +1,6 @@
 import "server-only";
 import { colorVariantIssue, colorVariantSnapshot } from "@/features/products/color-variants";
+import { selectColorSizeVariants } from "@/features/products/color-size-variants";
 
 import { randomUUID } from "node:crypto";
 
@@ -57,6 +58,9 @@ async function validateAndPriceItem(
   const variantIssue = colorVariantIssue(product, input.selectedColor);
   if (variantIssue) throw createApiError("VALIDATION_ERROR", variantIssue, 400);
   const variantSnapshot = colorVariantSnapshot(product, input.selectedColor);
+  let sizeVariants;
+  try { sizeVariants = selectColorSizeVariants(product, input.selectedColor, input.sizeMatrix); }
+  catch (error) { throw createApiError("VALIDATION_ERROR", error instanceof Error ? error.message : "Varian ukuran belum tersedia.", 400); }
 
   // Satu helper untuk MOQ produk + batas keras bordir — dipakai juga oleh
   // cart-store client sehingga pesan blokir identik.
@@ -113,6 +117,7 @@ async function validateAndPriceItem(
     productSlug: product.slug,
     productName: product.name,
     ...variantSnapshot,
+    sizeVariants,
     selectedColor: input.selectedColor,
     sizeMatrix: input.sizeMatrix,
     totalQty,

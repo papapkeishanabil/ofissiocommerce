@@ -7,7 +7,7 @@ import { productColorDisplayLabel, fabricColorForName } from "@/lib/product-colo
 
 const INPUT = "min-h-11 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100";
 
-export function ColorVariantEditor({ enabled, onEnabledChange, variants, onChange, defaultColor, onDefaultColorChange, images, disabled }: {
+export function ColorVariantEditor({ enabled, onEnabledChange, variants, onChange, defaultColor, onDefaultColorChange, images, disabled, stockPerSize }: {
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
   variants: ColorVariantInput[];
@@ -16,11 +16,12 @@ export function ColorVariantEditor({ enabled, onEnabledChange, variants, onChang
   onDefaultColorChange: (color: string) => void;
   images: AdminProductImage[];
   disabled: boolean;
+  stockPerSize?: boolean;
 }) {
   return <fieldset disabled={disabled} className="min-w-0 space-y-5">
     <legend className="sr-only">Varian warna produk</legend>
     <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
-      <input type="checkbox" checked={enabled} onChange={(event) => onEnabledChange(event.target.checked)} className="mt-1 h-5 w-5 accent-[var(--color-brand-700)]" />
+      <input type="checkbox" checked={enabled} disabled={stockPerSize} onChange={(event) => onEnabledChange(event.target.checked)} className="mt-1 h-5 w-5 accent-[var(--color-brand-700)]" />
       <span>Gunakan SKU dan foto per warna<span className="mt-1 block text-xs font-normal leading-5 text-ink-muted">Pembeli memilih warna dalam satu halaman produk. Harga dan pilihan ukuran mengikuti produk induk.</span></span>
     </label>
     {enabled ? <>
@@ -30,7 +31,7 @@ export function ColorVariantEditor({ enabled, onEnabledChange, variants, onChang
             {variants.map((variant) => <option key={variant.color} value={variant.color}>{productColorDisplayLabel(variant.color)}</option>)}
           </select>
         </label>
-        <p className="text-xs leading-5 text-ink-muted">Unggah foto di bagian Foto Produk, lalu pasangkan foto ke setiap warna di bawah. Kosongkan stok jika tidak dilacak. Stok per warna merupakan gabungan seluruh ukuran.</p>
+        <p className="text-xs leading-5 text-ink-muted">{stockPerSize ? "Foto dan warna kain mengikuti pilihan warna. Stok dikelola per kombinasi warna dan ukuran melalui sinkronisasi Ginee ke WooCommerce." : "Unggah foto di bagian Foto Produk, lalu pasangkan foto ke setiap warna di bawah. Kosongkan stok jika tidak dilacak. Stok per warna merupakan gabungan seluruh ukuran."}</p>
         <div className="divide-y divide-line border-y border-line">
           {variants.map((variant) => <div key={variant.color} className="grid min-w-0 gap-4 py-5 md:grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_minmax(100px,0.65fr)] md:items-start">
             <div>
@@ -38,7 +39,7 @@ export function ColorVariantEditor({ enabled, onEnabledChange, variants, onChang
               <p className="mt-2 text-sm font-bold text-ink">{productColorDisplayLabel(variant.color)}</p>
             </div>
             <label className="min-w-0 text-xs font-semibold text-ink">SKU {productColorDisplayLabel(variant.color)}
-              <input className={`${INPUT} mt-2`} value={variant.sku} onChange={(event) => onChange({ ...variant, sku: event.target.value })} required maxLength={100} pattern="[A-Za-z0-9._\-]+" autoComplete="off" placeholder="FRM-Hitam" />
+              <input className={`${INPUT} mt-2`} readOnly={stockPerSize} value={variant.sku} onChange={(event) => onChange({ ...variant, sku: event.target.value })} required maxLength={100} pattern="[A-Za-z0-9._\-]+" autoComplete="off" placeholder="FRM-Hitam" />
             </label>
             <label className="min-w-0 text-xs font-semibold text-ink">Foto {productColorDisplayLabel(variant.color)}
               <select className={`${INPUT} mt-2`} aria-label={`Foto ${productColorDisplayLabel(variant.color)}`} value={variant.imageSrc} onChange={(event) => onChange({ ...variant, imageSrc: event.target.value })} required>
@@ -48,7 +49,7 @@ export function ColorVariantEditor({ enabled, onEnabledChange, variants, onChang
               </select>
             </label>
             <label className="min-w-0 text-xs font-semibold text-ink">Stok {productColorDisplayLabel(variant.color)}
-              <input className={`${INPUT} mt-2`} type="number" min={0} step={1} max={1_000_000_000} value={variant.stockQuantity ?? ""} onChange={(event) => onChange({ ...variant, stockQuantity: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Tidak dilacak" />
+              {stockPerSize ? <span className="mt-2 block text-xs font-normal leading-5 text-ink-muted">Stok terpisah per ukuran. Angka stok dibaca dari WooCommerce.</span> : <input className={`${INPUT} mt-2`} type="number" min={0} step={1} max={1_000_000_000} value={variant.stockQuantity ?? ""} onChange={(event) => onChange({ ...variant, stockQuantity: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Tidak dilacak" />}
             </label>
             <label className="min-w-0 text-xs font-semibold text-ink md:col-start-2 md:col-span-3">Warna kain 3D {productColorDisplayLabel(variant.color)}
               <span className="mt-2 flex items-center gap-3">

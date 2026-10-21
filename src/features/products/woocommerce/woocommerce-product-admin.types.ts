@@ -22,6 +22,7 @@ export interface AdminWooCommerceProduct {
 }
 
 export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
+  colorSizeVariantsEnabled?: boolean;
   colorVariants?: ProductColorVariant[];
   colorVariantsEnabled?: boolean;
   colorVariantsReady?: boolean;

@@ -39,17 +39,18 @@ export function isManagedColorVariant(variation: WooCommerceProductVariation) {
 
 export function mapNativeColorVariants(product: WooCommerceProduct, rows: WooCommerceProductVariation[]): ProductColorVariant[] {
   const colorAttribute = product.attributes?.find((attribute) => /^(pa_)?(warna|color)$/i.test(attribute.slug || attribute.name));
-  return rows.filter((row) => row.status === "publish" && isManagedColorVariant(row)).map((row) => ({
+  const variants = rows.filter((row) => row.status === "publish" && isManagedColorVariant(row)).sort((a, b) => a.id - b.id).map((row) => ({
     id: row.id,
     color: row.attributes?.find((attribute) =>
       (colorAttribute?.id && attribute.id === colorAttribute.id) || /^(pa_)?(warna|color)$/i.test(attribute.name ?? ""),
     )?.option || getMetaString(row.meta_data ?? [], "ofissio_color"),
-    sku: row.sku,
+    sku: getMetaString(row.meta_data ?? [], "ofissio_color_sku") || row.sku,
     fabricColor: readFabricColor(getMetaString(row.meta_data ?? [], FABRIC_COLOR_META)),
     modelAdjustment: readVariantModelAdjustment(getMetaValue(row.meta_data ?? [], MODEL_ADJUSTMENT_META)),
     imageSrc: toProxiedWordPressMediaUrl(row.image?.src ?? "", process.env.WORDPRESS_MEDIA_BASE_URL?.trim() ?? ""),
-    stockQuantity: row.manage_stock && row.stock_quantity != null ? row.stock_quantity : null,
+    stockQuantity: getMetaBoolean(row.meta_data ?? [], "ofissio_color_size_variant", false) ? null : row.manage_stock && row.stock_quantity != null ? row.stock_quantity : null,
   }));
+  return variants.filter((variant, index) => variants.findIndex(row => colorKey(row.color) === colorKey(variant.color)) === index);
 }
 
 export function readColorVariants(product: WooCommerceProduct): ProductColorVariant[] {

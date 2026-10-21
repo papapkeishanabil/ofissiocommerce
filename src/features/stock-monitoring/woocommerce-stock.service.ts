@@ -1,4 +1,5 @@
 import "server-only";
+import { sizeStockSku } from "./product-size-stock.types";
 import { isManagedColorVariant } from "@/features/products/color-variants";
 
 import { woocommerceClient } from "@/features/products/woocommerce/woocommerce.client";
@@ -113,7 +114,7 @@ export function getOrderStockRequirement(
     for (const requirement of requirements) {
       if (requirement.quantity <= 0) continue;
       const stockSku = requirement.sizeLabel
-        ? `${stockSkuBase}-${requirement.sizeLabel}`
+        ? sizeStockSku(stockSkuBase, requirement.sizeLabel)
         : stockSkuBase;
       const key = `${item.productId}|${stockSku}`;
       const current = grouped.get(key);
@@ -360,11 +361,11 @@ function hasSizeOptions(product: WooCommerceProduct | null) {
 }
 
 function variationSize(variation: WooCommerceProductVariation, parentSku: string) {
-  if (isManagedColorVariant(variation)) return null;
   const attribute = variation.attributes?.find((item) =>
     /(size|ukuran)/i.test(`${item.name ?? ""}`),
   );
   if (attribute?.option) return normalizeSize(attribute.option);
+  if (isManagedColorVariant(variation)) return null;
   const sku = normalizeSku(variation.sku);
   return sku.startsWith(`${parentSku}-`)
     ? normalizeSize(sku.slice(parentSku.length + 1))
@@ -392,6 +393,7 @@ function inferParentSku(stockSku: string) {
 }
 
 function finiteStock(value: unknown) {
+  if (value == null || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : null;
 }
