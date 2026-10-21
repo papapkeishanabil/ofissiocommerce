@@ -17,6 +17,7 @@ import {
   getMetaString,
   getMetaStringArray,
   getMetaValue,
+  toWooMetaBoolean,
 } from "./woocommerce-product-meta";
 import {
   normalizeQuantityPricing,
@@ -256,7 +257,7 @@ export async function updateAdminWooCommerceQuantityPricing(input: {
     const current = await woocommerceClient.getProductById(input.id);
     const tiers = sortQuantityPricingTiers(input.payload.tiers);
     const entries: Array<[string, unknown]> = [
-      ["quantity_pricing_enabled", input.payload.quantityPricingEnabled],
+      ["quantity_pricing_enabled", toWooMetaBoolean(input.payload.quantityPricingEnabled)],
       ["quantity_pricing_mode", input.payload.quantityPricingMode],
       ["quantity_basis", input.payload.quantityBasis],
       ["quantity_pricing_tiers", JSON.stringify(tiers)],
@@ -363,7 +364,7 @@ function buildWritePayload(
     ["lead_time", `${payload.leadTimeDays} hari`],
     ["fulfillment_type", payload.fulfillmentType],
     ["transaction_mode", payload.transactionMode],
-    ["always_orderable", payload.alwaysOrderable],
+    ["always_orderable", toWooMetaBoolean(payload.alwaysOrderable)],
     ["replenishment_policy", payload.replenishmentPolicy],
     ["process_route", payload.processRoute],
     ["model3d_exposure", payload.model3dExposure ?? 1.15],
@@ -373,10 +374,10 @@ function buildWritePayload(
     ["model3d_hue", payload.model3dHue ?? 0],
     ["model3d_temperature", payload.model3dTemperature ?? 0],
     ["model3d_rotation_y", payload.model3dRotationY ?? defaultModelOrientationY(payload.sku)],
-    ["supports_embroidery", payload.supportsEmbroidery],
-    ["supports_screen_print", payload.supportsScreenPrinting],
-    ["supports_screen_printing", payload.supportsScreenPrinting],
-    ["supports_dtf", payload.supportsDtf],
+    ["supports_embroidery", toWooMetaBoolean(payload.supportsEmbroidery)],
+    ["supports_screen_print", toWooMetaBoolean(payload.supportsScreenPrinting)],
+    ["supports_screen_printing", toWooMetaBoolean(payload.supportsScreenPrinting)],
+    ["supports_dtf", toWooMetaBoolean(payload.supportsDtf)],
     ["embroidery_zones", JSON.stringify(unique(payload.embroideryZones))],
     ["available_colors", JSON.stringify(unique(payload.colors))],
     ["available_sizes", JSON.stringify(unique(payload.sizes))],
@@ -384,7 +385,7 @@ function buildWritePayload(
     ["gender", payload.gender],
     ["sleeve_type", payload.sleeveType],
     ["safety_features", JSON.stringify(unique(payload.safetyFeatures))],
-    ["quantity_pricing_enabled", payload.quantityPricingEnabled],
+    ["quantity_pricing_enabled", toWooMetaBoolean(payload.quantityPricingEnabled)],
     ["ofissio_weight_gram", payload.weightGram],
     ["ofissio_length_cm", payload.lengthCm],
     ["ofissio_width_cm", payload.widthCm],

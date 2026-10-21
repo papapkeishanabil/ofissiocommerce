@@ -37,6 +37,16 @@ export function getMetaNumber(
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/**
+ * WordPress menyimpan meta boolean `false` dari REST API sebagai string kosong,
+ * sehingga saat dibaca kembali nilainya terlihat "belum diatur" dan fallback
+ * dipakai (mis. quantity_pricing_enabled kembali aktif). Serialisasi boolean
+ * ke "1"/"0" agar nilai false tetap ter-persist dan terbaca eksplisit.
+ */
+export function toWooMetaBoolean(value: boolean) {
+  return value ? "1" : "0";
+}
+
 export function getMetaBoolean(
   meta: WooCommerceMetaData[],
   key: string,
