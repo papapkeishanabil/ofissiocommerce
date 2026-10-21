@@ -1,31 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { ArrowRight, Clock, Layers, Box, PackageCheck } from "lucide-react";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { validateProduct3DModel } from "@/features/products/product.validation";
 import { resolveOrderProcessingInfo } from "@/features/products/order-processing";
 import { formatIDR } from "@/types/product";
 import { fulfillmentLabel } from "@/types/industry";
-import { ProductImagePlaceholder } from "./ProductImagePlaceholder";
+import { ProductImagePreview } from "./ProductImagePreview";
 
 export function CatalogProductCard({ product }: { product: OfissioProduct }) {
-  const [failed, setFailed] = useState(false);
   const href = `/product/${product.slug}`;
   const processingInfo = resolveOrderProcessingInfo({ processRoute: product.processRoute, fulfillmentType: product.fulfillment, leadTimeDays: product.leadTimeDays });
   const ProcessingIcon = processingInfo.kind === "ready_stock" ? PackageCheck : Clock;
   return <article className="catalog-product-card">
-    <Link href={href} className="catalog-product-photo" aria-label={`Lihat detail ${product.name}`}>
-      {product.mainImage && !failed ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={product.mainImage} alt={product.images?.[0]?.alt || product.name} loading="lazy" onError={() => setFailed(true)} />
-      ) : <ProductImagePlaceholder name={product.name} category={product.category} accentColor={product.accentColor} className="h-full w-full" />}
+    <ProductImagePreview product={product} className="catalog-product-photo">
       <span className="catalog-photo-badges">
         <span className={product.fulfillment === "READY_STOCK" ? "catalog-stock-ready" : "catalog-stock-order"}>{fulfillmentLabel(product.fulfillment)}</span>
         {validateProduct3DModel(product).ok && <span className="catalog-model-badge"><Box size={12} />3D tersedia</span>}
       </span>
-    </Link>
+    </ProductImagePreview>
     <div className="catalog-card-content">
       <div className="catalog-card-eyebrow"><span>{product.category}</span><span>{product.sku}</span></div>
       <h2><Link href={href}>{product.name}</Link></h2>

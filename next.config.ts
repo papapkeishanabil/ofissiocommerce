@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 function configuredMediaOrigin() {
-  const configured = process.env.WORDPRESS_MEDIA_BASE_URL?.trim();
+  const configured = process.env.WORDPRESS_MEDIA_BASE_URL?.trim()
+    || process.env.WOOCOMMERCE_BASE_URL?.trim()
+    || process.env.WOO_API_URL?.trim();
   if (!configured) return "";
   try {
     const url = new URL(configured);
