@@ -71,7 +71,7 @@ import {
   uploadGeneratedPdf,
 } from "./providers/storage-document.provider";
 
-const INVOICE_RENDERER_VERSION = "invoice-customer-details-v2";
+const INVOICE_RENDERER_VERSION = "invoice-customer-details-v3";
 const EMBROIDERY_WORK_ORDER_RENDERER_VERSION = "bwo-ofissio-v1";
 const PRODUCTION_WORK_ORDER_RENDERER_VERSION = "pwo-ofissio-v1";
 

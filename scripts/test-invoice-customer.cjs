@@ -116,7 +116,7 @@ async function main() {
   await generateInvoicePdf({ orderId: order.id, actorId: 'admin-fixture' });
   assert.equal(records[0].documentNumber, 'INV-CUS-2610-001');
   assert.equal(records[0].metadata.paymentId, payment.id);
-  assert.equal(records[0].metadata.rendererVersion, 'invoice-customer-details-v2');
+  assert.equal(records[0].metadata.rendererVersion, 'invoice-customer-details-v3');
   assert.equal(records[1].status, 'expired');
   const pdf = Buffer.from(uploaded.data).toString('latin1');
   for (const value of ['Perusahaan Deny', 'Deny', 'Jl. Melati 1 No 21', '40623',

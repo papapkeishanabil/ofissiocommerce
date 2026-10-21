@@ -92,9 +92,9 @@ function drawInvoiceHero(doc: SimplePdfDocument, data: InvoicePdfData) {
     font: "bold",
     color: YELLOW,
   });
-  drawLimitedText(doc, data.companyName || "-", LEFT + 34, y + 38, 236, {
-    size: 12,
-    lineHeight: 14,
+  drawLimitedText(doc, data.companyName || "-", LEFT + 34, y + 43, 236, {
+    size: 14,
+    lineHeight: 16,
     font: "bold",
     color: "#ffffff",
   }, 2);
@@ -102,16 +102,16 @@ function drawInvoiceHero(doc: SimplePdfDocument, data: InvoicePdfData) {
     doc,
     data.companyAddress || "Alamat penagihan belum tersedia",
     LEFT + 34,
-    y + 68,
+    y + 78,
     226,
     {
-      size: 7.4,
-      lineHeight: 9,
+      size: 7.6,
+      lineHeight: 10,
       color: "#e7e8e9",
     },
     3,
   );
-  drawLimitedText(doc, formatPicLine(data), LEFT + 34, y + 103, 236, {
+  drawLimitedText(doc, formatPicLine(data), LEFT + 34, y + 100, 236, {
     size: 7.4,
     font: "bold",
     color: YELLOW,
@@ -235,7 +235,7 @@ function drawPaymentAndWords(doc: SimplePdfDocument, data: InvoicePdfData) {
   });
   drawLimitedText(doc, data.amountInWords || "-", rightX + 22, y + 37, rightWidth - 44, {
     size: 10.4,
-    lineHeight: 11,
+    lineHeight: 12.6,
     font: "bold",
     color: PRIMARY,
   }, 3);
