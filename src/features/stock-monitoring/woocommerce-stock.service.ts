@@ -114,7 +114,7 @@ export function getOrderStockRequirement(
     for (const requirement of requirements) {
       if (requirement.quantity <= 0) continue;
       const stockSku = requirement.sizeLabel
-        ? sizeStockSku(stockSkuBase, requirement.sizeLabel)
+        ? normalizeSku(item.sizeVariants?.find(row => sizeStockSku("size", row.size) === sizeStockSku("size", requirement.sizeLabel!))?.sku || sizeStockSku(stockSkuBase, requirement.sizeLabel))
         : stockSkuBase;
       const key = `${item.productId}|${stockSku}`;
       const current = grouped.get(key);

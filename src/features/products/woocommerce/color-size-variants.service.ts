@@ -29,13 +29,35 @@ export async function saveColorSizeVariants(product: WooCommerceProduct, input: 
   const rows = await listColorVariationRows(product.id, source);
   if (rows.some(row => !isManagedColorVariant(row))) throw createApiError("BAD_REQUEST", "Varian dari sistem lain tidak dapat ditimpa.", 400);
   const canonical = (src: string) => fromSameOriginWordPressMediaUrl(src, getWordPressMediaRuntimeConfig().baseUrl);
-  const wantedSkus = new Set(input.variants.flatMap(v => sizes.map(size => colorSizeSku(v.sku, size))));
+  const plans = input.variants.flatMap(variant => sizes.map(size => {
+    // Match identity by color and size so a SKU edit updates the same Woo ID.
+    const existing = [...rows].sort((a, b) => Number(b.status === "publish") - Number(a.status === "publish")).find(row =>
+      getMetaBoolean(row.meta_data ?? [], COLOR_SIZE_MARKER, false) &&
+      colorKey(getMetaString(row.meta_data ?? [], "ofissio_color")) === colorKey(variant.color) &&
+      stockSize(getMetaString(row.meta_data ?? [], "ofissio_size")) === size,
+    );
+    const oldBase = existing ? getMetaString(existing.meta_data ?? [], COLOR_SKU_META) : "";
+    // Keep an explicitly configured 2XL/XXL suffix when changing the color SKU.
+    const suffix = existing && oldBase && existing.sku.toUpperCase().startsWith(oldBase.toUpperCase() + "-")
+      ? existing.sku.slice(oldBase.length + 1) : size;
+    const sku = existing ? `${variant.sku}-${suffix}`.trim().toUpperCase() : colorSizeSku(variant.sku, size);
+    return { variant, size, sku, existing };
+  }));
+  const wantedSkus = new Set(plans.map(plan => plan.sku));
   if (wantedSkus.size !== input.variants.length * sizes.length) throw createApiError("BAD_REQUEST", "SKU kombinasi harus unik.", 400);
   for (const variant of input.variants) {
     if (variant.id && !rows.some(row => row.id === variant.id)) throw createApiError("BAD_REQUEST", "ID warna tidak sesuai. Muat ulang halaman.", 400);
     if (!product.images?.some(image => canonical(image.src) === canonical(variant.imageSrc))) throw createApiError("BAD_REQUEST", "Foto warna belum tersimpan di galeri produk.", 400);
-    // Renaming stocked SKUs requires explicit remapping in Ginee, not a photo edit.
-    if (getMetaBoolean(meta, COLOR_SIZE_ENABLED_META, false) && rows.some(row => row.status === "publish" && getMetaBoolean(row.meta_data ?? [], COLOR_SIZE_MARKER, false) && colorKey(getMetaString(row.meta_data ?? [], "ofissio_color")) === colorKey(variant.color) && colorKey(getMetaString(row.meta_data ?? [], COLOR_SKU_META)) !== colorKey(variant.sku))) throw createApiError("BAD_REQUEST", "SKU warna yang sudah dipetakan ke ukuran tidak dapat diganti melalui form ini.", 400);
+  }
+  const changed = plans.filter(plan => plan.existing && plan.existing.sku.toUpperCase() !== plan.sku);
+  if (source.getProducts && changed.length) {
+    // Validate all renamed SKUs before any write, including private variations.
+    for (let offset = 0; offset < changed.length; offset += 50) {
+      const batch = changed.slice(offset, offset + 50);
+      const occupied = await source.getProducts({ sku: batch.map(plan => plan.sku).join(","), status: "any", per_page: 100 });
+      const conflict = batch.find(plan => occupied.some(row => row.sku.toUpperCase() === plan.sku && row.id !== plan.existing!.id));
+      if (conflict) throw createApiError("BAD_REQUEST", `SKU ${conflict.sku} sudah dipakai produk atau varian lain.`, 400);
+    }
   }
   await source.updateProduct(product.id, {
     type: "variable", regular_price: String(price),
@@ -44,9 +66,7 @@ export async function saveColorSizeVariants(product: WooCommerceProduct, input: 
     meta_data: patchMeta(meta, [[COLOR_VARIANTS_READY_META, false], [COLOR_VARIANTS_ENABLED_META, true], [COLOR_SIZE_ENABLED_META, true], [BASE_PRICE_META, price]]),
   });
   const retained = new Set<number>();
-  for (const variant of input.variants) for (const size of sizes) {
-    const sku = colorSizeSku(variant.sku, size);
-    const existing = rows.find(row => row.sku.toUpperCase() === sku);
+  for (const { variant, size, sku, existing } of plans) {
     const image = product.images!.find(image => canonical(image.src) === canonical(variant.imageSrc))!;
     const payload = {
       sku, status: "publish" as const, regular_price: String(price), sale_price: "",
@@ -57,6 +77,11 @@ export async function saveColorSizeVariants(product: WooCommerceProduct, input: 
       ],
       meta_data: [{ key: COLOR_VARIANT_MARKER, value: true }, { key: COLOR_SIZE_MARKER, value: true }, { key: COLOR_SKU_META, value: variant.sku }, { key: "ofissio_color", value: variant.color }, { key: "ofissio_size", value: size }, { key: FABRIC_COLOR_META, value: variant.fabricColor ?? "" }, { key: MODEL_ADJUSTMENT_META, value: variant.modelAdjustment ? JSON.stringify(variant.modelAdjustment) : "" }],
     };
+    const unchanged = existing && existing.status === payload.status && existing.sku === sku && existing.regular_price === payload.regular_price && !existing.sale_price &&
+      (image.id ? existing.image?.id === image.id : canonical(existing.image?.src ?? "") === canonical(image.src)) &&
+      payload.attributes.every(attribute => existing.attributes?.some(old => ("id" in attribute ? old.id === attribute.id : old.name === attribute.name) && old.option === attribute.option)) &&
+      payload.meta_data.every(entry => typeof entry.value === "boolean" ? getMetaBoolean(existing.meta_data ?? [], entry.key, false) === entry.value : getMetaString(existing.meta_data ?? [], entry.key) === entry.value);
+    if (unchanged) { retained.add(existing.id); continue; }
     const saved = existing
       ? await source.updateProductVariation(product.id, existing.id, payload)
       : await source.createProductVariation(product.id, { ...payload, manage_stock: false, stock_quantity: null, stock_status: "instock" });

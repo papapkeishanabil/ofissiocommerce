@@ -36,7 +36,9 @@ export async function getProductSizeStock(product: OfissioProduct, color: string
   const variant = selectedColorVariant(product, selectedColor);
   const variantReady = !product.colorVariantsEnabled || (product.colorVariantsReady && !!variant);
   const baseSku = variant?.sku || product.sku;
-  const rows = [...new Set(product.available_sizes)].map(size => ({ size, sku: sizeStockSku(baseSku, size), availableQty: null as number | null }));
+  const rows = [...new Set(product.available_sizes)].map(size => ({ size,
+    sku: product.colorSizeVariants?.find(row => row.color.trim().toLowerCase() === selectedColor.trim().toLowerCase() && sizeStockSku("size", row.size) === sizeStockSku("size", size))?.sku ?? sizeStockSku(baseSku, size),
+    availableQty: null as number | null }));
   const useGinee = dependencies.useGinee();
   if (variantReady && useGinee) {
     // A missing/failed SKU stays unknown; never substitute another color or size.

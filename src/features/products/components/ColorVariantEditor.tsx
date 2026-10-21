@@ -39,7 +39,8 @@ export function ColorVariantEditor({ enabled, onEnabledChange, variants, onChang
               <p className="mt-2 text-sm font-bold text-ink">{productColorDisplayLabel(variant.color)}</p>
             </div>
             <label className="min-w-0 text-xs font-semibold text-ink">SKU {productColorDisplayLabel(variant.color)}
-              <input className={`${INPUT} mt-2`} readOnly={stockPerSize} value={variant.sku} onChange={(event) => onChange({ ...variant, sku: event.target.value })} required maxLength={100} pattern="[A-Za-z0-9._\-]+" autoComplete="off" placeholder="FRM-Hitam" />
+              <input className={`${INPUT} mt-2`} value={variant.sku} onChange={(event) => onChange({ ...variant, sku: event.target.value })} required maxLength={100} pattern="[A-Za-z0-9._\-]+" autoComplete="off" placeholder="FRM-ABU_TUA" />
+              {stockPerSize ? <span className="mt-2 block text-xs font-normal leading-5 text-ink-muted">Isi SKU warna sesuai Ginee, tanpa akhiran ukuran. Contoh: FRM-ABU_TUA. Setelah menyimpan, sinkronkan ulang produk di Ginee.</span> : null}
             </label>
             <label className="min-w-0 text-xs font-semibold text-ink">Foto {productColorDisplayLabel(variant.color)}
               <select className={`${INPUT} mt-2`} aria-label={`Foto ${productColorDisplayLabel(variant.color)}`} value={variant.imageSrc} onChange={(event) => onChange({ ...variant, imageSrc: event.target.value })} required>

@@ -14,7 +14,7 @@ import { fromSameOriginWordPressMediaUrl } from "./wordpress-media-proxy";
 import { getWordPressMediaRuntimeConfig } from "./wordpress-media-upload.service";
 import type { WooCommerceMetaData, WooCommerceProduct, WooCommerceProductVariation } from "./woocommerce.types";
 
-export type VariantSource = Pick<typeof woocommerceClient, "getProductById" | "getProductVariations" | "createProductVariation" | "updateProductVariation" | "updateProduct">;
+export type VariantSource = Pick<typeof woocommerceClient, "getProductById" | "getProductVariations" | "createProductVariation" | "updateProductVariation" | "updateProduct"> & Partial<Pick<typeof woocommerceClient, "getProducts">>;
 
 export async function listColorVariationRows(productId: number, source: VariantSource = woocommerceClient) {
   const rows: WooCommerceProductVariation[] = [];

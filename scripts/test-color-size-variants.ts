@@ -8,6 +8,7 @@ import { splitOrderSizeVariants } from "../src/features/orders/order-size-varian
 import { mapPaymentOrderToWooCommerceOrder } from "../src/features/orders/order.mapper";
 import type { PaymentOrderRecord, PaymentRecord } from "../src/features/payment/payment.types";
 import { getOrderStockRequirement } from "../src/features/stock-monitoring/woocommerce-stock.service";
+import { getProductSizeStock } from "../src/features/stock-monitoring/product-size-stock.service";
 import type { WooCommerceProduct, WooCommerceProductVariation } from "../src/features/products/woocommerce/woocommerce.types";
 import type { ValidatedCheckoutCartItem } from "../src/features/checkout/checkout-cart.types";
 
@@ -61,6 +62,26 @@ async function main() {
   assert.equal(wooOrder.line_items.reduce((sum, row) => sum + Number(row.total), 0), 675001);
   const stock = getOrderStockRequirement({ id: "order", companyId: "company", items: [item] });
   assert.deepEqual(stock.map(row => [row.stockSku, row.requiredQty]), [["FRM-HITAM-S", 2], ["FRM-HITAM-XXL", 3]]);
-  console.log("PASS: color-size conversion/retry, history IDs, exact XXL SKUs, Ginee stock preserved during admin save, live product mapping, size IDs and exact order totals.");
+  const originalIds = rows.map(row => row.id).sort();
+  const sizeRow = rows.find(row => row.id === stocked.id)!;
+  sizeRow.sku = "FRM-HITAM-2XL";
+  const renameInput = { defaultColor: "Putih", variants: mapNativeColorVariants(product, rows).map(row => row.color === "Hitam" ? { ...row, sku: "FRM-HITAM_TEST" } : row) };
+  await saveColorVariants(900, renameInput, source);
+  assert.deepEqual(rows.map(row => row.id).sort(), originalIds, "SKU edits must not create or replace variation IDs");
+  assert.equal(rows.find(row => row.id === stocked.id)?.sku, "FRM-HITAM_TEST-2XL", "keep the configured size suffix");
+  assert.equal(rows.find(row => row.id === stocked.id)?.stock_quantity, 17);
+  assert.equal(rows.find(row => row.id === stocked.id)?.manage_stock, true);
+  const renamed = mapWooCommerceProductToOfissioProduct(await withLiveColorVariants(product, source));
+  const renamedSelection = selectColorSizeVariants(renamed, "Hitam", { "2XL": 1 })!;
+  assert.equal(renamedSelection[0]?.sku, "FRM-HITAM_TEST-2XL");
+  const stockRead = await getProductSizeStock(renamed, "Hitam", { useGinee: () => false, readGinee: async () => null, readWoo: async () => rows });
+  assert.equal(stockRead.rows.find(row => row.size === "2XL")?.availableQty, 17, "stock reads actual variation SKU instead of guessing XXL");
+  const renamedRequirements = getOrderStockRequirement({ id: "order", companyId: "company", items: [{ ...item, sku: "FRM-HITAM_TEST", sizeVariants: renamedSelection, sizeMatrix: { S: 0, M: 0, L: 0, XL: 0, "2XL": 1, "3XL": 0 }, totalQty: 1 }] });
+  assert.equal(renamedRequirements[0]?.stockSku, "FRM-HITAM_TEST-2XL");
+  source.getProducts = async () => [{ id: 999, sku: "FRM-COLLISION-S" }] as WooCommerceProduct[];
+  const beforeConflict = structuredClone({ product, rows });
+  await assert.rejects(saveColorVariants(900, { defaultColor: "Putih", variants: mapNativeColorVariants(product, rows).map(row => row.color === "Hitam" ? { ...row, sku: "FRM-COLLISION" } : row) }, source), /sudah dipakai/);
+  assert.deepEqual({ product, rows }, beforeConflict, "conflicting SKU must fail before any writes");
+  console.log("PASS: conversion/retry, exact order totals, SKU rename preserving IDs/stock/2XL suffix, actual stock-SKU reads and collision rejection before writes.");
 }
 main().catch(error => { console.error(error);process.exitCode = 1; });
