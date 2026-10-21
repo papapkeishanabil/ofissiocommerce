@@ -369,7 +369,7 @@ function normalizeIndustries(values: string[]) {
 }
 
 function normalizeSizes(values: string[]) {
-  return sortProductSizes(values).filter((value): value is (typeof SIZES)[number] =>
+  return sortProductSizes(values.map(value => value.trim().toUpperCase().replace(/^XXL$/, "2XL").replace(/^XXXL$/, "3XL"))).filter((value): value is (typeof SIZES)[number] =>
     SIZES.includes(value as never),
   );
 }

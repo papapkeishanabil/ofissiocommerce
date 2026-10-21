@@ -15,6 +15,7 @@ async function main() {
   ] as WooCommerceProductVariation[];
   const raw = { id: 484, name: "Kemeja Kantor", sku: "KK-012", slug: "kk-012", status: "publish", type: "variable", price: "125000", regular_price: "125000", images: [], attributes: [], categories: [], meta_data: [{ key: "available_colors", value: '["Putih"]' }, { key: "available_sizes", value: '["S","XXL"]' }, { key: "ofissio_purchase_variants_enabled", value: true }] } as unknown as WooCommerceProduct;
   const enriched = await withLiveColorVariants(raw, { getProductVariations: async () => rows } as never);
+  assert.deepEqual(mapWooCommerceProductToOfissioProduct(enriched).available_sizes, ["S", "2XL"], "XXL catalog size must remain available");
   const product = { ...mapWooCommerceProductToOfissioProduct(enriched), category: "Kemeja", industries: ["Corporate"], lead_time: "1 hari", available_colors: ["Putih"], colors: ["Putih"], available_sizes: ["S", "XXL"], moq: 1 };
   assert.equal(product.purchaseVariants?.length, 3);
   assert.equal(mapPurchaseVariants([{ ...rows[0]!, status: "private" }]).length, 0);
