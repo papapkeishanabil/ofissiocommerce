@@ -83,5 +83,5 @@ export function summarizeSizeMatrix(
   m: SizeMatrixSnapshot | null,
 ): number {
   if (!m) return 0;
-  return m.S + m.M + m.L + m.XL + m["2XL"] + m["3XL"];
+  return (m.XS ?? 0) + (m["4XL"] ?? 0) + (m["5XL"] ?? 0) + m.S + m.M + m.L + m.XL + m["2XL"] + m["3XL"];
 }

@@ -81,6 +81,9 @@ export function isOfistantLlmConfigured(): boolean {
 // ---------------------------------------------------------------------------
 
 const sizeMatrixSchema = z.object({
+  XS: z.number().optional(),
+  "4XL": z.number().optional(),
+  "5XL": z.number().optional(),
   S: z.number(),
   M: z.number(),
   L: z.number(),

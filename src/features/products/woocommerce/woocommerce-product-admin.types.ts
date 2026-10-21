@@ -22,6 +22,7 @@ export interface AdminWooCommerceProduct {
 }
 
 export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
+  purchaseVariants?: import("../purchase-variants").PurchaseVariant[];
   colorSizeVariantsEnabled?: boolean;
   colorVariants?: ProductColorVariant[];
   colorVariantsEnabled?: boolean;

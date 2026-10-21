@@ -39,7 +39,7 @@ export async function getProductSizeStock(product: OfissioProduct, color: string
   const variantReady = !product.colorVariantsEnabled || (product.colorVariantsReady && !!variant);
   const baseSku = variant?.sku || product.sku;
   const rows = [...new Set(product.available_sizes)].map(size => ({ size,
-    sku: product.colorSizeVariants?.find(row => row.color.trim().toLowerCase() === selectedColor.trim().toLowerCase() && sizeStockSku("size", row.size) === sizeStockSku("size", size))?.sku ?? matchingPurchaseVariant(product, size, sleeve)?.sku ?? sizeStockSku(baseSku, size),
+    sku: product.colorSizeVariants?.find(row => row.color.trim().toLowerCase() === selectedColor.trim().toLowerCase() && sizeStockSku("size", row.size) === sizeStockSku("size", size))?.sku ?? matchingPurchaseVariant(product, size, sleeve, selectedColor)?.sku ?? sizeStockSku(baseSku, size),
     availableQty: null as number | null }));
   const useGinee = dependencies.useGinee();
   if (variantReady && useGinee) {

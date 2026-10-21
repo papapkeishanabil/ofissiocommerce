@@ -52,6 +52,7 @@ export function validateProductForCatalog(product: OfissioProduct): ProductValid
     : { ok: true };
 }
 export function validateProductForCart(product: OfissioProduct): ProductValidation {
+  if (product.stockVariantsReady === false) return { ok: false, reason: "SKU varian stok belum selesai disiapkan. Hubungi admin produk." };
   const catalog = validateProductForCatalog(product);
   if (!catalog.ok) return catalog;
   if (!product.sku || product.moq <= 0 || product.priceFrom <= 0 || !product.fulfillment || !product.transaction_mode) return { ok: false, reason: "Data produk belum lengkap untuk keranjang." };

@@ -155,7 +155,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
       <details className="mt-3">
       <summary className="w-fit cursor-pointer py-2 text-sm font-semibold text-ink">Ubah jumlah per ukuran</summary>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-6">
-        {SIZES.map((s) => {
+        {SIZES.filter(s => item.availableSizes ? item.availableSizes.some(size => size.toUpperCase().replace(/^XXL$/, "2XL") === s) : !["XS", "4XL", "5XL"].includes(s) || (item.sizes[s] ?? 0) > 0).map((s) => {
           const qty = item.sizes[s] ?? 0;
           const active = qty > 0;
           return (

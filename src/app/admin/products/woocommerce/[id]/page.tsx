@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ADMIN_ROLE_PERMISSIONS } from "@/features/admin/admin.config";
 import { DeleteProductButton } from "@/features/products/components/DeleteProductButton";
+import { StockVariantEditor } from "@/features/products/components/StockVariantEditor";
 
 import {
   canRequestStockReplenishment,
@@ -76,6 +77,7 @@ export default async function AdminWooProductDetailPage({ params, searchParams }
             canRequest={canRequestStockReplenishment(actor)}
           />
         ) : null}
+        {ADMIN_ROLE_PERMISSIONS[actor.role].includes("admin:catalog:update") && <StockVariantEditor productId={product.id} />}
         <AdminProductForm
           mode="edit"
           product={product}

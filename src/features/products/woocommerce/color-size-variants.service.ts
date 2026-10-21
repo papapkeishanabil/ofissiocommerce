@@ -1,4 +1,5 @@
 import "server-only";
+import { assertFreeStockSkus } from "./size-variants.service";
 import { COLOR_SIZE_ENABLED_META, COLOR_SIZE_MARKER, COLOR_SIZE_ROWS_META, COLOR_SKU_META, colorSizeSku, mapNativeColorSizeVariants, stockSize } from "../color-size-variants";
 import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_META, COLOR_VARIANTS_READY_META, COLOR_VARIANT_MARKER, DEFAULT_COLOR_META, FABRIC_COLOR_META, MODEL_ADJUSTMENT_META, colorKey, isManagedColorVariant, mapNativeColorVariants } from "../color-variants";
 import type { WooCommerceMetaData, WooCommerceProduct } from "./woocommerce.types";
@@ -40,25 +41,18 @@ export async function saveColorSizeVariants(product: WooCommerceProduct, input: 
     // Keep an explicitly configured 2XL/XXL suffix when changing the color SKU.
     const suffix = existing && oldBase && existing.sku.toUpperCase().startsWith(oldBase.toUpperCase() + "-")
       ? existing.sku.slice(oldBase.length + 1) : size;
-    const sku = existing ? `${variant.sku}-${suffix}`.trim().toUpperCase() : colorSizeSku(variant.sku, size);
+    const sku = existing && getMetaBoolean(existing.meta_data ?? [], "ofissio_stock_sku_override", false) ? existing.sku : existing ? `${variant.sku}-${suffix}`.trim().toUpperCase() : colorSizeSku(variant.sku, size);
     return { variant, size, sku, existing };
   }));
   const wantedSkus = new Set(plans.map(plan => plan.sku));
   if (wantedSkus.size !== input.variants.length * sizes.length) throw createApiError("BAD_REQUEST", "SKU kombinasi harus unik.", 400);
   for (const variant of input.variants) {
-    if (variant.id && !rows.some(row => row.id === variant.id)) throw createApiError("BAD_REQUEST", "ID warna tidak sesuai. Muat ulang halaman.", 400);
+    if (colorKey(variant.sku) === colorKey(product.sku)) throw createApiError("BAD_REQUEST", "SKU varian harus berbeda dari SKU produk induk.", 400);
+    if (variant.id && !rows.some(row => row.id === variant.id)) throw createApiError("BAD_REQUEST", "ID varian tidak sesuai. Muat ulang halaman.", 400);
     if (!product.images?.some(image => canonical(image.src) === canonical(variant.imageSrc))) throw createApiError("BAD_REQUEST", "Foto warna belum tersimpan di galeri produk.", 400);
   }
-  const changed = plans.filter(plan => plan.existing && plan.existing.sku.toUpperCase() !== plan.sku);
-  if (source.getProducts && changed.length) {
-    // Validate all renamed SKUs before any write, including private variations.
-    for (let offset = 0; offset < changed.length; offset += 50) {
-      const batch = changed.slice(offset, offset + 50);
-      const occupied = await source.getProducts({ sku: batch.map(plan => plan.sku).join(","), status: "any", per_page: 100 });
-      const conflict = batch.find(plan => occupied.some(row => row.sku.toUpperCase() === plan.sku && row.id !== plan.existing!.id));
-      if (conflict) throw createApiError("BAD_REQUEST", `SKU ${conflict.sku} sudah dipakai produk atau varian lain.`, 400);
-    }
-  }
+  const changed = plans.filter(plan => !plan.existing || plan.existing.sku.toUpperCase() !== plan.sku);
+  await assertFreeStockSkus(changed.map(plan => ({ sku: plan.sku, id: plan.existing?.id })), source);
   await source.updateProduct(product.id, {
     type: "variable", regular_price: String(price),
     attributes: (product.attributes ?? []).map(a => ({ ...(a.id ? { id: a.id } : { name: a.name }), visible: a.visible ?? true, variation: a === colorAttribute || a === sizeAttribute, options: a === sizeAttribute ? sizes : a.options ?? [] })),
@@ -92,11 +86,12 @@ export async function saveColorSizeVariants(product: WooCommerceProduct, input: 
   }
   const freshProduct = await source.getProductById(product.id);
   const freshRows = await listColorVariationRows(product.id, source);
+  if (!freshProduct.attributes?.some(a => /^(pa_)?(ukuran|size)$/i.test(a.slug || a.name) && a.variation)) throw createApiError("BAD_REQUEST", "Atribut variasi ukuran belum tersimpan. Simpan ulang untuk melanjutkan.", 502);
   const sizeRows = mapNativeColorSizeVariants(freshRows);
   if (sizeRows.length !== wantedSkus.size || sizeRows.some(row => !wantedSkus.has(row.sku.toUpperCase())) || new Set(sizeRows.map(row => row.sku)).size !== wantedSkus.size) throw createApiError("BAD_REQUEST", "Varian ukuran belum terverifikasi. Simpan ulang untuk melanjutkan.", 502);
   const colorRows = mapNativeColorVariants(freshProduct, freshRows);
   const ordered = input.variants.map(variant => colorRows.find(row => colorKey(row.color) === colorKey(variant.color))!);
   if (ordered.some(row => !row)) throw createApiError("BAD_REQUEST", "Foto dan SKU warna belum terverifikasi.", 502);
-  await source.updateProduct(product.id, { meta_data: patchMeta(freshProduct.meta_data ?? [], [[COLOR_VARIANTS_META, JSON.stringify(ordered)], [COLOR_SIZE_ROWS_META, JSON.stringify(sizeRows)], [COLOR_VARIANTS_READY_META, true], [DEFAULT_COLOR_META, input.defaultColor]]) });
+  await source.updateProduct(product.id, { meta_data: patchMeta(freshProduct.meta_data ?? [], [[COLOR_VARIANTS_META, JSON.stringify(ordered)], [COLOR_SIZE_ROWS_META, JSON.stringify(sizeRows)], [COLOR_VARIANTS_READY_META, true], ["ofissio_stock_variants_ready", true], [DEFAULT_COLOR_META, input.defaultColor]]) });
   return ordered;
 }

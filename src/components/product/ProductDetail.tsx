@@ -513,6 +513,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             <div className="mt-3">
               <SizeQuantityMatrix
                 productId={product.id}
+                availableSizes={product.available_sizes}
                 color={color}
                 selectedSleeve={selectedSleeve || undefined}
                 value={sizes}

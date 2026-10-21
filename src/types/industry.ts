@@ -39,10 +39,11 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number];
 
-export const SIZES = ["S", "M", "L", "XL", "2XL", "3XL"] as const;
+export const SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"] as const;
 export type Size = (typeof SIZES)[number];
 
-export type SizeMatrix = Record<Size, number>;
+// Existing persisted carts predate XS. Their six base sizes remain required.
+export type SizeMatrix = Record<"S" | "M" | "L" | "XL" | "2XL" | "3XL", number> & Record<string, number>;
 
 export const FULFILLMENT_TYPES = ["READY_STOCK", "MADE_TO_ORDER"] as const;
 export type FulfillmentType = (typeof FULFILLMENT_TYPES)[number];

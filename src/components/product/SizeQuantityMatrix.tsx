@@ -25,6 +25,7 @@ interface SizeQuantityMatrixProps {
   productId?: string;
   color?: string;
   selectedSleeve?: string;
+  availableSizes?: string[];
 }
 
 export function SizeQuantityMatrix({
@@ -38,6 +39,7 @@ export function SizeQuantityMatrix({
   productId,
   color,
   selectedSleeve,
+  availableSizes,
 }: SizeQuantityMatrixProps) {
   const stockKey = productId && color ? JSON.stringify([productId, color, selectedSleeve]) : "";
   const [stockState, setStockState] = useState<{ key: string; stock: ProductSizeStock | null }>({ key: "", stock: null });
@@ -83,7 +85,7 @@ export function SizeQuantityMatrix({
       </div>
 
       <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2" role="list">
-        {SIZES.map((s) => {
+        {SIZES.filter(s => availableSizes ? availableSizes.some(size => size.toUpperCase().replace(/^XXL$/, "2XL") === s) : !["XS", "4XL", "5XL"].includes(s)).map((s) => {
           const sizeLabel = s === "2XL" ? "XXL" : s;
           const chart = sizeChart?.find((c) => c.size === s);
           const qty = value[s] ?? 0;

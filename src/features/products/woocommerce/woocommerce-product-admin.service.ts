@@ -1,4 +1,7 @@
 import "server-only";
+import { ensureSizeVariants } from "./size-variants.service";
+import { stockSize } from "../color-size-variants";
+import { PURCHASE_VARIANTS_META, type PurchaseVariant } from "../purchase-variants";
 import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "../color-variants";
 import { withLiveColorVariants } from "./color-variants.service";
 
@@ -98,6 +101,7 @@ export async function getAdminWooCommerceProduct(
   const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
   return {
     ...summary,
+    purchaseVariants: (getMetaValue(meta, PURCHASE_VARIANTS_META) as PurchaseVariant[] | undefined) ?? [],
     colorVariants: readColorVariants(product),
     colorVariantsEnabled: getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false),
     colorSizeVariantsEnabled: getMetaBoolean(meta, "ofissio_color_size_variants_enabled", false),
@@ -191,6 +195,7 @@ export async function createAdminWooCommerceProduct(input: {
       tierCount: input.payload.quantityPricingTiers.length,
       enabled: input.payload.quantityPricingEnabled,
     });
+    await ensureSizeVariants(created, woocommerceClient);
     return getAdminWooCommerceProduct(created.id);
   } catch (error) {
     logProductAudit("product_create_failed", null, input, {
@@ -225,6 +230,7 @@ export async function updateAdminWooCommerceProduct(input: {
       tierCount: input.payload.quantityPricingTiers.length,
       enabled: input.payload.quantityPricingEnabled,
     });
+    await ensureSizeVariants(updated, woocommerceClient);
     return getAdminWooCommerceProduct(updated.id);
   } catch (error) {
     logProductAudit("product_update_failed", input.id, input, {
@@ -391,6 +397,11 @@ function buildWritePayload(
     ],
   ];
 
+  if (!current) {
+    entries.push(["ofissio_stock_variants_ready", false]);
+    if (payload.colors.length > 1) entries.push([COLOR_VARIANTS_ENABLED_META, true], [COLOR_VARIANTS_READY_META, false], ["ofissio_color_size_variants_enabled", true]);
+  }
+
   return {
     name: payload.name,
     ...(payload.slug ? { slug: payload.slug } : {}),
@@ -422,7 +433,7 @@ function buildWritePayload(
     }),
     attributes: mergeManagedAttributes(current?.attributes ?? [], [
       { ...managedAttribute("Warna", "warna", payload.colors, managedAttributes, ["warna", "color"]), variation: getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false) || Boolean(current?.attributes?.find((attribute) => ["warna", "color"].includes(normalizeAttributeSlug(attribute.slug || attribute.name)))?.variation) },
-      { ...managedAttribute("Ukuran", "ukuran", payload.sizes, managedAttributes, ["ukuran", "size"]), variation: Boolean(current?.attributes?.find((attribute) => ["ukuran", "size"].includes(normalizeAttributeSlug(attribute.slug || attribute.name)))?.variation) },
+      { ...managedAttribute("Ukuran", "ukuran", payload.sizes.map(stockSize), managedAttributes, ["ukuran", "size"]), variation: getMetaBoolean(meta, "ofissio_color_size_variants_enabled", false) || getMetaBoolean(meta, "ofissio_purchase_variants_enabled", false) || Boolean(current?.attributes?.find((attribute) => ["ukuran", "size"].includes(normalizeAttributeSlug(attribute.slug || attribute.name)))?.variation) },
       managedAttribute("Material", "material", payload.materials, managedAttributes, ["material", "bahan"]),
       managedAttribute("Gender", "gender", [payload.gender], managedAttributes, ["gender"]),
       managedAttribute("Tipe Lengan", "tipe-lengan", [payload.sleeveType], managedAttributes, ["tipe-lengan", "sleeve"]),

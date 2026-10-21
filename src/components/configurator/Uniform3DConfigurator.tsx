@@ -776,6 +776,7 @@ export function Uniform3DConfigurator({
             </div>
             <SizeQuantityMatrix
               productId={product.id}
+              availableSizes={product.available_sizes}
               color={config.color}
               selectedSleeve={selectedSleeve}
               value={sizes}

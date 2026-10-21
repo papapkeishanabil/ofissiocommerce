@@ -65,7 +65,7 @@ export const useCartStore = create<CartState>()(
       setHydrated: () => set({ hydrated: true }),
 
       add: ({ replaceLineId, product, color, selectedSleeve, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing, moqSettings }) => {
-        try { selectPurchaseVariants(product, sizes, selectedSleeve); }
+        try { selectPurchaseVariants(product, sizes, selectedSleeve, color); }
         catch (error) { return { ok: false, reason: error instanceof Error ? error.message : "Pilih varian produk." }; }
         const validation = validateProductForCart(product);
         if (!validation.ok) return { ok: false, reason: validation.reason };
@@ -146,6 +146,7 @@ export const useCartStore = create<CartState>()(
             ...variantSnapshot,
             color,
             selectedSleeve,
+            availableSizes: product.available_sizes,
             fulfillmentType: product.fulfillment,
             processRoute: product.processRoute,
             leadTimeDays: product.leadTimeDays,

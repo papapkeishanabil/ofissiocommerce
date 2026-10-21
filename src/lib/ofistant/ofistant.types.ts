@@ -36,6 +36,9 @@ export const JOURNEY_STAGES: readonly JourneyStage[] = [
 ] as const;
 
 export interface SizeMatrixSnapshot {
+  XS?: number;
+  "4XL"?: number;
+  "5XL"?: number;
   S: number;
   M: number;
   L: number;

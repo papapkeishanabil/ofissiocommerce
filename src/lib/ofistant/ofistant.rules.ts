@@ -76,7 +76,7 @@ function buildAddToCartActionFromSelected(
       productSlug: product.slug,
       productName: product.name,
       color,
-      sizeMatrix,
+      sizeMatrix: { XS: 0, "4XL": 0, "5XL": 0, ...sizeMatrix },
       customization: null,
       reason: "Ditambahkan dari Ofistant dengan konfirmasi user.",
     },

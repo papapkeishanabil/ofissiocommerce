@@ -25,7 +25,7 @@ export const logoPlacementSchema = z.object({
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     allocations: z.array(z.object({
       name: z.string().trim().min(1).max(40),
-      size: z.enum(["S", "M", "L", "XL", "2XL", "3XL"]),
+      size: z.enum(["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]),
       quantity: z.number().int().min(1).max(100000),
     })).max(500),
   }).superRefine((value, ctx) => {

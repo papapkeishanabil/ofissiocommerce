@@ -6,6 +6,9 @@ import { validateNameAllocations } from "@/lib/embroidery-names";
 const quantitySchema = z.coerce.number().int().min(0).max(100_000);
 
 export const checkoutSizeMatrixSchema = z.object({
+  XS: quantitySchema.optional().default(0),
+  "4XL": quantitySchema.optional().default(0),
+  "5XL": quantitySchema.optional().default(0),
   S: quantitySchema,
   M: quantitySchema,
   L: quantitySchema,

@@ -94,6 +94,9 @@ export const addToCartSchema = z.object({
     productName: z.string(),
     color: z.string(),
     sizeMatrix: z.object({
+      XS: z.number().int().min(0).optional().default(0),
+      "4XL": z.number().int().min(0).optional().default(0),
+      "5XL": z.number().int().min(0).optional().default(0),
       S: z.number().int().min(0),
       M: z.number().int().min(0),
       L: z.number().int().min(0),
@@ -122,6 +125,9 @@ export const setSizeMatrixSchema = z.object({
   type: z.literal("SET_SIZE_MATRIX"),
   payload: z.object({
     sizeMatrix: z.object({
+      XS: z.number().int().min(0).optional().default(0),
+      "4XL": z.number().int().min(0).optional().default(0),
+      "5XL": z.number().int().min(0).optional().default(0),
       S: z.number().int().min(0),
       M: z.number().int().min(0),
       L: z.number().int().min(0),

@@ -30,7 +30,7 @@ export async function listColorVariationRows(productId: number, source: VariantS
 /** Checkout and detail pages read native variations, including current stock. */
 export async function withLiveColorVariants(product: WooCommerceProduct, source: VariantSource = woocommerceClient) {
   if (!getMetaBoolean(product.meta_data ?? [], COLOR_VARIANTS_ENABLED_META, false)) {
-    if (product.type !== "variable" || !getMetaBoolean(product.meta_data ?? [], "ofissio_purchase_variants_enabled", false)) return product;
+    if (product.type !== "variable") return product;
     const rows = await listColorVariationRows(product.id, source);
     return { ...product, meta_data: [...(product.meta_data ?? []).filter(row => row.key !== PURCHASE_VARIANTS_META), { key: PURCHASE_VARIANTS_META, value: mapPurchaseVariants(rows) }] };
   }
@@ -43,7 +43,8 @@ export async function withLiveColorVariants(product: WooCommerceProduct, source:
 /** A failed multi-request save stays unready; retry reuses native rows instead of duplicating them. */
 export async function saveColorVariants(productId: number, input: AdminColorVariantsPayload, source: VariantSource = woocommerceClient) {
   const product = await source.getProductById(productId);
-  if (getMetaBoolean(product.meta_data ?? [], COLOR_SIZE_ENABLED_META, false)) {
+  // Never split an existing aggregate stock figure into invented per-size counts.
+  if (getMetaBoolean(product.meta_data ?? [], COLOR_SIZE_ENABLED_META, false) || input.variants.length > 0 && input.variants.every(v => v.stockQuantity == null) && getMetaStringArray(product.meta_data ?? [], "available_sizes").length > 0) {
     const { saveColorSizeVariants } = await import("./color-size-variants.service");
     return saveColorSizeVariants(product, input, source);
   }

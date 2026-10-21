@@ -175,6 +175,7 @@ export function mapWooCommerceProductToOfissioProduct(
     source: "woocommerce",
     source_id: String(raw.id),
     purchaseVariants: (() => { const value = getMetaValue(meta, PURCHASE_VARIANTS_META); return Array.isArray(value) ? value as PurchaseVariant[] : []; })(),
+    stockVariantsReady: getMetaBoolean(meta, "ofissio_stock_variants_ready", true),
     colorVariants: readColorVariants(raw),
     colorSizeVariantsEnabled: getMetaBoolean(meta, COLOR_SIZE_ENABLED_META, false),
     colorSizeVariants: readColorSizeVariants(raw),
@@ -268,7 +269,7 @@ export function mapWooCommerceProductToOfissioProduct(
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
   const canAddEmbroidery = product.supports_embroidery && validateProduct3DModel(product).ok;
-  return { canAddEmbroidery, source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, processRoute: product.processRoute, leadTimeDays: product.leadTimeDays, transactionMode: product.transaction_mode, model3dId: product.model_3d?.id, model3dUrl: product.model_3d?.url, quantityPricing: product.quantityPricing };
+  return { availableSizes: product.available_sizes, canAddEmbroidery, source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, processRoute: product.processRoute, leadTimeDays: product.leadTimeDays, transactionMode: product.transaction_mode, model3dId: product.model_3d?.id, model3dUrl: product.model_3d?.url, quantityPricing: product.quantityPricing };
 }
 
 function stripHtml(value = "") {
@@ -369,7 +370,7 @@ function normalizeIndustries(values: string[]) {
 }
 
 function normalizeSizes(values: string[]) {
-  return sortProductSizes(values.map(value => value.trim().toUpperCase().replace(/^XXL$/, "2XL").replace(/^XXXL$/, "3XL"))).filter((value): value is (typeof SIZES)[number] =>
+  return sortProductSizes([...new Set(values.map(value => value.trim().toUpperCase().replace(/^XXL$/, "2XL").replace(/^XXXL$/, "3XL")))]).filter((value): value is (typeof SIZES)[number] =>
     SIZES.includes(value as never),
   );
 }

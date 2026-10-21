@@ -69,7 +69,7 @@ export interface LogoPlacement {
     name: string;
     font: "sans" | "serif";
     color: string;
-    allocations: { name: string; size: "S" | "M" | "L" | "XL" | "2XL" | "3XL"; quantity: number }[];
+    allocations: { name: string; size: "XS" | "S" | "M" | "L" | "XL" | "2XL" | "3XL" | "4XL" | "5XL"; quantity: number }[];
   };
   zone: EmbroideryZone;
   /** Object-storage file id (placeholder for Phase 4; AV scan in Phase 8) */

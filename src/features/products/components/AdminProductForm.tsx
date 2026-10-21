@@ -218,6 +218,11 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (form.colors.length > 1 && !variantsEnabled && !product?.purchaseVariants?.length) {
+      setMessage({ tone: "error", text: "Produk dengan beberapa warna memerlukan SKU per warna. Aktifkan pengaturan SKU dan foto per warna terlebih dahulu." });
+      document.getElementById("color-variants")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     if (variantsEnabled) {
       const result = adminColorVariantsSchema.safeParse({ variants: visibleVariants, defaultColor: selectedDefaultColor });
       const missingImage = visibleVariants.find((variant) => !variantImages.some((image) => image.src === variant.imageSrc));
@@ -608,6 +613,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         <FormSection icon={Shirt} title="Varian Warna" description="Pasangkan setiap warna dengan SKU dan foto yang sesuai.">
           <ColorVariantEditor
             stockPerSize={product?.colorSizeVariantsEnabled}
+            sizeCount={form.sizes.length}
             enabled={variantsEnabled}
             onEnabledChange={setVariantsEnabled}
             variants={visibleVariants}

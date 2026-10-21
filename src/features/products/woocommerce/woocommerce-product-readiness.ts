@@ -121,6 +121,7 @@ function getRawWooCommerceReadiness(
 ): ProductReadiness {
   const meta = product.meta_data ?? [];
   const blockingIssues: ProductReadinessIssue[] = [];
+  if (!getMetaBoolean(meta, "ofissio_stock_variants_ready", true)) blockingIssues.push(blocking("stock_variants", "SKU stok per ukuran belum selesai disiapkan", "Lengkapi SKU varian dan simpan ulang produk"));
   const warnings: ProductReadinessIssue[] = [];
   const modelUrl = getMetaString(meta, "model_3d_url");
   const storageBucket = getMetaString(meta, "model_3d_storage_bucket");
@@ -239,6 +240,7 @@ function getRawWooCommerceReadiness(
 
 function getMappedProductReadiness(product: OfissioProduct): ProductReadiness {
   const blockingIssues: ProductReadinessIssue[] = [];
+  if (product.stockVariantsReady === false) blockingIssues.push(blocking("stock_variants", "SKU stok per ukuran belum selesai disiapkan", "Lengkapi SKU varian dan simpan ulang produk"));
   const warnings: ProductReadinessIssue[] = [];
   if (product.colorVariantsEnabled && (!product.colorVariantsReady || product.available_colors.some((color) => !product.colorVariants?.some((variant) => colorKey(variant.color) === colorKey(color))))) {
     blockingIssues.push(blocking("color_variants", "Varian warna belum selesai disimpan", "Simpan ulang Varian Warna"));
