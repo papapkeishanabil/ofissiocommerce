@@ -37,6 +37,7 @@ export interface ProductImageReference {
 
 /** Canonical product contract. UI-compatible fields remain from Product. */
 export interface OfissioProduct extends Product {
+  purchaseVariants?: import("./purchase-variants").PurchaseVariant[];
   colorSizeVariantsEnabled?: boolean;
   colorSizeVariants?: import("./color-size-variants").ColorSizeVariant[];
   colorVariants?: ProductColorVariant[];

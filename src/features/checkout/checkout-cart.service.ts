@@ -1,6 +1,7 @@
 import "server-only";
 import { colorVariantIssue, colorVariantSnapshot } from "@/features/products/color-variants";
 import { selectColorSizeVariants } from "@/features/products/color-size-variants";
+import { selectPurchaseVariants } from "@/features/products/purchase-variants";
 
 import { randomUUID } from "node:crypto";
 
@@ -59,7 +60,7 @@ async function validateAndPriceItem(
   if (variantIssue) throw createApiError("VALIDATION_ERROR", variantIssue, 400);
   const variantSnapshot = colorVariantSnapshot(product, input.selectedColor);
   let sizeVariants;
-  try { sizeVariants = selectColorSizeVariants(product, input.selectedColor, input.sizeMatrix); }
+  try { sizeVariants = selectColorSizeVariants(product, input.selectedColor, input.sizeMatrix) ?? selectPurchaseVariants(product, input.sizeMatrix, input.selectedSleeve); }
   catch (error) { throw createApiError("VALIDATION_ERROR", error instanceof Error ? error.message : "Varian ukuran belum tersedia.", 400); }
 
   // Satu helper untuk MOQ produk + batas keras bordir — dipakai juga oleh
@@ -119,6 +120,7 @@ async function validateAndPriceItem(
     ...variantSnapshot,
     sizeVariants,
     selectedColor: input.selectedColor,
+    selectedSleeve: input.selectedSleeve,
     sizeMatrix: input.sizeMatrix,
     totalQty,
     priceFrom: calculatedPrice.unitPrice,
@@ -268,6 +270,7 @@ export async function getValidatedCheckoutCart(
       validateAndPriceItem({
         productId: item.productId,
         selectedColor: item.selectedColor,
+        selectedSleeve: item.selectedSleeve,
         sizeMatrix: item.sizeMatrix,
         customization: item.customization,
         embroideryPlacements: item.embroideryPlacements,

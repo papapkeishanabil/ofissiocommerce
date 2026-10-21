@@ -13,6 +13,7 @@ import type {
 export interface CheckoutCartItemInput {
   productId: string;
   selectedColor: string;
+  selectedSleeve?: string;
   sizeMatrix: SizeMatrix;
   customization: string | null;
   embroideryPlacements: LogoPlacement[];
@@ -37,6 +38,7 @@ export interface ValidatedCheckoutCartItem {
   variationId?: number;
   parentSku?: string;
   sizeVariants?: import("@/features/products/color-size-variants").SelectedSizeVariant[];
+  selectedSleeve?: string;
   /** catalog main image snapshot — rides inside order_json, no schema column */
   image?: string | null;
   selectedColor: string;

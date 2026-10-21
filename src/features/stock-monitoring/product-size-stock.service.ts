@@ -1,4 +1,5 @@
 import "server-only";
+import { matchingPurchaseVariant, sleeveOptions } from "@/features/products/purchase-variants";
 
 import { selectedColorVariant } from "@/features/products/color-variants";
 import type { OfissioProduct } from "@/features/products/product.types";
@@ -30,14 +31,15 @@ export async function getProductSizeStock(product: OfissioProduct, color: string
   useGinee: () => getGineeConfig().useLiveProvider,
   readGinee: readGineeSizeStock,
   readWoo: readWooSizeStock,
-}): Promise<ProductSizeStock> {
+}, sleeve?: string): Promise<ProductSizeStock> {
+  if (sleeveOptions(product).length && !sleeveOptions(product).includes(sleeve || "")) throw createApiError("VALIDATION_ERROR", "Pilih jenis lengan yang tersedia.", 400);
   const selectedColor = product.available_colors.find(value => value.trim().toLowerCase() === color.trim().toLowerCase());
   if (!selectedColor) throw createApiError("VALIDATION_ERROR", "Warna produk tidak tersedia.", 400);
   const variant = selectedColorVariant(product, selectedColor);
   const variantReady = !product.colorVariantsEnabled || (product.colorVariantsReady && !!variant);
   const baseSku = variant?.sku || product.sku;
   const rows = [...new Set(product.available_sizes)].map(size => ({ size,
-    sku: product.colorSizeVariants?.find(row => row.color.trim().toLowerCase() === selectedColor.trim().toLowerCase() && sizeStockSku("size", row.size) === sizeStockSku("size", size))?.sku ?? sizeStockSku(baseSku, size),
+    sku: product.colorSizeVariants?.find(row => row.color.trim().toLowerCase() === selectedColor.trim().toLowerCase() && sizeStockSku("size", row.size) === sizeStockSku("size", size))?.sku ?? matchingPurchaseVariant(product, size, sleeve)?.sku ?? sizeStockSku(baseSku, size),
     availableQty: null as number | null }));
   const useGinee = dependencies.useGinee();
   if (variantReady && useGinee) {
@@ -51,7 +53,7 @@ export async function getProductSizeStock(product: OfissioProduct, color: string
   } else if (variantReady) {
     const native = await dependencies.readWoo(product).catch(() => []);
     for (const row of rows) {
-      const match = native.find(item => item.status === "publish" && normalizeSku(item.sku) === row.sku);
+      const match = native.find(item => item.status === "publish" && normalizeSku(item.sku) === normalizeSku(row.sku));
       if (match?.manage_stock && typeof match.stock_quantity === "number" && Number.isFinite(match.stock_quantity)) {
         row.availableQty = match.stock_status === "outofstock" ? 0 : Math.max(0, Math.floor(match.stock_quantity));
       }

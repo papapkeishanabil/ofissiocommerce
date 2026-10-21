@@ -5,6 +5,7 @@ import { garmentReference } from "@/components/configurator/garment-scale";
 
 import { productColorDisplayLabel } from "@/lib/product-colors";
 import { colorVariantGallery, selectedColorVariant } from "@/features/products/color-variants";
+import { sleeveOptions } from "@/features/products/purchase-variants";
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -89,6 +90,8 @@ interface ProductDetailProps {
 
 export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, sizeChartStandardName, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
   const router = useRouter();
+  const sleeves = useMemo(() => sleeveOptions(product), [product]);
+  const [selectedSleeve, setSelectedSleeve] = useState(sleeves[0] || "");
   const [color, setColor] = useState<string>(product.defaultColor && product.colors.includes(product.defaultColor) ? product.defaultColor : product.colors[0] || "Default");
   const galleryImages = useMemo(() => colorVariantGallery(product, color), [product, color]);
   const galleryProduct = useMemo(() => ({ ...product, images: galleryImages }), [product, galleryImages]);
@@ -104,11 +107,11 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const line = useCartStore.getState().items.find(item => item.id === params.get("line") && item.productId === product.id);
-    if (line) { setEditingLineId(line.id); setSizes(line.sizes); setColor(line.color); setUniform3DConfig(line.uniform3DConfig || null); }
+    if (line) { setEditingLineId(line.id); setSizes(line.sizes); setColor(line.color); setSelectedSleeve(line.selectedSleeve || sleeves[0] || ""); setUniform3DConfig(line.uniform3DConfig || null); }
     if (params.get("studio") === "1" && product.supports_embroidery && validateProduct3DModel(product).ok) {
       setShow3D(true);
     }
-  }, [product]);
+  }, [product, sleeves]);
   const [showFloatingPreviewModal, setShowFloatingPreviewModal] = useState(false);
 
   const heroRef = useRef<HTMLDivElement>(null);
@@ -320,6 +323,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
       replaceLineId: editingLineId,
       product,
       color: configOverride?.color ?? color,
+      selectedSleeve: selectedSleeve || undefined,
       sizes,
       customization: customization.trim() || null,
       uniform3DConfig: configOverride,
@@ -494,12 +498,23 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             ) : null}
 
             <ProductColorPicker product={product} color={color} onChange={setColor} />
+            {sleeves.length > 0 && <fieldset className="mt-3">
+              <legend className="text-xs font-bold text-ink">Jenis lengan</legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {sleeves.map(sleeve => <button key={sleeve} type="button" aria-pressed={selectedSleeve === sleeve}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold ${selectedSleeve === sleeve ? "border-ochre-600 bg-surface-muted" : "border-line bg-surface"}`}
+                  onClick={() => { setSelectedSleeve(sleeve); setSizes(emptySizeMatrix()); setError(null); }}>
+                  {sleeve.toLocaleLowerCase("id-ID").replace(/(^|\s)\S/g, letter => letter.toUpperCase())}
+                </button>)}
+              </div>
+            </fieldset>}
 
             {/* Size matrix */}
             <div className="mt-3">
               <SizeQuantityMatrix
                 productId={product.id}
                 color={color}
+                selectedSleeve={selectedSleeve || undefined}
                 value={sizes}
                 onChange={setSizes}
                 moq={product.moq}
@@ -778,6 +793,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                 embroideryMoq={embroideryMoq}
                 initialColor={color}
                 initialConfig={uniform3DConfig}
+                selectedSleeve={selectedSleeve || undefined}
                 onSave={(cfg) => {
                   if (editingLineId && !addProductToCart(cfg)) return;
                   setUniform3DConfig(cfg);

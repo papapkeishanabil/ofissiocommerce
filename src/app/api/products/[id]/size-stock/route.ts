@@ -12,14 +12,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     rateLimitOrThrow({ key: createRateLimitKey(request, "products.size-stock"), limit: 60, windowMs: 60_000 });
     const { id } = await context.params;
     const color = new URL(request.url).searchParams.get("color")?.trim() || "";
+    const sleeve = new URL(request.url).searchParams.get("sleeve")?.trim() || undefined;
+    if (sleeve && sleeve.length > 100) throw createApiError("VALIDATION_ERROR", "Jenis lengan tidak valid.", 400);
     if (!/^(wc-)?\d{1,10}$/.test(id) || !color || color.length > 100) throw createApiError("VALIDATION_ERROR", "Produk atau warna tidak valid.", 400);
-    const key = `${id.replace(/^wc-/, "")}:${color.toLowerCase()}`;
+    const key = JSON.stringify([id.replace(/^wc-/, ""), color.toLowerCase(), sleeve]);
     let entry = pending.get(key);
     if (!entry || entry.expires <= Date.now()) {
       const product = await woocommerceProductRepository.getProductById(id);
       if (!product || product.status !== "published") throw createApiError("NOT_FOUND", "Produk tidak ditemukan.", 404);
       if (pending.size >= 200) pending.clear();
-      const value = getProductSizeStock(product, color);
+      const value = getProductSizeStock(product, color, undefined, sleeve);
       entry = { expires: Date.now() + 15_000, value };
       pending.set(key, entry);
       value.catch(() => { if (pending.get(key)?.value === value) pending.delete(key); });

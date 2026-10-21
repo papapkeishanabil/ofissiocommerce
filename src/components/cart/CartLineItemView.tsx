@@ -95,6 +95,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
               {productColorDisplayLabel(item.color)}
             </span>
             <Badge tone="neutral">{item.totalQty} pcs</Badge>
+            {item.selectedSleeve && <Badge tone="neutral">{item.selectedSleeve}</Badge>}
             {item.customization && (
               <Badge tone="amber" className="max-w-[200px] truncate">
                 {item.customization}

@@ -3,6 +3,7 @@ import {
   slugifyTaxonomy,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import { COLOR_SIZE_ENABLED_META, readColorSizeVariants } from "./color-size-variants";
+import { PURCHASE_VARIANTS_META, type PurchaseVariant } from "./purchase-variants";
 import { SIZES } from "@/types/industry";
 import { sortProductSizes } from "@/lib/product-size-order";
 import { validateProduct3DModel } from "./product.validation";
@@ -173,6 +174,7 @@ export function mapWooCommerceProductToOfissioProduct(
     id: `wc-${raw.id}`,
     source: "woocommerce",
     source_id: String(raw.id),
+    purchaseVariants: (() => { const value = getMetaValue(meta, PURCHASE_VARIANTS_META); return Array.isArray(value) ? value as PurchaseVariant[] : []; })(),
     colorVariants: readColorVariants(raw),
     colorSizeVariantsEnabled: getMetaBoolean(meta, COLOR_SIZE_ENABLED_META, false),
     colorSizeVariants: readColorSizeVariants(raw),

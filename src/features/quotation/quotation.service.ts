@@ -77,6 +77,7 @@ export async function createQuotationRequest(
     items: input.items.map((item) => ({
       productId: item.productId,
       selectedColor: item.selectedColor,
+      selectedSleeve: item.selectedSleeve,
       sizeMatrix: item.sizeMatrix as never,
       customization: item.customization,
       embroideryPlacements: item.embroideryPlacements as never,

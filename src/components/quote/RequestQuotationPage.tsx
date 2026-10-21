@@ -149,6 +149,7 @@ export function RequestQuotationPage() {
             productId: item.productId,
             selectedColor: item.color,
             sizeMatrix: item.sizes,
+            selectedSleeve: item.selectedSleeve,
             customization: item.customization,
             embroideryPlacements: item.embroideryPlacements ?? [],
           })),

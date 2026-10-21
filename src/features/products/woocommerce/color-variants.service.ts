@@ -1,4 +1,5 @@
 import "server-only";
+import { mapPurchaseVariants, PURCHASE_VARIANTS_META } from "../purchase-variants";
 import { COLOR_SIZE_ENABLED_META, COLOR_SIZE_ROWS_META, mapNativeColorSizeVariants } from "../color-size-variants";
 
 import { createApiError } from "@/lib/security/safe-error-response";
@@ -28,7 +29,11 @@ export async function listColorVariationRows(productId: number, source: VariantS
 
 /** Checkout and detail pages read native variations, including current stock. */
 export async function withLiveColorVariants(product: WooCommerceProduct, source: VariantSource = woocommerceClient) {
-  if (!getMetaBoolean(product.meta_data ?? [], COLOR_VARIANTS_ENABLED_META, false)) return product;
+  if (!getMetaBoolean(product.meta_data ?? [], COLOR_VARIANTS_ENABLED_META, false)) {
+    if (product.type !== "variable" || !getMetaBoolean(product.meta_data ?? [], "ofissio_purchase_variants_enabled", false)) return product;
+    const rows = await listColorVariationRows(product.id, source);
+    return { ...product, meta_data: [...(product.meta_data ?? []).filter(row => row.key !== PURCHASE_VARIANTS_META), { key: PURCHASE_VARIANTS_META, value: mapPurchaseVariants(rows) }] };
+  }
   const rows = await listColorVariationRows(product.id, source);
   const order = readColorVariants(product).map((variant) => variant.id);
   const variants = mapNativeColorVariants(product, rows).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));

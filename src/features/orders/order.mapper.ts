@@ -58,6 +58,7 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
           ["ofissio_source_id", item.sourceId],
           ["product_slug", item.productSlug],
           ["selected_color", item.selectedColor],
+          ["selected_sleeve", item.selectedSleeve],
           ["size_matrix", JSON.stringify(item.sizeMatrix)],
           ["embroidery_placements", JSON.stringify(item.embroideryPlacements)],
           [

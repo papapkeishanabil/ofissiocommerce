@@ -37,6 +37,7 @@ export interface CartLineItem {
   model3dUrl?: string;
   canAddEmbroidery?: boolean;
   color: string;
+  selectedSleeve?: string;
   /** quantity per size */
   sizes: SizeMatrix;
   totalQty: number;

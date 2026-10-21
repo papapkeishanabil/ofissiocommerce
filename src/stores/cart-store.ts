@@ -23,6 +23,7 @@ import { calculateEmbroideryPricing, normalizeEmbroideryZoneId, type EmbroideryP
 
 import { validateNameAllocations } from "@/lib/embroidery-names";
 import { colorVariantIssue, colorVariantSnapshot } from "@/features/products/color-variants";
+import { selectPurchaseVariants } from "@/features/products/purchase-variants";
 
 interface CartState {
   orderNote: string;
@@ -36,6 +37,7 @@ interface CartState {
     replaceLineId?: string;
     product: OfissioProduct;
     color: string;
+    selectedSleeve?: string;
     sizes: SizeMatrix;
     customization?: string | null;
     uniform3DConfig?: import("@/types/uniform-3d").Uniform3DConfig | null;
@@ -62,7 +64,9 @@ export const useCartStore = create<CartState>()(
       hydrated: false,
       setHydrated: () => set({ hydrated: true }),
 
-      add: ({ replaceLineId, product, color, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing, moqSettings }) => {
+      add: ({ replaceLineId, product, color, selectedSleeve, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing, moqSettings }) => {
+        try { selectPurchaseVariants(product, sizes, selectedSleeve); }
+        catch (error) { return { ok: false, reason: error instanceof Error ? error.message : "Pilih varian produk." }; }
         const validation = validateProductForCart(product);
         if (!validation.ok) return { ok: false, reason: validation.reason };
         const variantIssue = colorVariantIssue(product, color);
@@ -86,7 +90,7 @@ export const useCartStore = create<CartState>()(
         if (nameIssue) return { ok: false, reason: nameIssue };
         const replacing = replaceLineId ? get().items.find(item => item.id === replaceLineId && item.productId === product.id) : undefined;
         if (replaceLineId && !replacing) return { ok: false, reason: "Item keranjang tidak ditemukan. Buka ulang keranjang." };
-        const baseId = lineItemId(product.id, color);
+        const baseId = lineItemId(product.id, color) + (selectedSleeve ? `__${encodeURIComponent(selectedSleeve)}` : "");
         const customized = !!uniform3DConfig?.placements.length;
         const id = replacing?.id || (customized ? `${baseId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}` : baseId);
         const calculatedPrice = calculateQuantityTierPrice({
@@ -141,6 +145,7 @@ export const useCartStore = create<CartState>()(
             ...cur,
             ...variantSnapshot,
             color,
+            selectedSleeve,
             fulfillmentType: product.fulfillment,
             processRoute: product.processRoute,
             leadTimeDays: product.leadTimeDays,
@@ -182,6 +187,7 @@ export const useCartStore = create<CartState>()(
           ...mapOfissioProductToCartItem(product),
           ...variantSnapshot,
           color,
+          selectedSleeve,
           sizes,
           totalQty,
           unitPrice: calculatedPrice.unitPrice,

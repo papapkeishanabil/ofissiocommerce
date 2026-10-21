@@ -24,6 +24,7 @@ export const syncCheckoutCartSchema = z.object({
       z.object({
         productId: z.string().trim().min(1).max(100),
         selectedColor: z.string().trim().min(1).max(120),
+        selectedSleeve: z.string().trim().min(1).max(100).optional(),
         sizeMatrix: checkoutSizeMatrixSchema,
         customization: z.string().trim().max(500).nullable().default(null),
         embroideryPlacements: z.array(logoPlacementSchema).max(6).default([]),

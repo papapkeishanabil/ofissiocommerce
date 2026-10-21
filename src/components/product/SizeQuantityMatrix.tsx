@@ -24,6 +24,7 @@ interface SizeQuantityMatrixProps {
   hasEmbroidery?: boolean;
   productId?: string;
   color?: string;
+  selectedSleeve?: string;
 }
 
 export function SizeQuantityMatrix({
@@ -36,15 +37,16 @@ export function SizeQuantityMatrix({
   hasEmbroidery,
   productId,
   color,
+  selectedSleeve,
 }: SizeQuantityMatrixProps) {
-  const stockKey = productId && color ? `${productId}:${color}` : "";
+  const stockKey = productId && color ? JSON.stringify([productId, color, selectedSleeve]) : "";
   const [stockState, setStockState] = useState<{ key: string; stock: ProductSizeStock | null }>({ key: "", stock: null });
   useEffect(() => {
     if (!productId || !color) return;
     const controller = new AbortController();
     let disposed = false;
     const timeout = window.setTimeout(() => controller.abort(), 20_000);
-    fetch(`/api/products/${encodeURIComponent(productId)}/size-stock?color=${encodeURIComponent(color)}`, { signal: controller.signal, cache: "no-store" })
+    fetch(`/api/products/${encodeURIComponent(productId)}/size-stock?color=${encodeURIComponent(color)}${selectedSleeve ? `&sleeve=${encodeURIComponent(selectedSleeve)}` : ""}`, { signal: controller.signal, cache: "no-store" })
       .then(async response => {
         if (!response.ok) throw new Error("Stock unavailable");
         const result = await response.json() as { ok: boolean; stock: ProductSizeStock };
@@ -54,7 +56,7 @@ export function SizeQuantityMatrix({
       .catch(() => { if (!disposed) setStockState({ key: stockKey, stock: null }); })
       .finally(() => window.clearTimeout(timeout));
     return () => { disposed = true; controller.abort(); window.clearTimeout(timeout); };
-  }, [productId, color, stockKey]);
+  }, [productId, color, selectedSleeve, stockKey]);
   const stockLoading = !!stockKey && stockState.key !== stockKey;
   const currentStock = stockState.key === stockKey ? stockState.stock : null;
   const total = sumSizeMatrix(value);
@@ -85,7 +87,7 @@ export function SizeQuantityMatrix({
           const sizeLabel = s === "2XL" ? "XXL" : s;
           const chart = sizeChart?.find((c) => c.size === s);
           const qty = value[s] ?? 0;
-          const stock = currentStock?.rows.find(row => row.size.toUpperCase() === s);
+          const stock = currentStock?.rows.find(row => row.size.toUpperCase().replace(/^XXL$/, "2XL").replace(/^XXXL$/, "3XL") === s);
           const available = stock?.availableQty;
           return (
             <li key={s} className="min-w-0 rounded-lg border border-line bg-surface p-2">

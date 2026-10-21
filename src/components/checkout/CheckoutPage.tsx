@@ -237,6 +237,7 @@ export function CheckoutPage() {
         items: items.map((item) => ({
           productId: item.productId,
           selectedColor: item.color,
+          selectedSleeve: item.selectedSleeve,
           sizeMatrix: item.sizes,
           customization: item.customization,
           embroideryPlacements: item.embroideryPlacements ?? [],
@@ -559,7 +560,7 @@ function SummaryItems({ items }: { items: CartLineItem[] }) {
             <div className="min-w-0 flex-1 text-sm">
               <p className="font-semibold">{item.productName}</p>
               <EmbroiderySummary placements={item.embroideryPlacements} sizes={item.sizes} />
-              <p className="mt-1 text-xs text-ink-muted">{item.color}, {Object.entries(item.sizes).filter(([,q])=>q>0).map(([s,q])=>`${s} ${q} pcs`).join(", ")}</p>
+              <p className="mt-1 text-xs text-ink-muted">{item.color}{item.selectedSleeve ? `, ${item.selectedSleeve}` : ""}, {Object.entries(item.sizes).filter(([,q])=>q>0).map(([s,q])=>`${s} ${q} pcs`).join(", ")}</p>
               <p className="mt-1 text-xs font-semibold text-ink-muted">{processingInfo.label}: {processingInfo.value}</p>
             </div>
             <div className="text-right text-sm"><p className="font-semibold tabular-nums">{formatIDR(item.finalEstimatedTotal ?? item.estimatedPrice)}</p><p className="mt-1 text-xs text-ink-muted">{item.totalQty} pcs</p></div>

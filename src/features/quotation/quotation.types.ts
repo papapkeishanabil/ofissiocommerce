@@ -432,6 +432,7 @@ export interface CreateQuotationRequestInput {
   items: Array<{
     productId: string;
     selectedColor: string;
+    selectedSleeve?: string;
     sizeMatrix: Record<string, number>;
     customization: string | null;
     embroideryPlacements: unknown[];
