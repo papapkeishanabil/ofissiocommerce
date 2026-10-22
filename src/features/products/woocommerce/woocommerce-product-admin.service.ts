@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { PRODUCT_KIND_META, MODEL_CODE_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, readProductVariants, mapProductVariants } from "../product-variants";
+import { PRODUCT_KIND_META, MODEL_CODE_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, readProductVariants, mapLegacyProductVariants } from "../product-variants";
 import { ensureSizeVariants } from "./size-variants.service";
 import { stockSize } from "../color-size-variants";
 import { PURCHASE_VARIANTS_META, type PurchaseVariant } from "../purchase-variants";
@@ -105,9 +105,12 @@ export async function getAdminWooCommerceProduct(
   const storedOptions = readVariantOptions(getMetaValue(meta, VARIANT_OPTIONS_META));
   const legacyOptions = (product.attributes ?? []).filter(a => a.variation && a.options?.length).map(a => ({ name: a.name, values: a.options! }));
   const variantOptions = storedOptions.length ? storedOptions : legacyOptions;
-  const productVariants = getMetaString(meta, PRODUCT_KIND_META) === "variable"
+  const storedVariants = getMetaString(meta, PRODUCT_KIND_META) === "variable"
     ? readProductVariants(getMetaValue(meta, GENERIC_VARIANTS_META))
-    : product.type === "variable" && legacyOptions.length ? mapProductVariants(await listColorVariationRows(product.id), legacyOptions) : [];
+    : [];
+  const productVariants = storedVariants.length || storedOptions.length
+    ? storedVariants
+    : product.type === "variable" && legacyOptions.length ? mapLegacyProductVariants(await listColorVariationRows(product.id), legacyOptions) : [];
   return {
     ...summary,
     productKind: getMetaString(meta, PRODUCT_KIND_META) as "simple" | "variable" || undefined,
