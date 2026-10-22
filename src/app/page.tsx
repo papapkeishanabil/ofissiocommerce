@@ -15,11 +15,11 @@ export const metadata: Metadata = {
     description:
       "Platform conversational commerce B2B untuk pengadaan seragam kerja perusahaan. Dibantu Ofistant, asisten pengadaan digital.",
     images: [{
-      url: "https://ofissio.com/brand/ofissio-share-navy-v1.png",
+      url: "https://ofissio.com/brand/ofissio-share-navy-v2.png",
       width: 512,
       height: 512,
       type: "image/png",
-      alt: "Logo Ofissio silver dengan latar navy",
+      alt: "Logo Ofissio putih solid dengan latar navy",
     }],
   },
 };

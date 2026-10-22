@@ -20,10 +20,10 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
-      { url: "/brand/favicon-navy-32-v3.png", type: "image/png", sizes: "32x32" },
-      { url: "/brand/app-icon-192-v1.png", type: "image/png", sizes: "192x192" },
+      { url: "/brand/favicon-navy-32-v4.png", type: "image/png", sizes: "32x32" },
+      { url: "/brand/favicon-navy-192-v4.png", type: "image/png", sizes: "192x192" },
     ],
-    shortcut: "/brand/favicon-navy-32-v3.png",
+    shortcut: "/brand/favicon-navy-32-v4.png",
     apple: [{ url: "/brand/app-icon-192-v1.png", sizes: "192x192", type: "image/png" }],
   },
   authors: [{ name: "Ofissio" }],
