@@ -60,6 +60,8 @@ with sync_playwright() as p:
     context.route('**/_next/static/**/*.js*', delay_js)
     page.goto(BASE + '/login?next=%2Fdashboard', wait_until='commit')
     boot.wait_for(state='visible')
+    assert boot.locator('[class*="loading"], [class*="orbit"], [class*="wordmark"]').count() == 0, 'Only the animated symbol should be shown'
+    assert page.locator('[class*="symbol"]').evaluate('(el) => getComputedStyle(el, "::after").animationName') != 'none'
     page.screenshot(path=str(OUT / 'mobile-boot.png'))
     boot.wait_for(state='hidden', timeout=15000)
     page.wait_for_load_state('networkidle')
@@ -91,7 +93,7 @@ with sync_playwright() as p:
     page.goto(BASE + '/login?deep=preserved', wait_until='domcontentloaded')
     boot.wait_for(state='visible')
     assert page.locator('[class*="symbol"]').evaluate('(el) => getComputedStyle(el).animationName') == 'none'
-    assert page.locator('[class*="orbit"]').evaluate('(el) => getComputedStyle(el).display') == 'none'
+    assert page.locator('[class*="symbol"]').evaluate('(el) => getComputedStyle(el, "::after").display') == 'none'
     page.screenshot(path=str(OUT / 'mobile-reduced-motion.png'))
     boot.wait_for(state='hidden', timeout=7500)
     assert page.url.endswith('/login?deep=preserved')
@@ -109,11 +111,13 @@ with sync_playwright() as p:
         page.screenshot(path=str(OUT / f'{name}-boot.png'))
 
     # Reference document is visual evidence, never an application route.
-    reference = context.new_page()
-    reference.goto((ROOT / 'Ofissio-Boot-Preview.html').as_uri())
-    reference.get_by_role('button').click()
-    reference.wait_for_timeout(500)
-    reference.screenshot(path=str(OUT / 'reference.png'))
+    reference_file = ROOT / 'Ofissio-Boot-Preview.html'
+    if reference_file.is_file():
+        reference = context.new_page()
+        reference.goto(reference_file.as_uri())
+        reference.get_by_role('button').click()
+        reference.wait_for_timeout(500)
+        reference.screenshot(path=str(OUT / 'reference.png'))
     result = {'base_url': BASE, 'manifest': manifest_url, 'standalone_simulation': 'CDP' if native_emulation else 'CSS media-condition substitution', 'checks': ['regular browser excluded', 'manifest and icon responses', 'SSR overlay', 'shell-ready dismissal', 'deep-link preserved', 'internal navigation no replay', 'resume no replay', 'reduced motion', 'hydration-failure safety timeout', '280px and desktop fit'], 'page_errors': errors, 'normal_console_errors': normal_console_errors}
     (OUT / 'results.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
     print(json.dumps(result, indent=2))

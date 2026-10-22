@@ -1,5 +1,22 @@
 # Layar pembuka Ofissio
 
+## Penyederhanaan berdasarkan video Android 22 Oktober 2026
+
+Video pengguna berdurasi 5,66 detik memperlihatkan ikon splash Android pada
+sekitar detik 2, kemudian splash web dengan simbol lebih kecil, wordmark,
+orbit dan bar loading pada sekitar detik 3. Perubahan terbaru menghapus
+wordmark, orbit dan bar loading dari komponen boot. Hanya satu simbol tersisa,
+menggunakan PNG yang sama dengan ikon Android, di tengah bidang 192 CSS px
+(simbol sekitar 142px), dengan kilau 700ms tanpa memutar atau mengubah bentuk
+logo. Warna dan skala kini lebih dekat ke splash native pada video. Ukuran
+native yang tepat tetap ditentukan Android/browser dan dapat berbeda antar HP.
+
+Kesiapan shell, exit singkat, larangan replay pada navigasi, reduced motion,
+serta batas keselamatan 6 detik dipertahankan. Tidak ditambahkan minimum waktu
+tunggu. Tahap native masih milik OS; PWA tidak dapat mengganti animasinya
+melalui manifest. Bagian di bawah mencatat implementasi dan verifikasi awal
+sebelum penyederhanaan ini.
+
 Implementasi lokal, belum dideploy. Referensi visual: `Ofissio-Boot-Preview.html`
 dan `E:/PROJECT AI/Video/Ofissio-Boot-Preview/CATATAN-PENERAPAN.txt`.
 

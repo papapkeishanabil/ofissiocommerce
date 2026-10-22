@@ -34,13 +34,8 @@ export function StandaloneBoot() {
 
   return (
     <div ref={overlay} className={styles.boot} aria-hidden="true" inert>
-      <div className={styles.center}>
-        <div className={styles.emblem}>
-          <div className={styles.orbit} />
-          <div className={styles.symbol} />
-        </div>
-        <div className={styles.wordmark} />
-        <div className={styles.loading} />
+      <div className={styles.emblem}>
+        <div className={styles.symbol} />
       </div>
     </div>
   );
