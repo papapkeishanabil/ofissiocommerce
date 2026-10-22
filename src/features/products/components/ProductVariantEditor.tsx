@@ -64,7 +64,7 @@ export function ProductVariantEditor({ options, onOptionsChange, variants, onCha
         <div className="flex items-center justify-between gap-3"><h4 className="text-sm font-bold text-ink">{Object.values(row.options).join(" / ")}</h4><button type="button" className="min-h-11 min-w-11 rounded-lg text-red-700 hover:bg-red-50" aria-label={`Hapus kombinasi ${Object.values(row.options).join(" / ")}`} onClick={() => { if (row.id && !window.confirm("Varian ini akan dinonaktifkan saat produk disimpan. Lanjutkan?")) return; onChange(variants.filter((_, i) => i !== index)); if (row.sku === defaultSku) onDefaultChange(""); }}><Trash2 size={16} className="mx-auto" aria-hidden="true" /></button></div>
         <div className="grid gap-3 md:grid-cols-3">
           <label className="text-xs font-semibold text-ink">SKU stok<input className={`${INPUT} mt-2`} value={row.sku} required maxLength={100} pattern="[A-Za-z0-9._\-]+" autoComplete="off" onChange={e => patch(index, { sku: e.target.value })} /></label>
-          <label className="text-xs font-semibold text-ink">Foto<select className={`${INPUT} mt-2`} value={row.imageSrc} onChange={e => patch(index, { imageSrc: e.target.value })}><option value="">Gunakan foto utama</option>{images.map((image, i) => <option key={image.src} value={image.src}>Foto {i + 1} — {image.name || "Foto produk"}</option>)}</select></label>
+          <VariantPhotoPicker label={`Foto ${Object.values(row.options).join(" / ")}`} value={row.imageSrc} images={images} onChange={imageSrc => patch(index, { imageSrc })} />
           <label className="text-xs font-semibold text-ink">Harga reguler (Rp)<input className={`${INPUT} mt-2`} type="number" required min={1} max={10000000000} value={row.regularPrice} onChange={e => patch(index, { regularPrice: Number(e.target.value) })} /></label>
         </div>
       </div>)}</div>
@@ -100,12 +100,40 @@ function SizeGroupEditor({ group, sizeName, modelCode, images, regularPrice, onA
     <h4 className="text-sm font-bold text-ink">{group.label} <span className="font-normal text-ink-muted">· {group.rows.length} ukuran</span></h4>
     <div className="grid gap-3 md:grid-cols-3">
       <label className="text-xs font-semibold text-ink">SKU varian — {group.label}<input className={`${INPUT} mt-2`} value={prefix} placeholder="KK-006LPD" maxLength={90} autoComplete="off" onChange={event => { setPrefix(event.target.value); setMessage(null); }} /><span className="mt-1 block font-normal leading-5 text-ink-muted">Tanpa akhiran ukuran dan tanpa spasi.</span></label>
-      <label className="text-xs font-semibold text-ink">Foto semua ukuran — {group.label}<select className={`${INPUT} mt-2`} value={photo} onChange={event => setPhoto(event.target.value)}><option value="__keep__">Pertahankan foto per ukuran</option><option value="">Gunakan foto utama</option>{images.map((image, index) => <option key={image.src} value={image.src}>Foto {index + 1} — {image.name || "Foto produk"}</option>)}</select></label>
+      <VariantPhotoPicker label={`Foto semua ukuran — ${group.label}`} value={photo} images={images} allowKeep onChange={setPhoto} />
       <label className="text-xs font-semibold text-ink">Harga semua ukuran (Rp) — {group.label}<input className={`${INPUT} mt-2`} type="number" min={1} max={10000000000} value={price} placeholder="Pertahankan harga per ukuran" onChange={event => setPrice(event.target.value)} /></label>
     </div>
     {preview && <p className="break-words text-xs leading-5 text-ink-muted">Contoh hasil: {preview}{group.rows.length > 3 ? ", …" : ""}</p>}
     <label className="flex min-h-11 items-center gap-3 text-xs text-ink"><input type="checkbox" className="h-5 w-5 accent-[var(--color-brand-700)]" checked={replaceSkus} onChange={event => setReplaceSkus(event.target.checked)} />Ganti juga SKU yang sudah terisi pada {group.label}</label>
     <button type="button" className="min-h-11 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800" onClick={apply}>Terapkan ke semua ukuran — {group.label}</button>
     {message && <p role={message.error ? "alert" : "status"} className={`text-xs leading-5 ${message.error ? "text-red-700" : "text-ink"}`}>{message.text}</p>}
+  </div>;
+}
+
+function VariantPhotoPicker({ label, value, images, allowKeep, onChange }: {
+  label: string; value: string; images: AdminProductImage[]; allowKeep?: boolean; onChange: (src: string) => void;
+}) {
+  const selectedSrc = value === "__keep__" ? "" : value || images[0]?.src;
+  return <div className="min-w-0 space-y-2">
+    <label className="block text-xs font-semibold text-ink">{label}
+      <select className={`${INPUT} mt-2`} value={value} onChange={event => onChange(event.target.value)}>
+        {allowKeep && <option value="__keep__">Pertahankan foto per ukuran</option>}
+        <option value="">Gunakan foto utama</option>
+        {value && value !== "__keep__" && !images.some(image => image.src === value) && <option value={value}>Foto di luar galeri</option>}
+        {images.map((image, index) => <option key={image.src} value={image.src}>Foto {index + 1} — {image.name || "Foto produk"}</option>)}
+      </select>
+    </label>
+    {selectedSrc && <div className="flex items-center gap-3">
+      {/* eslint-disable-next-line @next/next/no-img-element -- Admin previews include uploaded blob URLs and external gallery images. */}
+      <img src={selectedSrc} alt={`Pratinjau ${label}`} width={80} height={80} className="h-20 w-20 rounded-lg bg-slate-50 object-contain" loading="lazy" decoding="async" />
+      <p className="text-xs leading-5 text-ink-muted">{value ? "Foto yang dipilih" : "Menggunakan foto utama"}</p>
+    </div>}
+    {images.length ? <div role="group" aria-label={`Pilihan ${label}`} className="flex max-h-60 flex-wrap gap-2 overflow-y-auto p-1">
+      {images.map((image, index) => <button key={image.src} type="button" aria-label={`Pilih foto ${index + 1} untuk ${label}`} aria-pressed={value === image.src} title={image.name || `Foto ${index + 1}`} onClick={() => onChange(image.src)} className={`min-h-11 w-16 rounded-lg border-2 p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${value === image.src ? "border-brand-700 bg-blue-50" : "border-line bg-white hover:border-brand-700"}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- Gallery thumbnails must support local upload previews. */}
+        <img src={image.src} alt="" width={56} height={56} loading="lazy" decoding="async" className="h-14 w-full object-contain" />
+        <span className="block text-xs text-ink">Foto {index + 1}</span>
+      </button>)}
+    </div> : <p className="text-xs text-ink-muted">Tambahkan foto di bagian Foto Produk untuk memilih foto varian.</p>}
   </div>;
 }
