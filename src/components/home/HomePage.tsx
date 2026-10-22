@@ -143,7 +143,7 @@ export async function HomePage() {
       <ReadyStockOrderSection data={content.cara_order} sectionNumber={sectionNumber(5)} />
 
       {/* 06 — executive corporate case study */}
-      <section id="korporasi" className="scroll-mt-24 overflow-hidden border-t border-ochre-400/35 bg-[#06152e] text-white">
+      <section id="korporasi" className="scroll-mt-24 overflow-hidden border-t border-ochre-400/35 bg-gradient-to-br from-brand-700 to-brand-900 text-white">
         <div className="mx-auto grid max-w-[1600px] gap-8 px-6 py-14 sm:py-16 lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)] lg:items-end lg:gap-16 lg:px-8 lg:py-20">
           <div className="max-w-5xl">
             <HomeSectionMarker number={sectionNumber(6)} label="Solusi Korporasi" tone="dark" />
