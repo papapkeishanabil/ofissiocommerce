@@ -12,4 +12,9 @@
   .controls { opacity: 0; }
   .preview:hover .controls, .preview:focus-within .controls { opacity: 1; }
 }
+@media (hover: none), (pointer: coarse) {
+  .preview { box-sizing:content-box; padding-bottom:44px; }
+  .preview .link { bottom:44px; }
+  .preview .controls { bottom:0; height:44px; background:transparent; border-radius:0; }
+}
 @media (prefers-reduced-motion: reduce) { .preview .primary, .preview .secondary { transition: none; } }
