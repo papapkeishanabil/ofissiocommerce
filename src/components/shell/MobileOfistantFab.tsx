@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 
 import { OfistantPanel } from "./OfistantPanel";
 import { OfistantMark } from "@/components/ofistant/OfistantMark";
-import { X } from "lucide-react";
 
 export function MobileOfistantFab() {
   const [open, setOpen] = useState(false);
@@ -57,25 +56,13 @@ export function MobileOfistantFab() {
         >
           <button
             type="button"
-            aria-label="Tutup Ofistant"
+            aria-label="Tutup latar Ofistant"
             onClick={() => setOpen(false)}
             className="absolute inset-0 bg-ink/50 backdrop-blur-sm"
           />
 
-          <div className="relative max-h-[85dvh] overflow-hidden rounded-t-2xl bg-surface shadow-xl">
-            <div className="flex justify-end pt-3 pr-3">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Tutup"
-                className="grid h-9 w-9 place-items-center rounded-lg text-ink-muted hover:bg-slate-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="h-[80dvh]">
-              <OfistantPanel />
-            </div>
+          <div className="relative h-[85dvh] overflow-hidden rounded-t-2xl bg-white shadow-xl">
+            <OfistantPanel onClose={() => setOpen(false)} />
           </div>
         </div>
       )}

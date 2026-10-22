@@ -2,6 +2,8 @@
 // Suggestion chips that look like AI-suggested next actions, not generic
 // buttons. Subtle fill + arrow affordance on hover.
 
+import styles from "./OfistantChat.module.css";
+
 interface QuickRepliesProps {
   options: string[];
   onPick: (text: string) => void;
@@ -11,16 +13,15 @@ interface QuickRepliesProps {
 export function QuickReplies({ options, onPick, disabled }: QuickRepliesProps) {
   if (options.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className={styles.quickReplies}>
       {options.map((opt) => (
         <button
           key={opt}
           type="button"
           disabled={disabled}
           onClick={() => onPick(opt)}
-          className="group inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/80 px-3.5 py-2 text-xs font-semibold text-brand-700 shadow-soft-xs backdrop-blur transition-all hover:border-brand-400 hover:bg-white hover:shadow-soft-sm disabled:opacity-50"
+          className={styles.quickReply}
         >
-          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ochre-500 transition-transform group-hover:scale-125" />
           {opt}
         </button>
       ))}

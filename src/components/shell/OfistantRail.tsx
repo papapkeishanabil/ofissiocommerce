@@ -23,9 +23,9 @@ export function OfistantRail() {
       className="group relative z-40 hidden h-dvh shrink-0 xl:block"
     >
       {/* Push drawer: width transitions 0 ↔ 400 */}
-      <div className={cn("h-dvh overflow-hidden transition-[width] duration-200 ease-out", open ? "w-[clamp(320px,21vw,400px)]" : "w-0")}>
+      <div inert={!open} aria-hidden={!open} className={cn("h-dvh overflow-hidden transition-[width] duration-200 ease-out", open ? "w-[clamp(320px,21vw,400px)]" : "w-0")}>
         <div className="h-full w-[clamp(320px,21vw,400px)]">
-          <OfistantPanel />
+          <OfistantPanel onClose={() => useChromeStore.setState({ railPinned: false, railHovered: false })} />
         </div>
       </div>
 

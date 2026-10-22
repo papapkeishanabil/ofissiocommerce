@@ -3,13 +3,14 @@
 import {
   forwardRef,
   useImperativeHandle,
+  useId,
   useRef,
   useState,
   type FormEvent,
 } from "react";
-import { ArrowUp } from "lucide-react";
+import { Send } from "lucide-react";
 
-import { OfistantMark } from "./OfistantMark";
+import styles from "./OfistantChat.module.css";
 
 /**
  * Imperative handle the parent uses to pre-fill the input from outside
@@ -29,6 +30,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   function ChatComposer({ disabled, onSubmit }, ref) {
     const [value, setValue] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
+    const inputId = useId();
 
     useImperativeHandle(
       ref,
@@ -55,41 +57,32 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     }
 
     return (
-      <div className="space-y-1.5">
         <form
           onSubmit={handle}
-          className="group relative flex items-center gap-2 rounded-2xl border border-line bg-cool-50 p-1.5 transition-all focus-within:border-brand-400 focus-within:bg-white focus-within:shadow-soft-md"
+          className={styles.composer}
         >
-          <span aria-hidden className="ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-xs">
-            <OfistantMark variant="rev" className="h-5 w-5" />
-          </span>
-
-          <label htmlFor="ofistant-input" className="sr-only">Ketik pesan ke Ofistant</label>
+          <label htmlFor={inputId} className="sr-only">Ketik pesan ke Ofistant</label>
           <input
-            id="ofistant-input"
+            id={inputId}
             ref={inputRef}
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Tanya apapun tentang seragam…"
+            placeholder="Tulis pertanyaan Anda…"
             disabled={disabled}
             maxLength={300}
-            className="min-w-0 flex-1 border-none bg-transparent px-1 py-2 text-[15px] text-ink outline-none placeholder:text-ink-subtle disabled:opacity-60"
+            className={styles.input}
           />
 
           <button
             type="submit"
             disabled={disabled || !value.trim()}
             aria-label="Kirim pesan"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-soft-xs transition-all hover:bg-brand-800 active:scale-95 disabled:bg-cool-200 disabled:text-ink-subtle disabled:shadow-none"
+            className={styles.send}
           >
-            <ArrowUp className="h-4 w-4" strokeWidth={2.2} />
+            <Send size={19} aria-hidden="true" />
           </button>
         </form>
-        <p className="px-2 text-[10px] text-ink-subtle">
-          Ofistant bisa menampilkan produk, membuka detail, menambah ke keranjang &amp; lainnya.
-        </p>
-      </div>
     );
   },
 );

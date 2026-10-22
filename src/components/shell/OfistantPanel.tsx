@@ -12,6 +12,7 @@ import { ChatComposer } from "@/components/ofistant/ChatComposer";
 import { ChatMessageView } from "@/components/ofistant/ChatMessageView";
 import { QuickReplies } from "@/components/ofistant/QuickReplies";
 import { TypingIndicator } from "@/components/ofistant/TypingIndicator";
+import styles from "@/components/ofistant/OfistantChat.module.css";
 import { ofistantFont } from "@/components/ofistant/ofistant-font";
 
 interface OfistantPanelProps { onClose?: () => void; }
@@ -57,85 +58,50 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const lastPendingMsgId = pendingAction?.messageId ?? null;
 
   return (
-    <div className={`relative flex h-full w-full flex-col overflow-hidden bg-cool-50 text-ink ${ofistantFont.className}`}>
-      {/* Header — blok navy yang kuat, identitas asisten */}
-      <header className="workspace-chrome-header relative flex shrink-0 items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-700 text-white shadow-soft-sm ring-1 ring-white/20">
-              <OfistantMark variant="rev" className="h-7 w-7" />
-            </span>
-            <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#071c3a] bg-emerald-500" />
-          </div>
+    <section aria-label="Asisten belanja Ofistant" className={`${styles.panel} ${ofistantFont.className}`}>
+      <header className={styles.header}>
+        <div className={styles.identity}>
+          <OfistantMark variant="rev" className={styles.headerLogo} />
           <div>
-            <p className="flex items-center gap-2 text-base font-extrabold leading-tight tracking-tight text-white">
-              Ofistant
-              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-ochre-200">AI</span>
-            </p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-brand-200">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Online, asisten pengadaan
-            </p>
+            <h2 className={styles.name}>Ofistant</h2>
+            <p className={styles.subtitle}>Asisten belanja AI</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button type="button" onClick={reset} disabled={!hydrated || messages.length <= 1} aria-label="Mulai percakapan baru" title="Mulai percakapan baru" className="grid h-9 w-9 place-items-center rounded-xl text-brand-100 transition-colors hover:bg-white/15 hover:text-white disabled:opacity-30">
-            <RotateCcw className="h-4 w-4" />
+        <div className={styles.headerActions}>
+          <button type="button" onClick={reset} disabled={!hydrated || messages.length <= 1} aria-label="Mulai percakapan baru" title="Mulai percakapan baru" className={styles.headerButton}>
+            <RotateCcw size={20} aria-hidden="true" />
           </button>
-          {onClose && (
-            <button type="button" onClick={onClose} aria-label="Tutup Ofistant" className="grid h-9 w-9 place-items-center rounded-xl text-brand-100 transition-colors hover:bg-white/15 hover:text-white lg:hidden">
-              <X className="h-5 w-5" />
-            </button>
-          )}
+          {onClose && <button type="button" onClick={onClose} aria-label="Tutup Ofistant" className={styles.headerButton}>
+            <X size={22} aria-hidden="true" />
+          </button>}
         </div>
       </header>
 
-      {/* Messages — conversation-first. The greeting lives in messages[0] as a
-          normal assistant bubble (no separate welcome card, no industry grid),
-          so the panel reads as a chat from the very first frame. The composer
-          below is the hero; the industry is inferred from whatever the user
-          types — the same code path the old picker chips took, minus the
-          directory wall that made this feel like anything but a chat. Contextual
-          quick-replies still surface after each assistant turn. */}
-      <div ref={scrollRef} className="relative flex-1 overflow-y-auto px-4 py-5" aria-live="polite">
-        {/* Wash warna lembut di belakang bubble glass */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-16 right-[-15%] h-64 w-64 rounded-full bg-brand-300/25 blur-3xl" />
-          <div className="absolute bottom-[-10%] left-[-20%] h-72 w-72 rounded-full bg-ochre-200/40 blur-3xl" />
-        </div>
-        <div className="relative space-y-5">
+      <div ref={scrollRef} className={styles.messages} role="log" aria-label="Percakapan Ofistant" aria-live="polite">
+        <div className={styles.conversation}>
           {messages.map((m) => (
             <ChatMessageView key={m.id} message={m} isPendingConfirm={!!pendingAction && lastPendingMsgId === m.id && !!m.requiresConfirm} onConfirm={handleConfirm} onCancel={handleCancel} busy={busy} />
           ))}
-          {typing && (
-            <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-700 text-white shadow-soft-sm">
-                <OfistantMark variant="rev" className="h-5 w-5" />
-              </span>
-              <div className="rounded-2xl rounded-tl-md border border-white/70 bg-white/80 px-4 py-3 shadow-soft-sm backdrop-blur">
-                <TypingIndicator />
-              </div>
-            </div>
-          )}
+          {typing && <div className={styles.message}>
+            <span className={styles.avatar} aria-hidden="true"><OfistantMark variant="rev" /></span>
+            <div className={styles.bubble}><TypingIndicator /></div>
+          </div>}
           {!typing && quickReplies.length > 0 && !pendingAction && (
             <QuickReplies options={quickReplies} onPick={handleQuickReply} />
           )}
         </div>
       </div>
 
-      {/* Composer + handoff */}
-      <div className="relative shrink-0 space-y-2 border-t border-line bg-white px-4 py-3.5">
+      <div className={styles.composerArea}>
         <ChatComposer onSubmit={handleSend} disabled={typing} />
-        <div className="flex items-center justify-between">
-          <button type="button" onClick={handleHumanHandoff} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-muted px-3 py-1.5 text-[11px] font-semibold text-ink-muted transition-all hover:border-brand-300 hover:text-brand-700">
-            <Headset className="h-3.5 w-3.5" /> Butuh bantuan tim Ofissio
+        <div className={styles.footer}>
+          <button type="button" onClick={handleHumanHandoff} disabled={typing} className={styles.handoff}>
+            <Headset size={15} aria-hidden="true" /> Hubungi tim Ofissio
           </button>
-          <span className="flex items-center gap-1 text-[10px] text-ink-subtle">
-            <OfistantMark variant="navy" className="h-4 w-4" /> Ofistant AI, B2B commerce
-          </span>
+          <span className={styles.signature}>Ofistant AI</span>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
