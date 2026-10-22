@@ -10,6 +10,7 @@ export interface VariantSizeGroup {
 export function variantStockSku(prefix: string, size: string) {
   const base = prefix.trim();
   if (!/^[A-Za-z0-9._-]+$/.test(base)) throw new Error("Isi SKU varian tanpa spasi, misalnya KK-006LPD.");
+  if (typeof size !== "string" || !size.trim()) throw new Error("Lengkapi pilihan Ukuran, lalu perbarui kombinasi varian.");
   const sku = `${base}-${size.trim()}`;
   if (sku.length > 100) throw new Error("SKU stok beserta ukuran maksimal 100 karakter.");
   return sku;
@@ -67,7 +68,12 @@ export function applyVariantSizeGroup(options: VariantOption[], variants: Produc
   const size = options.find(o => isSizeOption(o.name));
   if (!size) throw new Error("Tambahkan pilihan Ukuran terlebih dahulu.");
   const axes = options.filter(o => !isSizeOption(o.name));
-  const next = variants.map(row => {
+  const hasUnsizedRows = variants.some(row => !row.options[size.name]);
+  const complete = hasUnsizedRows ? generateVariantCombinations(options, variants, 0) : variants;
+  if (hasUnsizedRows && variants.some(row => row.id && !complete.some(nextRow => nextRow.id === row.id))) {
+    throw new Error("Klik Buat / perbarui kombinasi terlebih dahulu untuk mengubah varian tersimpan menjadi varian per ukuran. Stok lama tidak dibagi otomatis.");
+  }
+  const next = complete.map(row => {
     if (combinationKey(axes, row.options) !== groupKey) return row;
     const sku = row.sku && !input.replaceSkus ? row.sku : variantStockSku(input.skuPrefix, row.options[size.name]!);
     return { ...row, sku, ...(input.imageSrc === undefined ? {} : { imageSrc: input.imageSrc }), ...(input.regularPrice === undefined ? {} : { regularPrice: input.regularPrice }) };

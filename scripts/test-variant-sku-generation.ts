@@ -28,6 +28,11 @@ const screenshot = [
   { options: { Lengan: "Panjang" }, sku: "KK-006LPJ", imageSrc: "", regularPrice: 125000 },
 ];
 const expanded = generateVariantCombinations(options, screenshot, 0);
+const appliedBeforeGenerate = applyVariantSizeGroup(options, screenshot, variantSizeGroups(options, screenshot)[0]!.key, { skuPrefix: "KK-006LPD", regularPrice: 115000 });
+assert.equal(appliedBeforeGenerate.length, sizes.length * 2);
+assert.equal(appliedBeforeGenerate[0]?.sku, "KK-006LPD-XS");
+assert.equal(appliedBeforeGenerate[sizes.length]?.sku, "KK-006LPJ-XS");
+assert.throws(() => applyVariantSizeGroup(options, screenshot.map((row, i) => ({ ...row, id: i + 1 })), groups[0]!.key, { skuPrefix: "KK-006LPD" }), /perbarui kombinasi terlebih dahulu/);
 assert.equal(expanded[0]?.sku, "KK-006LPD-XS");
 assert.equal(expanded[sizes.length]?.sku, "KK-006LPJ-XS");
 assert.equal(expanded[sizes.length]?.regularPrice, 125000);
