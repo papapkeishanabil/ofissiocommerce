@@ -13,8 +13,11 @@
   .preview:hover .controls, .preview:focus-within .controls { opacity: 1; }
 }
 @media (hover: none), (pointer: coarse) {
-  .preview { box-sizing:content-box; padding-bottom:44px; }
-  .preview .link { bottom:44px; }
+  .preview { box-sizing:content-box; padding-bottom:28px; }
+  .preview .link { bottom:28px; }
   .preview .controls { bottom:0; height:44px; background:transparent; border-radius:0; }
+  .controls button:first-child > span { transform:translateX(12px); }
+  .controls button:last-child > span { transform:translateX(-12px); }
+  .dot, .activeDot { width:6px; height:6px; }
 }
 @media (prefers-reduced-motion: reduce) { .preview .primary, .preview .secondary { transition: none; } }

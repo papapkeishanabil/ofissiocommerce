@@ -28,16 +28,21 @@
 :global(.catalog-product-grid.is-list) .card .photo { width:240px; align-self:stretch; }
 @media (max-width:560px) {
   :global(.catalog-card-content).content { padding:10px; }
-  :global(.catalog-product-photo).photo { aspect-ratio:1.1; }
-  .photo > a > img { padding:30px 8px 6px; }
+  :global(.catalog-product-photo).photo { aspect-ratio:1; }
+  .photo > a > img { padding:24px 4px 0; }
   :global(.catalog-photo-badges).badges { top:7px; left:6px; right:6px; gap:3px; }
   .badges > span { min-height:23px; font-size:8px; padding:4px 5px; }
   .category { font-size:9px; }
   .content h2 { font-size:13px; min-height:35px; }
   .specifications { font-size:11px; }
-  .variants { font-size:11px; gap:8px; margin:12px 0; }
-  .variantRow { grid-template-columns:37px minmax(0,1fr); gap:5px; }
-  .sizes { gap:2px 6px; }
+  .variants { font-size:11px; gap:9px; margin:12px 0; }
+  .variantRow { grid-template-columns:minmax(0,1fr); gap:3px; }
+  .variantRow dt { font-size:10px; line-height:1.4; }
+  .colors { gap:6px; justify-content:space-between; }
+  .colors > span:last-child { font-size:10px; color:#526277; }
+  .swatches { gap:4px; align-items:center; }
+  .swatch { width:12px; height:12px; }
+  .sizes { gap:2px 7px; font-size:10px; line-height:1.6; }
   .price strong { font-size:18px; }
   .price > span,.minimum { font-size:10px; }
   .purchase { grid-template-columns:minmax(0,1fr); }
