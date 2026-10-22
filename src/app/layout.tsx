@@ -3,6 +3,7 @@
 import type { Metadata, Viewport } from "next";
 
 import { RouteAwareShell } from "@/components/shell/RouteAwareShell";
+import { StandaloneBoot } from "@/components/shell/StandaloneBoot";
 import "./globals.css";
 
 // RouteAwareShell loads the shared local Inter font for customer pages.
@@ -16,12 +17,14 @@ export const metadata: Metadata = {
   description:
     "Platform conversational commerce B2B untuk pengadaan seragam kerja perusahaan. Dibantu Ofistant, asisten pengadaan digital.",
   applicationName: "Ofissio",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: [
       { url: "/favicon-ofissio-32.png?v=2", type: "image/png", sizes: "32x32" },
       { url: "/favicon-ofissio.svg?v=2", type: "image/svg+xml", sizes: "any" },
     ],
     shortcut: "/favicon-ofissio-32.png?v=2",
+    apple: [{ url: "/brand/app-icon-192-v1.png", sizes: "192x192", type: "image/png" }],
   },
   authors: [{ name: "Ofissio" }],
   keywords: [
@@ -43,7 +46,7 @@ export const viewport: Viewport = {
   // near-black. The site ships a light-only palette (no dark styles exist).
   colorScheme: "only light",
   // Match the storefront header navy so the Android address bar blends in.
-  themeColor: "#071c3a",
+  themeColor: "#091629",
 };
 
 export default function RootLayout({
@@ -52,6 +55,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body>
+        <StandaloneBoot />
         <RouteAwareShell>{children}</RouteAwareShell>
       </body>
     </html>
