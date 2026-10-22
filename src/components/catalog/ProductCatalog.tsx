@@ -130,10 +130,6 @@ export function ProductCatalog({
       string,
       { slug: string; label: string; items: OfissioProduct[] }
     >();
-    for (const category of taxonomyCategories) {
-      if (category.slug === "uncategorized") continue;
-      groups.set(category.slug, { slug: category.slug, label: category.name, items: [] });
-    }
     for (const p of products) {
       const slugs =
         p.categorySlugs?.length && p.categorySlugs.some(Boolean)
