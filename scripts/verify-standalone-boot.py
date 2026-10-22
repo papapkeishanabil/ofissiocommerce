@@ -22,7 +22,7 @@ with sync_playwright() as p:
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.on("console", lambda message: console_errors.append(message.text) if message.type == 'error' else None)
     page.goto(BASE + "/login?next=%2Fdashboard", wait_until="networkidle")
-    boot = page.locator('[aria-hidden="true"][inert]').filter(has=page.locator('[class*="emblem"]'))
+    boot = page.locator('[data-ofissio-boot]')
     assert boot.count() == 1
     assert not boot.is_visible(), "Regular tab must not show boot"
     manifest_url = page.locator('link[rel="manifest"]').get_attribute('href')
@@ -50,19 +50,26 @@ with sync_playwright() as p:
             route.fulfill(status=200, content_type='text/css', body=css)
         context.route('**/*.css*', standalone_css)
 
-    # Delay hydration to inspect the SSR overlay and its bounded animation.
-    delayed = [False]
+    # Hold real application chunks beyond the former six-second timeout.
+    holding_scripts = [True]
+    pending_scripts = []
     def delay_js(route):
-        if not delayed[0]:
-            delayed[0] = True
-            page.wait_for_timeout(1600)
-        route.continue_()
+        if holding_scripts[0]: pending_scripts.append(route)
+        else: route.continue_()
     context.route('**/_next/static/**/*.js*', delay_js)
     page.goto(BASE + '/login?next=%2Fdashboard', wait_until='commit')
     boot.wait_for(state='visible')
-    assert boot.locator('[class*="loading"], [class*="orbit"], [class*="wordmark"]').count() == 0, 'Only the animated symbol should be shown'
+    assert boot.locator('[class*="loading"]').count() == 0, 'No separate loading indicator should be shown'
+    assert boot.locator('[class*="orbit"]').count() == 1
+    assert boot.locator('[class*="wordmark"]').count() == 1
     assert page.locator('[class*="symbol"]').evaluate('(el) => getComputedStyle(el, "::after").animationName') != 'none'
+    page.wait_for_timeout(6800)
+    assert boot.locator('[class*="visual"]').is_visible(), 'Logo must remain while real JS is still loading'
+    assert page.locator('[class*="symbol"]').evaluate('(el) => Number(getComputedStyle(el, "::after").animationIterationCount) > 1')
+    assert not boot.get_by_role('link', name='Coba lagi').is_visible()
     page.screenshot(path=str(OUT / 'mobile-boot.png'))
+    holding_scripts[0] = False
+    for route in pending_scripts: route.continue_()
     boot.wait_for(state='hidden', timeout=15000)
     page.wait_for_load_state('networkidle')
     assert 'next=%2Fdashboard' in page.url
@@ -71,13 +78,13 @@ with sync_playwright() as p:
     context.unroute('**/_next/static/**/*.js*', delay_js)
 
     # Actual internal Next Link navigation must preserve the root boot instance.
-    page.evaluate('window.__bootNode = document.querySelector("[inert][aria-hidden]")')
+    page.evaluate('window.__bootNode = document.querySelector("[data-ofissio-boot]")')
     links = page.locator('a[href="/forgot-password"]')
     assert links.count(), 'Internal navigation must actually be exercised'
     links.first.click()
     page.wait_for_url('**/forgot-password')
     page.wait_for_load_state('networkidle')
-    assert page.evaluate('window.__bootNode === document.querySelector("[inert][aria-hidden]")')
+    assert page.evaluate('window.__bootNode === document.querySelector("[data-ofissio-boot]")')
     assert not boot.is_visible()
     page.evaluate('window.dispatchEvent(new PageTransitionEvent("pageshow", {persisted:true})); document.dispatchEvent(new Event("visibilitychange"))')
     assert not boot.is_visible()
@@ -95,9 +102,16 @@ with sync_playwright() as p:
     assert page.locator('[class*="symbol"]').evaluate('(el) => getComputedStyle(el).animationName') == 'none'
     assert page.locator('[class*="symbol"]').evaluate('(el) => getComputedStyle(el, "::after").display') == 'none'
     page.screenshot(path=str(OUT / 'mobile-reduced-motion.png'))
-    boot.wait_for(state='hidden', timeout=7500)
+    boot.locator('[class*="visual"]').wait_for(state='hidden', timeout=33000)
+    retry = boot.get_by_role('link', name='Coba lagi')
+    retry.wait_for(state='visible')
+    assert retry.is_enabled()
     assert page.url.endswith('/login?deep=preserved')
     page.screenshot(path=str(OUT / 'hydration-failed-recovered.png'))
+    retry.click()
+    page.wait_for_load_state('domcontentloaded')
+    assert page.url.endswith('/login?deep=preserved')
+    assert boot.locator('[class*="visual"]').is_visible(), 'Retry should reload the original deep link'
 
     # Small viewport and desktop inspect the same SSR surface without hydration.
     for width, height, name in [(280, 568, 'small'), (1280, 800, 'desktop')]:
@@ -118,7 +132,7 @@ with sync_playwright() as p:
         reference.get_by_role('button').click()
         reference.wait_for_timeout(500)
         reference.screenshot(path=str(OUT / 'reference.png'))
-    result = {'base_url': BASE, 'manifest': manifest_url, 'standalone_simulation': 'CDP' if native_emulation else 'CSS media-condition substitution', 'checks': ['regular browser excluded', 'manifest and icon responses', 'SSR overlay', 'shell-ready dismissal', 'deep-link preserved', 'internal navigation no replay', 'resume no replay', 'reduced motion', 'hydration-failure safety timeout', '280px and desktop fit'], 'page_errors': errors, 'normal_console_errors': normal_console_errors}
+    result = {'base_url': BASE, 'manifest': manifest_url, 'standalone_simulation': 'CDP' if native_emulation else 'CSS media-condition substitution', 'checks': ['regular browser excluded', 'manifest and icon responses', 'SSR overlay stays animated beyond 6 seconds while chunks are delayed', 'document and shell-ready dismissal', 'deep-link preserved', 'internal navigation no replay', 'resume no replay', 'reduced motion', '30-second hydration-failure recovery and working retry link', '280px and desktop fit'], 'page_errors': errors, 'normal_console_errors': normal_console_errors}
     (OUT / 'results.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
     print(json.dumps(result, indent=2))
     video = page.video

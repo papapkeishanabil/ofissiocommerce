@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { markInitialShellReady } from "./boot-readiness";
 
 import { AppShell } from "./AppShell";
 import { storefrontFont } from "./storefront-font";
@@ -15,6 +16,7 @@ interface RouteAwareShellProps {
 }
 
 export function RouteAwareShell({ children }: RouteAwareShellProps) {
+  useEffect(() => { markInitialShellReady(); }, []);
   const pathname = usePathname();
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   const isLoginRoute = pathname === "/login";

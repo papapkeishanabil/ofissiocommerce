@@ -5,19 +5,35 @@
     position: fixed;
     inset: 0;
     z-index: 2147483647;
-    display: grid;
-    place-items: center;
+    display: block;
     overflow: hidden;
-    background: #091629;
+    isolation: isolate;
     color: #edf3fa;
     pointer-events: none;
-    /* Independent of hydration, network and React error boundaries. */
-    animation: boot-safety 180ms 5800ms forwards;
     transition: opacity 180ms ease-out, visibility 180ms;
   }
   .boot[data-ready="true"] { opacity: 0; visibility: hidden; }
 }
 
+.visual {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  background: #091629;
+  /* A failed document must expose its error/recovery UI, even without JS. */
+  animation: boot-safety 180ms 29800ms forwards;
+}
+.visual::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse at 50% 50%, #284562 0%, #101f34 37%, #091629 74%);
+  animation: boot-light 600ms ease-out both;
+}
+.center { position: relative; display: grid; place-items: center; }
 .emblem { display: grid; place-items: center; width: min(192px, 70vw); aspect-ratio: 1; }
 .symbol {
   position: relative;
@@ -27,6 +43,8 @@
   /* Reuse the Android icon itself: same artwork, silver and proportions.
      Its 74% symbol occupies about 142 CSS px inside this 192px square. */
   background: url('/brand/app-icon-512-v1.png') center / contain no-repeat;
+  mask: url('/brand/boot-symbol-v1.png') center / 74% auto no-repeat;
+  animation: boot-appear 550ms cubic-bezier(.16, 1, .3, 1) both;
 }
 .symbol::after {
   content: '';
@@ -34,11 +52,67 @@
   inset: 0;
   mask: url('/brand/boot-symbol-v1.png') center / 74% auto no-repeat;
   background: linear-gradient(105deg, transparent 40%, #ffffff66 50%, transparent 60%) 100% 0 / 300% 100% no-repeat;
-  animation: boot-sheen 700ms ease-out both;
+  animation: boot-sheen 1600ms 100ms ease-in-out 19 both;
 }
-@keyframes boot-sheen { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+.orbit {
+  position: absolute;
+  inset: 0;
+  border: 1px solid #91b9e326;
+  border-radius: 50%;
+  animation: boot-ring 1600ms 19 both;
+}
+.orbit::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 1px solid transparent;
+  border-top-color: #b6d5f7;
+  border-right-color: #7ea7d655;
+  border-radius: 50%;
+  animation: boot-orbit 1600ms cubic-bezier(.25,.6,.3,1) 19 both;
+}
+.wordmark {
+  position: absolute;
+  top: calc(100% + 20px);
+  width: min(174px, 65vw);
+  aspect-ratio: 1590 / 305;
+  background: #edf3fa;
+  mask: url('/brand/boot-wordmark-v1.png') center / contain no-repeat;
+  animation: boot-word 400ms 180ms ease-out both;
+}
+@keyframes boot-light { from { opacity: 0; } to { opacity: 1; } }
+@keyframes boot-appear { from { opacity: .35; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
+.recovery {
+  position: absolute;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 16px;
+  right: 16px;
+  max-width: 440px;
+  margin-inline: auto;
+  padding: 16px 20px;
+  background: #091629;
+  color: #edf3fa;
+  font: 14px/1.5 Arial, sans-serif;
+  border: 1px solid #49617e;
+  border-radius: 12px;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: auto;
+  animation: boot-recovery 180ms 29800ms forwards;
+}
+.recovery p { margin: 0; }
+.recovery a { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; color: #d5e6fc; text-underline-offset: 4px; }
+.recovery a:hover { color: #fff; }
+.recovery a:focus-visible { outline: 2px solid #b6d5f7; outline-offset: 4px; }
+@keyframes boot-sheen { 0% { background-position: 100% 0; } 65%, 100% { background-position: 0% 0; } }
+@keyframes boot-orbit { from { transform: rotate(-55deg); } to { transform: rotate(305deg); } }
+@keyframes boot-ring { 0% { opacity: 0; } 20%, 65% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes boot-word { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes boot-safety { to { opacity: 0; visibility: hidden; } }
+@keyframes boot-recovery { to { opacity: 1; visibility: visible; } }
 @media (prefers-reduced-motion: reduce) {
+  .visual::before, .symbol, .wordmark { animation: none; }
+  .orbit { display: none; }
   .symbol::after { animation: none; display: none; }
   .boot { transition-duration: 50ms; }
 }

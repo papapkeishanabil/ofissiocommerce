@@ -1,5 +1,54 @@
 # Layar pembuka Ofissio
 
+## Perilaku terbaru saat koneksi lambat
+
+Status aktivasi dicatat pada `RELEASE.json` di rilis server; dokumen ini
+mencatat desain dan pemeriksaannya, bukan bukti bahwa deployment sudah aktif.
+
+Animasi referensi (simbol, kilau berulang, ring cahaya, wordmark) tetap tampil
+selama dokumen awal belum selesai diterima atau shell aplikasi belum
+terhidrasi. Kesiapan kini memakai dua sinyal: `DOMContentLoaded` dan commit
+`RouteAwareShell` melalui modul `boot-readiness.ts`. Tidak memakai `window.load`
+dan tidak menunggu seluruh gambar, video, model 3D atau request nonkritis.
+Setelah siap, overlay keluar dalam 180ms; tidak ada minimum waktu tunggu baru.
+
+Saat koneksi lambat, kilau dan ring mengulang siklus 1,6 detik. CSS memberi batas
+30 detik agar kegagalan hydration tidak menutup error aplikasi selamanya.
+Sesudah batas itu, lapisan dekoratif menghilang, memperlihatkan halaman/error
+yang tersedia dan panel pemulihan dengan tautan biasa `Coba lagi`. Tautan ini
+tetap berfungsi tanpa hydration dan mempertahankan path serta query tujuan.
+Jika kesiapan terlambat tercapai, panel pemulihan ikut ditutup otomatis.
+Reduced motion tetap statis. Navigasi internal dan resume tidak mengulang boot.
+
+Pengujian lokal menahan chunk aplikasi selama lebih dari 6 detik dan membuktikan
+logo masih terlihat serta animasinya masih berulang. Setelah chunk dilepas,
+overlay tertutup. Skenario tanpa hydration selama 30 detik memunculkan panel
+pemulihan; klik Coba lagi berhasil memuat ulang URL semula. Typecheck, lint
+terkait, dan pemeriksaan browser lulus tanpa pageerror/console error normal.
+Artefak: `artifacts/boot-loading-aware-local/`.
+
+PWA hanya bisa menjalankan animasi ini setelah HTML dan CSS awal tersedia.
+Kegagalan sebelum dokumen diterima tetap ditangani splash native/browser.
+Bagian berikut merupakan riwayat perubahan sebelumnya.
+
+## Referensi gerakan terbaru — perubahan lokal
+
+Referensi terbaru pengguna adalah
+`artifacts/standalone-boot/video/page@b75063f084581a0802846995ad6d0ca8.webm`
+(3,08 detik). Video ini merekam konsep HTML awal: kemunculan lembut, kilau,
+ring cahaya dan wordmark yang muncul bertahap. Versi lokal terbaru mengikuti
+gerakan itu dalam urutan sekitar 1,1 detik, tanpa bar loading atau slogan.
+Simbol tetap memakai aset asli dan tidak berputar. Wordmark ditempatkan di
+bawah simbol tanpa menggeser titik tengah simbol dari splash native.
+
+Kebijakan durasi masih mengikuti kesiapan shell (belum menambahkan waktu
+tunggu minimum); pilihan pengguna tentang menuntaskan animasi sekitar 1 detik
+masih ditanyakan. Perubahan terbaru ini belum dipasang ke produksi.
+Pengujian browser lokal dan typecheck lulus. Preview visual aktual aplikasi
+tersimpan di `artifacts/boot-reference-style-local/reference-motion-preview.webm`;
+hydration sengaja diblokir hanya pada rekaman visual itu agar seluruh gerakan
+dapat terlihat. Ini tidak menambahkan penundaan di kode aplikasi.
+
 ## Penyederhanaan berdasarkan video Android 22 Oktober 2026
 
 Video pengguna berdurasi 5,66 detik memperlihatkan ikon splash Android pada
