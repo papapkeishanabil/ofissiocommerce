@@ -65,6 +65,7 @@ interface Uniform3DConfiguratorProps {
   embroideryMoq?: number;
   initialColor: string;
   selectedSleeve?: string;
+  selectedOptions?: Record<string, string>;
   initialConfig?: Uniform3DConfig | null;
   onSave: (config: import("@/types/uniform-3d").Uniform3DConfig) => void;
   onCancel: () => void;
@@ -83,6 +84,7 @@ export function Uniform3DConfigurator({
   embroideryMoq = 8,
   initialColor,
   selectedSleeve,
+  selectedOptions,
   initialConfig,
   onSave,
   onCancel,
@@ -779,6 +781,7 @@ export function Uniform3DConfigurator({
               availableSizes={product.available_sizes}
               color={config.color}
               selectedSleeve={selectedSleeve}
+              selectedOptions={selectedOptions}
               value={sizes}
               onChange={onSizesChange}
               moq={product.moq}

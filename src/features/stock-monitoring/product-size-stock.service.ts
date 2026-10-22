@@ -1,4 +1,5 @@
 import "server-only";
+import { matchingProductVariant } from "@/features/products/product-variants";
 import { matchingPurchaseVariant, sleeveOptions } from "@/features/products/purchase-variants";
 
 import { selectedColorVariant } from "@/features/products/color-variants";
@@ -24,6 +25,7 @@ export async function readGineeSizeStock(stockSku: string): Promise<number | nul
 
 async function readWooSizeStock(product: OfissioProduct) {
   if (product.source !== "woocommerce") return [];
+  if (product.productKind === "simple") { const row = await woocommerceClient.getProductById(product.source_id); return [{ ...row, status: "publish" }]; }
   return listColorVariationRows(Number(product.source_id), woocommerceClient);
 }
 
@@ -31,15 +33,15 @@ export async function getProductSizeStock(product: OfissioProduct, color: string
   useGinee: () => getGineeConfig().useLiveProvider,
   readGinee: readGineeSizeStock,
   readWoo: readWooSizeStock,
-}, sleeve?: string): Promise<ProductSizeStock> {
-  if (sleeveOptions(product).length && !sleeveOptions(product).includes(sleeve || "")) throw createApiError("VALIDATION_ERROR", "Pilih jenis lengan yang tersedia.", 400);
+}, sleeve?: string, selection?: Record<string, string>): Promise<ProductSizeStock> {
+  if (!product.productKind && sleeveOptions(product).length && !sleeveOptions(product).includes(sleeve || "")) throw createApiError("VALIDATION_ERROR", "Pilih jenis lengan yang tersedia.", 400);
   const selectedColor = product.available_colors.find(value => value.trim().toLowerCase() === color.trim().toLowerCase());
   if (!selectedColor) throw createApiError("VALIDATION_ERROR", "Warna produk tidak tersedia.", 400);
   const variant = selectedColorVariant(product, selectedColor);
-  const variantReady = !product.colorVariantsEnabled || (product.colorVariantsReady && !!variant);
+  const variantReady = (!product.colorVariantsEnabled || (product.colorVariantsReady && !!variant)) && (product.productKind !== "variable" || product.stockVariantsReady === true);
   const baseSku = variant?.sku || product.sku;
   const rows = [...new Set(product.available_sizes)].map(size => ({ size,
-    sku: product.colorSizeVariants?.find(row => row.color.trim().toLowerCase() === selectedColor.trim().toLowerCase() && sizeStockSku("size", row.size) === sizeStockSku("size", size))?.sku ?? matchingPurchaseVariant(product, size, sleeve, selectedColor)?.sku ?? sizeStockSku(baseSku, size),
+    sku: product.productKind === "simple" ? product.sku : product.productKind === "variable" ? matchingProductVariant(product, selection ?? {}, size)?.sku ?? "" : product.colorSizeVariants?.find(row => row.color.trim().toLowerCase() === selectedColor.trim().toLowerCase() && sizeStockSku("size", row.size) === sizeStockSku("size", size))?.sku ?? matchingPurchaseVariant(product, size, sleeve, selectedColor)?.sku ?? sizeStockSku(baseSku, size),
     availableQty: null as number | null }));
   const useGinee = dependencies.useGinee();
   if (variantReady && useGinee) {
@@ -47,7 +49,7 @@ export async function getProductSizeStock(product: OfissioProduct, color: string
     // Limit concurrent provider requests for products with many sizes.
     for (let offset = 0; offset < rows.length; offset += 3) {
       await Promise.all(rows.slice(offset, offset + 3).map(async row => {
-        try { row.availableQty = await dependencies.readGinee(row.sku); } catch { row.availableQty = null; }
+        try { if (row.sku) row.availableQty = await dependencies.readGinee(row.sku); } catch { row.availableQty = null; }
       }));
     }
   } else if (variantReady) {

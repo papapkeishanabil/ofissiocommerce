@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ProductVariantEditor } from "./ProductVariantEditor";
+import { productVariantsSchema, isColorOption, isSizeOption, type ProductVariantInput, type VariantOption } from "../product-variants";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Box, Calculator, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Plus, RotateCcw, Save, Settings2, Shirt, SunMedium, Trash2, X } from "lucide-react";
@@ -104,6 +106,15 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
   const imageManagerRef = useRef<ProductImageManagerHandle>(null);
   const initial = useMemo(() => initialForm(product, routeMoqDefaults), [product, routeMoqDefaults]);
   const [form, setForm] = useState<AdminWooProductInput>(initial);
+  const [genericOptions, setGenericOptions] = useState<VariantOption[]>(product?.variantOptions ?? []);
+  const [genericVariants, setGenericVariants] = useState<ProductVariantInput[]>(product?.productVariants ?? []);
+  const [defaultGenericSku, setDefaultGenericSku] = useState(product?.defaultVariantSku || product?.productVariants?.[0]?.sku || "");
+  function changeProductKind(kind: "simple" | "variable") {
+    if (kind === "simple" && product && (product.productVariants?.length || product.purchaseVariants?.length || product.colorVariants?.length)) { setMessage({ tone: "error", text: "Produk ini sudah memiliki varian tersimpan. Buat produk baru jika memerlukan satu SKU tanpa varian." }); return; }
+    if (kind === "simple" && genericVariants.length && !window.confirm("Pengaturan varian belum tersimpan tidak akan digunakan. Lanjutkan tanpa varian?")) return;
+    setForm(current => ({ ...current, productKind: kind, modelCode: current.modelCode || current.sku, ...(kind === "simple" ? { colors: current.colors.slice(0, 1), sizes: ["OS"] } : {}) }));
+    setVariantsEnabled(false);
+  }
   const [variantsEnabled, setVariantsEnabled] = useState(product?.colorVariantsEnabled ?? false);
   const [variantDrafts, setVariantDrafts] = useState<ColorVariantInput[]>(product?.colorVariants ?? []);
   const [defaultVariantColor, setDefaultVariantColor] = useState(product?.defaultColor ?? "");
@@ -218,12 +229,16 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (form.colors.length > 1 && !variantsEnabled && !product?.purchaseVariants?.length) {
+    if (!form.productKind && form.colors.length > 1 && !variantsEnabled && !product?.purchaseVariants?.length) {
       setMessage({ tone: "error", text: "Produk dengan beberapa warna memerlukan SKU per warna. Aktifkan pengaturan SKU dan foto per warna terlebih dahulu." });
       document.getElementById("color-variants")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    if (variantsEnabled) {
+    if (form.productKind === "variable") {
+      const parsed = productVariantsSchema.safeParse({ options: genericOptions, variants: genericVariants, defaultVariantSku: defaultGenericSku });
+      if (!parsed.success) { setMessage({ tone: "error", text: parsed.error.issues[0]?.message || "Lengkapi varian produk." }); return; }
+    }
+    if (!form.productKind && variantsEnabled) {
       const result = adminColorVariantsSchema.safeParse({ variants: visibleVariants, defaultColor: selectedDefaultColor });
       const missingImage = visibleVariants.find((variant) => !variantImages.some((image) => image.src === variant.imageSrc));
       const parentSkuUsed = visibleVariants.some((variant) => colorKey(variant.sku) === colorKey(form.sku));
@@ -258,7 +273,11 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
             Accept: "application/json",
             ...MOCK_INTERNAL_HEADERS,
           },
-          body: JSON.stringify(form),
+          body: JSON.stringify(form.productKind === "variable" ? {
+            ...form,
+            colors: genericOptions.find(o => isColorOption(o.name))?.values ?? ["Default"],
+            sizes: genericOptions.find(o => isSizeOption(o.name))?.values ?? ["OS"],
+          } : form.productKind === "simple" ? { ...form, colors: form.colors.length ? form.colors : ["Default"], sizes: ["OS"] } : form),
         },
       );
       const payload = (await response.json().catch(() => null)) as ApiProductResponse | null;
@@ -281,7 +300,24 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         uploadWarnings.push("foto gagal diupload");
       }
 
-      if (variantsEnabled || product?.colorVariantsEnabled || saved.colorVariantsEnabled) {
+      if (form.productKind === "variable") {
+        try {
+          if (uploadWarnings.length) throw new Error("Foto belum berhasil disimpan. Simpan kembali setelah upload berhasil.");
+          const variants = genericVariants.map(row => ({ ...row, imageSrc: resolvedVariantImages.current[row.imageSrc] ?? row.imageSrc }));
+          setGenericVariants(variants);
+          const response = await fetch(`/api/admin/products/woocommerce/${saved.id}/variants`, {
+            method: "PATCH", headers: { "Content-Type": "application/json", ...MOCK_INTERNAL_HEADERS },
+            body: JSON.stringify({ options: genericOptions, variants, defaultVariantSku: defaultGenericSku }),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.message || "Varian belum tersimpan.");
+          setGenericVariants(result.variants);
+        } catch (error) {
+          variantsFailed = true;
+          uploadWarnings.push(`varian gagal: ${error instanceof Error ? error.message : "Simpan ulang varian."}`);
+        }
+      }
+      if (!form.productKind && (variantsEnabled || product?.colorVariantsEnabled || saved.colorVariantsEnabled)) {
         try {
           if (uploadWarnings.length) throw new Error("Foto belum berhasil disimpan. Simpan kembali setelah upload foto berhasil.");
           const variants = variantsEnabled ? visibleVariants.map((variant) => ({ ...variant, imageSrc: resolvedVariantImages.current[variant.imageSrc] ?? variant.imageSrc })) : [];
@@ -492,17 +528,41 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <form
+      onSubmit={submit}
+      onInvalidCapture={(event) => {
+        const input = event.target as HTMLInputElement;
+        const label = input.closest("label")?.querySelector("span")?.textContent?.replace(/\*$/, "").trim();
+        setMessage({
+          tone: "error",
+          text: `Produk belum disimpan. Periksa ${label || "kolom wajib"}: ${input.validationMessage} Foto dan model 3D baru diunggah setelah data produk valid.`,
+        });
+      }}
+      className="space-y-5"
+    >
       {message ? <StatusMessage {...message} /> : null}
+
+      <FormSection icon={Shirt} title="Jenis Produk" description="Pilih cara produk dijual agar pengisian SKU sesuai dengan stok Anda.">
+        <fieldset disabled={busy} className="space-y-3">
+          <legend className="sr-only">Jenis produk</legend>
+          {(["simple", "variable"] as const).map(kind => <label key={kind} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm text-ink">
+            <input type="radio" name="product-kind" className="mt-1 h-5 w-5 accent-[var(--color-brand-700)]" checked={form.productKind === kind || !form.productKind && kind === "variable"} onChange={() => changeProductKind(kind)} />
+            <span><strong>{kind === "simple" ? "Tanpa varian" : "Dengan varian"}</strong><span className="mt-1 block text-xs leading-5 text-ink-muted">{kind === "simple" ? "Satu SKU untuk produk ini, misalnya KL-003." : "Pilihan warna, ukuran, lengan, saku, atau lainnya. Setiap kombinasi memiliki SKU stok sendiri."}</span></span>
+          </label>)}
+        </fieldset>
+        {!form.productKind && <div className="mt-4 space-y-3"><p className="text-xs leading-5 text-ink-muted">Produk ini memakai pengaturan varian lama. Data dan SKU tetap dipertahankan. Aktifkan editor fleksibel untuk menambahkan jenis pilihan lain.</p><button type="button" disabled={busy} className="min-h-11 rounded-lg border border-line px-4 text-sm font-semibold text-ink" onClick={() => changeProductKind("variable")}>Gunakan editor varian fleksibel</button></div>}
+      </FormSection>
 
       <FormSection icon={PackagePlus} title="Informasi produk" description="Data utama yang akan ditulis langsung ke WooCommerce staging.">
         <div className="grid gap-4 lg:grid-cols-2">
           <Field label="Nama produk" required>
             <input className={INPUT} value={form.name} onChange={(e) => set("name", e.target.value)} required maxLength={180} />
           </Field>
-          <Field label="SKU" required hint="Wajib sebelum upload GLB; gunakan huruf, angka, titik, strip, atau underscore.">
-            <input className={INPUT} value={form.sku} onChange={(e) => set("sku", e.target.value)} required pattern="[A-Za-z0-9._]+(-[A-Za-z0-9._]+)*" maxLength={100} />
-          </Field>
+          {form.productKind === "variable" ? <Field label="Kode model utama" required hint="Boleh sama antar-series, misalnya SN. SKU katalog dibuat otomatis; SKU stok diisi pada kombinasi varian.">
+            <input className={INPUT} value={form.modelCode ?? ""} onChange={e => set("modelCode", e.target.value)} required pattern="[A-Za-z0-9._\-]+" maxLength={80} />
+          </Field> : <Field label="SKU" required hint="Isi SKU stok produk, misalnya KL-003. Harus unik.">
+            <input className={INPUT} value={form.sku} onChange={(e) => set("sku", e.target.value)} required pattern="[A-Za-z0-9._\-]+" maxLength={100} />
+          </Field>}
           <Field label="Slug" hint="Opsional. Kosongkan agar WooCommerce membuat slug otomatis.">
             <input className={INPUT} value={form.slug ?? ""} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} maxLength={180} />
           </Field>
@@ -576,13 +636,14 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         <ProductImageManager
           ref={imageManagerRef}
           productId={workingProductId}
-          sku={form.sku}
+          sku={form.sku || form.modelCode || "produk"}
           initialImages={product?.images ?? []}
           maxFileMb={productImageMaxMb}
           disabled={busy}
           onDraftImagesChange={setVariantImages}
           onImageSourcesResolved={(sources) => {
             Object.assign(resolvedVariantImages.current, sources);
+            setGenericVariants(current => current.map(row => ({ ...row, imageSrc: sources[row.imageSrc] ?? row.imageSrc })));
             setVariantDrafts((current) => current.map((variant) => ({ ...variant, imageSrc: sources[variant.imageSrc] ?? variant.imageSrc })));
           }}
           onImagesChange={(images) =>
@@ -609,7 +670,10 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         </details>
       </FormSection>
 
-      <div id="color-variants" className="scroll-mt-28">
+      {form.productKind === "variable" && <FormSection icon={Shirt} title="Varian Produk" description="Atur pilihan produk beserta SKU, foto, dan harga yang sesuai.">
+        <ProductVariantEditor options={genericOptions} onOptionsChange={setGenericOptions} variants={genericVariants} onChange={setGenericVariants} images={variantImages} regularPrice={form.regularPrice} defaultSku={defaultGenericSku} onDefaultChange={setDefaultGenericSku} disabled={busy} />
+      </FormSection>}
+      {!form.productKind && <div id="color-variants" className="scroll-mt-28">
         <FormSection icon={Shirt} title="Varian Warna" description="Pasangkan setiap warna dengan SKU dan foto yang sesuai.">
           <ColorVariantEditor
             stockPerSize={product?.colorSizeVariantsEnabled}
@@ -624,7 +688,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
             disabled={busy}
           />
         </FormSection>
-      </div>
+      </div>}
 
       <div id="quantity-pricing" className="scroll-mt-28">
         <FormSection
@@ -709,20 +773,20 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           <CheckboxGroup label="Industri" required options={options.industries.filter((item) => item.active).map((item) => ({ value: item.slug, label: item.name }))} selected={form.industries} onChange={(values) => set("industries", values)} />
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <MasterMultiSelectField
+          {form.productKind !== "variable" && <MasterMultiSelectField
             label="Warna"
             masterSlug="warna"
             value={form.colors}
             onChange={(value) => set("colors", value)}
             attribute={findCatalogAttribute(options.attributes, ["color", "warna"])}
-          />
-          <MasterMultiSelectField
+          />}
+          {!form.productKind && <MasterMultiSelectField
             label="Ukuran"
             masterSlug="ukuran"
             value={form.sizes}
             onChange={(value) => set("sizes", value)}
             attribute={findCatalogAttribute(options.attributes, ["size", "ukuran"])}
-          />
+          />}
           <MasterMultiSelectField
             label="Material"
             masterSlug="material"
@@ -976,6 +1040,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       </FormSection>
       </div>
 
+      {message ? <StatusMessage {...message} /> : null}
       <div className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 shadow-soft-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 text-sm text-ink-muted">
           <ImageIcon className="h-4 w-4 text-brand-700" aria-hidden="true" />
@@ -998,6 +1063,8 @@ const INPUT = "min-h-11 w-full rounded-lg border border-line bg-white px-3 py-2.
 function initialForm(product?: AdminWooCommerceProductDetail, routeMoqDefaults?: MoqSettings): AdminWooProductInput {
   const attributes = product?.attributes ?? [];
   return {
+    productKind: product ? product.productKind : "simple",
+    modelCode: product?.modelCode || product?.sku || "",
     name: product?.name ?? "",
     slug: product?.slug ?? "",
     sku: product?.sku ?? "",
@@ -1013,7 +1080,7 @@ function initialForm(product?: AdminWooCommerceProductDetail, routeMoqDefaults?:
     industries: (product?.industries ?? []).map(taxonomySlug),
     imageUrls: product?.imageUrls ?? [],
     colors: findAttribute(attributes, ["color", "warna"]),
-    sizes: findAttribute(attributes, ["size", "ukuran"]),
+    sizes: product ? findAttribute(attributes, ["size", "ukuran"]) : ["OS"],
     materials: findAttribute(attributes, ["material", "bahan"]),
     gender: product?.ofissioMeta.gender === "men" || product?.ofissioMeta.gender === "women" ? product.ofissioMeta.gender : "unisex",
     sleeveType: product?.ofissioMeta.sleeveType === "long" ? "long" : "short",

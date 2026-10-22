@@ -25,8 +25,9 @@ export function ActionPreviewCard({
   busy,
 }: ActionPreviewCardProps) {
   const p = action.payload;
+  const quantities: Record<string, number> = p.sizeMatrix;
   const totalQty = SIZES.reduce(
-    (a, s) => a + (p.sizeMatrix[s] ?? 0),
+    (a, s) => a + (quantities[s] ?? 0),
     0,
   );
 
@@ -51,12 +52,12 @@ export function ActionPreviewCard({
         <p className="font-semibold text-ink">{p.productName}</p>
         <p className="text-ink-muted">Warna: {p.color}</p>
         <div className="mt-1.5 flex flex-wrap gap-1">
-          {SIZES.filter((s) => (p.sizeMatrix[s] ?? 0) > 0).map((s) => (
+          {SIZES.filter((s) => (quantities[s] ?? 0) > 0).map((s) => (
             <span
               key={s}
               className="rounded-md bg-cool-100 px-1.5 py-0.5 text-[11px] font-semibold text-ink"
             >
-              {s}: {p.sizeMatrix[s]}
+              {s === "OS" ? "Jumlah" : s}: {quantities[s]}
             </span>
           ))}
         </div>
