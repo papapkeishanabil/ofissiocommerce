@@ -55,8 +55,10 @@ with sync_playwright() as p:
         page.get_by_label(f'Nama pilihan {index+1}',exact=True).click()
     page.get_by_role('button',name='Buat / perbarui kombinasi',exact=True).click()
     assert page.get_by_label('SKU stok',exact=True).count()==4
-    for i,sku in enumerate(['SN-MERAH-LP-S','SN-MERAH-LP-M','SN-MERAH-LPJ-S','SN-MERAH-LPJ-M']):
-        page.get_by_label('SKU stok',exact=True).nth(i).fill(sku)
+    for label,prefix in [('Merah / Pendek','SN-MERAH-LP'),('Merah / Panjang','SN-MERAH-LPJ')]:
+        page.get_by_role('textbox',name=re.compile('^SKU varian — '+label)).fill(prefix)
+        page.get_by_role('button',name='Terapkan ke semua ukuran — '+label,exact=True).click()
+    assert [page.get_by_label('SKU stok',exact=True).nth(i).input_value() for i in range(4)]==['SN-MERAH-LP-S','SN-MERAH-LP-M','SN-MERAH-LPJ-S','SN-MERAH-LPJ-M']
     for width in [1440,390]:
         page.set_viewport_size({'width':width,'height':1000 if width>500 else 844})
         assert not page.evaluate('document.documentElement.scrollWidth>innerWidth'),f'admin overflow {width}'

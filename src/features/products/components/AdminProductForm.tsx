@@ -532,6 +532,8 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       onSubmit={submit}
       onInvalidCapture={(event) => {
         const input = event.target as HTMLInputElement;
+        const details = input.closest("details");
+        if (details) details.open = true;
         const label = input.closest("label")?.querySelector("span")?.textContent?.replace(/\*$/, "").trim();
         setMessage({
           tone: "error",
@@ -671,7 +673,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       </FormSection>
 
       {form.productKind === "variable" && <FormSection icon={Shirt} title="Varian Produk" description="Atur pilihan produk beserta SKU, foto, dan harga yang sesuai.">
-        <ProductVariantEditor options={genericOptions} onOptionsChange={setGenericOptions} variants={genericVariants} onChange={setGenericVariants} images={variantImages} regularPrice={form.regularPrice} defaultSku={defaultGenericSku} onDefaultChange={setDefaultGenericSku} disabled={busy} />
+        <ProductVariantEditor options={genericOptions} onOptionsChange={setGenericOptions} variants={genericVariants} onChange={setGenericVariants} images={variantImages} regularPrice={form.regularPrice} modelCode={form.modelCode} defaultSku={defaultGenericSku} onDefaultChange={setDefaultGenericSku} disabled={busy} />
       </FormSection>}
       {!form.productKind && <div id="color-variants" className="scroll-mt-28">
         <FormSection icon={Shirt} title="Varian Warna" description="Pasangkan setiap warna dengan SKU dan foto yang sesuai.">

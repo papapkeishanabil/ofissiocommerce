@@ -35,7 +35,9 @@ Semua route memakai internal guard, permission catalog, rate limit, validasi Zod
 
 ## Varian produk fleksibel
 
-Pada **Dengan varian**, tambahkan nama pilihan (Warna, Lengan, Saku, Ukuran, atau nama lainnya) beserta nilai yang dipisahkan koma. Buat kombinasi, hapus kombinasi yang tidak dijual, lalu isi SKU stok lengkap dan harga reguler pada setiap baris. Foto boleh dipakai bersama atau dikosongkan untuk menggunakan foto utama. Pilih **Varian yang tampil pertama** sebelum menyimpan.
+Pada **Dengan varian**, tambahkan nama pilihan (Warna, Lengan, Saku, Ukuran, atau nama lainnya) beserta nilai yang dipisahkan koma. Jika stok dibedakan per ukuran, gunakan **Tambah pilihan Ukuran**, sesuaikan daftar ukuran, lalu buat kombinasi. Isi **SKU varian** sekali per kelompok, misalnya `KK-006LPD` untuk Pendek dan `KK-006LPJ` untuk Panjang. **Terapkan ke semua ukuran** menghasilkan SKU stok seperti `KK-006LPD-S`, `KK-006LPD-M`, dan seterusnya. Foto dan harga dapat diisi sekali per kelompok. Rincian SKU per ukuran tetap dapat dibuka untuk pengecualian. Pilih **Varian yang tampil pertama** sebelum menyimpan.
+
+SKU yang sudah terisi dipertahankan secara default; penggantian SKU tersimpan memerlukan pilihan eksplisit dan konfirmasi. Ketika ukuran baru ditambahkan, SKU dibuat dari pola kelompok yang konsisten, tanpa mengubah ID/SKU ukuran lama. Jika sebelumnya hanya ada dua varian lengan tanpa ukuran, SKU dan harga lengan menjadi template saat menambahkan pilihan Ukuran; stok agregat lama tidak dibagi secara otomatis ke ukuran baru.
 
 SKU disimpan sebagai varian WooCommerce asli; stok tetap dikelola WooCommerce/Ginee dan tidak direset ketika harga, foto, atau pilihan diedit. Produk tidak dapat dipesan sebelum seluruh varian terverifikasi. Simpan ulang setelah kegagalan akan memakai kembali ID/SKU yang sudah dibuat.
 

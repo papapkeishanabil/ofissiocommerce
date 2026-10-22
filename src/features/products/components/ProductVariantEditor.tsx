@@ -2,25 +2,28 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { combinationKey, type VariantOption, type ProductVariantInput } from "../product-variants";
+import { isSizeOption, type VariantOption, type ProductVariantInput } from "../product-variants";
+import { applyVariantSizeGroup, generateVariantCombinations, variantSizeGroups, variantStockSku, type VariantSizeGroup } from "../variant-sku-generation";
 import type { AdminProductImage } from "../woocommerce/woocommerce-product-admin.types";
 
 const INPUT = "min-h-11 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700";
-export function ProductVariantEditor({ options, onOptionsChange, variants, onChange, images, regularPrice, defaultSku, onDefaultChange, disabled }: {
+export function ProductVariantEditor({ options, onOptionsChange, variants, onChange, images, regularPrice, defaultSku, onDefaultChange, disabled, modelCode }: {
   options: VariantOption[]; onOptionsChange: (options: VariantOption[]) => void;
   variants: ProductVariantInput[]; onChange: (rows: ProductVariantInput[]) => void;
   images: AdminProductImage[]; regularPrice: number; defaultSku: string; onDefaultChange: (sku: string) => void; disabled: boolean;
+  modelCode?: string;
 }) {
   const [error, setError] = useState("");
+  const sizeOption = options.find(o => isSizeOption(o.name));
+  const groups = variantSizeGroups(options, variants);
   function generate() {
-    if (!options.length || options.some(o => !o.name.trim() || !o.values.length)) { setError("Isi nama dan nilai setiap pilihan terlebih dahulu."); return; }
-    const count = options.reduce((n, o) => n * o.values.length, 1);
-    if (count > 1000) { setError("Maksimal 1.000 kombinasi. Kurangi pilihan atau tambahkan hanya kombinasi yang dijual."); return; }
-    let combinations: Record<string, string>[] = [{}];
-    for (const option of options) combinations = combinations.flatMap(row => option.values.map(value => ({ ...row, [option.name.trim()]: value })));
-    const next = combinations.map(values => variants.find(row => combinationKey(options, row.options) === combinationKey(options, values)) ?? { options: values, sku: "", imageSrc: "", regularPrice });
-    if (variants.some(row => !next.includes(row)) && !window.confirm("Kombinasi yang tidak sesuai pilihan baru akan dihapus saat disimpan. Lanjutkan?")) return;
-    onChange(next); setError("");
+    try {
+      const next = generateVariantCombinations(options, variants, regularPrice);
+      if (variants.some(row => row.id && !next.some(nextRow => nextRow.id === row.id)) && !window.confirm("Pilihan baru mengubah kombinasi varian yang sudah tersimpan. Stok lama tidak dibagi otomatis ke ukuran baru. Lanjutkan?")) return;
+      onChange(next);
+      if (!next.some(row => row.sku === defaultSku)) onDefaultChange(next.find(row => row.sku)?.sku ?? "");
+      setError("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Periksa nama dan nilai pilihan varian."); }
   }
   function patch(index: number, patch: Partial<ProductVariantInput>) {
     const old = variants[index];
@@ -39,12 +42,24 @@ export function ProductVariantEditor({ options, onOptionsChange, variants, onCha
     </div>
     <div className="flex flex-wrap gap-3">
       <button type="button" disabled={options.length >= 8} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line px-4 text-sm font-semibold text-ink hover:bg-slate-50 disabled:opacity-50" onClick={() => onOptionsChange([...options, { name: "", values: [] }])}><Plus size={16} aria-hidden="true" />Tambah pilihan</button>
+      {!sizeOption && <button type="button" disabled={options.length >= 8} className="min-h-11 rounded-lg border border-line px-4 text-sm font-semibold text-ink hover:bg-slate-50 disabled:opacity-50" onClick={() => onOptionsChange([...options, { name: "Ukuran", values: ["S", "M", "L", "XL", "XXL"] }])}>Tambah pilihan Ukuran</button>}
       <button type="button" className="min-h-11 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800" onClick={generate}>Buat / perbarui kombinasi</button>
     </div>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
     {!variants.length ? <p className="text-sm text-ink-muted">Belum ada kombinasi. Tambahkan pilihan, lalu buat kombinasi dan hapus yang tidak dijual.</p> : <>
       <label className="block max-w-lg text-sm font-semibold text-ink">Varian yang tampil pertama<select className={`${INPUT} mt-2`} value={defaultSku} onChange={e => onDefaultChange(e.target.value)} required><option value="">Pilih varian setelah mengisi SKU</option>{variants.filter(v => v.sku).map((row, i) => <option key={i} value={row.sku}>{Object.values(row.options).join(" / ")} — {row.sku}</option>)}</select></label>
-      <p className="text-xs text-ink-muted">Isi SKU persis seperti sistem stok, termasuk tanda hubung dan underscore. Harga quantity, bila aktif, mengikuti tier produk.</p>
+      {sizeOption ? <section aria-label="Pengisian otomatis SKU ukuran" className="space-y-4">
+        <div><h3 className="text-sm font-bold text-ink">Isi sekali per varian, SKU ukuran dibuat otomatis</h3><p className="mt-1 text-xs leading-5 text-ink-muted">Isi SKU varian tanpa ukuran, misalnya KK-006LPD. Sistem menambahkan -S, -M, dan ukuran lainnya. Foto dan harga dapat diterapkan ke seluruh ukuran. Harga quantity tetap mengikuti tier produk.</p></div>
+        <div className="divide-y divide-line border-y border-line">{groups.map(group => <SizeGroupEditor key={group.key} group={group} sizeName={sizeOption.name} modelCode={options.length === 1 ? modelCode : undefined} images={images} regularPrice={regularPrice} onApply={input => {
+          const next = applyVariantSizeGroup(options, variants, group.key, input);
+          const selectedIndex = variants.findIndex(row => row.sku === defaultSku);
+          onChange(next);
+          onDefaultChange(selectedIndex >= 0 ? next[selectedIndex]?.sku || next.find(row => row.sku)?.sku || "" : next.find(row => row.sku)?.sku || "");
+        }} />)}</div>
+      </section> : <p className="text-xs leading-5 text-ink-muted">Jika stok dibedakan per ukuran, tambahkan pilihan Ukuran agar SKU stok dapat dibuat otomatis. Tanpa pilihan Ukuran, SKU di bawah dipakai langsung untuk stok.</p>}
+      <details open={!sizeOption}>
+      <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-ink">{sizeOption ? `Rincian SKU per ukuran (${variants.length} kombinasi)` : "SKU, foto, dan harga varian"}</summary>
+      <p className="pb-3 text-xs leading-5 text-ink-muted">SKU lengkap tetap dapat disesuaikan di sini jika berbeda dari pola. SKU yang sudah terisi dipertahankan saat mengisi otomatis, kecuali Anda memilih menggantinya.</p>
       <div className="divide-y divide-line border-y border-line">{variants.map((row, index) => <div key={index} className="space-y-3 py-5">
         <div className="flex items-center justify-between gap-3"><h4 className="text-sm font-bold text-ink">{Object.values(row.options).join(" / ")}</h4><button type="button" className="min-h-11 min-w-11 rounded-lg text-red-700 hover:bg-red-50" aria-label={`Hapus kombinasi ${Object.values(row.options).join(" / ")}`} onClick={() => { if (row.id && !window.confirm("Varian ini akan dinonaktifkan saat produk disimpan. Lanjutkan?")) return; onChange(variants.filter((_, i) => i !== index)); if (row.sku === defaultSku) onDefaultChange(""); }}><Trash2 size={16} className="mx-auto" aria-hidden="true" /></button></div>
         <div className="grid gap-3 md:grid-cols-3">
@@ -53,6 +68,44 @@ export function ProductVariantEditor({ options, onOptionsChange, variants, onCha
           <label className="text-xs font-semibold text-ink">Harga reguler (Rp)<input className={`${INPUT} mt-2`} type="number" required min={1} max={10000000000} value={row.regularPrice} onChange={e => patch(index, { regularPrice: Number(e.target.value) })} /></label>
         </div>
       </div>)}</div>
+      </details>
     </>}
   </fieldset>;
+}
+
+function SizeGroupEditor({ group, sizeName, modelCode, images, regularPrice, onApply }: {
+  group: VariantSizeGroup; sizeName: string; modelCode?: string; images: AdminProductImage[]; regularPrice: number;
+  onApply: (input: { skuPrefix: string; imageSrc?: string; regularPrice?: number; replaceSkus?: boolean }) => void;
+}) {
+  const [prefixDraft, setPrefix] = useState<string>();
+  const [photoDraft, setPhoto] = useState<string>();
+  const [priceDraft, setPrice] = useState<string>();
+  const [replaceSkus, setReplaceSkus] = useState(false);
+  const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
+  const first = group.rows[0]!;
+  const prefix = prefixDraft ?? (group.skuPrefix || modelCode || "");
+  const photo = photoDraft ?? (group.rows.every(row => row.imageSrc === first.imageSrc) ? first.imageSrc : "__keep__");
+  const price = priceDraft ?? (group.rows.every(row => row.regularPrice === first.regularPrice) ? String(first.regularPrice || regularPrice || "") : "");
+  let preview = "";
+  try { if (prefix) preview = group.rows.slice(0, 3).map(row => variantStockSku(prefix, row.options[sizeName]!)).join(", "); } catch { /* Display the validation error when applying. */ }
+  function apply() {
+    try {
+      if (price && !(Number(price) > 0 && Number(price) <= 10_000_000_000)) throw new Error("Isi harga reguler lebih dari 0.");
+      if (replaceSkus && group.rows.some(row => row.id && row.sku) && !window.confirm("SKU stok yang sudah tersimpan untuk varian ini akan diganti. Pastikan pola sesuai sistem stok. Lanjutkan?")) return;
+      onApply({ skuPrefix: prefix, imageSrc: photo === "__keep__" ? undefined : photo, regularPrice: price ? Number(price) : undefined, replaceSkus });
+      setMessage({ error: false, text: `${group.rows.length} ukuran diperbarui.${replaceSkus ? "" : " SKU yang sudah terisi tetap dipertahankan."} Simpan produk untuk menerapkan perubahan.` });
+    } catch (cause) { setMessage({ error: true, text: cause instanceof Error ? cause.message : "Pengisian otomatis belum berhasil." }); }
+  }
+  return <div className="space-y-3 py-5">
+    <h4 className="text-sm font-bold text-ink">{group.label} <span className="font-normal text-ink-muted">· {group.rows.length} ukuran</span></h4>
+    <div className="grid gap-3 md:grid-cols-3">
+      <label className="text-xs font-semibold text-ink">SKU varian — {group.label}<input className={`${INPUT} mt-2`} value={prefix} placeholder="KK-006LPD" maxLength={90} autoComplete="off" onChange={event => { setPrefix(event.target.value); setMessage(null); }} /><span className="mt-1 block font-normal leading-5 text-ink-muted">Tanpa akhiran ukuran dan tanpa spasi.</span></label>
+      <label className="text-xs font-semibold text-ink">Foto semua ukuran — {group.label}<select className={`${INPUT} mt-2`} value={photo} onChange={event => setPhoto(event.target.value)}><option value="__keep__">Pertahankan foto per ukuran</option><option value="">Gunakan foto utama</option>{images.map((image, index) => <option key={image.src} value={image.src}>Foto {index + 1} — {image.name || "Foto produk"}</option>)}</select></label>
+      <label className="text-xs font-semibold text-ink">Harga semua ukuran (Rp) — {group.label}<input className={`${INPUT} mt-2`} type="number" min={1} max={10000000000} value={price} placeholder="Pertahankan harga per ukuran" onChange={event => setPrice(event.target.value)} /></label>
+    </div>
+    {preview && <p className="break-words text-xs leading-5 text-ink-muted">Contoh hasil: {preview}{group.rows.length > 3 ? ", …" : ""}</p>}
+    <label className="flex min-h-11 items-center gap-3 text-xs text-ink"><input type="checkbox" className="h-5 w-5 accent-[var(--color-brand-700)]" checked={replaceSkus} onChange={event => setReplaceSkus(event.target.checked)} />Ganti juga SKU yang sudah terisi pada {group.label}</label>
+    <button type="button" className="min-h-11 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800" onClick={apply}>Terapkan ke semua ukuran — {group.label}</button>
+    {message && <p role={message.error ? "alert" : "status"} className={`text-xs leading-5 ${message.error ? "text-red-700" : "text-ink"}`}>{message.text}</p>}
+  </div>;
 }
