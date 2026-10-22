@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
-import { productVariantsSchema, selectProductVariants, selectedVariantPrice, PRODUCT_KIND_META, MODEL_CODE_META } from "../src/features/products/product-variants";
+import { productVariantsSchema, selectProductVariants, selectedVariantPrice, PRODUCT_KIND_META, MODEL_CODE_META, mapLegacyProductVariants } from "../src/features/products/product-variants";
 import { saveProductVariants } from "../src/features/products/woocommerce/product-variants.service";
 import { withLiveColorVariants } from "../src/features/products/woocommerce/color-variants.service";
 import { mapWooCommerceProductToOfissioProduct } from "../src/features/products/product.mapper";
@@ -62,6 +62,21 @@ const variants = ["Pendek", "Panjang"].flatMap((lengan, i) => ["Dengan Saku", "T
 const input = { options, variants, defaultVariantSku: variants[0]!.sku };
 
 async function run() {
+  const imported = ["S", "M", "L", "XL", "XXL", "3XL"].map((size, index) => ({ id: 729 + index, sku: `KK-020-${size}`, status: "publish", attributes: [], regular_price: index > 3 ? "125000" : "120000", stock_quantity: 7 }));
+  const importedOptions = [{ name: "Warna", values: ["Putih"] }, { name: "Ukuran", values: ["S", "M", "L", "XL", "XXL", "3XL"] }];
+  const migrated = mapLegacyProductVariants(imported, importedOptions);
+  assert.deepEqual(migrated.map(row => row.id), imported.map(row => row.id));
+  assert.deepEqual(migrated.map(row => row.sku), imported.map(row => row.sku));
+  assert.deepEqual(migrated.map(row => row.regularPrice), [120000,120000,120000,120000,125000,125000]);
+  assert.equal(migrated[0]?.options.Warna, "Putih");
+  assert.equal(migrated[5]?.options.Ukuran, "3XL");
+  assert.deepEqual(mapLegacyProductVariants(imported, [...importedOptions, { name: "Lengan", values: ["Pendek", "Panjang"] }]), [], "never guess multiple sleeve choices");
+  assert.deepEqual(mapLegacyProductVariants([...imported, { ...imported[0]!, id: 9000 }], importedOptions), [], "ambiguous duplicate combinations block migration");
+  const importedFixture = fixture();
+  importedFixture.rows.push(...structuredClone(imported));
+  await saveProductVariants(900, { options: importedOptions, variants: migrated, defaultVariantSku: migrated[0]!.sku }, importedFixture.source);
+  assert.equal(importedFixture.rows.length, 6, "migration reuses six existing native rows");
+  assert.deepEqual(importedFixture.rows.map(row => row.stock_quantity), [7,7,7,7,7,7], "migration preserves stock");
   assert(productVariantsSchema.safeParse(input).success);
   assert(!productVariantsSchema.safeParse({ ...input, variants: [variants[0], variants[0]] }).success);
   assert(!productVariantsSchema.safeParse({ ...input, defaultVariantSku: "missing" }).success);

@@ -81,6 +81,28 @@ export function mapProductVariants(rows: WooCommerceProductVariation[], options:
   });
 }
 
+/** Admin migration only: infer missing imported attributes only when unambiguous. */
+export function mapLegacyProductVariants(rows: WooCommerceProductVariation[], options: VariantOption[]): ProductVariant[] {
+  if (!options.length) return [];
+  const active = rows.filter(row => row.status === "publish");
+  const mapped = active.flatMap(row => {
+    const attributes = options.map(option => {
+      const existing = row.attributes?.find(attr => optionKey(attr.name ?? "") === optionKey(option.name));
+      if (existing?.option) return { name: option.name, option: existing.option };
+      const candidates = isSizeOption(option.name)
+        ? option.values.filter(value => {
+          const suffix = row.sku.match(/-([^-]+)$/)?.[1];
+          return suffix && stockSize(suffix) === stockSize(value);
+        })
+        : option.values.length === 1 ? option.values : [];
+      return { name: option.name, option: candidates.length === 1 ? candidates[0]! : "" };
+    });
+    return mapProductVariants([{ ...row, attributes }], options);
+  });
+  if (mapped.length !== active.length || new Set(mapped.map(row => combinationKey(options, row.options))).size !== mapped.length) return [];
+  return mapped;
+}
+
 export function matchingProductVariant(product: OfissioProduct, selection: Record<string, string>, size?: string) {
   const options = product.variantOptions ?? [];
   if (!options.length) return undefined;

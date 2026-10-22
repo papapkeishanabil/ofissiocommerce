@@ -23,7 +23,8 @@ export async function saveProductVariants(productId: number, raw: z.infer<typeof
   }
   // Recover a partially completed save by SKU without allocating duplicate native rows.
   const plans = input.variants.map(row => ({ ...row, id: row.id ?? rows.find(r => r.sku.toLowerCase() === row.sku.toLowerCase())?.id }));
-  if (rows.some(row => row.status === "publish" && !getMetaBoolean(row.meta_data ?? [], GENERIC_VARIANT_MARKER, false) && !plans.some(plan => plan.id === row.id))) fail("Ada varian lama yang belum dipetakan. Pertahankan seluruh SKU lama saat beralih ke editor fleksibel.");
+  const unmapped = rows.filter(row => row.status === "publish" && !getMetaBoolean(row.meta_data ?? [], GENERIC_VARIANT_MARKER, false) && !plans.some(plan => plan.id === row.id));
+  if (unmapped.length) fail(`Ada varian lama yang belum dipetakan: ${unmapped.map(row => row.sku || `ID ${row.id}`).join(", ")}. Muat ulang halaman edit dan pertahankan seluruh SKU lama saat beralih ke editor fleksibel.`);
   await assertFreeStockSkus(plans, source);
   const attributes = (product.attributes ?? []).filter(a => !input.options.some(o => o.name.toLowerCase() === a.name.toLowerCase())).map(a => ({ ...(a.id ? { id: a.id } : { name: a.name }), options: a.options ?? [], visible: true, variation: false }));
   for (const option of input.options) attributes.push({ name: option.name, options: option.values, visible: true, variation: true });
