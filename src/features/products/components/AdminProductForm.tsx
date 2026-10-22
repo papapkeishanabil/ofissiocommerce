@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ProductVariantEditor } from "./ProductVariantEditor";
+import { detachVariantImage, resolveVariantImage } from "../variant-image-references";
 import { productVariantsSchema, isColorOption, isSizeOption, type ProductVariantInput, type VariantOption } from "../product-variants";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -237,6 +238,8 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
     if (form.productKind === "variable") {
       const parsed = productVariantsSchema.safeParse({ options: genericOptions, variants: genericVariants, defaultVariantSku: defaultGenericSku });
       if (!parsed.success) { setMessage({ tone: "error", text: parsed.error.issues[0]?.message || "Lengkapi varian produk." }); return; }
+      const missingPhoto = genericVariants.find(row => row.imageSrc && !variantImages.some(image => image.src === resolveVariantImage(row.imageSrc, resolvedVariantImages.current)));
+      if (missingPhoto) { setMessage({ tone: "error", text: `Foto untuk ${missingPhoto.sku} sudah tidak ada di galeri. Pilih foto pengganti di Varian Produk atau pilih Gunakan foto utama, lalu terapkan ke semua ukuran. Produk belum disimpan.` }); return; }
     }
     if (!form.productKind && variantsEnabled) {
       const result = adminColorVariantsSchema.safeParse({ variants: visibleVariants, defaultColor: selectedDefaultColor });
@@ -303,7 +306,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       if (form.productKind === "variable") {
         try {
           if (uploadWarnings.length) throw new Error("Foto belum berhasil disimpan. Simpan kembali setelah upload berhasil.");
-          const variants = genericVariants.map(row => ({ ...row, imageSrc: resolvedVariantImages.current[row.imageSrc] ?? row.imageSrc }));
+          const variants = genericVariants.map(row => ({ ...row, imageSrc: resolveVariantImage(row.imageSrc, resolvedVariantImages.current) }));
           setGenericVariants(variants);
           const response = await fetch(`/api/admin/products/woocommerce/${saved.id}/variants`, {
             method: "PATCH", headers: { "Content-Type": "application/json", ...MOCK_INTERNAL_HEADERS },
@@ -633,7 +636,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       <FormSection
         icon={ImageIcon}
         title="Foto Produk"
-        description="Upload foto utama dan gallery langsung ke Supabase Storage; urutannya otomatis disinkronkan ke WooCommerce."
+        description="Upload foto utama dan galeri ke WordPress Media; urutannya disinkronkan ke WooCommerce."
       >
         <ProductImageManager
           ref={imageManagerRef}
@@ -643,6 +646,16 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           maxFileMb={productImageMaxMb}
           disabled={busy}
           onDraftImagesChange={setVariantImages}
+          onImageRemoved={(src) => {
+            const affected = genericVariants.some(row => row.imageSrc === src);
+            setGenericVariants(current => detachVariantImage(current, src));
+            // The legacy color editor requires an explicit photo. Use the remaining
+            // main photo when available; its existing validation handles an empty gallery.
+            const replacement = variantImages.find(image => image.src !== src)?.src ?? "";
+            const affectedColor = variantDrafts.some(row => row.imageSrc === src);
+            setVariantDrafts(current => current.map(row => row.imageSrc === src ? { ...row, imageSrc: replacement } : row));
+            if (affected || affectedColor) setMessage({ tone: "warning", text: "Foto dihapus dari galeri. Varian yang memakainya sekarang mengikuti foto utama. Pilih foto pengganti di Varian Produk bila diperlukan, lalu simpan perubahan." });
+          }}
           onImageSourcesResolved={(sources) => {
             Object.assign(resolvedVariantImages.current, sources);
             setGenericVariants(current => current.map(row => ({ ...row, imageSrc: sources[row.imageSrc] ?? row.imageSrc })));

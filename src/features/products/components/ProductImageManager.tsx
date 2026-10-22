@@ -56,6 +56,7 @@ interface ProductImageManagerProps {
   maxFileMb?: number;
   disabled?: boolean;
   onImagesChange?: (images: AdminProductImage[]) => void;
+  onImageRemoved?: (src: string) => void;
   onDraftImagesChange?: (images: AdminProductImage[]) => void;
   onImageSourcesResolved?: (sources: Record<string, string>) => void;
 }
@@ -71,6 +72,7 @@ export const ProductImageManager = forwardRef<
     maxFileMb = 10,
     disabled = false,
     onImagesChange,
+    onImageRemoved,
     onDraftImagesChange,
     onImageSourcesResolved,
   },
@@ -353,6 +355,7 @@ export const ProductImageManager = forwardRef<
 
   function remove(index: number) {
     const removed = items[index];
+    if (removed) onImageRemoved?.(removed.previewUrl);
     if (removed?.file) releaseObjectUrl(removed.previewUrl);
     setItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
     setDirty(true);

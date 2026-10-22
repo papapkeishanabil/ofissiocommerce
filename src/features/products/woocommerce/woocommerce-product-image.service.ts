@@ -1,4 +1,8 @@
 import "server-only";
+import { listColorVariationRows } from "./color-variants.service";
+import { GENERIC_VARIANTS_META, GENERIC_VARIANT_MARKER, readProductVariants } from "../product-variants";
+import { getMetaBoolean, getMetaValue } from "./woocommerce-product-meta";
+import { detachVariantImage } from "../variant-image-references";
 
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
@@ -225,8 +229,27 @@ export async function updateAdminProductImages(
       currentOrder.filter((key) => nextOrder.includes(key)).join("|") !==
       nextOrder.filter((key) => currentOrder.includes(key)).join("|");
 
+    // Save Photo Products is also usable independently of the main form.
+    // Move references first, so deleting a gallery entry never leaves a native
+    // variation pointing at a removed photo after a successful gallery save.
+    const variants = product.type === "variable" && removed.length
+      ? await listColorVariationRows(product.id) : [];
+    const affected = variants.filter(row => row.status === "publish" && row.image?.src && !next.some(image => image.id === row.image?.id || image.src === row.image?.src));
+    if (affected.length && !next[0]) throw createApiError("VALIDATION_ERROR", "Foto masih dipakai varian. Tambahkan foto pengganti sebelum menghapus foto terakhir.", 400);
+    for (const row of affected) {
+      const primary = next[0]!;
+      await woocommerceClient.updateProductVariation(product.id, row.id, {
+        attributes: row.attributes ?? [], image: toWooWriteImage(primary),
+        ...(getMetaBoolean(row.meta_data ?? [], GENERIC_VARIANT_MARKER, false)
+          ? { meta_data: [{ key: "ofissio_variant_inherit_image", value: "1" }] } : {}),
+      });
+    }
+    let storedVariants = readProductVariants(getMetaValue(product.meta_data ?? [], GENERIC_VARIANTS_META));
+    for (const row of affected) storedVariants = detachVariantImage(storedVariants, row.image!.src);
+
     await woocommerceClient.updateProduct(input.productId, {
       images: next.map(toWooWriteImage),
+      ...(affected.length ? { meta_data: [{ key: GENERIC_VARIANTS_META, value: storedVariants }] } : {}),
     });
     if (removed.length > 0) {
       logImageAudit("product_image_removed", input, {

@@ -84,7 +84,10 @@ function SizeGroupEditor({ group, sizeName, modelCode, images, regularPrice, onA
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
   const first = group.rows[0]!;
   const prefix = prefixDraft ?? (group.skuPrefix || modelCode || "");
-  const photo = photoDraft ?? (group.rows.every(row => row.imageSrc === first.imageSrc) ? first.imageSrc : "__keep__");
+  const photoCandidate = photoDraft ?? (group.rows.every(row => row.imageSrc === first.imageSrc) ? first.imageSrc : "__keep__");
+  const photo = photoCandidate === "__keep__" || !photoCandidate || images.some(image => image.src === photoCandidate)
+    ? photoCandidate
+    : group.rows.every(row => row.imageSrc === first.imageSrc) && images.some(image => image.src === first.imageSrc) ? first.imageSrc : "";
   const price = priceDraft ?? (group.rows.every(row => row.regularPrice === first.regularPrice) ? String(first.regularPrice || regularPrice || "") : "");
   let preview = "";
   try { if (prefix) preview = group.rows.slice(0, 3).map(row => variantStockSku(prefix, row.options[sizeName]!)).join(", "); } catch { /* Display the validation error when applying. */ }
