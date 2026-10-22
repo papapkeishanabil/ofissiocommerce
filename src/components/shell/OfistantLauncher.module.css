@@ -1,0 +1,37 @@
+.launcher {
+  position: fixed;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 44px;
+  padding: 0 13px 0 10px;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 999px;
+  background: #10245f;
+  color: #fff;
+  box-shadow: 0 3px 10px rgb(16 36 95 / 18%);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.launcher[hidden] { display: none; }
+.launcher:hover { background: #19377d; box-shadow: 0 4px 12px rgb(16 36 95 / 24%); }
+.launcher:focus-visible { outline: 3px solid #e8a92a; outline-offset: 3px; }
+.logo { width: 26px; height: 26px; flex-shrink: 0; }
+.desktop { left: 20px; bottom: max(20px, env(safe-area-inset-bottom)); }
+.mobile {
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 48px;
+  height: 48px;
+  padding: 0;
+}
+.mobile .logo { width: 28px; height: 28px; }
+
+@media (min-width: 80rem) { .mobile { display: none; } }
+@media (prefers-reduced-motion: reduce) { .launcher { transition: none; } }
