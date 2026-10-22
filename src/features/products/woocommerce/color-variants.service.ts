@@ -1,4 +1,5 @@
 import "server-only";
+import { PRODUCT_KIND_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, mapProductVariants } from "../product-variants";
 import { mapPurchaseVariants, PURCHASE_VARIANTS_META } from "../purchase-variants";
 import { COLOR_SIZE_ENABLED_META, COLOR_SIZE_ROWS_META, mapNativeColorSizeVariants } from "../color-size-variants";
 
@@ -10,8 +11,9 @@ import {
 } from "../color-variants";
 import type { AdminColorVariantsPayload } from "./color-variants.validation";
 import { woocommerceClient } from "./woocommerce.client";
-import { getMetaBoolean, getMetaNumber, getMetaStringArray } from "./woocommerce-product-meta";
+import { getMetaBoolean, getMetaNumber, getMetaString, getMetaValue, getMetaStringArray } from "./woocommerce-product-meta";
 import { fromSameOriginWordPressMediaUrl } from "./wordpress-media-proxy";
+import { toProxiedWordPressMediaUrl } from "./wordpress-media-proxy";
 import { getWordPressMediaRuntimeConfig } from "./wordpress-media-upload.service";
 import type { WooCommerceMetaData, WooCommerceProduct, WooCommerceProductVariation } from "./woocommerce.types";
 
@@ -29,6 +31,12 @@ export async function listColorVariationRows(productId: number, source: VariantS
 
 /** Checkout and detail pages read native variations, including current stock. */
 export async function withLiveColorVariants(product: WooCommerceProduct, source: VariantSource = woocommerceClient) {
+  if (getMetaString(product.meta_data ?? [], PRODUCT_KIND_META) === "variable") {
+    const options = readVariantOptions(getMetaValue(product.meta_data ?? [], VARIANT_OPTIONS_META));
+    const rows = await listColorVariationRows(product.id, source);
+    const variants = mapProductVariants(rows, options).map(row => ({ ...row, imageSrc: toProxiedWordPressMediaUrl(row.imageSrc, process.env.WORDPRESS_MEDIA_BASE_URL?.trim() ?? "") }));
+    return { ...product, meta_data: [...(product.meta_data ?? []).filter(row => row.key !== GENERIC_VARIANTS_META), { key: GENERIC_VARIANTS_META, value: variants }] };
+  }
   if (!getMetaBoolean(product.meta_data ?? [], COLOR_VARIANTS_ENABLED_META, false)) {
     if (product.type !== "variable") return product;
     const rows = await listColorVariationRows(product.id, source);

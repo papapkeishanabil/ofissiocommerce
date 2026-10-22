@@ -42,9 +42,11 @@ const quantityPricingTierSchema = z.object({
 });
 
 export const adminWooProductPayloadSchema = z.object({
+  productKind: z.enum(["simple", "variable"]).optional(),
+  modelCode: z.string().trim().max(80).regex(/^[A-Za-z0-9._-]*$/).optional(),
   name: z.string().trim().min(2).max(180),
   slug: z.string().trim().max(180).regex(/^[a-z0-9-]*$/).optional(),
-  sku: z.string().trim().min(1).max(100).regex(/^[A-Za-z0-9._-]+$/),
+  sku: z.string().trim().max(100).regex(/^[A-Za-z0-9._-]*$/),
   regularPrice: z.coerce.number().positive().max(10_000_000_000),
   weightGram: z.coerce.number().positive().max(1_000_000),
   lengthCm: z.coerce.number().positive().max(1_000),
@@ -91,6 +93,15 @@ export const adminWooProductPayloadSchema = z.object({
     )
     .optional(),
 }).superRefine((value, context) => {
+  if (value.productKind === "variable" ? !value.modelCode : !value.sku) {
+    context.addIssue({ code: "custom", path: [value.productKind === "variable" ? "modelCode" : "sku"], message: value.productKind === "variable" ? "Kode model utama wajib diisi." : "SKU produk wajib diisi." });
+  }
+  if (value.productKind === "simple" && (value.colors.length > 1 || value.sizes.length > 1)) {
+    context.addIssue({ code: "custom", path: ["productKind"], message: "Produk dengan pilihan warna atau ukuran harus menggunakan jenis Dengan varian." });
+  }
+  if (value.productKind === "simple" && value.sizes.some(size => size !== "OS")) {
+    context.addIssue({ code: "custom", path: ["sizes"], message: "Produk tanpa varian memakai satu jumlah produk (OS). Gunakan Dengan varian untuk pilihan ukuran." });
+  }
   if (value.supportsEmbroidery && value.embroideryZones.length === 0) {
     context.addIssue({
       code: z.ZodIssueCode.custom,

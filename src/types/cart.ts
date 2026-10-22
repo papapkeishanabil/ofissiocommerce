@@ -38,6 +38,7 @@ export interface CartLineItem {
   canAddEmbroidery?: boolean;
   color: string;
   selectedSleeve?: string;
+  selectedOptions?: Record<string, string>;
   availableSizes?: string[];
   /** quantity per size */
   sizes: SizeMatrix;
@@ -72,7 +73,7 @@ export interface CartLineItem {
 }
 
 export function emptySizeMatrix(): SizeMatrix {
-  return { XS: 0, S: 0, M: 0, L: 0, XL: 0, "2XL": 0, "3XL": 0, "4XL": 0, "5XL": 0 };
+  return { OS: 0, XS: 0, S: 0, M: 0, L: 0, XL: 0, "2XL": 0, "3XL": 0, "4XL": 0, "5XL": 0 };
 }
 
 export function sumSizeMatrix(m: SizeMatrix): number {

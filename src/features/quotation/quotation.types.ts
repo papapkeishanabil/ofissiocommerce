@@ -433,6 +433,7 @@ export interface CreateQuotationRequestInput {
     productId: string;
     selectedColor: string;
     selectedSleeve?: string;
+  selectedOptions?: Record<string, string>;
     sizeMatrix: Record<string, number>;
     customization: string | null;
     embroideryPlacements: unknown[];

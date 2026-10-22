@@ -10,17 +10,20 @@ import { productColorDisplayLabel } from "@/lib/product-colors";
 import { ProductImagePreview } from "./ProductImagePreview";
 import { catalogColorPreview, catalogColorSwatchStyle } from "./catalog-colors";
 import styles from "./CatalogProductCard.module.css";
+import { isColorOption, isSizeOption } from "@/features/products/product-variants";
 
 export function CatalogProductCard({ product, colorFilter }: { product: OfissioProduct; colorFilter?: string }) {
   const preview = catalogColorPreview(product, colorFilter);
   const href = `/product/${product.slug}`;
   const colors = [...new Map((product.available_colors?.length ? product.available_colors : product.colors ?? [])
-    .map(color => color.trim()).filter(Boolean).map(color => [color.toLocaleLowerCase("id-ID"), color])).values()];
+    .map(color => color.trim()).filter(color => color && color !== "Default").map(color => [color.toLocaleLowerCase("id-ID"), color])).values()];
   const orderedColors = preview.color ? [preview.color, ...colors.filter(color => color.toLocaleLowerCase("id-ID") !== preview.color?.toLocaleLowerCase("id-ID"))] : colors;
-  const sizes = [...new Set((product.available_sizes ?? []).map(size => size.trim()).filter(Boolean))];
+  const sizes = [...new Set((product.available_sizes ?? []).map(size => size.trim()).filter(size => size && size !== "OS"))];
+  const extraOptions = (product.variantOptions ?? []).filter(o => !isColorOption(o.name) && !isSizeOption(o.name));
+  const differentPrices = new Set(product.productVariants?.map(v => v.regularPrice)).size > 1;
   const material = product.material?.trim();
   const specifications = [material && material !== "Material belum diisi" ? material : undefined, product.safety_features?.[0]?.trim()
-    || (product.sleeve_type === "short" ? "Lengan pendek" : product.sleeve_type === "long" ? "Lengan panjang" : undefined)].filter(Boolean);
+    || (extraOptions.some(o => /lengan|sleeve/i.test(o.name)) ? undefined : product.sleeve_type === "short" ? "Lengan pendek" : product.sleeve_type === "long" ? "Lengan panjang" : undefined)].filter(Boolean);
   return <article className={`catalog-product-card ${styles.card}`}>
     <ProductImagePreview product={preview.product} className={`catalog-product-photo ${styles.photo}`}>
       <span className={`catalog-photo-badges ${styles.badges}`}>
@@ -33,7 +36,7 @@ export function CatalogProductCard({ product, colorFilter }: { product: OfissioP
       <h2><Link href={href}>{product.name}</Link></h2>
       {specifications.length > 0 && <p className={styles.specifications}>{specifications.join(" · ")}</p>}
       {preview.color && preview.usesMainPhoto && <p className={styles.photoNote}>Foto menampilkan warna utama; tersedia {productColorDisplayLabel(preview.color)}.</p>}
-      {(colors.length > 0 || sizes.length > 0) && <dl className={styles.variants}>
+      {(colors.length > 0 || sizes.length > 0 || extraOptions.length > 0) && <dl className={styles.variants}>
         {colors.length > 0 && <div className={styles.variantRow}>
           <dt>Warna</dt><dd className={styles.colors}>
             <span className={styles.swatches}>{orderedColors.slice(0, 4).map(color => <span key={color} role="img" aria-label={productColorDisplayLabel(color)} title={productColorDisplayLabel(color)} className={styles.swatch} style={catalogColorSwatchStyle(color)}/>)}</span>
@@ -43,9 +46,10 @@ export function CatalogProductCard({ product, colorFilter }: { product: OfissioP
         {sizes.length > 0 && <div className={styles.variantRow}>
           <dt>Ukuran</dt><dd className={styles.sizes}>{sizes.map(size => <span key={size}>{size}</span>)}</dd>
         </div>}
+        {extraOptions.map(option => <div key={option.name} className={styles.variantRow}><dt>{option.name}</dt><dd className={styles.sizes}>{option.values.map(value => <span key={value}>{value}</span>)}</dd></div>)}
       </dl>}
       <div className={styles.purchase}>
-        <p className={styles.price}><strong>{formatIDR(product.priceFrom)}</strong><span>/pcs</span></p>
+        <p className={styles.price}><strong>{differentPrices ? "Mulai " : ""}{formatIDR(product.priceFrom)}</strong><span>/pcs</span></p>
         <p className={styles.minimum}>Min. pembelian {Math.max(1, product.moq)} pcs</p>
         <Link className={styles.detail} href={href} aria-label={`Lihat Detail ${product.name}`}>Lihat Detail <ArrowRight size={16} aria-hidden="true"/></Link>
       </div>

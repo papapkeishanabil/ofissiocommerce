@@ -5,6 +5,7 @@ import { garmentReference } from "@/components/configurator/garment-scale";
 
 import { productColorDisplayLabel } from "@/lib/product-colors";
 import { colorVariantGallery, selectedColorVariant } from "@/features/products/color-variants";
+import { isColorOption, isSizeOption, selectedVariantPrice, matchingProductVariant } from "@/features/products/product-variants";
 import { sleeveOptions } from "@/features/products/purchase-variants";
 
 import dynamic from "next/dynamic";
@@ -91,12 +92,24 @@ interface ProductDetailProps {
 
 export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, sizeChartStandardName, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
   const router = useRouter();
-  const sleeves = useMemo(() => sleeveOptions(product), [product]);
+  const generic = product.productKind === "variable";
+  const defaultGeneric = product.productVariants?.find(v => v.sku === product.defaultVariantSku) ?? product.productVariants?.[0];
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => Object.fromEntries((product.variantOptions ?? []).filter(o => !isSizeOption(o.name)).map(o => [o.name, defaultGeneric?.options[o.name] ?? o.values[0] ?? ""])));
+  const sleeves = useMemo(() => product.productKind ? [] : sleeveOptions(product), [product]);
   const [selectedSleeve, setSelectedSleeve] = useState(sleeves[0] || "");
-  const [color, setColor] = useState<string>(product.defaultColor && product.colors.includes(product.defaultColor) ? product.defaultColor : product.colors[0] || "Default");
-  const galleryImages = useMemo(() => colorVariantGallery(product, color), [product, color]);
-  const galleryProduct = useMemo(() => ({ ...product, images: galleryImages }), [product, galleryImages]);
+  const [color, setColor] = useState<string>(() => {
+    const colorOption = product.variantOptions?.find(o => isColorOption(o.name));
+    return generic && colorOption ? defaultGeneric?.options[colorOption.name] ?? colorOption.values[0] ?? "Default" : product.defaultColor && product.colors.includes(product.defaultColor) ? product.defaultColor : product.colors[0] || "Default";
+  });
   const [sizes, setSizes] = useState<SizeMatrix>(() => emptySizeMatrix());
+  const activeGenericVariant = generic ? matchingProductVariant(product, selectedOptions, Object.entries(sizes).find(([, q]) => q > 0)?.[0]) ?? product.productVariants?.find(row => Object.entries(selectedOptions).every(([name, value]) => row.options[name] === value)) : undefined;
+  const galleryImages = useMemo(() => {
+    if (!activeGenericVariant?.imageSrc) return colorVariantGallery(product, color);
+    return [{ id: null, src: activeGenericVariant.imageSrc, name: product.name, alt: product.name }, ...(product.images ?? []).filter(image => image.src !== activeGenericVariant.imageSrc)];
+  }, [product, color, activeGenericVariant?.imageSrc]);
+  const galleryProduct = useMemo(() => ({ ...product, images: galleryImages }), [product, galleryImages]);
+  let selectedRegularPrice = product.priceFrom;
+  try { if (generic) selectedRegularPrice = Object.values(sizes).some(q => q > 0) ? selectedVariantPrice(product, selectedOptions, sizes) : activeGenericVariant?.regularPrice ?? product.priceFrom; } catch { /* Cart validation reports mixed prices or unavailable combinations. */ }
   const [customization, setCustomization] = useState<string>("");
   const [added, setAdded] = useState(false);
   const [showSizeChart, setShowSizeChart] = useState(false);
@@ -108,7 +121,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const line = useCartStore.getState().items.find(item => item.id === params.get("line") && item.productId === product.id);
-    if (line) { setEditingLineId(line.id); setSizes(line.sizes); setColor(line.color); setSelectedSleeve(line.selectedSleeve || sleeves[0] || ""); setUniform3DConfig(line.uniform3DConfig || null); }
+    if (line) { setEditingLineId(line.id); setSizes(line.sizes); setColor(line.color); setSelectedSleeve(line.selectedSleeve || sleeves[0] || ""); if (line.selectedOptions) setSelectedOptions(line.selectedOptions); setUniform3DConfig(line.uniform3DConfig || null); }
     if (params.get("studio") === "1" && product.supports_embroidery && validateProduct3DModel(product).ok) {
       setShow3D(true);
     }
@@ -235,11 +248,11 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
   );
   const quantityPrice = useMemo(
     () => calculateQuantityTierPrice({
-      regularPrice: product.priceFrom,
+      regularPrice: selectedRegularPrice,
       totalQty,
       quantityPricing: product.quantityPricing,
     }),
-    [product.priceFrom, product.quantityPricing, totalQty],
+    [selectedRegularPrice, product.quantityPricing, totalQty],
   );
   const embroideryPrice = useMemo(
     () => calculateEmbroideryPricing({
@@ -269,7 +282,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
       tier.unitPrice < lowest.unitPrice ? tier : lowest,
     );
   }, [product.quantityPricing]);
-  const entryPrice = entryTier?.unitPrice ?? product.priceFrom;
+  const entryPrice = entryTier?.unitPrice ?? selectedRegularPrice;
   // Satu helper MOQ bersama dengan cart-store/checkout: MOQ produk + batas
   // keras bordir (8 pcs default) bila line ini meminta bordir.
   const lineHasEmbroidery = hasEmbroideryRequest({
@@ -325,6 +338,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
       product,
       color: configOverride?.color ?? color,
       selectedSleeve: selectedSleeve || undefined,
+      selectedOptions: generic ? { ...selectedOptions, ...Object.fromEntries((product.variantOptions ?? []).filter(o => isColorOption(o.name)).map(o => [o.name, configOverride?.color ?? color])) } : undefined,
       sizes,
       customization: customization.trim() || null,
       uniform3DConfig: configOverride,
@@ -440,7 +454,8 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                   {product.name}
                 </h1>
                 <p className="mt-1 font-mono text-xs text-ink-muted">
-                  SKU: {selectedColorVariant(product, color)?.sku || product.sku}
+                  {generic ? `Model: ${product.modelCode || "—"}` : `SKU: ${selectedColorVariant(product, color)?.sku || product.sku}`}
+                  {generic && Object.values(sizes).some(q => q > 0) && activeGenericVariant ? <span className="mt-1 block">SKU: {activeGenericVariant.sku}</span> : null}
                 </p>
               </div>
               <Badge
@@ -457,7 +472,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                 Harga saat ini
               </p>
               <p className="storefront-product-price mt-1 font-bold leading-tight tracking-tight text-ink">
-                {formatIDR(entryPrice)} <span className="text-base font-bold tracking-normal">/ pcs</span>
+                {generic && !activeGenericVariant ? "Kombinasi tidak tersedia" : <>{formatIDR(entryPrice)} <span className="text-base font-bold tracking-normal">/ pcs</span></>}
               </p>
               <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-[#eff4ff] px-2 py-1.5 text-xs font-bold text-brand-900">
                 <span>{entryTier?.label ?? `Mulai ${Math.max(1, product.moq)} pcs`}</span>
@@ -498,7 +513,11 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
               </details>
             ) : null}
 
-            <ProductColorPicker product={product} color={color} onChange={setColor} />
+            {!generic && product.productKind !== "simple" && <ProductColorPicker product={product} color={color} onChange={setColor} />}
+            {generic && product.variantOptions?.filter(option => !isSizeOption(option.name)).map(option => <fieldset key={option.name} className="mt-3">
+              <legend className="text-xs font-bold text-ink">{option.name}</legend>
+              <div className="mt-2 flex flex-wrap gap-2">{option.values.map(value => <button key={value} type="button" aria-pressed={selectedOptions[option.name] === value} className={`min-h-11 rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${selectedOptions[option.name] === value ? "border-brand-700 bg-surface-muted" : "border-line bg-surface"}`} onClick={() => { setSelectedOptions(current => ({ ...current, [option.name]: value })); if (isColorOption(option.name)) setColor(value); setSizes(emptySizeMatrix()); setError(null); }}>{value}</button>)}</div>
+            </fieldset>)}
             {sleeves.length > 0 && <fieldset className="mt-3">
               <legend className="text-xs font-bold text-ink">Jenis lengan</legend>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -517,6 +536,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                 availableSizes={product.available_sizes}
                 color={color}
                 selectedSleeve={selectedSleeve || undefined}
+                selectedOptions={generic ? selectedOptions : undefined}
                 value={sizes}
                 onChange={setSizes}
                 moq={product.moq}
@@ -528,7 +548,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
 
             {/* Size chart reference — expand inline di panel pembelian,
                 hanya saat standar ukuran terpasang. */}
-            {product.sizeChart.length > 0 && (
+            {product.sizeChart.length > 0 && product.available_sizes.some(size => size !== "OS") && (
               <div className="mt-2 border-y border-[#dbe3f1] py-2">
                 <button
                   type="button"
@@ -796,10 +816,12 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                 initialColor={color}
                 initialConfig={uniform3DConfig}
                 selectedSleeve={selectedSleeve || undefined}
+                selectedOptions={generic ? selectedOptions : undefined}
                 onSave={(cfg) => {
                   if (editingLineId && !addProductToCart(cfg)) return;
                   setUniform3DConfig(cfg);
                   setColor(cfg.color);
+                  if (generic) setSelectedOptions(current => ({ ...current, ...Object.fromEntries((product.variantOptions ?? []).filter(o => isColorOption(o.name)).map(o => [o.name, cfg.color])) }));
                   setShow3D(false);
                 }}
                 onCancel={() => setShow3D(false)}

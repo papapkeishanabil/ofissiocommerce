@@ -1,4 +1,5 @@
 import "server-only";
+import { selectProductVariants, selectedVariantPrice, matchingProductVariant, isColorOption } from "@/features/products/product-variants";
 import { colorVariantIssue, colorVariantSnapshot } from "@/features/products/color-variants";
 import { selectColorSizeVariants } from "@/features/products/color-size-variants";
 import { selectPurchaseVariants } from "@/features/products/purchase-variants";
@@ -60,9 +61,16 @@ async function validateAndPriceItem(
   }
   const variantIssue = colorVariantIssue(product, input.selectedColor);
   if (variantIssue) throw createApiError("VALIDATION_ERROR", variantIssue, 400);
-  const variantSnapshot = colorVariantSnapshot(product, input.selectedColor);
+  const selectedVariant = product.productKind === "variable" ? matchingProductVariant(product, input.selectedOptions ?? {}, Object.entries(input.sizeMatrix).find(([, q]) => q > 0)?.[0]) : undefined;
+  const colorOption = product.variantOptions?.find(o => isColorOption(o.name));
+  if (product.productKind === "variable" && colorOption && input.selectedOptions?.[colorOption.name] !== input.selectedColor) throw createApiError("VALIDATION_ERROR", "Pilihan warna tidak sesuai varian.", 400);
+  const variantSnapshot = selectedVariant ? { sku: selectedVariant.sku, image: selectedVariant.imageSrc || product.mainImage || null, parentSku: product.sku } : colorVariantSnapshot(product, input.selectedColor);
   let sizeVariants;
-  try { sizeVariants = selectColorSizeVariants(product, input.selectedColor, input.sizeMatrix) ?? selectPurchaseVariants(product, input.sizeMatrix, input.selectedSleeve, input.selectedColor); }
+  let regularPrice = product.priceFrom;
+  try {
+    if (product.productKind === "variable") { sizeVariants = selectProductVariants(product, input.sizeMatrix, input.selectedOptions); regularPrice = selectedVariantPrice(product, input.selectedOptions ?? {}, input.sizeMatrix); }
+    else sizeVariants = selectColorSizeVariants(product, input.selectedColor, input.sizeMatrix) ?? selectPurchaseVariants(product, input.sizeMatrix, input.selectedSleeve, input.selectedColor);
+  }
   catch (error) { throw createApiError("VALIDATION_ERROR", error instanceof Error ? error.message : "Varian ukuran belum tersedia.", 400); }
 
   // Satu helper untuk MOQ produk + batas keras bordir — dipakai juga oleh
@@ -85,7 +93,7 @@ async function validateAndPriceItem(
     input.embroideryPlacements,
   );
   const calculatedPrice = calculateQuantityTierPrice({
-    regularPrice: product.priceFrom,
+    regularPrice,
     totalQty,
     quantityPricing: product.quantityPricing,
   });
@@ -122,11 +130,12 @@ async function validateAndPriceItem(
     ...variantSnapshot,
     sizeVariants,
     selectedColor: input.selectedColor,
-    selectedSleeve: input.selectedSleeve,
+    selectedSleeve: product.productKind ? undefined : input.selectedSleeve,
+    selectedOptions: input.selectedOptions,
     sizeMatrix: input.sizeMatrix,
     totalQty,
     priceFrom: calculatedPrice.unitPrice,
-    regularPrice: product.priceFrom,
+    regularPrice,
     finalUnitPrice: calculatedPrice.unitPrice,
     quantityTierLabel: calculatedPrice.tierLabel,
     quantityPricingBasis: product.quantityPricing?.basis ?? "total_order_qty",
@@ -273,6 +282,7 @@ export async function getValidatedCheckoutCart(
         productId: item.productId,
         selectedColor: item.selectedColor,
         selectedSleeve: item.selectedSleeve,
+      selectedOptions: item.selectedOptions,
         sizeMatrix: item.sizeMatrix,
         customization: item.customization,
         embroideryPlacements: item.embroideryPlacements,

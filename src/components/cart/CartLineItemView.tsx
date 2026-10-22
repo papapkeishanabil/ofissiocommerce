@@ -90,12 +90,13 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-2 text-sm text-ink">
+            {item.color !== "Default" && <span className="inline-flex items-center gap-2 text-sm text-ink">
               <span className="h-4 w-4 rounded-full border border-black/10" style={productColorSwatchStyle(item.color)} aria-hidden="true" />
               {productColorDisplayLabel(item.color)}
-            </span>
+            </span>}
             <Badge tone="neutral">{item.totalQty} pcs</Badge>
             {item.selectedSleeve && <Badge tone="neutral">{item.selectedSleeve}</Badge>}
+            {Object.entries(item.selectedOptions ?? {}).filter(([name]) => !/^(warna|color)$/i.test(name)).map(([name, value]) => <Badge key={name} tone="neutral">{name}: {value}</Badge>)}
             {item.customization && (
               <Badge tone="amber" className="max-w-[200px] truncate">
                 {item.customization}
@@ -149,13 +150,13 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
 
       <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-4 text-sm">
         {SIZES.filter((size) => (item.sizes[size] ?? 0) > 0).map((size) => (
-          <div key={size} className="flex gap-2"><dt className="font-semibold">{size}</dt><dd className="text-ink-muted">{item.sizes[size]} pcs</dd></div>
+          <div key={size} className="flex gap-2"><dt className="font-semibold">{size === "OS" ? "Jumlah" : size}</dt><dd className="text-ink-muted">{item.sizes[size]} pcs</dd></div>
         ))}
       </dl>
       <details className="mt-3">
       <summary className="w-fit cursor-pointer py-2 text-sm font-semibold text-ink">Ubah jumlah per ukuran</summary>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-6">
-        {SIZES.filter(s => item.availableSizes ? item.availableSizes.some(size => size.toUpperCase().replace(/^XXL$/, "2XL") === s) : !["XS", "4XL", "5XL"].includes(s) || (item.sizes[s] ?? 0) > 0).map((s) => {
+        {SIZES.filter(s => item.availableSizes ? item.availableSizes.some(size => size.toUpperCase().replace(/^XXL$/, "2XL") === s) : !["OS", "XS", "4XL", "5XL"].includes(s) || (item.sizes[s] ?? 0) > 0).map((s) => {
           const qty = item.sizes[s] ?? 0;
           const active = qty > 0;
           return (
@@ -172,7 +173,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
                   active ? "text-brand-700" : "text-ink-subtle",
                 )}
               >
-                {s}
+                {s === "OS" ? "Jumlah" : s}
               </span>
               <div className="mt-1.5 flex w-full items-center justify-center gap-1 px-1">
                 <button

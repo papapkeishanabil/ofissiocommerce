@@ -1,9 +1,11 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
+import { PRODUCT_KIND_META, MODEL_CODE_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, readProductVariants, mapProductVariants } from "../product-variants";
 import { ensureSizeVariants } from "./size-variants.service";
 import { stockSize } from "../color-size-variants";
 import { PURCHASE_VARIANTS_META, type PurchaseVariant } from "../purchase-variants";
 import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "../color-variants";
-import { withLiveColorVariants } from "./color-variants.service";
+import { withLiveColorVariants, listColorVariationRows } from "./color-variants.service";
 
 import { getCommerceRuntimeConfig } from "@/features/commerce/commerce.config";
 import { normalizeIndustrySlug } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
@@ -100,9 +102,20 @@ export async function getAdminWooCommerceProduct(
     moq: getMetaNumber(meta, "moq", 0),
   }).quantityPricing;
   const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
+  const storedOptions = readVariantOptions(getMetaValue(meta, VARIANT_OPTIONS_META));
+  const legacyOptions = (product.attributes ?? []).filter(a => a.variation && a.options?.length).map(a => ({ name: a.name, values: a.options! }));
+  const variantOptions = storedOptions.length ? storedOptions : legacyOptions;
+  const productVariants = getMetaString(meta, PRODUCT_KIND_META) === "variable"
+    ? readProductVariants(getMetaValue(meta, GENERIC_VARIANTS_META))
+    : product.type === "variable" && legacyOptions.length ? mapProductVariants(await listColorVariationRows(product.id), legacyOptions) : [];
   return {
     ...summary,
-    purchaseVariants: (getMetaValue(meta, PURCHASE_VARIANTS_META) as PurchaseVariant[] | undefined) ?? [],
+    productKind: getMetaString(meta, PRODUCT_KIND_META) as "simple" | "variable" || undefined,
+    modelCode: getMetaString(meta, MODEL_CODE_META),
+    variantOptions,
+    productVariants,
+    defaultVariantSku: getMetaString(meta, "ofissio_default_variant_sku"),
+    purchaseVariants: getMetaString(meta, PRODUCT_KIND_META) ? [] : (getMetaValue(meta, PURCHASE_VARIANTS_META) as PurchaseVariant[] | undefined) ?? [],
     colorVariants: readColorVariants(product),
     colorVariantsEnabled: getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false),
     colorSizeVariantsEnabled: getMetaBoolean(meta, "ofissio_color_size_variants_enabled", false),
@@ -217,6 +230,9 @@ export async function updateAdminWooCommerceProduct(input: {
       woocommerceClient.getProductById(input.id),
       ensureGlobalProductAttributes(input.payload),
     ]);
+    if (input.payload.productKind === "simple" && current.type === "variable" && (current.variations?.length ?? 0) > 0) {
+      throw createApiError("VALIDATION_ERROR", "Produk ini sudah memiliki varian tersimpan. Jenis produk tidak dapat diubah menjadi tanpa varian; buat produk baru jika memerlukan satu SKU.", 400);
+    }
     const updated = await woocommerceClient.updateProduct(
       input.id,
       buildWritePayload(input.payload, current, managedAttributes),
@@ -398,7 +414,14 @@ function buildWritePayload(
     ],
   ];
 
-  if (!current) {
+  if (payload.productKind) {
+    entries.push([PRODUCT_KIND_META, payload.productKind], [MODEL_CODE_META, payload.modelCode ?? ""],
+      ["ofissio_stock_variants_ready", payload.productKind === "simple" ? "1" : "0"],
+      [COLOR_VARIANTS_ENABLED_META, "0"], ["ofissio_color_size_variants_enabled", "0"]);
+    if (payload.productKind === "simple") entries.push([GENERIC_VARIANTS_META, []], [VARIANT_OPTIONS_META, []]);
+  }
+
+  if (!current && !payload.productKind) {
     entries.push(["ofissio_stock_variants_ready", false]);
     if (payload.colors.length > 1) entries.push([COLOR_VARIANTS_ENABLED_META, true], [COLOR_VARIANTS_READY_META, false], ["ofissio_color_size_variants_enabled", true]);
   }
@@ -406,7 +429,8 @@ function buildWritePayload(
   return {
     name: payload.name,
     ...(payload.slug ? { slug: payload.slug } : {}),
-    sku: payload.sku,
+    ...(payload.productKind ? { type: payload.productKind } : {}),
+    sku: payload.productKind === "variable" ? current?.sku || `OFS-${randomUUID()}` : payload.sku,
     regular_price: String(payload.regularPrice),
     // WooCommerce standard weight uses kilograms and dimensions use centimetres
     // in this store. Canonical Ofissio values are also persisted as metadata.
