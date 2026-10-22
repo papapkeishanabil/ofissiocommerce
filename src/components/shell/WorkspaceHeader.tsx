@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect, type MouseEvent } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,6 +30,7 @@ export function WorkspaceHeader({ onNavigate }: {
   const { session, hydrated: authHydrated, logout } = useAuth();
   const openAuth = useUIStore((s) => s.openAuth);
   const pathname = usePathname();
+  const headerRef = useRef<HTMLElement>(null);
 
   // Homepage sections scroll inside a nested container ([data-workspace-scroll]),
   // not the window, so native hash scrolling never reaches them. After a
@@ -86,6 +87,26 @@ export function WorkspaceHeader({ onNavigate }: {
     }
   };
 
+  // Native <details> only closes via its own summary or a link activation —
+  // never for interactions elsewhere on the page, so on mobile the hamburger
+  // menu stays stranded open over the content. Close it whenever a pointer or
+  // focus lands outside the header.
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const closeMenu = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Node && header.contains(target)) return;
+      header.querySelectorAll("details[open]").forEach((menu) => menu.removeAttribute("open"));
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("focusin", closeMenu);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("focusin", closeMenu);
+    };
+  }, []);
+
   const links = [
     { label: "Industri", href: "/#usaha", section: "usaha" },
     { label: "Cara Order", href: "/#cara", section: "cara" },
@@ -95,7 +116,7 @@ export function WorkspaceHeader({ onNavigate }: {
   const navLink = "rounded-lg px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10";
 
   return (
-    <header className={`storefront-header workspace-chrome-header sticky top-0 z-30 shrink-0 text-white${["/catalog", "/cart", "/promo"].includes(pathname) || pathname.startsWith("/product/") ? " catalog-header" : ""}`}
+    <header ref={headerRef} className={`storefront-header workspace-chrome-header sticky top-0 z-30 shrink-0 text-white${["/catalog", "/cart", "/promo"].includes(pathname) || pathname.startsWith("/product/") ? " catalog-header" : ""}`}
       onKeyDown={(event) => {
         if (event.key !== "Escape") return;
         const menu = event.currentTarget.querySelector("details[open]");
@@ -105,9 +126,14 @@ export function WorkspaceHeader({ onNavigate }: {
         }
       }}
       onClickCapture={(event) => {
-        if ((event.target as HTMLElement).closest("a")) {
+        const target = event.target as HTMLElement;
+        if (target.closest("a")) {
           (event.currentTarget.querySelector("details") as HTMLDetailsElement | null)?.removeAttribute("open");
           onNavigate?.();
+        } else if (target.closest("button")) {
+          // Buttons that open overlays (Masuk, logout) or submit the menu's
+          // search must not leave the dropdown stranded open behind them.
+          (event.currentTarget.querySelector("details[open]") as HTMLDetailsElement | null)?.removeAttribute("open");
         }
       }}>
       <div className="mx-auto flex h-full w-full items-center gap-3 px-4 sm:px-6 lg:gap-4 lg:px-8">
