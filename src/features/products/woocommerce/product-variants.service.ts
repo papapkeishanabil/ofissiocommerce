@@ -1,6 +1,6 @@
 import "server-only";
 import type { z } from "zod";
-import { productVariantsSchema, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, GENERIC_VARIANT_MARKER, PRODUCT_KIND_META, mapProductVariants, combinationKey, isColorOption, isSizeOption } from "../product-variants";
+import { productVariantsSchema, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, GENERIC_VARIANT_MARKER, PRODUCT_KIND_META, mapProductVariants, mapLegacyProductVariants, combinationKey, isColorOption, isSizeOption } from "../product-variants";
 import { listColorVariationRows, type VariantSource } from "./color-variants.service";
 import { woocommerceClient } from "./woocommerce.client";
 import { createApiError } from "@/lib/security/safe-error-response";
@@ -22,7 +22,12 @@ export async function saveProductVariants(productId: number, raw: z.infer<typeof
     if (row.imageSrc && !product.images?.some(i => canonical(i.src) === canonical(row.imageSrc))) fail(`Foto untuk ${row.sku} belum tersimpan di galeri.`);
   }
   // Recover a partially completed save by SKU without allocating duplicate native rows.
-  const plans = input.variants.map(row => ({ ...row, id: row.id ?? rows.find(r => r.sku.toLowerCase() === row.sku.toLowerCase())?.id }));
+  const legacy = mapLegacyProductVariants(rows.filter(row => !getMetaBoolean(row.meta_data ?? [], GENERIC_VARIANT_MARKER, false)), input.options);
+  const plans = input.variants.map(row => ({ ...row, id: row.id
+    ?? rows.find(r => r.sku.toLowerCase() === row.sku.toLowerCase())?.id
+    ?? legacy.find(old => combinationKey(input.options, old.options) === combinationKey(input.options, row.options))?.id }));
+  const matchedIds = plans.flatMap(row => row.id ? [row.id] : []);
+  if (new Set(matchedIds).size !== matchedIds.length) fail("Dua kombinasi mengarah ke varian lama yang sama. Periksa SKU dan pilihan varian sebelum menyimpan.");
   const unmapped = rows.filter(row => row.status === "publish" && !getMetaBoolean(row.meta_data ?? [], GENERIC_VARIANT_MARKER, false) && !plans.some(plan => plan.id === row.id));
   if (unmapped.length) fail(`Ada varian lama yang belum dipetakan: ${unmapped.map(row => row.sku || `ID ${row.id}`).join(", ")}. Muat ulang halaman edit dan pertahankan seluruh SKU lama saat beralih ke editor fleksibel.`);
   await assertFreeStockSkus(plans, source);

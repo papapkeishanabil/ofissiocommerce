@@ -77,6 +77,14 @@ async function run() {
   await saveProductVariants(900, { options: importedOptions, variants: migrated, defaultVariantSku: migrated[0]!.sku }, importedFixture.source);
   assert.equal(importedFixture.rows.length, 6, "migration reuses six existing native rows");
   assert.deepEqual(importedFixture.rows.map(row => row.stock_quantity), [7,7,7,7,7,7], "migration preserves stock");
+  const renamedFixture = fixture();
+  renamedFixture.rows.push(...structuredClone(imported));
+  const renamedInput = { options: importedOptions, variants: migrated.map(({ id: _id, ...row }) => ({ ...row, sku: row.sku.replace("KK-020", "KK-013") })), defaultVariantSku: "KK-013-S" };
+  const renamed = await saveProductVariants(900, renamedInput, renamedFixture.source);
+  assert.deepEqual(renamed.map(row => row.id), imported.map(row => row.id), "SKU renames without client IDs reuse unambiguous legacy combinations");
+  assert.equal(renamedFixture.rows.length, 6);
+  assert.deepEqual(renamedFixture.rows.map(row => row.stock_quantity), [7,7,7,7,7,7]);
+  assert(renamedFixture.rows.every(row => row.sku.startsWith("KK-013-")));
   assert(productVariantsSchema.safeParse(input).success);
   assert(!productVariantsSchema.safeParse({ ...input, variants: [variants[0], variants[0]] }).success);
   assert(!productVariantsSchema.safeParse({ ...input, defaultVariantSku: "missing" }).success);
