@@ -67,7 +67,7 @@ export async function saveProductVariants(productId: number, raw: z.infer<typeof
   await source.updateProduct(productId, { meta_data: [
     { key: GENERIC_VARIANTS_META, value: fresh },
     { key: "ofissio_stock_variants_ready", value: "1" },
-    { key: "available_colors", value: JSON.stringify(colorOption?.values ?? ["Default"]) },
+    ...(colorOption ? [{ key: "available_colors", value: JSON.stringify(colorOption.values) }] : []),
     { key: "available_sizes", value: JSON.stringify(sizeOption?.values ?? ["OS"]) },
   ] });
   return fresh;

@@ -19,11 +19,12 @@ export function CatalogProductCard({ product, colorFilter }: { product: OfissioP
     .map(color => color.trim()).filter(color => color && color !== "Default").map(color => [color.toLocaleLowerCase("id-ID"), color])).values()];
   const orderedColors = preview.color ? [preview.color, ...colors.filter(color => color.toLocaleLowerCase("id-ID") !== preview.color?.toLocaleLowerCase("id-ID"))] : colors;
   const sizes = [...new Set((product.available_sizes ?? []).map(size => size.trim()).filter(size => size && size !== "OS"))];
-  const extraOptions = (product.variantOptions ?? []).filter(o => !isColorOption(o.name) && !isSizeOption(o.name));
+  const sleeveOption = (product.variantOptions ?? []).find(o => /^(lengan|tipe lengan|sleeve|sleeve type)$/i.test(o.name.trim()));
+  const extraOptions = (product.variantOptions ?? []).filter(o => !isColorOption(o.name) && !isSizeOption(o.name) && o !== sleeveOption);
   const differentPrices = new Set(product.productVariants?.map(v => v.regularPrice)).size > 1;
   const material = product.material?.trim();
   const specifications = [material && material !== "Material belum diisi" ? material : undefined, product.safety_features?.[0]?.trim()
-    || (extraOptions.some(o => /lengan|sleeve/i.test(o.name)) ? undefined : product.sleeve_type === "short" ? "Lengan pendek" : product.sleeve_type === "long" ? "Lengan panjang" : undefined)].filter(Boolean);
+    || (sleeveOption ? `Lengan ${sleeveOption.values.map(value => value.replace(/^lengan\s+/i, "").toLocaleLowerCase("id-ID")).join(" / ")}` : product.sleeve_type === "short" ? "Lengan pendek" : product.sleeve_type === "long" ? "Lengan panjang" : undefined)].filter(Boolean);
   return <article className={`catalog-product-card ${styles.card}`}>
     <ProductImagePreview product={preview.product} className={`catalog-product-photo ${styles.photo}`}>
       <span className={`catalog-photo-badges ${styles.badges}`}>

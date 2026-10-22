@@ -275,7 +275,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           },
           body: JSON.stringify(form.productKind === "variable" ? {
             ...form,
-            colors: genericOptions.find(o => isColorOption(o.name))?.values ?? ["Default"],
+            colors: genericOptions.find(o => isColorOption(o.name))?.values ?? (form.colors.length ? form.colors : ["Default"]),
             sizes: genericOptions.find(o => isSizeOption(o.name))?.values ?? ["OS"],
           } : form.productKind === "simple" ? { ...form, colors: form.colors.length ? form.colors : ["Default"], sizes: ["OS"] } : form),
         },
@@ -775,7 +775,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           <CheckboxGroup label="Industri" required options={options.industries.filter((item) => item.active).map((item) => ({ value: item.slug, label: item.name }))} selected={form.industries} onChange={(values) => set("industries", values)} />
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {form.productKind !== "variable" && <MasterMultiSelectField
+          {!(form.productKind === "variable" && genericOptions.some(o => isColorOption(o.name))) && <MasterMultiSelectField
             label="Warna"
             masterSlug="warna"
             value={form.colors}
@@ -803,9 +803,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
             </select>
           </Field>
           <Field label="Tipe lengan">
-            <select className={INPUT} value={form.sleeveType} onChange={(e) => set("sleeveType", e.target.value as AdminWooProductInput["sleeveType"])}>
+            {form.productKind === "variable" && genericOptions.some(o => /^(lengan|tipe lengan|sleeve|sleeve type)$/i.test(o.name.trim())) ? <p className="min-h-11 rounded-lg border border-line bg-slate-50 px-3 py-2 text-sm text-ink">Mengikuti Varian Produk: {genericOptions.find(o => /^(lengan|tipe lengan|sleeve|sleeve type)$/i.test(o.name.trim()))?.values.join(" / ")}</p> : <select className={INPUT} value={form.sleeveType} onChange={(e) => set("sleeveType", e.target.value as AdminWooProductInput["sleeveType"])}>
               <option value="short">Pendek</option><option value="long">Panjang</option>
-            </select>
+            </select>}
           </Field>
           <MasterMultiSelectField
             label="Safety Features"

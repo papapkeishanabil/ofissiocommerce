@@ -137,6 +137,13 @@ async function run() {
     assert.deepEqual(getOrderStockRequirement({ id: "simple-order", companyId: "company-simple", items: cart.items }).map(row => row.stockSku), ["KL-003"]);
   } finally { productServerService.getProductById = originalRead; }
   const noSize = fixture();
+  const sleeveOnly = fixture();
+  await saveProductVariants(900, {
+    options: options.filter(o => o.name !== "Warna"),
+    variants: variants.map(v => ({ ...v, options: { Lengan: v.options.Lengan, Saku: v.options.Saku, Ukuran: v.options.Ukuran } })),
+    defaultVariantSku: variants[0]!.sku,
+  }, sleeveOnly.source);
+  assert.deepEqual(mapWooCommerceProductToOfissioProduct(sleeveOnly.product).available_colors, ["Merah"], "sleeve variants preserve the product color attribute");
   const noSizeInput = { options: options.filter(o => o.name !== "Ukuran"), variants: variants.filter(v => v.options.Ukuran === "S").map(v => ({ ...v, options: { Warna: v.options.Warna, Lengan: v.options.Lengan, Saku: v.options.Saku } })), defaultVariantSku: variants[0]!.sku };
   await saveProductVariants(900, noSizeInput, noSize.source);
   const noSizeProduct = mapWooCommerceProductToOfissioProduct(await withLiveColorVariants(noSize.product, noSize.source));
