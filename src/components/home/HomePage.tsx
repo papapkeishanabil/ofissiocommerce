@@ -213,7 +213,7 @@ export async function HomePage() {
       </section>
 
       {/* 07 — curated 3D product stage */}
-      <section id="produk" className="scroll-mt-24 overflow-hidden bg-[#f8f4ec] py-16 lg:py-24">
+      <section id="produk" className="scroll-mt-24 overflow-hidden bg-white py-16 lg:py-24">
         <div className="mx-auto grid max-w-[1600px] gap-12 px-6 lg:grid-cols-[minmax(22rem,0.85fr)_minmax(0,1.35fr)] lg:items-center lg:gap-8 lg:px-8">
           <div className="relative z-10">
             <HomeSectionMarker number={sectionNumber(7)} label={content.produk_pilihan.eyebrow} />
