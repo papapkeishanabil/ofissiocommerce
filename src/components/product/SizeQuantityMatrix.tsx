@@ -25,7 +25,6 @@ interface SizeQuantityMatrixProps {
   productId?: string;
   color?: string;
   selectedSleeve?: string;
-  selectedOptions?: Record<string, string>;
   availableSizes?: string[];
 }
 
@@ -40,17 +39,16 @@ export function SizeQuantityMatrix({
   productId,
   color,
   selectedSleeve,
-  selectedOptions,
   availableSizes,
 }: SizeQuantityMatrixProps) {
-  const stockKey = productId && color ? JSON.stringify([productId, color, selectedSleeve, selectedOptions]) : "";
+  const stockKey = productId && color ? JSON.stringify([productId, color, selectedSleeve]) : "";
   const [stockState, setStockState] = useState<{ key: string; stock: ProductSizeStock | null }>({ key: "", stock: null });
   useEffect(() => {
     if (!productId || !color) return;
     const controller = new AbortController();
     let disposed = false;
     const timeout = window.setTimeout(() => controller.abort(), 20_000);
-    fetch(`/api/products/${encodeURIComponent(productId)}/size-stock?color=${encodeURIComponent(color)}${selectedSleeve ? `&sleeve=${encodeURIComponent(selectedSleeve)}` : ""}${selectedOptions ? `&options=${encodeURIComponent(JSON.stringify(selectedOptions))}` : ""}`, { signal: controller.signal, cache: "no-store" })
+    fetch(`/api/products/${encodeURIComponent(productId)}/size-stock?color=${encodeURIComponent(color)}${selectedSleeve ? `&sleeve=${encodeURIComponent(selectedSleeve)}` : ""}`, { signal: controller.signal, cache: "no-store" })
       .then(async response => {
         if (!response.ok) throw new Error("Stock unavailable");
         const result = await response.json() as { ok: boolean; stock: ProductSizeStock };
@@ -60,7 +58,7 @@ export function SizeQuantityMatrix({
       .catch(() => { if (!disposed) setStockState({ key: stockKey, stock: null }); })
       .finally(() => window.clearTimeout(timeout));
     return () => { disposed = true; controller.abort(); window.clearTimeout(timeout); };
-  }, [productId, color, selectedSleeve, selectedOptions, stockKey]);
+  }, [productId, color, selectedSleeve, stockKey]);
   const stockLoading = !!stockKey && stockState.key !== stockKey;
   const currentStock = stockState.key === stockKey ? stockState.stock : null;
   const total = sumSizeMatrix(value);
@@ -82,13 +80,13 @@ export function SizeQuantityMatrix({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <h3 className="text-sm font-bold text-ink">{availableSizes?.length === 1 && availableSizes[0] === "OS" ? "Jumlah produk" : "Atur quantity per ukuran"}</h3>
+        <h3 className="text-sm font-bold text-ink">Atur quantity per ukuran</h3>
         <span className="text-[11px] text-ink-muted">MOQ: {moq} pcs</span>
       </div>
 
       <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2" role="list">
-        {SIZES.filter(s => availableSizes ? availableSizes.some(size => size.toUpperCase().replace(/^XXL$/, "2XL") === s) : !["OS", "XS", "4XL", "5XL"].includes(s)).map((s) => {
-          const sizeLabel = s === "OS" ? "Jumlah" : s === "2XL" ? "XXL" : s;
+        {SIZES.filter(s => availableSizes ? availableSizes.some(size => size.toUpperCase().replace(/^XXL$/, "2XL") === s) : !["XS", "4XL", "5XL"].includes(s)).map((s) => {
+          const sizeLabel = s === "2XL" ? "XXL" : s;
           const chart = sizeChart?.find((c) => c.size === s);
           const qty = value[s] ?? 0;
           const stock = currentStock?.rows.find(row => row.size.toUpperCase().replace(/^XXL$/, "2XL").replace(/^XXXL$/, "3XL") === s);
@@ -115,7 +113,7 @@ export function SizeQuantityMatrix({
                   <Minus className="h-3.5 w-3.5" />
                 </button>
                 <label htmlFor={`${listId}-${s}`} className="sr-only">
-                  {s === "OS" ? "Jumlah produk" : `Quantity ukuran ${sizeLabel}`}
+                  Quantity ukuran {sizeLabel}
                 </label>
                 <input
                   id={`${listId}-${s}`}

@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "./catalog.css";
 @source not "../../.next-checkout-fixture";
-@source not "../../.next-account-ui-qa";
 @source not "../../artifacts/storefront-consistency/next-dev-before-route-recovery";
 
 /* Customer-facing commerce shares Studio's colors and action tokens, but keeps
