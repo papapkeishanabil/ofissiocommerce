@@ -84,6 +84,7 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
   const visible = visibleTiles(businessGroup);
   const ordered = homepageBusinessTiles(businessGroup);
   const lead = ordered[0] ?? visible[0];
+  const feature = data.businessFeature;
 
   return (
     <section id="usaha" className="scroll-mt-28 bg-[#f8f4ec] py-16 lg:py-20">
@@ -106,8 +107,8 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
             <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">Seragam kerja dan penampilan profesional yang dirancang untuk menonjolkan performa tim di berbagai industri.</p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-[1.08fr_0.92fr]">
-              <Link href={lead ? industryHref(lead) : "/inspirasi"} className="group relative aspect-[4/5] self-start sm:aspect-[1/2] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_68px_-38px_rgba(8,29,67,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
-                {lead && photoFor(lead, data) ? <Image src={photoFor(lead, data)} alt={`Seragam lengkap ${lead.label}`} fill unoptimized sizes="(max-width: 640px) 100vw, (max-width: 1024px) 55vw, 27vw" style={frameFor(lead.industry, data, "feature")} /> : null}
+              <Link href={feature ? inspirationHref(feature.industry) : lead ? industryHref(lead) : "/inspirasi"} className="group relative aspect-[4/5] self-start sm:aspect-[1/2] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_68px_-38px_rgba(8,29,67,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
+                {feature || (lead && photoFor(lead, data)) ? <Image src={feature?.image ?? photoFor(lead!, data)} alt={feature?.imageAlt ?? `Seragam lengkap ${lead!.label}`} fill unoptimized sizes="(max-width: 640px) 100vw, (max-width: 1024px) 55vw, 27vw" style={feature ? { objectFit: feature.fit, objectPosition: `${feature.x}% ${feature.y}%` } : frameFor(lead!.industry, data, "feature")} /> : null}
               </Link>
               <div className="grid content-start gap-3">
                 {ordered.map((tile) => <MiniIndustry key={`${tile.industry}-${tile.label}`} tile={tile} data={data} />)}

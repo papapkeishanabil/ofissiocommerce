@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import type { IndustryInspirationData } from "../content.schema";
 import { draggedImagePosition, HOME_FRAME_RATIOS, homeImageFrame, type HomeFrameKind, type ImageFrame } from "../inspiration-framing";
 
-export function InspirationPhotoFrameEditor({ value, onChange }: { value: IndustryInspirationData; onChange: (patch: Partial<IndustryInspirationData>) => void }) {
-  const [target, setTarget] = useState<HomeFrameKind | "hero">(value.industry === "Bengkel" ? "feature" : value.industry === "Corporate" ? "corporate" : "card");
+export function InspirationPhotoFrameEditor({ value, onChange, featureOnly = false }: { featureOnly?: boolean; value: IndustryInspirationData; onChange: (patch: Partial<IndustryInspirationData>) => void }) {
+  const [target, setTarget] = useState<HomeFrameKind | "hero">(featureOnly ? "feature" : value.industry === "Corporate" ? "corporate" : "card");
   const [mobile, setMobile] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);
   const drag = useRef<{ pointer: number; x: number; y: number; start: ImageFrame } | null>(null);
@@ -18,9 +18,9 @@ export function InspirationPhotoFrameEditor({ value, onChange }: { value: Indust
     else onChange({ homepageFrames: { ...value.homepageFrames, [target]: next } });
   }
   return <section className="mb-5 space-y-4 rounded-2xl border border-line bg-white p-4 sm:p-5" aria-label="Bingkai foto website">
-    <div><h3 className="text-base font-bold text-ink">Atur tampilan foto di website</h3><p className="mt-1 text-sm text-ink-muted">Pilih bingkai, lalu geser foto untuk menentukan bagian yang terlihat. Pengaturan beranda terpisah dari foto dan pin pada halaman inspirasi. Bingkai beranda berlaku bila industri ini ditampilkan pada lokasi tersebut.</p></div>
+    <div><h3 className="text-base font-bold text-ink">Atur tampilan foto di website</h3><p className="mt-1 text-sm text-ink-muted">Pilih bingkai, lalu geser foto untuk menentukan bagian yang terlihat. Foto besar bisnis diatur melalui kolom khusus di bagian atas editor. Pengaturan kartu industri terpisah dari foto besar dan pin anotasi.</p></div>
     <div className="flex flex-wrap items-end gap-4">
-      <label className="text-sm font-semibold">Lokasi foto<select className="mt-1 block min-h-11 rounded-lg border border-line bg-white px-3" value={target} onChange={(e) => setTarget(e.target.value as typeof target)}><option value="feature">Beranda — foto besar bisnis</option><option value="card">Beranda — kartu industri</option><option value="corporate">Beranda — foto korporasi</option><option value="hero">Halaman inspirasi</option></select></label>
+      {!featureOnly && <label className="text-sm font-semibold">Lokasi foto<select className="mt-1 block min-h-11 rounded-lg border border-line bg-white px-3" value={target} onChange={(e) => setTarget(e.target.value as typeof target)}><option value="feature">Beranda — foto besar bisnis</option><option value="card">Beranda — kartu industri</option><option value="corporate">Beranda — foto korporasi</option><option value="hero">Halaman inspirasi</option></select></label>}
       <label className="text-sm font-semibold">Pratinjau<select className="mt-1 block min-h-11 rounded-lg border border-line bg-white px-3" value={mobile ? "mobile" : "desktop"} onChange={(e) => setMobile(e.target.value === "mobile")}><option value="desktop">Desktop</option><option value="mobile">Ponsel</option></select></label>
       {!hero && <label className="text-sm font-semibold">Tampilan foto<select className="mt-1 block min-h-11 rounded-lg border border-line bg-white px-3" value={frame.fit} onChange={(e) => update({ ...frame, fit: e.target.value as ImageFrame["fit"] })}><option value="cover">Penuhi bingkai</option><option value="contain">Tampilkan foto utuh</option></select></label>}
     </div>

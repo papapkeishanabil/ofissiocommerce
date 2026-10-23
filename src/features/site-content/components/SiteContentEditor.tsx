@@ -55,6 +55,8 @@ import { IndustryInspirationEditor } from "@/features/site-content/components/In
 import { IndustryInspirationPagesEditor } from "@/features/site-content/components/IndustryInspirationPagesEditor";
 import { cn } from "@/lib/utils";
 import { INSPIRATION_PAGES } from "@/features/site-content/industry-inspiration.routes";
+import { InspirationPhotoFrameEditor } from "./InspirationPhotoFrameEditor";
+import type { IndustriSectionData } from "../content.schema";
 import { DEFAULT_INDUSTRI } from "@/features/site-content/content.schema";
 
 export interface SiteContentEditorState {
@@ -272,6 +274,11 @@ export function SiteContentEditor({
       ) : null}
 
       <fieldset disabled={disabled} className="mt-5 space-y-5">
+        {section === "industri" && <section className="space-y-4 rounded-xl border border-line bg-white p-5">
+          <h2 className="text-lg font-bold">Foto besar Bisnis Naik Kelas</h2>
+          <p className="text-sm text-ink-muted">Unggah foto khusus untuk kolom besar. Foto dan posisinya tersimpan terpisah dari kartu industri di sebelahnya.</p>
+          <BusinessFeatureFields value={data.businessFeature as IndustriSectionData["businessFeature"]} onChange={(next) => setData((current) => ({ ...current, businessFeature: next }))} />
+        </section>}
         {fields.map((field) => field.kind === "industryInspiration" ? (
           <IndustryInspirationPagesEditor
             key={field.key}
@@ -1330,4 +1337,16 @@ function ImageFieldControl({
       </div>
     </Field>
   );
+}
+
+function BusinessFeatureFields({ value, onChange }: { value: IndustriSectionData["businessFeature"]; onChange: (value: NonNullable<IndustriSectionData["businessFeature"]>) => void }) {
+  const feature = value ?? { image: "", imageAlt: "Seragam profesional Bisnis Naik Kelas", industry: "Grosir", x: 50, y: 50, fit: "cover" as const };
+  return <>
+    <FieldRenderer field={{ kind: "image", key: "businessFeatureImage", label: "Foto kolom besar", maxLength: 2000 }} value={feature.image} onChange={(image) => onChange({ ...feature, image: String(image) })} />
+    {feature.image && <>
+      <FieldRenderer field={{ kind: "text", key: "businessFeatureAlt", label: "Deskripsi foto", maxLength: 200 }} value={feature.imageAlt} onChange={(imageAlt) => onChange({ ...feature, imageAlt: String(imageAlt) })} />
+      <label className="block text-sm font-semibold">Halaman tujuan foto<select className="mt-1 block min-h-11 rounded-lg border border-line bg-white px-3" value={feature.industry} onChange={(event) => onChange({ ...feature, industry: event.target.value })}>{INSPIRATION_PAGES.map((page) => <option key={page.industry} value={page.industry}>{page.label}</option>)}</select></label>
+      <InspirationPhotoFrameEditor featureOnly value={{ ...DEFAULT_INDUSTRI.inspiration, image: feature.image, imageAlt: feature.imageAlt, homepageFrames: { feature: { x: feature.x, y: feature.y, fit: feature.fit } } }} onChange={(patch) => { const frame = patch.homepageFrames?.feature; if (frame) onChange({ ...feature, ...frame }); }} />
+    </>}
+  </>;
 }

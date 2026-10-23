@@ -687,6 +687,7 @@ export interface IndustriGroup {
   tiles: IndustriTile[];
 }
 export interface IndustriSectionData {
+  businessFeature?: { image: string; imageAlt: string; industry: string; x: number; y: number; fit: "cover" | "contain" };
   eyebrow: string;
   headline: TextSegment[];
   lede: string;
@@ -803,6 +804,14 @@ export const industryInspirationPagesSchema = z.array(industryInspirationSchema)
   });
 
 export const industriSectionSchema = z.object({
+  businessFeature: z.object({
+    image: z.string().trim().min(1).max(2000),
+    imageAlt: z.string().trim().min(1).max(200),
+    industry: industryFieldSchema,
+    x: z.number().min(0).max(100),
+    y: z.number().min(0).max(100),
+    fit: z.enum(["cover", "contain"]),
+  }).optional(),
   eyebrow: nonEmpty(60),
   headline: textSegmentsSchema,
   lede: nonEmpty(400),
