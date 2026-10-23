@@ -723,6 +723,7 @@ export interface IndustryInspirationData {
   /** CSS object-position percentages used by the public hero. */
   focalX: number;
   focalY: number;
+  homepageFrames?: Partial<Record<"feature" | "card" | "corporate", { x: number; y: number; fit: "cover" | "contain" }>>;
   annotations: IndustryInspirationAnnotation[];
   cafePlacements?: { key: string; annotations: IndustryInspirationAnnotation[] }[];
 }
@@ -754,6 +755,11 @@ export const industryInspirationSchema = z.object({
   imageAlt: nonEmpty(180),
   focalX: normalizedPercentSchema.default(50),
   focalY: normalizedPercentSchema.default(50),
+  homepageFrames: z.object({
+    feature: z.object({ x: normalizedPercentSchema, y: normalizedPercentSchema, fit: z.enum(["cover", "contain"]) }).optional(),
+    card: z.object({ x: normalizedPercentSchema, y: normalizedPercentSchema, fit: z.enum(["cover", "contain"]) }).optional(),
+    corporate: z.object({ x: normalizedPercentSchema, y: normalizedPercentSchema, fit: z.enum(["cover", "contain"]) }).optional(),
+  }).optional(),
   annotations: z.array(industryInspirationAnnotationSchema).min(1).max(8),
   cafePlacements: z.array(z.object({
     key: z.string().refine((key) => ["cafe:barista:team", "cafe:front-counter:team", "cafe:kitchen:team", "cafe:kitchen:uniform", "cafe:supervisor:team", "restaurant:service:team", "restaurant:host:team", "restaurant:chef:team", "restaurant:chef:uniform", "restaurant:manager:team"].includes(key), "Tampilan pin tidak dikenal"),

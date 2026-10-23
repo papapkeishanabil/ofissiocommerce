@@ -6,6 +6,14 @@ import { resolveHomepageIcon } from "@/features/site-content/icon-registry";
 import type { IndustriGroup, IndustriSectionData, IndustriTile } from "@/features/site-content/content.schema";
 import { HomeSectionMarker } from "./HomeSectionMarker";
 import { INSPIRATION_ROUTES, inspirationHref } from "@/features/site-content/industry-inspiration.routes";
+import { HOME_FRAME_RATIOS, homeImageFrame, type HomeFrameKind } from "@/features/site-content/inspiration-framing";
+
+function frameFor(industry: IndustriTile["industry"], data: IndustriSectionData, kind: HomeFrameKind) {
+  const page = data.inspirationPages.find((item) => item.industry === industry && item.slug === INSPIRATION_ROUTES[industry].slug)
+    ?? (industry === "Bengkel" ? data.inspiration : undefined);
+  const frame = homeImageFrame(page, kind);
+  return { objectFit: frame.fit, objectPosition: `${frame.x}% ${frame.y}%` };
+}
 
 const CAMPAIGN_PHOTOS: Record<string, string> = {
   "/industries/bengkel-model.jpg": "/industries/campaign/bengkel-teknisi.png",
@@ -54,9 +62,9 @@ function MiniIndustry({ tile, data }: { tile: IndustriTile; data: IndustriSectio
   const Icon = resolveHomepageIcon(tile.icon);
   const photo = photoFor(tile, data);
   return (
-    <Link href={industryHref(tile)} className="group grid min-h-40 grid-cols-[minmax(0,1.05fr)_minmax(8rem,0.95fr)] overflow-hidden rounded-xl bg-white/70 shadow-[0_18px_45px_-36px_rgba(8,29,67,0.55)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_55px_-34px_rgba(8,29,67,0.48)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
-      <div className="relative min-h-40 overflow-hidden bg-[#e8e3da]">
-        {photo ? <Image src={photo} alt={`Seragam ${tile.label}`} fill unoptimized sizes="(max-width: 1024px) 55vw, 18vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.025]" /> : null}
+    <Link href={industryHref(tile)} className="group grid items-center grid-cols-[minmax(0,1.05fr)_minmax(8rem,0.95fr)] overflow-hidden rounded-xl bg-white/70 shadow-[0_18px_45px_-36px_rgba(8,29,67,0.55)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_55px_-34px_rgba(8,29,67,0.48)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
+      <div className="relative w-full overflow-hidden bg-[#e8e3da]" style={{ aspectRatio: HOME_FRAME_RATIOS.card }}>
+        {photo ? <Image src={photo} alt={`Seragam ${tile.label}`} fill unoptimized sizes="(max-width: 1024px) 55vw, 18vw" style={frameFor(tile.industry, data, "card")} /> : null}
       </div>
       <div className="flex flex-col justify-center p-5">
         <Icon className="h-7 w-7 text-ochre-600" strokeWidth={1.6} aria-hidden="true" />
@@ -96,10 +104,10 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
             <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">Seragam kerja dan penampilan profesional yang dirancang untuk menonjolkan performa tim di berbagai industri.</p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-[1.08fr_0.92fr]">
-              <Link href={lead ? industryHref(lead) : "/inspirasi"} className="group relative min-h-[34rem] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_68px_-38px_rgba(8,29,67,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 sm:min-h-[38rem] lg:min-h-[44rem]">
-                {lead && photoFor(lead, data) ? <Image src={photoFor(lead, data)} alt={`Seragam lengkap ${lead.label}`} fill unoptimized sizes="(max-width: 640px) 100vw, (max-width: 1024px) 55vw, 27vw" className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]" /> : null}
+              <Link href={lead ? industryHref(lead) : "/inspirasi"} className="group relative aspect-[4/5] self-start sm:aspect-[1/2] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_68px_-38px_rgba(8,29,67,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
+                {lead && photoFor(lead, data) ? <Image src={photoFor(lead, data)} alt={`Seragam lengkap ${lead.label}`} fill unoptimized sizes="(max-width: 640px) 100vw, (max-width: 1024px) 55vw, 27vw" style={frameFor(lead.industry, data, "feature")} /> : null}
               </Link>
-              <div className="grid gap-3">
+              <div className="grid content-start gap-3">
                 {ordered.map((tile) => <MiniIndustry key={`${tile.industry}-${tile.label}`} tile={tile} data={data} />)}
               </div>
             </div>
@@ -116,8 +124,8 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
             </div>
             <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">Pengadaan seragam terstruktur untuk perusahaan dan organisasi berskala besar dengan standar tinggi.</p>
 
-            <Link href="/inspirasi/solusi-korporasi" className="relative mt-8 block min-h-[28rem] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700 sm:min-h-[34rem] lg:min-h-[38rem]">
-              <Image src={corporatePhotoFor(data)} alt="Tim berseragam Ofissio untuk solusi korporasi" fill unoptimized sizes="(max-width: 1024px) 100vw, 46vw" className="object-cover object-center" />
+            <Link href="/inspirasi/solusi-korporasi" className="relative mt-8 block overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700" style={{ aspectRatio: HOME_FRAME_RATIOS.corporate }}>
+              <Image src={corporatePhotoFor(data)} alt="Tim berseragam Ofissio untuk solusi korporasi" fill unoptimized sizes="(max-width: 1024px) 100vw, 46vw" style={frameFor("Corporate", data, "corporate")} />
             </Link>
 
             <div className="mt-5 grid gap-0 sm:grid-cols-3">

@@ -31,6 +31,7 @@ import { buildBentConnector } from "@/features/site-content/inspiration-connecto
 import { mergeInspirationSuggestions, type InspirationPlacement } from "@/features/site-content/industry-inspiration.draft";
 import { INDUSTRIES } from "@/types/industry";
 import { cn } from "@/lib/utils";
+import { InspirationPhotoFrameEditor } from "./InspirationPhotoFrameEditor";
 
 const IMAGE_ACCEPT = ".jpg,.jpeg,.png,.webp";
 
@@ -283,6 +284,7 @@ export function IndustryInspirationEditor({
 
   return (
     <Field label={label} hint={help}>
+      <InspirationPhotoFrameEditor value={value} onChange={patchValue} />
       <div className="overflow-hidden rounded-2xl border border-line bg-slate-50/70">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-3 sm:px-5">
           <div className="flex items-center gap-2">
