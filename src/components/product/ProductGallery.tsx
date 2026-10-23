@@ -5,6 +5,7 @@ import { Box, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 
 import { ProductImagePlaceholder } from "@/components/catalog/ProductImagePlaceholder";
 import type { OfissioProduct } from "@/features/products/product.types";
+import styles from "./ProductDetailTheme.module.css";
 
 interface ProductGalleryProps {
   product: OfissioProduct;
@@ -45,7 +46,7 @@ export function ProductGallery({
     <div
       className={
         immersive
-          ? `grid min-w-0 gap-3 rounded-2xl bg-[#f5f2ec] p-3 lg:p-4 ${
+          ? `${styles.gallery} grid min-w-0 gap-3 lg:p-4 ${
               images.length > 1 ? "lg:grid-cols-[92px_minmax(0,1fr)]" : "grid-cols-1"
             }`
           : "min-w-0 space-y-3"
@@ -70,13 +71,13 @@ export function ProductGallery({
                 onClick={() => setSelectedIndex(index)}
                 aria-label={`Tampilkan foto ${index + 1}: ${image.alt || product.name}`}
                 aria-pressed={active}
-                className={`aspect-square shrink-0 overflow-hidden border p-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-500 focus-visible:ring-offset-2 ${
-                  immersive ? "w-[76px] rounded-xl bg-[#f5f2ec] lg:w-full" : "min-w-0 rounded-xl bg-white"
+                className={`aspect-square shrink-0 overflow-hidden border p-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
+                  immersive ? "w-[76px] rounded-xl bg-white lg:w-full" : "min-w-0 rounded-xl bg-white"
                 } ${
                   active
-                    ? "border-ochre-500 ring-1 ring-ochre-500"
+                    ? "border-brand-500 ring-1 ring-brand-500"
                     : immersive
-                      ? "border-line hover:border-ochre-400"
+                      ? "border-line hover:border-brand-400"
                       : "border-line hover:border-brand-300"
                 }`}
               >
@@ -96,7 +97,7 @@ export function ProductGallery({
               type="button"
               onClick={onOpen3D}
               aria-label="Buka Preview 3D di Studio Bordir"
-              className="group relative aspect-square w-[76px] shrink-0 overflow-hidden rounded-xl border border-line bg-[#f5f2ec] p-1 transition hover:border-ochre-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-500 focus-visible:ring-offset-2 lg:w-full"
+              className="group relative aspect-square w-[76px] shrink-0 overflow-hidden rounded-xl border border-line bg-white p-1 transition hover:border-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 lg:w-full"
             >
               {images[0]?.src ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -113,12 +114,12 @@ export function ProductGallery({
       <div
         className={
           immersive
-            ? "relative order-1 h-[480px] overflow-hidden rounded-xl bg-[#f5f2ec] sm:h-[640px] lg:order-2 xl:h-[min(800px,calc(100dvh-160px))] xl:min-h-[560px]"
+            ? "relative order-1 h-[480px] overflow-hidden rounded-xl bg-white sm:h-[640px] lg:order-2 xl:h-[min(800px,calc(100dvh-160px))] xl:min-h-[560px]"
             : "aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line bg-slate-50"
         }
       >
         {immersive && (
-          <div className="absolute left-1/2 top-4 z-10 flex min-h-11 w-max max-w-[calc(100%-16px)] -translate-x-1/2 rounded-full border border-white/25 bg-[#061a38]/80 p-1 shadow-lg backdrop-blur">
+          <div className="absolute left-1/2 top-4 z-10 flex min-h-11 w-max max-w-[calc(100%-16px)] -translate-x-1/2 rounded-full border border-white/25 bg-[#142766] p-1 shadow-lg backdrop-blur">
             <span className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-full bg-white px-3 text-xs sm:px-5 sm:text-sm font-bold text-brand-900">
               <ImageIcon className="h-4 w-4" aria-hidden="true" />
               Foto Produk
@@ -127,7 +128,7 @@ export function ProductGallery({
               <button
                 type="button"
                 onClick={onOpen3D}
-                className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs sm:px-5 sm:text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ochre-400"
+                className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs sm:px-5 sm:text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400"
               >
                 <Box className="h-4 w-4" aria-hidden="true" />
                 Preview 3D
@@ -167,7 +168,7 @@ export function ProductGallery({
               type="button"
               onClick={showPrevious}
               aria-label="Foto produk sebelumnya"
-              className="absolute left-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-[#061a38]/75 text-white shadow-lg backdrop-blur transition hover:border-ochre-400 hover:bg-[#061a38] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ochre-400 sm:left-5"
+              className="absolute left-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-[#142766] text-white shadow-lg backdrop-blur transition hover:border-brand-400 hover:bg-[#10245f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 sm:left-5"
             >
               <ChevronLeft className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -175,7 +176,7 @@ export function ProductGallery({
               type="button"
               onClick={showNext}
               aria-label="Foto produk berikutnya"
-              className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-[#061a38]/75 text-white shadow-lg backdrop-blur transition hover:border-ochre-400 hover:bg-[#061a38] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ochre-400 sm:right-5"
+              className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-[#142766] text-white shadow-lg backdrop-blur transition hover:border-brand-400 hover:bg-[#10245f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 sm:right-5"
             >
               <ChevronRight className="h-5 w-5" aria-hidden="true" />
             </button>
