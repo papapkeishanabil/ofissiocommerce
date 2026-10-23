@@ -33,7 +33,7 @@ export default async function InspirationsPage() {
                 <h2 className="text-3xl font-extrabold tracking-[-0.025em]">{group === "business" ? "Bisnis Naik Kelas" : "Solusi Korporasi"}</h2>
                 <p className="mb-6 mt-3 max-w-[60ch] text-base leading-relaxed text-ink-muted">{group === "business" ? "Identitas profesional untuk tim yang mengembangkan usaha Anda." : "Keselarasan tampilan untuk berbagai divisi, unit, dan lingkungan kerja."}</p>
                 <Link href={`/inspirasi/${lead.slug}`} className="relative block aspect-[3/2] overflow-hidden rounded-2xl bg-[#e8e3da] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700">
-                  <Image src={image.image} alt={image.imageAlt} fill sizes="(max-width: 1024px) 94vw, 660px" className="object-contain" />
+                  <Image src={image.image} alt={image.imageAlt} fill sizes="(max-width: 1024px) 94vw, 660px" className="object-cover object-center" />
                 </Link>
                 <nav aria-label={group === "business" ? "Inspirasi bisnis" : "Inspirasi korporasi"} className="mt-6 divide-y divide-ochre-600/25">
                   {pages.map((page) => (
