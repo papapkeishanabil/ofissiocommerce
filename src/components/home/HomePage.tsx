@@ -143,52 +143,70 @@ export async function HomePage() {
       <ReadyStockOrderSection data={content.cara_order} sectionNumber={sectionNumber(5)} />
 
       {/* 06 — executive corporate case study */}
-      <section id="korporasi" className="scroll-mt-24 overflow-hidden border-t border-ochre-400/35 bg-[#06152e] text-white">
-        <div className="mx-auto grid max-w-[1600px] gap-8 px-6 py-14 sm:py-16 lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)] lg:items-end lg:gap-16 lg:px-8 lg:py-20">
-          <div className="max-w-5xl">
-            <HomeSectionMarker number={sectionNumber(6)} label="Solusi Korporasi" tone="dark" />
-            <h2 className="mt-6 max-w-[18ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-[#f6f0e6] sm:text-6xl lg:text-[4rem]">
-              Solusi Korporasi dengan <span className="text-ochre-400">Standar Pengadaan Profesional.</span>
-            </h2>
-          </div>
-          <p className="max-w-[48ch] text-base leading-relaxed text-[#e2e8f0] sm:text-lg lg:pb-2">
-            Proses pengadaan yang tertib, dokumentasi lengkap, dan kualitas seragam yang konsisten untuk kebutuhan perusahaan.
-          </p>
-        </div>
-
-        <div className="relative h-[46rem] overflow-hidden sm:h-auto sm:aspect-[3/2] lg:max-h-[80rem]">
-          <Image
-            src={corporatePhotoFor(content.industri)}
-            alt="Tim lintas divisi mengenakan seragam kerja Ofissio"
-            fill
-            sizes="100vw"
-            quality={95}
-            className="object-cover object-[58%_top] sm:object-top"
-          />
-        </div>
-
-        <div className="mx-auto grid max-w-[1600px] border-t border-ochre-400/80 sm:grid-cols-2 lg:grid-cols-5">
-          {content.korporasi.items.slice(0, 4).map((item, index) => {
-            const Icon = resolveHomepageIcon(item.icon);
-            return (
-              <article key={item.title} className="group border-b border-white/10 px-6 py-8 sm:border-r lg:border-b-0 lg:px-8 lg:py-10">
-                <div className="flex items-start justify-between gap-4">
-                  <span className="text-3xl font-extrabold text-ochre-400 tabular-nums">{String(index + 1).padStart(2, "0")}</span>
-                  <Icon className="h-6 w-6 text-ochre-400" strokeWidth={1.7} aria-hidden="true" />
-                </div>
-                <h3 className="mt-5 text-xl font-extrabold leading-tight tracking-[-0.02em] text-[#f6f0e6]">{item.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-[#b9c6d8]">{item.desc}</p>
-              </article>
-            );
-          })}
-          <div className="flex min-h-48 flex-col justify-between px-6 py-8 sm:border-r lg:border-r-0 lg:px-8 lg:py-10">
-            <Phone className="h-8 w-8 text-ochre-400" strokeWidth={1.7} aria-hidden="true" />
-            <div>
-              <p className="text-xl font-extrabold leading-tight text-[#f6f0e6]">Konsultasi Pengadaan</p>
-              <Link href="#cta" className="group mt-4 inline-flex items-center gap-2 border-b border-ochre-400 pb-1 text-sm font-bold text-ochre-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre-300">
-                Bicara dengan tim kami
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+      <section id="korporasi" aria-labelledby="korporasi-heading" className="scroll-mt-24 overflow-hidden border-y border-brand-950/10 bg-[#f8f4ec] text-brand-950">
+        <div className="mx-auto max-w-[1600px] px-6 py-16 sm:py-20 lg:px-8 lg:py-24">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(20rem,0.65fr)] lg:items-end lg:gap-20">
+            <div className="max-w-3xl">
+              <HomeSectionMarker number={sectionNumber(6)} label="Solusi Korporasi" />
+              <h2 id="korporasi-heading" className="mt-6 max-w-[16ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-950 sm:text-6xl lg:text-[4rem]">
+                Solusi Korporasi dengan <span className="text-ochre-600">Standar Pengadaan Profesional.</span>
+              </h2>
+            </div>
+            <div className="flex flex-col items-start gap-6 lg:items-end lg:pb-1">
+              <p className="max-w-[48ch] text-base leading-relaxed text-ink-muted sm:text-lg lg:text-right">
+                Proses pengadaan yang tertib, dokumentasi lengkap, dan kualitas seragam yang konsisten untuk kebutuhan perusahaan.
+              </p>
+              <Link href="#cta" className="group inline-flex min-h-11 items-center gap-3 rounded-full border border-brand-950/20 px-5 py-2.5 text-sm font-bold text-brand-950 transition-colors hover:border-ochre-600 hover:bg-ochre-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre-600">
+                Konsultasikan kebutuhan
+                <ArrowRight className="h-4 w-4 text-ochre-600 transition-transform group-hover:translate-x-1" aria-hidden="true" />
               </Link>
+            </div>
+          </div>
+
+          <div className="mt-12 grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)] lg:items-stretch lg:gap-12">
+            <div className="relative min-h-[28rem] overflow-hidden rounded-[28px] bg-brand-100 shadow-[0_24px_60px_rgba(7,28,58,0.16)] sm:min-h-[38rem] lg:min-h-[42rem]">
+              <Image
+                src={corporatePhotoFor(content.industri)}
+                alt="Tim lintas divisi mengenakan seragam kerja Ofissio"
+                fill
+                sizes="(min-width: 1024px) 62vw, 100vw"
+                quality={95}
+                className="object-cover object-[50%_34%]"
+              />
+              <div className="absolute inset-x-5 bottom-5 rounded-2xl border border-white/40 bg-[#fffdf9]/90 p-4 shadow-lg backdrop-blur-sm sm:inset-x-7 sm:bottom-7 sm:max-w-sm sm:p-5">
+                <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-ochre-700">Satu rencana untuk banyak peran</p>
+                <p className="mt-2 text-sm leading-relaxed text-brand-950">Satukan kebutuhan kantor, operasional, dan lapangan dalam pengadaan yang lebih rapi.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col rounded-[28px] border border-brand-950/10 bg-white/70 px-5 py-3 sm:px-7 sm:py-4">
+              <ol aria-label="Manfaat solusi korporasi" className="divide-y divide-brand-950/10">
+                {content.korporasi.items.slice(0, 4).map((item, index) => {
+                  const Icon = resolveHomepageIcon(item.icon);
+                  return (
+                    <li key={item.title} className="group grid gap-4 py-5 first:pt-3 last:pb-6 sm:grid-cols-[2.75rem_minmax(0,1fr)_2rem] sm:items-start sm:gap-5">
+                      <span className="text-lg font-extrabold tabular-nums text-ochre-600">{String(index + 1).padStart(2, "0")}</span>
+                      <div>
+                        <h3 className="text-lg font-extrabold leading-tight tracking-[-0.02em] text-brand-950 sm:text-xl">{item.title}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-ink-muted">{item.desc}</p>
+                      </div>
+                      <Icon className="hidden h-6 w-6 text-ochre-600 sm:block" strokeWidth={1.7} aria-hidden="true" />
+                    </li>
+                  );
+                })}
+              </ol>
+              <div className="mt-auto border-t border-brand-950/10 pt-5">
+                <div className="flex items-start gap-4">
+                  <Phone className="mt-0.5 h-6 w-6 shrink-0 text-ochre-600" strokeWidth={1.7} aria-hidden="true" />
+                  <div>
+                    <p className="text-base font-extrabold text-brand-950">Konsultasi Pengadaan</p>
+                    <Link href="#cta" className="group mt-2 inline-flex items-center gap-2 border-b border-ochre-600 pb-1 text-sm font-bold text-brand-950 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre-600">
+                      Bicara dengan tim kami
+                      <ArrowRight className="h-4 w-4 text-ochre-600 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
