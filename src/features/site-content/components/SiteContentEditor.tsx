@@ -54,6 +54,8 @@ import { upsertInspirationDraft } from "@/features/site-content/industry-inspira
 import { IndustryInspirationEditor } from "@/features/site-content/components/IndustryInspirationEditor";
 import { IndustryInspirationPagesEditor } from "@/features/site-content/components/IndustryInspirationPagesEditor";
 import { cn } from "@/lib/utils";
+import { INSPIRATION_PAGES } from "@/features/site-content/industry-inspiration.routes";
+import { DEFAULT_INDUSTRI } from "@/features/site-content/content.schema";
 
 export interface SiteContentEditorState {
   data: unknown;
@@ -791,6 +793,21 @@ function ListField({
           );
         })}
         {!field.max || items.length < field.max ? (
+          field.key === "tiles" ? <label className="block text-sm font-semibold text-ink">
+            Tambahkan industri yang belum ada
+            <Select className="mt-2" value="" onChange={(event) => {
+              const page = INSPIRATION_PAGES.find((item) => item.industry === event.target.value);
+              if (!page) return;
+              const existing = items.some((item) => item && typeof item === "object" && !Array.isArray(item) && item.industry === page.industry);
+              if (existing) return;
+              const preset = DEFAULT_INDUSTRI.groups.flatMap((group) => group.tiles).find((tile) => tile.industry === page.industry);
+              onChange([...items, { label: page.label, industry: page.industry, icon: preset?.icon ?? "Building2", photo: preset?.photo ?? "", caption: "", hidden: false }]);
+              if (collapsible) setOpen(items.length, true);
+            }}>
+              <option value="">Pilih industri untuk ditambahkan</option>
+              {INSPIRATION_PAGES.filter((page) => !items.some((item) => item && typeof item === "object" && !Array.isArray(item) && item.industry === page.industry)).map((page) => <option key={page.industry} value={page.industry}>{page.label}</option>)}
+            </Select>
+          </label> :
           <button
             type="button"
             onClick={addItem}

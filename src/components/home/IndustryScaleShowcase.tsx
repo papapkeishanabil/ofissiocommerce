@@ -5,8 +5,10 @@ import { ArrowRight, Building2, FileCheck2, TrendingUp, UsersRound } from "lucid
 import { resolveHomepageIcon } from "@/features/site-content/icon-registry";
 import type { IndustriGroup, IndustriSectionData, IndustriTile } from "@/features/site-content/content.schema";
 import { HomeSectionMarker } from "./HomeSectionMarker";
-import { INSPIRATION_ROUTES, inspirationHref } from "@/features/site-content/industry-inspiration.routes";
+import { INSPIRATION_PAGES, INSPIRATION_ROUTES, inspirationHref } from "@/features/site-content/industry-inspiration.routes";
 import { HOME_FRAME_RATIOS, homeImageFrame, type HomeFrameKind } from "@/features/site-content/inspiration-framing";
+import { defaultInspirationPage } from "@/features/site-content/industry-inspiration.content";
+import { homepageBusinessTiles } from "@/features/site-content/industry-showcase";
 
 function frameFor(industry: IndustriTile["industry"], data: IndustriSectionData, kind: HomeFrameKind) {
   const page = data.inspirationPages.find((item) => item.industry === industry && item.slug === INSPIRATION_ROUTES[industry].slug)
@@ -37,7 +39,8 @@ function photoFor(tile: IndustriTile, data: IndustriSectionData) {
   );
   const inspiration = page ?? (tile.industry === "Bengkel" ? data.inspiration : undefined);
   if (inspiration?.image.trim()) return inspiration.image.trim();
-  return CAMPAIGN_PHOTOS[tile.photo] ?? tile.photo;
+  const industry = INSPIRATION_PAGES.find((item) => item.industry === tile.industry)?.industry;
+  return CAMPAIGN_PHOTOS[tile.photo] ?? (tile.photo || (industry ? defaultInspirationPage(industry).image : ""));
 }
 
 export function corporatePhotoFor(data: IndustriSectionData) {
@@ -51,6 +54,7 @@ function compactTitle(tile: IndustriTile) {
   if (tile.industry === "Bengkel") return "Bengkel dan Teknisi";
   if (tile.industry === "Kesehatan") return "Apotek dan Klinik";
   if (tile.industry === "Retail") return "Toko dan Retail";
+  if (tile.industry === "Grosir") return "Grosir dan Distributor";
   return tile.label;
 }
 
@@ -78,9 +82,7 @@ function MiniIndustry({ tile, data }: { tile: IndustriTile; data: IndustriSectio
 export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
   const businessGroup = data.groups.find((group) => group.dot === "ochre") ?? data.groups[0];
   const visible = visibleTiles(businessGroup);
-  const ordered = ["Bengkel", "Kesehatan", "Retail"]
-    .map((industry) => visible.find((tile) => tile.industry === industry))
-    .filter((tile): tile is IndustriTile => Boolean(tile));
+  const ordered = homepageBusinessTiles(businessGroup);
   const lead = ordered[0] ?? visible[0];
 
   return (

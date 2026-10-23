@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { DEFAULT_INDUSTRI } from "../src/features/site-content/content.schema";
+import { homepageBusinessTiles } from "../src/features/site-content/industry-showcase";
+const group = structuredClone(DEFAULT_INDUSTRI.groups[0]!);
+const wholesale = group.tiles.find((tile) => tile.industry === "Grosir")!;
+group.tiles = [wholesale, ...group.tiles.filter((tile) => tile !== wholesale)];
+assert.deepEqual(homepageBusinessTiles(group).map((tile) => tile.industry), ["Grosir", "Bengkel", "Kesehatan"]);
+wholesale.hidden = true;
+assert.deepEqual(homepageBusinessTiles(group).map((tile) => tile.industry), ["Bengkel", "Kesehatan", "Retail"]);
+wholesale.hidden = false;
+group.tiles.unshift(wholesale);
+assert.deepEqual(homepageBusinessTiles(group).map((tile) => tile.industry), ["Grosir", "Bengkel", "Kesehatan"]);
+assert.deepEqual(homepageBusinessTiles(undefined), []);
+assert.deepEqual(homepageBusinessTiles({ ...group, tiles: [] }), []);
+console.log("PASS admin ordering, wholesale lead, hidden industries, duplicate cards, empty groups");

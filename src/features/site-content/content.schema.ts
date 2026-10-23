@@ -851,7 +851,7 @@ export const DEFAULT_INDUSTRI: IndustriSectionData = {
         { label: "Bengkel Motor dan Mobil", icon: "Wrench", industry: "Bengkel", photo: "/industries/bengkel-model.jpg", caption: "Polo kerja dan kemeja tahan noda, siap bordir logo." },
         { label: "Apotek dan Klinik", icon: "Plus", industry: "Kesehatan", photo: "/industries/klinik-model.jpg", caption: "Seragam medis dan jas lab higienis yang mudah disterilkan." },
         { label: "Toko Retail dan Minimarket", icon: "Store", industry: "Retail", photo: "/industries/retail-model.jpg", caption: "Kemeja dan polo staf lengkap dengan name tag." },
-        { label: "Toko Grosir", icon: "Boxes", industry: "Grosir", photo: "" },
+        { label: "Grosir dan Distributor", icon: "Boxes", industry: "Grosir", photo: "" },
         { label: "Cafe dan Restoran", icon: "Coffee", industry: "F&B", photo: "" },
         { label: "Laundry", icon: "Droplets", industry: "Laundry", photo: "" },
         { label: "Barbershop dan Salon", icon: "Scissors", industry: "Salon", photo: "" },
@@ -1201,7 +1201,7 @@ const DOT_OPTIONS: { value: string; label: string }[] = [
 ];
 const INDUSTRY_OPTIONS: { value: string; label: string }[] = INDUSTRIES.map((i) => ({
   value: i,
-  label: i,
+  label: INSPIRATION_ROUTES[i].label,
 }));
 const CTA_VARIANT_OPTIONS: { value: string; label: string }[] = [
   { value: "primary", label: "Primary" },
@@ -1435,6 +1435,7 @@ export const SECTION_REGISTRY: SectionEntry[] = [
             kind: "list",
             key: "tiles",
             label: "Tile Industri",
+            help: "Untuk Bisnis Naik Kelas, industri pertama yang tidak disembunyikan menjadi foto utama beranda. Tiga industri teratas tampil sebagai kartu. Gunakan panah untuk mengubah urutan, lalu simpan.",
             itemLabel: "tile",
             min: 1,
             max: 16,
@@ -1443,7 +1444,7 @@ export const SECTION_REGISTRY: SectionEntry[] = [
             itemFields: [
               { kind: "text", key: "label", label: "Label tile", maxLength: 60 },
               { kind: "icon", key: "icon", label: "Ikon" },
-              { kind: "enum", key: "industry", label: "Industri (routing katalog)", options: INDUSTRY_OPTIONS, help: "Menentukan filter ?industri= di halaman katalog." },
+              { kind: "enum", key: "industry", label: "Halaman inspirasi industri", options: INDUSTRY_OPTIONS, help: "Menentukan foto inspirasi dan halaman tujuan ketika industri diklik." },
               { kind: "image", key: "photo", label: "Foto tile", maxLength: 200, placeholder: "cth: /industries/bengkel-model.jpg", help: "Unggah foto baru (JPG/PNG/WebP, maks 10 MB) untuk mengganti gambar kartu. Empat tile berfoto teratas per grup tampil sebagai kartu utama; sisanya (termasuk yang berfoto) masuk ke balik tombol “Lihat semua”. Urutan diatur lewat tombol naik/turun." },
               { kind: "text", key: "caption", label: "Keterangan kartu", maxLength: 160, placeholder: "cth: Polo kerja dan kemeja tahan noda, siap bordir logo.", help: "Satu baris keterangan produk yang tampil di bawah judul kartu." },
               { kind: "boolean", key: "hidden", label: "Status tampil", toggleLabel: "Sembunyikan dari homepage", help: "Tile tidak dirender di homepage sampai dicentang ulang; datanya tetap tersimpan." },
