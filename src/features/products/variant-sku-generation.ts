@@ -1,4 +1,4 @@
-import { combinationKey, isSizeOption, optionKey, variantOptionSchema, type ProductVariantInput, type VariantOption } from "./product-variants";
+import { combinationKey, isSizeOption, isColorOption, optionKey, variantOptionSchema, type ProductVariantInput, type VariantOption } from "./product-variants";
 
 export interface VariantSizeGroup {
   key: string;
@@ -60,7 +60,10 @@ export function generateVariantCombinations(options: VariantOption[], existing: 
     const prefix = size ? unsized?.sku || commonPrefix(siblings, size.name) : "";
     const imageSrc = template && siblings.every(row => row.imageSrc === template.imageSrc) ? template.imageSrc : "";
     const price = template && siblings.every(row => row.regularPrice === template.regularPrice) ? template.regularPrice : regularPrice;
-    return { options: selection, sku: size && prefix ? variantStockSku(prefix, selection[size.name]!) : "", imageSrc, regularPrice: price };
+    const colorOption = clean.find(option => isColorOption(option.name));
+    const colors = colorOption ? existing.filter(row => optionKey(row.options[colorOption.name] ?? "") === optionKey(selection[colorOption.name] ?? "")).map(row => row.fabricColor) : [];
+    const fabricColor = colors.length && colors.every(color => color === colors[0]) ? colors[0] : undefined;
+    return { options: selection, fabricColor, sku: size && prefix ? variantStockSku(prefix, selection[size.name]!) : "", imageSrc, regularPrice: price };
   });
 }
 

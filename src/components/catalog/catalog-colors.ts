@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { OfissioProduct } from "@/features/products/product.types";
-import { productColorPalette } from "@/lib/product-colors";
+import { productColorPalette, productFabricColor } from "@/lib/product-colors";
 import { slugifyTaxonomy } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 
 export const CATALOG_COLOR_FAMILIES = [
@@ -29,7 +29,7 @@ export function catalogColorFamily(name: string): string {
   if (/ungu|purple|lilac/.test(value)) return "nuansa-ungu";
   if (/merah muda|pink/.test(value)) return "nuansa-pink";
   if (/merah|red|maroon|marun|burgundy|wine/.test(value)) return "nuansa-merah";
-  if (/cokelat|coklat|brown|camel|tan|khaki|krem|cream/.test(value)) return "nuansa-cokelat";
+  if (/cokelat|coklat|brown|camel|tan|khaki|krem|cream|coksu|milo|bronze|dove|mocca|mocha|terracotta/.test(value)) return "nuansa-cokelat";
   if (/putih|white|ivory/.test(value)) return "nuansa-putih";
   if (/hitam|black/.test(value)) return "nuansa-hitam";
   if (/orange|oranye/.test(value)) return "nuansa-oranye";
@@ -76,7 +76,9 @@ function shade(name: string) {
   return SHADES[name.trim().toLocaleLowerCase("id-ID")] ?? productColorPalette(name)[0] ?? "#cbd5e1";
 }
 
-export function catalogColorSwatchStyle(name: string): CSSProperties {
+export function catalogColorSwatchStyle(name: string, product?: Parameters<typeof productFabricColor>[0]): CSSProperties {
+  const saved = product && productFabricColor(product, name);
+  if (saved) return { backgroundColor: saved };
   const exact = SHADES[name.trim().toLocaleLowerCase("id-ID")];
   if (exact) return { backgroundColor: exact };
   const parts = name.split(/\s*(?:–|—|-|\/|\+|&)\s*/).filter(Boolean);

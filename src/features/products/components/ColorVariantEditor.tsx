@@ -3,7 +3,9 @@
 
 import type { ColorVariantInput } from "../color-variants";
 import type { AdminProductImage } from "../woocommerce/woocommerce-product-admin.types";
-import { productColorDisplayLabel, fabricColorForName } from "@/lib/product-colors";
+import { productColorDisplayLabel } from "@/lib/product-colors";
+
+import { VariantColorField } from "./VariantColorField";
 
 const INPUT = "min-h-11 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100";
 
@@ -54,12 +56,7 @@ export function ColorVariantEditor({ enabled, onEnabledChange, variants, onChang
             <label className="min-w-0 text-xs font-semibold text-ink">Stok {productColorDisplayLabel(variant.color)}
               {sizeStock ? <span className="mt-2 block text-xs font-normal leading-5 text-ink-muted">Stok terpisah per ukuran. Angka stok dibaca dari WooCommerce.</span> : <input className={`${INPUT} mt-2`} type="number" min={0} step={1} max={1_000_000_000} value={variant.stockQuantity ?? ""} onChange={(event) => onChange({ ...variant, stockQuantity: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Tidak dilacak" />}
             </label>
-            <label className="min-w-0 text-xs font-semibold text-ink md:col-start-2 md:col-span-3">Warna kain 3D {productColorDisplayLabel(variant.color)}
-              <span className="mt-2 flex items-center gap-3">
-                <input type="color" className="h-11 w-14 cursor-pointer rounded-lg border border-line bg-white p-1" value={variant.fabricColor ?? fabricColorForName(variant.color)} onChange={(event) => onChange({ ...variant, fabricColor: event.target.value })} />
-                <span className="text-xs font-normal leading-5 text-ink-muted">Sesuaikan dengan foto produk. Berlaku untuk model 3D yang sudah disiapkan dengan area kain.</span>
-              </span>
-            </label>
+            <div className="min-w-0 md:col-start-2 md:col-span-3"><VariantColorField name={variant.color} value={variant.fabricColor} onChange={fabricColor => onChange({ ...variant, fabricColor: fabricColor || undefined })} /></div>
           </div>)}
         </div>
       </>}

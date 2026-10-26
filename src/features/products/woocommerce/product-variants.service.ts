@@ -7,7 +7,8 @@ import { createApiError } from "@/lib/security/safe-error-response";
 import { assertFreeStockSkus } from "./size-variants.service";
 import { fromSameOriginWordPressMediaUrl } from "./wordpress-media-proxy";
 import { getWordPressMediaRuntimeConfig } from "./wordpress-media-upload.service";
-import { getMetaBoolean } from "./woocommerce-product-meta";
+import { getMetaBoolean, getMetaString } from "./woocommerce-product-meta";
+import { FABRIC_COLOR_META, readFabricColor } from "../color-variants";
 
 export async function saveProductVariants(productId: number, raw: z.infer<typeof productVariantsSchema>, source: VariantSource = woocommerceClient) {
   const input = productVariantsSchema.parse(raw);
@@ -25,7 +26,11 @@ export async function saveProductVariants(productId: number, raw: z.infer<typeof
   const legacy = mapLegacyProductVariants(rows.filter(row => !getMetaBoolean(row.meta_data ?? [], GENERIC_VARIANT_MARKER, false)), input.options);
   const plans = input.variants.map(row => ({ ...row, id: row.id
     ?? rows.find(r => r.sku.toLowerCase() === row.sku.toLowerCase())?.id
-    ?? legacy.find(old => combinationKey(input.options, old.options) === combinationKey(input.options, row.options))?.id }));
+    ?? legacy.find(old => combinationKey(input.options, old.options) === combinationKey(input.options, row.options))?.id })).map(row => ({
+      ...row,
+      // Older clients preserve existing RGB; an explicit empty value resets it.
+      fabricColor: row.fabricColor ?? readFabricColor(getMetaString(rows.find(old => old.id === row.id)?.meta_data ?? [], FABRIC_COLOR_META)),
+    }));
   const matchedIds = plans.flatMap(row => row.id ? [row.id] : []);
   if (new Set(matchedIds).size !== matchedIds.length) fail("Dua kombinasi mengarah ke varian lama yang sama. Periksa SKU dan pilihan varian sebelum menyimpan.");
   const unmapped = rows.filter(row => row.status === "publish" && !getMetaBoolean(row.meta_data ?? [], GENERIC_VARIANT_MARKER, false) && !plans.some(plan => plan.id === row.id));
@@ -53,7 +58,7 @@ export async function saveProductVariants(productId: number, raw: z.infer<typeof
       sku: row.sku, status: "publish" as const, regular_price: String(row.regularPrice), sale_price: "",
       ...(image ? { image: image.id ? { id: image.id } : { src: canonical(image.src) } } : {}),
       attributes: input.options.map(o => ({ name: o.name, option: row.options[o.name]! })),
-      meta_data: [{ key: GENERIC_VARIANT_MARKER, value: "1" }, { key: "ofissio_variant_inherit_image", value: row.imageSrc ? "0" : "1" }],
+      meta_data: [{ key: GENERIC_VARIANT_MARKER, value: "1" }, { key: "ofissio_variant_inherit_image", value: row.imageSrc ? "0" : "1" }, { key: FABRIC_COLOR_META, value: row.fabricColor ?? "" }],
       // Inventory is owned by WooCommerce/Ginee. Editing a variant must not reset it.
       ...(!row.id ? { manage_stock: false, stock_quantity: null, stock_status: "instock" as const } : {}),
     };
@@ -65,7 +70,7 @@ export async function saveProductVariants(productId: number, raw: z.infer<typeof
   }
   const native = await listColorVariationRows(productId, source);
   const fresh = mapProductVariants(native, input.options);
-  if (fresh.length !== plans.length || plans.some(plan => !fresh.some(row => row.sku === plan.sku && combinationKey(input.options, row.options) === combinationKey(input.options, plan.options) && row.regularPrice === plan.regularPrice && canonical(row.imageSrc) === canonical(plan.imageSrc) && canonical(native.find(n => n.id === row.id)?.image?.src ?? "") === canonical(plan.imageSrc || product.images?.[0]?.src || "")))) {
+  if (fresh.length !== plans.length || plans.some(plan => !fresh.some(row => row.sku === plan.sku && combinationKey(input.options, row.options) === combinationKey(input.options, plan.options) && row.regularPrice === plan.regularPrice && (row.fabricColor ?? "") === (plan.fabricColor ?? "") && canonical(row.imageSrc) === canonical(plan.imageSrc) && canonical(native.find(n => n.id === row.id)?.image?.src ?? "") === canonical(plan.imageSrc || product.images?.[0]?.src || "")))) {
     throw createApiError("BAD_REQUEST", "Varian belum terverifikasi. Simpan ulang; varian yang sudah dibuat akan dipakai kembali.", 502);
   }
   const colorOption = input.options.find(o => isColorOption(o.name));

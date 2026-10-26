@@ -1,3 +1,7 @@
+import { catalogColorSwatchStyle, catalogColorFamily } from "../src/components/catalog/catalog-colors";
+import { productColorSwatch, productFabricColor } from "../src/lib/product-colors";
+import { generateVariantCombinations } from "../src/features/products/variant-sku-generation";
+import { FABRIC_COLOR_META } from "../src/features/products/color-variants";
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { productVariantsSchema, selectProductVariants, selectedVariantPrice, PRODUCT_KIND_META, MODEL_CODE_META, mapLegacyProductVariants } from "../src/features/products/product-variants";
@@ -62,6 +66,38 @@ const variants = ["Pendek", "Panjang"].flatMap((lengan, i) => ["Dengan Saku", "T
 const input = { options, variants, defaultVariantSku: variants[0]!.sku };
 
 async function run() {
+  const rgb = fixture();
+  const rgbOptions = [{ name: "Warna", values: ["Milo"] }, { name: "Ukuran", values: ["S", "M"] }];
+  const rgbInput = { options: rgbOptions, defaultVariantSku: "RGB-S", variants: ["S", "M"].map(size => ({ options: { Warna: "Milo", Ukuran: size }, sku: `RGB-${size}`, imageSrc: "", regularPrice: 100000, fabricColor: "#987654" })) };
+  let rgbSaved = await saveProductVariants(900, rgbInput, rgb.source);
+  assert.deepEqual(rgbSaved.map(row => row.fabricColor), ["#987654", "#987654"]);
+  assert.ok(rgb.rows.every(row => row.meta_data?.some(meta => meta.key === FABRIC_COLOR_META && meta.value === "#987654")));
+  const rgbProduct = mapWooCommerceProductToOfissioProduct(rgb.product);
+  assert.equal(productFabricColor(rgbProduct, "Milo"), "#987654");
+  assert.deepEqual(catalogColorSwatchStyle("Milo", rgbProduct), { backgroundColor: "#987654" });
+  // Reload and older editor saves must retain the explicitly selected shade.
+  rgb.rows.forEach(row => { row.stock_quantity = 7; row.manage_stock = true; });
+  const withoutRgb = rgbSaved.map(({ fabricColor: _color, ...row }) => row);
+  rgbSaved = await saveProductVariants(900, { ...rgbInput, variants: withoutRgb }, rgb.source);
+  assert.ok(rgbSaved.every(row => row.fabricColor === "#987654"));
+  assert.ok(rgb.rows.every(row => row.stock_quantity === 7 && row.manage_stock));
+  assert.deepEqual(rgbSaved.map(row => row.sku), ["RGB-S", "RGB-M"]);
+  const newSizes = generateVariantCombinations([{ ...rgbOptions[0]! }, { name: "Ukuran", values: ["S", "M", "L"] }], rgbSaved, 100000);
+  assert.equal(newSizes[2]?.fabricColor, "#987654", "new sizes inherit the same color override");
+  assert.deepEqual(catalogColorSwatchStyle("Milo", { colorVariants: [{ color: "Milo", fabricColor: "#123456" }] }), { backgroundColor: "#123456" }, "old editor shades also render on catalog cards");
+  const resetRgb = await saveProductVariants(900, { ...rgbInput, variants: rgbSaved.map(row => ({ ...row, fabricColor: "" })) }, rgb.source);
+  assert.ok(resetRgb.every(row => row.fabricColor === undefined));
+  assert.equal(productFabricColor(mapWooCommerceProductToOfissioProduct(rgb.product), "Milo"), undefined);
+  assert.equal(productVariantsSchema.safeParse({ ...rgbInput, variants: [{ ...rgbInput.variants[0]!, fabricColor: "rgb(999,0,0)" }] }).success, false);
+  assert.equal(productVariantsSchema.parse({ ...rgbInput, variants: rgbInput.variants.map(row => ({ ...row, fabricColor: "#AABBCC" })) }).variants[0]?.fabricColor, "#aabbcc");
+  for (const name of ["Coksu", "Milo", "Bronze", "Dove", "Mocca", "Terracotta"]) {
+    assert.notEqual(productColorSwatch(name), "#cbd5e1");
+    assert.equal(catalogColorFamily(name), "nuansa-cokelat");
+  }
+  const lostRgb = fixture();
+  const dropColorSource = { ...lostRgb.source, createProductVariation: async (id: string | number, payload: WooCommerceProductVariationWritePayload) => lostRgb.source.createProductVariation(id, { ...payload, meta_data: payload.meta_data?.filter(meta => meta.key !== FABRIC_COLOR_META) }) };
+  await assert.rejects(saveProductVariants(900, rgbInput, dropColorSource), /terverifikasi/, "do not report success when provider drops RGB");
+
   const imported = ["S", "M", "L", "XL", "XXL", "3XL"].map((size, index) => ({ id: 729 + index, sku: `KK-020-${size}`, status: "publish", attributes: [], regular_price: index > 3 ? "125000" : "120000", stock_quantity: 7 }));
   const importedOptions = [{ name: "Warna", values: ["Putih"] }, { name: "Ukuran", values: ["S", "M", "L", "XL", "XXL", "3XL"] }];
   const migrated = mapLegacyProductVariants(imported, importedOptions);

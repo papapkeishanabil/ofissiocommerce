@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { isSizeOption, type VariantOption, type ProductVariantInput } from "../product-variants";
+import { isColorOption, optionKey, isSizeOption, type VariantOption, type ProductVariantInput } from "../product-variants";
 import { applyVariantSizeGroup, generateVariantCombinations, variantSizeGroups, variantStockSku, type VariantSizeGroup } from "../variant-sku-generation";
 import type { AdminProductImage } from "../woocommerce/woocommerce-product-admin.types";
+
+import { VariantColorField } from "./VariantColorField";
 
 const INPUT = "min-h-11 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700";
 export function ProductVariantEditor({ options, onOptionsChange, variants, onChange, images, regularPrice, defaultSku, onDefaultChange, disabled, modelCode }: {
@@ -15,6 +17,7 @@ export function ProductVariantEditor({ options, onOptionsChange, variants, onCha
 }) {
   const [error, setError] = useState("");
   const sizeOption = options.find(o => isSizeOption(o.name));
+  const colorOption = options.find(o => isColorOption(o.name));
   const groups = variantSizeGroups(options, variants);
   function generate() {
     try {
@@ -46,6 +49,16 @@ export function ProductVariantEditor({ options, onOptionsChange, variants, onCha
       <button type="button" className="min-h-11 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800" onClick={generate}>Buat / perbarui kombinasi</button>
     </div>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    {!!variants.length && colorOption && <section aria-label="Warna tampilan varian" className="space-y-3">
+      <div><h3 className="text-sm font-bold text-ink">Warna tampilan (RGB / HEX)</h3><p className="mt-1 text-xs leading-5 text-ink-muted">Atur sekali per nama warna. Nilai ini dipakai pada bulatan katalog dan warna kain 3D, serta berlaku untuk semua ukuran dan kombinasi dengan warna yang sama. Simpan produk setelah mengubahnya.</p></div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[...new Set(colorOption.values.map(value => value.trim()).filter(Boolean))].filter(color => variants.some(row => optionKey(row.options[colorOption.name] ?? "") === optionKey(color))).map(color => {
+        const rows = variants.filter(row => optionKey(row.options[colorOption.name] ?? "") === optionKey(color));
+        const values = new Set(rows.map(row => row.fabricColor || ""));
+        return <div key={color} className="min-w-0"><VariantColorField name={color} value={rows.find(row => row.fabricColor)?.fabricColor} onChange={fabricColor => onChange(variants.map(row => optionKey(row.options[colorOption.name] ?? "") === optionKey(color) ? { ...row, fabricColor } : row))} />
+          {values.size > 1 && <p className="mt-2 text-xs text-amber-800">Nilai warna antar-kombinasi berbeda. Memilih warna di sini akan menyamakannya.</p>}
+        </div>;
+      })}</div>
+    </section>}
     {!variants.length ? <p className="text-sm text-ink-muted">Belum ada kombinasi. Tambahkan pilihan, lalu buat kombinasi dan hapus yang tidak dijual.</p> : <>
       <label className="block max-w-lg text-sm font-semibold text-ink">Varian yang tampil pertama<select className={`${INPUT} mt-2`} value={defaultSku} onChange={e => onDefaultChange(e.target.value)} required><option value="">Pilih varian setelah mengisi SKU</option>{variants.filter(v => v.sku).map((row, i) => <option key={i} value={row.sku}>{Object.values(row.options).join(" / ")} — {row.sku}</option>)}</select></label>
       {sizeOption ? <section aria-label="Pengisian otomatis SKU ukuran" className="space-y-4">

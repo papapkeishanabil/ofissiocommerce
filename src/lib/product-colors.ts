@@ -32,6 +32,16 @@ const COLOR_SWATCHES: Record<string, string> = {
   Abu: "#94a3b8",
   "Abu-abu": "#94a3b8",
   Cokelat: "#92400e",
+  Coksu: "#b69a84",
+  "Cokelat Susu": "#b69a84",
+  "Coklat Susu": "#b69a84",
+  "Cokelat Susu (Coksu)": "#b69a84",
+  Milo: "#8b6b50",
+  Bronze: "#a77949",
+  Dove: "#a99b90",
+  Mocca: "#8a7062",
+  Mocha: "#8a7062",
+  Terracotta: "#b76e51",
   Oranye: "#f97316",
   Ungu: "#7e22ce",
 };
@@ -112,6 +122,17 @@ export function fabricColorForName(name: string) {
     navy: "#24354c", "abu tua": "#555963", maroon: "#712f3c",
   };
   return colors[normalized(name)] ?? productColorSwatch(name);
+}
+
+/** Saved sRGB takes precedence over approximate names, including migrated variants. */
+export function productFabricColor(product: {
+  productVariants?: { options: Record<string, string>; fabricColor?: string }[];
+  colorVariants?: { color: string; fabricColor?: string }[];
+}, name: string): string | undefined {
+  const valid = (value?: string) => value && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined;
+  const rows = product.productVariants?.filter(row => Object.entries(row.options).some(([key, value]) => /^(pa_)?(warna|color)$/i.test(key) && normalized(value) === normalized(name)));
+  if (rows?.length) return rows.map(row => valid(row.fabricColor)).find(Boolean);
+  return valid(product.colorVariants?.find(row => normalized(row.color) === normalized(name))?.fabricColor);
 }
 
 export function productColorPalette(colorName: string) {

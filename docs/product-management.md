@@ -41,6 +41,8 @@ SKU yang sudah terisi dipertahankan secara default; penggantian SKU tersimpan me
 
 SKU disimpan sebagai varian WooCommerce asli; stok tetap dikelola WooCommerce/Ginee dan tidak direset ketika harga, foto, atau pilihan diedit. Produk tidak dapat dipesan sebelum seluruh varian terverifikasi. Simpan ulang setelah kegagalan akan memakai kembali ID/SKU yang sudah dibuat.
 
+Jika ada pilihan **Warna**, setelah kombinasi dibuat akan muncul **Warna tampilan (RGB / HEX)**. Pilih warna melalui kotak warna atau isi HEX enam digit / angka R, G, B (0–255), lalu simpan produk. Nilai ini berlaku untuk semua ukuran dengan nama warna yang sama dan digunakan pada bulatan katalog, detail produk, serta warna kain 3D. Nama seperti Coksu atau Milo tetap menjadi label varian. Tanpa nilai khusus, sistem memakai perkiraan dari nama; cocokkan dengan foto atau sampel kain untuk hasil yang sesuai. **Gunakan perkiraan nama warna** menghapus nilai khusus setelah produk disimpan. Nilai RGB lama tetap dipertahankan saat berpindah ke editor fleksibel.
+
 Ukuran mendukung OS, XS, S, M, L, XL, XXL/2XL, 3XL, 4XL, dan 5XL. Produk tanpa pilihan ukuran menggunakan jumlah produk langsung (penanda internal `OS`), bukan akhiran SKU `-OS`. Harga quantity, jika aktif, mengikuti tier produk. Ukuran dengan harga reguler berbeda perlu dimasukkan sebagai item keranjang terpisah.
 
 Produk lama tetap menggunakan editor warna sebelumnya. Tombol **Gunakan editor varian fleksibel** memuat kombinasi asli; seluruh SKU lama harus dipetakan agar tidak terhapus saat migrasi. Produk yang sudah memiliki varian tersimpan tidak dapat diubah menjadi tanpa varian melalui form ini; buat produk baru untuk satu SKU.

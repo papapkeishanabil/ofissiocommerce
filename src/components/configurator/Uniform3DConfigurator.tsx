@@ -5,7 +5,7 @@
 
 "use client";
 
-import { productColorDisplayLabel, productColorSwatchStyle } from "@/lib/product-colors";
+import { productColorDisplayLabel, productColorSwatchStyle, productFabricColor } from "@/lib/product-colors";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -444,7 +444,7 @@ export function Uniform3DConfigurator({
                 onScaleReady={onScaleReady}
                 model={effectiveModel!}
                 color={config.color}
-                  fabricColor={selectedColorVariant(product, config.color)?.fabricColor}
+                  fabricColor={productFabricColor(product, config.color)}
                 placements={config.placements}
                 activeCamera={config.activeCamera}
                 onThumbnailsReady={setModelThumbnails}
@@ -562,7 +562,7 @@ export function Uniform3DConfigurator({
               >
                 <span
                   className={styles.swatch}
-                  style={productColorSwatchStyle(c)}
+                  style={productFabricColor(product, c) ? { backgroundColor: productFabricColor(product, c) } : productColorSwatchStyle(c)}
                   aria-hidden="true"
                 >
                 </span>

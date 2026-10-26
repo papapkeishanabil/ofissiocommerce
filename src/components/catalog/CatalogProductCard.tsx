@@ -40,7 +40,7 @@ export function CatalogProductCard({ product, colorFilter }: { product: OfissioP
       {(colors.length > 0 || sizes.length > 0 || extraOptions.length > 0) && <dl className={styles.variants}>
         {colors.length > 0 && <div className={styles.variantRow}>
           <dt>Warna</dt><dd className={styles.colors}>
-            <span className={styles.swatches}>{orderedColors.slice(0, 4).map(color => <span key={color} role="img" aria-label={productColorDisplayLabel(color)} title={productColorDisplayLabel(color)} className={styles.swatch} style={catalogColorSwatchStyle(color)}/>)}</span>
+            <span className={styles.swatches}>{orderedColors.slice(0, 4).map(color => <span key={color} role="img" aria-label={productColorDisplayLabel(color)} title={productColorDisplayLabel(color)} className={styles.swatch} style={catalogColorSwatchStyle(color, product)}/>)}</span>
             <span>{preview.color ? productColorDisplayLabel(preview.color) : colors.length === 1 ? productColorDisplayLabel(colors[0]!) : `${colors.length} warna`}</span>
           </dd>
         </div>}

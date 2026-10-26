@@ -2,7 +2,8 @@ import { z } from "zod";
 import type { OfissioProduct } from "./product.types";
 import type { WooCommerceProductVariation } from "./woocommerce/woocommerce.types";
 import { stockSize } from "./color-size-variants";
-import { getMetaBoolean } from "./woocommerce/woocommerce-product-meta";
+import { getMetaBoolean, getMetaString } from "./woocommerce/woocommerce-product-meta";
+import { FABRIC_COLOR_META, readFabricColor } from "./color-variants";
 
 export const PRODUCT_KIND_META = "ofissio_product_kind";
 export const MODEL_CODE_META = "ofissio_model_code";
@@ -23,6 +24,7 @@ export const productVariantSchema = z.object({
   options: z.record(z.string().trim().min(1).max(60), z.string().trim().min(1).max(100)),
   sku: z.string().trim().min(1).max(100).regex(/^[A-Za-z0-9._-]+$/, "Format SKU tidak valid."),
   imageSrc: z.string().max(2000).default(""),
+  fabricColor: z.string().trim().regex(/^(?:#[0-9a-f]{6})?$/i, "Gunakan HEX enam digit, misalnya #B69A84.").transform(value => value.toLowerCase()).optional(),
   regularPrice: z.number().positive().max(10_000_000_000),
 });
 export type VariantOption = z.infer<typeof variantOptionSchema>;
@@ -77,7 +79,7 @@ export function mapProductVariants(rows: WooCommerceProductVariation[], options:
       if (!attr?.option || !option.values.includes(attr.option)) return [];
       values[option.name] = attr.option;
     }
-    return [{ id: row.id, sku: row.sku, options: values, imageSrc: getMetaBoolean(row.meta_data ?? [], "ofissio_variant_inherit_image", false) ? "" : row.image?.src ?? "", regularPrice: Number(row.regular_price || row.price) }];
+    return [{ id: row.id, sku: row.sku, options: values, fabricColor: readFabricColor(getMetaString(row.meta_data ?? [], FABRIC_COLOR_META)), imageSrc: getMetaBoolean(row.meta_data ?? [], "ofissio_variant_inherit_image", false) ? "" : row.image?.src ?? "", regularPrice: Number(row.regular_price || row.price) }];
   });
 }
 

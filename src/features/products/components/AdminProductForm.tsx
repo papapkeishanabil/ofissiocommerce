@@ -35,7 +35,7 @@ import type { Model3DEntry } from "@/data/uniform-3d";
 import { clearResolvedProduct3DUrlCache } from "@/features/products/product-3d-url.client";
 import { defaultModelOrientationY } from "@/types/uniform-3d";
 import { DEFAULT_MODEL_COLOR_ADJUSTMENT, normalizeModelColorAdjustment, type ModelColorAdjustment } from "@/types/model-color-adjustment";
-import { productColorDisplayLabel, productColorSwatchStyle } from "@/lib/product-colors";
+import { productColorDisplayLabel, productColorSwatchStyle, productFabricColor } from "@/lib/product-colors";
 import { ColorVariantEditor } from "./ColorVariantEditor";
 import { colorKey, updateVariantModelAdjustment, type ColorVariantInput } from "../color-variants";
 import { adminColorVariantsSchema } from "../woocommerce/color-variants.validation";
@@ -126,9 +126,13 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
     color, sku: `${form.sku}-${color.trim().replace(/\s+/g, "-")}`, imageSrc: "", stockQuantity: null,
   });
   const selectedDefaultColor = form.colors.includes(defaultVariantColor) ? defaultVariantColor : form.colors[0] ?? "";
-  const previewColor = form.colors.includes(previewVariantColor) ? previewVariantColor : selectedDefaultColor;
-  const previewVariant = variantsEnabled ? visibleVariants.find((variant) => variant.color === previewColor) : undefined;
-  const previewImage = previewVariant?.imageSrc || form.imageUrls[0];
+  const genericColorOption = genericOptions.find(option => isColorOption(option.name));
+  const previewColors = form.productKind === "variable" ? genericColorOption?.values ?? [] : form.colors;
+  const previewColor = previewColors.includes(previewVariantColor) ? previewVariantColor : previewColors.includes(selectedDefaultColor) ? selectedDefaultColor : previewColors[0] ?? "";
+  const previewVariant = form.productKind !== "variable" && variantsEnabled ? visibleVariants.find((variant) => variant.color === previewColor) : undefined;
+  const genericPreviewVariant = form.productKind === "variable" && genericColorOption ? genericVariants.find(variant => variant.options[genericColorOption.name] === previewColor) : undefined;
+  const previewFabricColor = form.productKind === "variable" ? productFabricColor({ productVariants: genericVariants }, previewColor) : previewVariant?.fabricColor;
+  const previewImage = genericPreviewVariant?.imageSrc || previewVariant?.imageSrc || form.imageUrls[0];
   const [glbFile, setGlbFile] = useState<File | null>(null);
   const [glbVersion, setGlbVersion] = useState(product?.ofissioMeta.model3DVersion || "v1");
   const [activeGlb, setActiveGlb] = useState(() => ({
@@ -923,9 +927,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
               </button>
             </div>
             <div className="mx-auto max-w-5xl">
-            {variantsEnabled && form.colors.length ? <label className="mt-4 block max-w-sm text-sm font-semibold text-ink">Warna preview 3D
+            {(form.productKind === "variable" || variantsEnabled) && previewColors.length ? <label className="mt-4 block max-w-sm text-sm font-semibold text-ink">Warna preview 3D
               <select className={`${INPUT} mt-2`} value={previewColor} onChange={(event) => setPreviewVariantColor(event.target.value)}>
-                {form.colors.map((color) => <option key={color} value={color}>{color}</option>)}
+                {previewColors.map((color) => <option key={color} value={color}>{color}</option>)}
               </select>
             </label> : null}
             <div className="mt-4 grid gap-2 @min-[40rem]:grid-cols-2" aria-label="Perbandingan model 3D dan foto produk">
@@ -934,7 +938,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
                   <ModelPreviewCanvas
                     model={colorPreviewModel}
                     color={previewColor || "#d9c39a"}
-                    fabricColor={previewVariant?.fabricColor}
+                    fabricColor={previewFabricColor}
                     placements={[]}
                     activeCamera="front"
                   />
