@@ -28,7 +28,7 @@ export async function HomePage() {
       <HeroIntro trustItems={content.trust.items} />
 
       {/* 01 — BISNIS NAIK KELAS */}
-      <section id="naik-kelas" className="scroll-reveal scroll-mt-24 bg-[#d9dee4] py-20 lg:py-28">
+      <section id="naik-kelas" className="scroll-reveal scroll-mt-24 bg-[#edf0f3] py-20 lg:py-28">
         <div className="mx-auto grid max-w-[1600px] gap-14 px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(34rem,1.1fr)] lg:items-start lg:gap-24">
           <div className="max-w-2xl lg:sticky lg:top-28">
             <HomeSectionMarker number="01" label="Bisnis Naik Kelas" />
