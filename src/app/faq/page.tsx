@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, ChevronRight, Check, Headset } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, Headset } from "lucide-react";
 import { FAQ_ITEMS } from "@/features/faq/faq-content";
 import { SITE_URL, serializeJsonLd } from "@/lib/seo";
 import styles from "./FaqPage.module.css";
@@ -39,18 +39,13 @@ export default function FaqPage() {
         </nav>
         <header className={styles.hero}>
           <div className={styles.heroCopy}>
-            <h1>FAQ Produk<br />dan <span>Bordir.</span></h1>
-            <p>Kenali produknya. Siapkan logonya.<br className={styles.desktopBreak} /> Temukan jawaban sebelum mulai memesan.</p>
-            <a href="#topik-faq" className={styles.heroLink}>Temukan jawaban Anda <ArrowRight size={18} aria-hidden="true" /></a>
+            <h1>FAQ Produk dan <span>Bordir.</span></h1>
+            <p>Jawaban seputar produk, pemesanan, dan bordir logo.</p>
           </div>
           <div className={styles.heroNote}>
-            <span className={styles.noteLabel}>Untuk pesanan dengan bordir</span>
-            <h2>Mulai dari 8 pcs.<br />Satu identitas untuk tim Anda.</h2>
-            <ul>
-              <li><Check size={17} aria-hidden="true" /> Satu model dan warna yang sama</li>
-              <li><Check size={17} aria-hidden="true" /> Ukuran boleh berbeda-beda</li>
-            </ul>
-            <p>Tanpa bordir? Bisa mulai 1 pcs.</p>
+            <h2>Bordir mulai 8 pcs</h2>
+            <p>Satu model dan warna yang sama. Ukuran boleh berbeda.</p>
+            <p>Tanpa bordir mulai 1 pcs.</p>
           </div>
         </header>
         <div id="topik-faq" className={styles.content}>
