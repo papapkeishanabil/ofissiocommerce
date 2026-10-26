@@ -9,17 +9,19 @@ import { INSPIRATION_PAGES, type InspirationPage } from "@/features/site-content
 import { CafeRestaurantInspiration, type BusinessKind } from "./CafeRestaurantInspiration";
 
 export async function IndustryInspirationPage({ page, initialFoodBusiness }: { page: InspirationPage; initialFoodBusiness?: BusinessKind }) {
-  if (page.industry === "F&B") {
-    const content = await getPublicSiteContent();
-    const inspiration = resolveInspirationPage(page, content.industri);
-    return <CafeRestaurantInspiration initialBusiness={initialFoodBusiness} placements={inspiration.cafePlacements} />;
-  }
-
   const [products, content] = await Promise.all([
     productServerService.getProductsByIndustry(page.industry),
     getPublicSiteContent(),
   ]);
   const inspiration = resolveInspirationPage(page, content.industri);
+
+  if (page.industry === "F&B") {
+    return (
+      <CafeRestaurantInspiration initialBusiness={initialFoodBusiness} placements={inspiration.cafePlacements}>
+        <IndustryProductSelection products={products} industry="F&B" sectionId="pilihan-produk" />
+      </CafeRestaurantInspiration>
+    );
+  }
   const sectionId = page.industry === "Bengkel" ? "produk-bengkel" : "pilihan-produk";
 
   return (
