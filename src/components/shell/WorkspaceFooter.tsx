@@ -8,6 +8,7 @@ const LINKS = [
   { label: "Beranda", href: "/" },
   { label: "Katalog", href: "/catalog" },
   { label: "Cara Order", href: "/#cara" },
+  { label: "FAQ Produk dan Bordir", href: "/faq" },
   { label: "Request Quotation", href: "/quote" },
 ];
 

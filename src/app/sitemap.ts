@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = await productServerService.getPublishedProducts();
-  const urls = [SITE_URL, `${SITE_URL}/catalog`, `${SITE_URL}/inspirasi`,
+  const urls = [SITE_URL, `${SITE_URL}/catalog`, `${SITE_URL}/inspirasi`, `${SITE_URL}/faq`,
     ...INSPIRATION_PAGES.map(page => `${SITE_URL}/inspirasi/${page.slug}`),
     ...products.filter(product => product.source === "woocommerce" && validateProductForCatalog(product).ok)
       .map(product => productUrl(product.slug))];
