@@ -2,10 +2,12 @@
 
 import { HomePage } from "@/components/home/HomePage";
 import type { Metadata } from "next";
+import { SITE_URL, serializeJsonLd } from "@/lib/seo";
 
 // Keep homepage sharing metadata here so product links can define their own
 // preview instead of inheriting the homepage canonical URL and brand image.
 export const metadata: Metadata = {
+  alternates: { canonical: SITE_URL },
   openGraph: {
     type: "website",
     url: "https://ofissio.com/",
@@ -25,5 +27,11 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <HomePage />;
+  return <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd({
+      "@context": "https://schema.org", "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`, name: "Ofissio", url: SITE_URL,
+    }) }} />
+    <HomePage />
+  </>;
 }

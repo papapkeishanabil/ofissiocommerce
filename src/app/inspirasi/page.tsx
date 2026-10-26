@@ -8,6 +8,7 @@ import { getPublicSiteContent } from "@/features/site-content/site-content.servi
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
+  alternates: { canonical: "https://ofissio.com/inspirasi" },
   title: "Inspirasi Seragam untuk Bisnis dan Korporasi",
   description: "Jelajahi inspirasi seragam sesuai bidang usaha dan perusahaan Anda, lalu temukan pilihan produk Ofissio yang relevan.",
 };

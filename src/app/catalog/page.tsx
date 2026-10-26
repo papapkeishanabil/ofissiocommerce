@@ -11,6 +11,7 @@ import { getPublicCatalogTaxonomy } from "@/features/catalog-taxonomy/catalog-ta
 import { productServerService } from "@/features/products/product.server-service";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://ofissio.com/catalog" },
   title: "Katalog Produk",
   description: "Telusuri seragam kerja untuk setiap industri di Ofissio.",
 };

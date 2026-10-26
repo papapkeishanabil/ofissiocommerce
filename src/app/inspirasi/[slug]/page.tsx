@@ -16,7 +16,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!page) notFound();
   const content = await getPublicSiteContent();
   const data = resolveInspirationPage(page, content.industri);
-  return { title: `Inspirasi Seragam ${page.label}`, description: data.lede };
+  return { title: `Inspirasi Seragam ${page.label}`, description: data.lede,
+    alternates: { canonical: `https://ofissio.com/inspirasi/${page.slug}` } };
 }
 
 export default async function InspirationPage({ params, searchParams }: Props) {

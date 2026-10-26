@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 
 import type { Metadata, Viewport } from "next";
+import { SITE_URL } from "@/lib/seo";
 
 import { RouteAwareShell } from "@/components/shell/RouteAwareShell";
 import { StandaloneBoot } from "@/components/shell/StandaloneBoot";
@@ -10,6 +11,7 @@ import "./globals.css";
 // AdminLayout retains its independent internal typography.
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Ofissio : Seragam Professional Untuk Usaha Anda",
     template: "%s, Ofissio",
