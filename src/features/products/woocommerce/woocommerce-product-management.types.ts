@@ -30,6 +30,8 @@ export interface AdminQuantityPricingTierInput {
 }
 
 export interface AdminWooProductInput {
+  productKind?: "simple" | "variable";
+  modelCode?: string;
   name: string;
   slug?: string;
   sku: string;

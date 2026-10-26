@@ -1,18 +1,22 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { markInitialShellReady } from "./boot-readiness";
 
 import { AppShell } from "./AppShell";
 import { storefrontFont } from "./storefront-font";
 import { StorefrontThemeContext } from "./StorefrontThemeContext";
 import customerTheme from "./CustomerWorkspaceTheme.module.css";
+import productTheme from "@/components/product/ProductDetailTheme.module.css";
+import commerceTheme from "./CommercePagesTheme.module.css";
 
 interface RouteAwareShellProps {
   children: ReactNode;
 }
 
 export function RouteAwareShell({ children }: RouteAwareShellProps) {
+  useEffect(() => { markInitialShellReady(); }, []);
   const pathname = usePathname();
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   const isLoginRoute = pathname === "/login";
@@ -27,7 +31,7 @@ export function RouteAwareShell({ children }: RouteAwareShellProps) {
 
   return (
     <StorefrontThemeContext value={true}>
-    <div className={`${storefrontFont.variable} storefront-scope min-h-full ${isCustomerRoute ? customerTheme.theme : ""}`}>
+    <div className={`${storefrontFont.variable} storefront-scope min-h-full ${isCustomerRoute ? customerTheme.theme : ""} ${pathname.startsWith("/product/") ? productTheme.theme : ""} ${isCustomerRoute || pathname === "/promo" ? commerceTheme.theme : ""}`}>
       {isLoginRoute || isCheckoutRoute ? children : <AppShell>{children}</AppShell>}
     </div>
     </StorefrontThemeContext>

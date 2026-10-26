@@ -1,0 +1,52 @@
+.theme.theme {
+  --color-surface:#ffffff;
+  --color-surface-muted:#eff4ff;
+  --color-cool-50:#f5f7ff;
+  --color-ink:#142766;
+  --color-ink-strong:#0b1c30;
+  --color-ink-muted:#52617d;
+  --color-ink-subtle:#64748b;
+  --color-line:#dbe3f1;
+  --color-line-strong:#a8b5d2;
+  --action-primary:#142766;
+  --action-hover:#10245f;
+  --action-disabled:#e0e6f2;
+  --action-disabled-ink:#52617d;
+  --color-ochre-50:#eff4ff;
+  --color-ochre-100:#e5eeff;
+  --color-ochre-400:#324382;
+  --color-ochre-500:#142766;
+  --color-ochre-600:#142766;
+  --color-ochre-700:#142766;
+  background:#eef2fb;
+  color:#142766;
+  accent-color:#142766;
+  scrollbar-color:#a8b5d2 #eef2fb;
+}
+.theme.theme [data-workspace-scroll],.theme.theme footer { background:#eef2fb; }
+.theme.theme :is(button,a,input,select,textarea,summary):focus-visible { outline:2px solid #324382; outline-offset:3px; }
+.theme.theme ::selection { background:#d3e4fe; color:#142766; }
+.page { background:#eef2fb; padding-bottom:32px; }
+.description,.purchase,.gallery { border:1px solid #dbe3f1; border-radius:16px; background:#fff; box-shadow:0 3px 12px #14276608; }
+.purchase { padding:22px; --color-surface-muted:#ffffff; }
+.purchase h1 { text-wrap:balance; }
+.price { margin-top:18px; border:1px solid #e0e7f4; border-radius:12px; background:#ffffff; padding:14px; }
+.price p:first-child { font-weight:600; letter-spacing:.06em; }
+.stats { margin-top:12px; margin-bottom:16px; border-bottom:1px solid #dbe3f1; padding-bottom:14px; }
+.stats>div { padding:8px; background:#ffffff; border-radius:8px; }
+.gallery { padding:12px; }
+.gallery [aria-label='Pilih foto produk'] { max-height:760px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#cbd5e1 transparent; }
+.gallery [aria-label='Pilih foto produk'] button { background:#fff; }
+.gallery [aria-label='Pilih foto produk'] button[aria-pressed=true] { background:#eff4ff; }
+.gallery [aria-label='Pilih foto produk'] img { mix-blend-mode:normal; }
+.description :global(.rich-text) { color:#52617d; }
+.description :global(.rich-text) :is(h2,h3,h4,strong) { color:#142766; }
+.description :global(.rich-text) li::marker { color:#324382; }
+.purchase [role='group'][aria-label='Pilihan warna'] button { background-color:#fff; }
+.purchase [role='group'][aria-label='Pilihan warna'] button[aria-pressed=true]:not([style]) { background-color:#eff4ff; }
+.purchase input[type='number'] { caret-color:#142766; }
+@media(max-width:640px) {
+  .purchase { padding:16px; }
+  .gallery { padding:8px; }
+  .price { padding:12px; }
+}

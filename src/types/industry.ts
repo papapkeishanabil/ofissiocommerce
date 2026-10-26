@@ -39,7 +39,7 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number];
 
-export const SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"] as const;
+export const SIZES = ["OS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"] as const;
 export type Size = (typeof SIZES)[number];
 
 // Existing persisted carts predate XS. Their six base sizes remain required.

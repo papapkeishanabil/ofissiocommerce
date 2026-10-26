@@ -1,6 +1,8 @@
 import "server-only";
 import { sizeStockSku } from "./product-size-stock.types";
 import { isManagedColorVariant } from "@/features/products/color-variants";
+import { GENERIC_VARIANT_MARKER } from "@/features/products/product-variants";
+import { getMetaBoolean } from "@/features/products/woocommerce/woocommerce-product-meta";
 
 import { woocommerceClient } from "@/features/products/woocommerce/woocommerce.client";
 import type {
@@ -114,7 +116,7 @@ export function getOrderStockRequirement(
     for (const requirement of requirements) {
       if (requirement.quantity <= 0) continue;
       const stockSku = requirement.sizeLabel
-        ? normalizeSku(item.sizeVariants?.find(row => sizeStockSku("size", row.size) === sizeStockSku("size", requirement.sizeLabel!))?.sku || sizeStockSku(stockSkuBase, requirement.sizeLabel))
+        ? normalizeSku(item.sizeVariants?.find(row => sizeStockSku("size", row.size) === sizeStockSku("size", requirement.sizeLabel!))?.sku || (requirement.sizeLabel === "OS" ? stockSkuBase : sizeStockSku(stockSkuBase, requirement.sizeLabel)))
         : stockSkuBase;
       const key = `${item.productId}|${stockSku}`;
       const current = grouped.get(key);
@@ -356,7 +358,7 @@ function emptyMatrix(parentSku: string, checkedAt: string, enabled: boolean): Wo
 function hasSizeOptions(product: WooCommerceProduct | null) {
   return Boolean(product?.attributes?.some((attribute) => {
     const key = `${attribute.name} ${attribute.slug ?? ""}`.toLowerCase();
-    return /(size|ukuran)/.test(key) && (attribute.options?.length ?? 0) > 0;
+    return /(size|ukuran)/.test(key) && (attribute.options ?? []).some(option => option.toUpperCase() !== "OS");
   }));
 }
 
@@ -365,7 +367,7 @@ function variationSize(variation: WooCommerceProductVariation, parentSku: string
     /(size|ukuran)/i.test(`${item.name ?? ""}`),
   );
   if (attribute?.option) return normalizeSize(attribute.option);
-  if (isManagedColorVariant(variation)) return null;
+  if (isManagedColorVariant(variation) || getMetaBoolean(variation.meta_data ?? [], GENERIC_VARIANT_MARKER, false)) return null;
   const sku = normalizeSku(variation.sku);
   return sku.startsWith(`${parentSku}-`)
     ? normalizeSize(sku.slice(parentSku.length + 1))

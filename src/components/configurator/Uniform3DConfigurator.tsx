@@ -65,6 +65,7 @@ interface Uniform3DConfiguratorProps {
   embroideryMoq?: number;
   initialColor: string;
   selectedSleeve?: string;
+  selectedOptions?: Record<string, string>;
   initialConfig?: Uniform3DConfig | null;
   onSave: (config: import("@/types/uniform-3d").Uniform3DConfig) => void;
   onCancel: () => void;
@@ -83,6 +84,7 @@ export function Uniform3DConfigurator({
   embroideryMoq = 8,
   initialColor,
   selectedSleeve,
+  selectedOptions,
   initialConfig,
   onSave,
   onCancel,
@@ -373,7 +375,7 @@ export function Uniform3DConfigurator({
             </div>
           ) : null}
           <div className={styles.viewerColumn}>
-            <div className={`${styles.viewer} bg-[radial-gradient(circle_at_50%_40%,#fffdf9_0%,#f7f3ec_48%,#e9e3d7_100%)]`}>
+            <div className={styles.viewer}>
           <button
             type="button"
             onClick={onCancel}
@@ -442,7 +444,7 @@ export function Uniform3DConfigurator({
                 onScaleReady={onScaleReady}
                 model={effectiveModel!}
                 color={config.color}
-                fabricColor={selectedColorVariant(product, config.color)?.fabricColor}
+                  fabricColor={selectedColorVariant(product, config.color)?.fabricColor}
                 placements={config.placements}
                 activeCamera={config.activeCamera}
                 onThumbnailsReady={setModelThumbnails}
@@ -538,7 +540,7 @@ export function Uniform3DConfigurator({
           <p className={styles.productName}>{product.name}</p>
           <button type="button" onClick={onCancel} aria-label="Tutup konfigurator" className={styles.close}><X className="h-5 w-5" /></button>
         </div>
-        <div className="flex gap-2.5 rounded-lg border border-ochre-300 bg-ochre-50 px-3 py-2.5 text-xs leading-5 text-ochre-800" role="note">
+        <div className="flex gap-2.5 rounded-lg border border-brand-100 bg-cool-100 px-3 py-2.5 text-xs leading-5 text-brand-700" role="note">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <div>
             <p className="font-bold">Preview bebas dicoba</p>
@@ -779,6 +781,7 @@ export function Uniform3DConfigurator({
               availableSizes={product.available_sizes}
               color={config.color}
               selectedSleeve={selectedSleeve}
+              selectedOptions={selectedOptions}
               value={sizes}
               onChange={onSizesChange}
               moq={product.moq}

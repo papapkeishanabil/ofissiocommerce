@@ -78,6 +78,7 @@ export async function createQuotationRequest(
       productId: item.productId,
       selectedColor: item.selectedColor,
       selectedSleeve: item.selectedSleeve,
+      selectedOptions: item.selectedOptions,
       sizeMatrix: item.sizeMatrix as never,
       customization: item.customization,
       embroideryPlacements: item.embroideryPlacements as never,

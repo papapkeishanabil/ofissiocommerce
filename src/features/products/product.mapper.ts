@@ -1,3 +1,4 @@
+import { PRODUCT_KIND_META, MODEL_CODE_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, readProductVariants } from "./product-variants";
 import {
   normalizeIndustrySlug,
   slugifyTaxonomy,
@@ -145,7 +146,8 @@ export function mapWooCommerceProductToOfissioProduct(
     "short",
   );
   const standardPrice = parseMoney(raw.regular_price || raw.price || raw.sale_price) || 0;
-  const priceFrom = getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false) ? getMetaNumber(meta, BASE_PRICE_META, standardPrice) : standardPrice;
+  const variantPrices = readProductVariants(getMetaValue(meta, GENERIC_VARIANTS_META)).map(row => row.regularPrice);
+  const priceFrom = getMetaString(meta, PRODUCT_KIND_META) === "variable" && variantPrices.length ? Math.min(...variantPrices) : getMetaBoolean(meta, COLOR_VARIANTS_ENABLED_META, false) ? getMetaNumber(meta, BASE_PRICE_META, standardPrice) : standardPrice;
   const moq = getMetaNumber(meta, "moq", 12);
   const leadTime = getMetaString(meta, "lead_time") || "Hubungi tim Ofissio";
   const quantityPricing = normalizeQuantityPricing({
@@ -174,7 +176,12 @@ export function mapWooCommerceProductToOfissioProduct(
     id: `wc-${raw.id}`,
     source: "woocommerce",
     source_id: String(raw.id),
-    purchaseVariants: (() => { const value = getMetaValue(meta, PURCHASE_VARIANTS_META); return Array.isArray(value) ? value as PurchaseVariant[] : []; })(),
+    productKind: getMetaString(meta, PRODUCT_KIND_META) as "simple" | "variable" || undefined,
+    modelCode: getMetaString(meta, MODEL_CODE_META),
+    variantOptions: readVariantOptions(getMetaValue(meta, VARIANT_OPTIONS_META)),
+    productVariants: readProductVariants(getMetaValue(meta, GENERIC_VARIANTS_META)),
+    defaultVariantSku: getMetaString(meta, "ofissio_default_variant_sku"),
+    purchaseVariants: (() => { if (getMetaString(meta, PRODUCT_KIND_META)) return []; const value = getMetaValue(meta, PURCHASE_VARIANTS_META); return Array.isArray(value) ? value as PurchaseVariant[] : []; })(),
     stockVariantsReady: getMetaBoolean(meta, "ofissio_stock_variants_ready", true),
     colorVariants: readColorVariants(raw),
     colorSizeVariantsEnabled: getMetaBoolean(meta, COLOR_SIZE_ENABLED_META, false),

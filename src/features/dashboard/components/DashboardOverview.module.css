@@ -101,3 +101,77 @@
 @media(min-width:951px) and (max-width:1023px){.sidebar{height:calc(100dvh - 64px)}}
 @media(max-width:950px){.shell{display:block}.sidebar{height:auto;border-right:0;border-bottom:1px solid var(--line);padding:10px 14px;overflow:hidden}.accountIdentity,.sidebarHelp{display:none}.navigation{flex-direction:row;overflow:auto}.navigation>a,.navigation>button{flex-shrink:0}}
 @media(max-width:700px){.content{padding:25px 18px 30px}.header{align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:24px}.header h1{font-size:25px}.header p{font-size:12px}.columns{grid-template-columns:1fr}.panel{padding:18px 16px}.sectionHeading h2{font-size:14px}.sectionHeading>button{font-size:11px}.quoteHeading{align-items:flex-start;flex-wrap:wrap}.quoteFlow small{font-size:9px}.detailPage>header h1{font-size:21px}.filters{gap:16px}.filters button{font-size:11px}}
+
+/* Customer account: approved white surfaces and solid OFISSIO navy. */
+.shell { --navy:#142766; --muted:#52617d; --line:#dbe3f1; background:#eef2fb; color:#142766; }
+.shell :is(a,button,input,select,textarea):focus-visible { outline:2px solid #324382; outline-offset:3px; }
+.sidebar { padding:28px 16px; background:#fff; }
+.accountIdentity { margin:0 12px 28px; }
+.accountIdentity .accountMark { display:grid;place-items:center;width:46px;height:46px;margin:0 0 14px;background:#eff4ff;border:1px solid #e0e7f4;border-radius:12px;color:#142766; }
+.accountIdentity strong { font-size:14px;line-height:1.5; }
+.accountIdentity>span:last-child { font-size:11px;margin-top:4px; }
+.navigation { gap:7px; }
+.navigation>a,.navigation>button { min-height:44px;padding:12px 14px;border-radius:10px;font-size:13px;color:#52617d; }
+.navigation :is(a,button):hover { background:#eff4ff;color:#142766; }
+.navigation [aria-current=page] { background:#142766;color:#fff;font-weight:600; }
+.navigation [aria-current=page]:hover { background:#10245f;color:#fff; }
+.navigation [aria-current=page] small { background:#ffffff26;color:#fff; }
+.sidebarHelp { margin:42px 12px 0;padding-top:22px; }
+.header h1 { color:#142766; font-weight:700;letter-spacing:-.025em; }
+.header p { font-size:14px;line-height:1.7;max-width:660px; }
+.primary { background:#142766;min-height:44px;border-radius:10px;padding:11px 16px;font-size:13px; }
+.primary:hover { background:#10245f; }
+.outline { min-height:42px;border-radius:9px;border-color:#dbe3f1;font-size:12px; }
+.outline:hover { background:#eff4ff;border-color:#a8b5d2; }
+.panel,.summary,.tableWrap { border-radius:16px;border-color:#dbe3f1;box-shadow:0 3px 12px #14276606; }
+.panel { padding:22px; }
+.sectionHeading h2 { font-size:16px;font-weight:650; }
+.metrics { gap:16px;border:0;margin-bottom:24px;padding:0; }
+.metrics>a,.metrics>button,.metrics>:first-child,.metrics>:last-child { padding:20px;border:1px solid #dbe3f1;border-radius:14px;background:#fff;box-shadow:0 3px 12px #14276606; }
+.metrics :is(a,button):hover { border-color:#a8b5d2; }
+.metrics span { color:#52617d;font-size:12px; }
+.metrics strong { font-size:32px;font-weight:700;letter-spacing:-.025em; }
+.metrics small { line-height:1.6; }
+.paymentNotice { border-radius:14px;padding:18px 20px;box-shadow:0 3px 12px #14276606;margin-bottom:20px; }
+.paymentNotice>svg { color:#324382;background:#eff4ff;box-sizing:content-box;padding:10px;border-radius:10px; }
+.paymentNotice h2 { font-size:14px; }
+.paymentNotice p { font-size:12px;line-height:1.6; }
+.columns { gap:20px; }
+.thumb { background:#fff;border:1px solid #e5eaf4;border-radius:10px; }
+.recentRow .product p,.orderTable .productName { color:#142766; }
+.status { border-radius:6px;padding:5px 9px; }
+.tableWrap { scrollbar-width:thin;scrollbar-color:#a8b5d2 #eff4ff; }
+.orderTable th { background:#f4f7ff;padding-block:16px; }
+.orderTable td { padding-block:20px; }
+.search { max-width:420px;border-radius:10px;min-height:44px;background:#fff;border-color:#dbe3f1; }
+.filters { gap:6px;border:1px solid #dbe3f1;border-radius:12px;background:#fff;padding:5px;width:fit-content;flex-wrap:wrap; }
+.filters button { min-height:40px;padding:8px 13px;border:0;border-radius:8px; }
+.filters [aria-pressed=true] { background:#142766;color:#fff; }
+.filters [aria-pressed=true] small { background:#ffffff26;color:#fff; }
+.gold { border-color:#a8b5d2;color:#142766;border-radius:9px;min-height:42px; }
+.gold:hover { background:#eff4ff; }
+.profileNotice { border-radius:12px;background:#fff;padding:14px 18px; }
+.summary button:first-child .summaryIcon { background:#eff4ff;color:#142766; }
+.addressGrid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px; }
+.addressCard { padding:22px;border:1px solid #dbe3f1;border-radius:16px;background:#fff;box-shadow:0 3px 12px #14276606; }
+.addressCard p { line-height:1.8; }
+.accountFooter { padding-bottom:4px; }
+@media(max-width:1150px) { .columns { grid-template-columns:1fr; } .addressGrid { grid-template-columns:1fr; } }
+@media(max-width:950px) { .sidebar { padding:10px 14px; } .navigation>a,.navigation>button { padding:10px 13px;font-size:12px; } .accountIdentity { display:none; } }
+@media(max-width:700px) { .panel { padding:18px; } .header p { font-size:13px; } .metrics { gap:8px; } .metrics>a,.metrics>button,.metrics>:first-child,.metrics>:last-child { padding:14px 10px; } .metrics span { font-size:10px; } .metrics strong { font-size:27px; } .metrics small { font-size:10px; } .paymentNotice>.outline { margin-left:0; } .paymentNotice { align-items:flex-start; } .paymentNotice>div { flex:1;min-width:160px; } .orderTable { min-width:650px; } .orderTable :is(th,td):nth-child(2),.orderTable :is(th,td):nth-child(4) { display:table-cell; } .filters { width:100%;gap:3px; } .filters button { flex:1;padding:8px 6px;font-size:10px;white-space:nowrap; } .addressCard { padding:18px; } }
+
+@media(max-width:700px) {
+  .orderTable { display:block;min-width:0; }
+  .orderTable thead { display:none; }
+  .orderTable tbody { display:block; }
+  .orderTable tr { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:18px 16px;border-bottom:1px solid #dbe3f1; }
+  .orderTable tr:last-child { border-bottom:0; }
+  .orderTable tr>td:nth-child(n) { display:block;padding:0;border:0; }
+  .orderTable tr>td:first-child { grid-column:1/-1; }
+  .orderTable tr>td:nth-child(3),.orderTable tr>td:last-child { justify-self:end; }
+  .orderTable .product { min-width:0; }
+  .orderTable .productName { font-size:12px; }
+  .orderTable .thumb { width:48px;height:62px; }
+  .orderTable .status { font-size:10px;white-space:normal; }
+  .orderTable .money { font-size:14px; }
+}

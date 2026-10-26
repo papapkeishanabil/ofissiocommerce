@@ -7,7 +7,7 @@ import { OfistantOpenButton } from "./OfistantOpenButton";
 
 export function ReadyStockOrderSection({ data, sectionNumber = "05" }: { data: CaraOrderSectionData; sectionNumber?: string }) {
   return (
-    <section id="cara" aria-labelledby="cara-heading" className="scroll-mt-24 overflow-hidden bg-[#06152e] pb-10 pt-16 text-white lg:pb-12 lg:pt-20">
+    <section id="cara" aria-labelledby="cara-heading" className="scroll-mt-24 overflow-hidden bg-gradient-to-br from-brand-700 to-brand-900 pb-10 pt-16 text-white lg:pb-12 lg:pt-20">
       <div className="mx-auto max-w-[1600px]">
         <div className="px-6 lg:px-8">
           <HomeSectionMarker number={sectionNumber} label={data.eyebrow} tone="dark" />
@@ -35,7 +35,7 @@ export function ReadyStockOrderSection({ data, sectionNumber = "05" }: { data: C
                   style={{ width: isEmbroidery ? "500%" : "400%", maxWidth: "none", left: `${isEmbroidery ? -200 : (stockIndex % 4) * -100}%` }} />
               </div>
               <div className="relative border-t-[3px] border-ochre-400 px-6 pb-2 lg:px-8" style={{ borderTop: "3px solid var(--color-ochre-400)" }}>
-                <span style={{ marginTop: -31, boxShadow: "0 0 0 5px #06152e" }} className="relative grid h-14 w-14 place-items-center rounded-full bg-ochre-400 text-xl font-extrabold tabular-nums text-brand-950">{String(index + 1).padStart(2, "0")}</span>
+                <span style={{ marginTop: -31, boxShadow: "0 0 0 5px var(--color-brand-700)" }} className="relative grid h-14 w-14 place-items-center rounded-full bg-ochre-400 text-xl font-extrabold tabular-nums text-brand-950">{String(index + 1).padStart(2, "0")}</span>
                 <h3 className="mt-6 text-xl font-extrabold leading-tight tracking-[-0.02em] text-[#f6f0e6] sm:text-2xl">{step.title}</h3>
                 <p className="mt-4 max-w-[35ch] whitespace-pre-line text-base leading-relaxed text-[#c7d1df]">{step.desc}</p>
               </div>

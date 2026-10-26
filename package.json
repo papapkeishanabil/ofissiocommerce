@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:color-variants": "tsx --require ./scripts/register-server-only.cjs scripts/test-color-variants.ts",
+    "test:product-variants": "tsx --require ./scripts/register-server-only.cjs scripts/test-admin-product-kinds.ts && tsx --require ./scripts/register-server-only.cjs scripts/test-product-variants.ts && tsx scripts/test-variant-sku-generation.ts",
     "test:product-import": "tsx scripts/test-product-import.ts",
     "test:product-import-phase2": "tsx --require ./scripts/register-server-only.cjs scripts/test-product-import-phase2.ts",
     "provision:super-admin": "tsx scripts/provision-super-admin.ts",

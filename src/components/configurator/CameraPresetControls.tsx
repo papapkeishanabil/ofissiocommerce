@@ -35,9 +35,9 @@ export function CameraPresetControls({
                 onClick={() => onChange(preset)}
                 aria-pressed={active}
                 className={cn(
-                  "relative flex min-h-[100px] w-[92px] shrink-0 flex-col overflow-hidden rounded-xl border bg-[#f5f2ec] text-[13px] font-medium text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ochre-400 lg:w-full",
+                  "relative flex min-h-[100px] w-[92px] shrink-0 flex-col overflow-hidden rounded-xl border bg-white text-[13px] font-medium text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 lg:w-full",
                   active
-                    ? "border-ochre-500 ring-1 ring-ochre-500"
+                    ? "border-brand-500 ring-1 ring-brand-500"
                     : "border-line hover:border-brand-300",
                 )}
               >

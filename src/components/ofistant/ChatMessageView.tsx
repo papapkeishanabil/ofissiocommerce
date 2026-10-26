@@ -4,6 +4,7 @@ import type { ChatMessage } from "@/lib/ofistant/ofistant.types";
 import { describeActionType } from "@/lib/ofistant/ofistant.actions";
 import { cn } from "@/lib/utils";
 import { OfistantMark } from "./OfistantMark";
+import styles from "./OfistantChat.module.css";
 
 import { ActionPreviewCard } from "./ActionPreviewCard";
 import { AssistantMessageText } from "./AssistantMessageText";
@@ -22,37 +23,18 @@ export function ChatMessageView({ message, isPendingConfirm, onConfirm, onCancel
   const showActionPreview = isPendingConfirm && message.requiresConfirm && message.action?.type === "ADD_TO_CART";
 
   return (
-    <div className={cn("group/msg flex gap-2.5", isUser ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn(styles.message, isUser && styles.userMessage)}>
       {/* Avatar */}
-      <span aria-hidden className={cn(
-        "grid h-9 w-9 shrink-0 place-items-center rounded-full",
-        isUser
-          ? "border border-line bg-white text-ink-muted shadow-soft-xs"
-          : "bg-brand-700 text-white shadow-soft-sm",
-      )}>
-        {isUser ? (
-          <span className="text-[11px] font-extrabold text-ink-muted">Anda</span>
-        ) : (
-          <OfistantMark variant="rev" className="h-5 w-5" />
-        )}
-      </span>
+      {!isUser && <span aria-hidden className={styles.avatar}><OfistantMark variant="rev" /></span>}
 
-      <div className={cn("flex max-w-[82%] flex-col gap-1", isUser ? "items-end" : "items-start")}>
+      <div className={styles.messageBody}>
         {/* Bubble */}
-        <div className={cn(
-          "px-4 py-2.5 text-[15px] leading-relaxed",
-          isUser
-            ? "rounded-2xl rounded-tr-md bg-brand-700 text-white shadow-soft-sm"
-            : "rounded-2xl rounded-tl-md border border-white/70 bg-white/80 text-ink shadow-soft-sm backdrop-blur",
-        )}>
+        <div className={cn(styles.bubble, isUser && styles.userBubble)}>
           {isUser ? message.text : <AssistantMessageText text={message.text} />}
         </div>
 
         {/* Timestamp */}
-        <span className={cn(
-          "px-1 text-[10px] font-medium text-ink-subtle",
-          isUser ? "text-right" : "text-left",
-        )}>
+        <span className={styles.time}>
           {formatChatTime(message.ts)}
         </span>
 

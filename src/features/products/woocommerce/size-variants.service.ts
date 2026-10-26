@@ -2,7 +2,7 @@ import "server-only";
 import { stockSize } from "../color-size-variants";
 import { mapPurchaseVariants } from "../purchase-variants";
 import { listColorVariationRows, type VariantSource } from "./color-variants.service";
-import { getMetaBoolean, getMetaStringArray } from "./woocommerce-product-meta";
+import { getMetaBoolean, getMetaString, getMetaStringArray } from "./woocommerce-product-meta";
 import type { WooCommerceProduct } from "./woocommerce.types";
 import { createApiError } from "@/lib/security/safe-error-response";
 
@@ -11,6 +11,7 @@ export const stockVariantSize = (value: string) => stockSize(value);
 
 /** Single-color products get native size SKUs at creation, not synthetic UI SKUs. */
 export async function ensureSizeVariants(product: WooCommerceProduct, source: VariantSource) {
+  if (getMetaString(product.meta_data ?? [], "ofissio_product_kind")) return;
   if (getMetaBoolean(product.meta_data ?? [], "ofissio_color_variants_enabled", false)) return;
   const sizes = [...new Set(getMetaStringArray(product.meta_data ?? [], "available_sizes").map(stockSize))];
   const colors = getMetaStringArray(product.meta_data ?? [], "available_colors");

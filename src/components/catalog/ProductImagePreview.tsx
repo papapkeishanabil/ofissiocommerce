@@ -59,9 +59,12 @@ function Preview({ product, primary, secondary, className, children }: {
       }} onBlur={() => setFocused(false)}>
       {primary && !primaryFailed ? <Image src={primary} fill sizes={sizes}
         alt={product.images?.[0]?.alt || product.name} aria-hidden={active}
-        className={styles.image} loading="lazy" onError={() => setPrimaryFailed(true)} /> :
-        <ProductImagePlaceholder name={product.name} category={product.category}
-          accentColor={product.accentColor} className="h-full w-full" />}
+        className={`${styles.image} ${styles.primary}`} style={{ opacity: active ? 0 : 1 }}
+        loading="lazy" onError={() => setPrimaryFailed(true)} /> :
+        <div className={`${styles.primary} h-full w-full`} style={{ opacity: active ? 0 : 1 }} aria-hidden={active}>
+          <ProductImagePlaceholder name={product.name} category={product.category}
+            accentColor={product.accentColor} className="h-full w-full" />
+        </div>}
       {available && requested && secondary ? <Image src={secondary.src} fill sizes={sizes}
         alt={secondary.alt || `Foto kedua ${product.name}`} aria-hidden={!active}
         className={`${styles.image} ${styles.secondary}`} style={{ opacity: active ? 1 : 0 }}

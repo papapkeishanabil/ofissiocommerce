@@ -6,10 +6,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight, Check, Copy, Sparkles, TicketPercent } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { Breadcrumbs, type Crumb } from "@/components/ui/Breadcrumbs";
+import styles from "./PromotionShowcase.module.css";
 import {
   PROMOTION_TYPE_BADGE,
   PENDING_PROMO_STORAGE_KEY,
@@ -72,25 +74,22 @@ export function PromotionShowcase() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-10">
+    <div className={styles.page}>
       <Breadcrumbs items={crumbs} className="mb-4" />
-      <header>
-        <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-brand-700">
-          <TicketPercent className="h-4 w-4" aria-hidden="true" />
-          Penawaran aktif
-        </p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink-strong lg:text-4xl">
+      <header className={styles.header}><div>
+        <h1>
           Promo &amp; Voucher Ofissio
         </h1>
         <p className="mt-2 max-w-2xl text-base leading-relaxed text-ink-muted">
           Pilih voucher yang tersedia untuk pesanan seragam Anda. Satu voucher
           dipakai per transaksi dan tetap divalidasi saat checkout.
         </p>
-        <div className="mt-4 h-[3px] w-10 rounded-full bg-ochre-500" />
+        </div><span className={styles.headerIcon}><TicketPercent size={32} aria-hidden="true"/></span>
       </header>
+      <div className={styles.intro}><span>{promotions === null ? "Memuat voucher yang tersedia…" : `${promotions.length} voucher tersedia`}. Kode promo akan diperiksa sesuai isi keranjang Anda.</span><Link href="/cart">Lihat keranjang <ArrowRight size={16}/></Link></div>
 
       {promotions === null ? (
-        <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={styles.grid}>
           {[0, 1, 2].map((i) => (
             <div
               key={i}
@@ -99,11 +98,11 @@ export function PromotionShowcase() {
           ))}
         </div>
       ) : promotions.length === 0 ? (
-        <div className="mt-8 grid place-items-center rounded-2xl border border-dashed border-line bg-surface px-6 py-16 text-center">
+        <div className={styles.empty}>
           <TicketPercent className="mb-3 h-12 w-12 text-brand-200" aria-hidden="true" />
-          <p className="text-sm font-semibold text-ink">
+          <h2>
             {error ?? "Belum ada promo aktif saat ini."}
-          </p>
+          </h2>
           <p className="mt-1 max-w-md text-xs leading-relaxed text-ink-muted">
             Cek kembali nanti, atau tanya Ofistant untuk penawaran khusus
             pesanan Anda.
@@ -116,11 +115,11 @@ export function PromotionShowcase() {
           </div>
         </div>
       ) : (
-        <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={styles.grid}>
           {promotions.map((promo) => (
             <article
               key={promo.id}
-              className="flex flex-col rounded-2xl border border-line bg-white p-5 shadow-soft-sm"
+              className={styles.card}
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-brand-700">
@@ -145,7 +144,7 @@ export function PromotionShowcase() {
                 {promo.displaySubtitle}
               </p>
 
-              <div className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-dashed border-brand-300 bg-brand-50/50 px-3 py-2">
+              <div className={styles.code}>
                 <span className="min-w-0 truncate font-mono text-sm font-bold tracking-wider text-brand-800">
                   {promo.code}
                 </span>
@@ -168,7 +167,6 @@ export function PromotionShowcase() {
 
               <div className="mt-4 flex-1" />
               <Button
-                variant="outline"
                 className="w-full"
                 onClick={() => handleUseNow(promo.code)}
               >

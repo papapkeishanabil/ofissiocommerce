@@ -4,6 +4,7 @@
 // company_id; for now we keep the contract stable so components don't change.
 
 import { create } from "zustand";
+import { selectProductVariants, selectedVariantPrice, matchingProductVariant } from "@/features/products/product-variants";
 import { persist } from "zustand/middleware";
 
 import {
@@ -38,6 +39,7 @@ interface CartState {
     product: OfissioProduct;
     color: string;
     selectedSleeve?: string;
+  selectedOptions?: Record<string, string>;
     sizes: SizeMatrix;
     customization?: string | null;
     uniform3DConfig?: import("@/types/uniform-3d").Uniform3DConfig | null;
@@ -64,14 +66,19 @@ export const useCartStore = create<CartState>()(
       hydrated: false,
       setHydrated: () => set({ hydrated: true }),
 
-      add: ({ replaceLineId, product, color, selectedSleeve, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing, moqSettings }) => {
-        try { selectPurchaseVariants(product, sizes, selectedSleeve, color); }
+      add: ({ replaceLineId, product, color, selectedSleeve, selectedOptions, sizes, customization = null, uniform3DConfig = null, globalEmbroideryPricing, moqSettings }) => {
+        let regularPrice = product.priceFrom;
+        try {
+          if (product.productKind === "variable") { selectProductVariants(product, sizes, selectedOptions); regularPrice = selectedVariantPrice(product, selectedOptions ?? {}, sizes); }
+          else selectPurchaseVariants(product, sizes, selectedSleeve, color);
+        }
         catch (error) { return { ok: false, reason: error instanceof Error ? error.message : "Pilih varian produk." }; }
         const validation = validateProductForCart(product);
         if (!validation.ok) return { ok: false, reason: validation.reason };
         const variantIssue = colorVariantIssue(product, color);
         if (variantIssue) return { ok: false, reason: variantIssue };
-        const variantSnapshot = colorVariantSnapshot(product, color);
+        const selectedVariant = product.productKind === "variable" ? matchingProductVariant(product, selectedOptions ?? {}, Object.entries(sizes).find(([, q]) => q > 0)?.[0]) : undefined;
+        const variantSnapshot = selectedVariant ? { sku: selectedVariant.sku, image: selectedVariant.imageSrc || product.mainImage || null, parentSku: product.sku } : colorVariantSnapshot(product, color);
         const totalQty = sumSizeMatrix(sizes);
         if (totalQty <= 0) {
           return { ok: false, reason: "Quantitas belum diisi." };
@@ -90,11 +97,11 @@ export const useCartStore = create<CartState>()(
         if (nameIssue) return { ok: false, reason: nameIssue };
         const replacing = replaceLineId ? get().items.find(item => item.id === replaceLineId && item.productId === product.id) : undefined;
         if (replaceLineId && !replacing) return { ok: false, reason: "Item keranjang tidak ditemukan. Buka ulang keranjang." };
-        const baseId = lineItemId(product.id, color) + (selectedSleeve ? `__${encodeURIComponent(selectedSleeve)}` : "");
+        const baseId = lineItemId(product.id, color) + (selectedSleeve ? `__${encodeURIComponent(selectedSleeve)}` : "") + (selectedOptions ? `__${encodeURIComponent(JSON.stringify(Object.entries(selectedOptions).sort(([a], [b]) => a.localeCompare(b))))}__${regularPrice}` : "");
         const customized = !!uniform3DConfig?.placements.length;
         const id = replacing?.id || (customized ? `${baseId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}` : baseId);
         const calculatedPrice = calculateQuantityTierPrice({
-          regularPrice: product.priceFrom,
+          regularPrice,
           totalQty,
           quantityPricing: product.quantityPricing,
         });
@@ -130,7 +137,7 @@ export const useCartStore = create<CartState>()(
           });
           if (mergedIssue) return { ok: false, reason: mergedIssue.reason };
           const mergedPrice = calculateQuantityTierPrice({
-            regularPrice: cur.regularPrice ?? product.priceFrom,
+            regularPrice,
             totalQty: mergedQty,
             quantityPricing: product.quantityPricing ?? cur.quantityPricing,
           });
@@ -146,6 +153,7 @@ export const useCartStore = create<CartState>()(
             ...variantSnapshot,
             color,
             selectedSleeve,
+            selectedOptions,
             availableSizes: product.available_sizes,
             fulfillmentType: product.fulfillment,
             processRoute: product.processRoute,
@@ -154,7 +162,7 @@ export const useCartStore = create<CartState>()(
             totalQty: mergedQty,
             unitPrice: mergedPrice.unitPrice,
             estimatedPrice: mergedPrice.subtotal + mergedEmbroideryPrice.total,
-            regularPrice: cur.regularPrice ?? product.priceFrom,
+            regularPrice,
             finalUnitPrice: mergedPrice.unitPrice,
             quantityTierLabel: mergedPrice.tierLabel,
             quantityPricingBasis: product.quantityPricing?.basis ?? cur.quantityPricingBasis ?? "total_order_qty",
@@ -189,11 +197,12 @@ export const useCartStore = create<CartState>()(
           ...variantSnapshot,
           color,
           selectedSleeve,
+          selectedOptions,
           sizes,
           totalQty,
           unitPrice: calculatedPrice.unitPrice,
           estimatedPrice: calculatedPrice.subtotal + embroideryPrice.total,
-          regularPrice: product.priceFrom,
+          regularPrice,
           finalUnitPrice: calculatedPrice.unitPrice,
           quantityTierLabel: calculatedPrice.tierLabel,
           quantityPricingBasis: product.quantityPricing?.basis ?? "total_order_qty",

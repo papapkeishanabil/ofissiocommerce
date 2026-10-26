@@ -95,7 +95,7 @@ export function WorkspaceHeader({ onNavigate }: {
   const navLink = "rounded-lg px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10";
 
   return (
-    <header className="storefront-header workspace-chrome-header sticky top-0 z-30 shrink-0 text-white"
+    <header className={`storefront-header workspace-chrome-header sticky top-0 z-30 shrink-0 text-white${["/catalog", "/cart", "/promo"].includes(pathname) || pathname.startsWith("/product/") ? " catalog-header" : ""}`}
       onKeyDown={(event) => {
         if (event.key !== "Escape") return;
         const menu = event.currentTarget.querySelector("details[open]");
@@ -127,7 +127,7 @@ export function WorkspaceHeader({ onNavigate }: {
           />
         </Link>
         <nav className="hidden items-center gap-1 xl:flex" aria-label="Navigasi utama">
-          {links.map((link) => <Link key={link.href} href={link.href} onClick={link.section ? (e) => handleSectionNav(e, link.section!) : undefined} className={navLink}>{link.label}</Link>)}
+          {links.map((link) => <Link key={link.href} href={link.href} aria-current={pathname === link.href || (link.href === "/catalog" && pathname.startsWith("/product/")) ? "page" : undefined} onClick={link.section ? (e) => handleSectionNav(e, link.section!) : undefined} className={navLink}>{link.label}</Link>)}
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <form action="/catalog" onSubmit={onNavigate} role="search" className="mr-2 hidden h-10 items-center gap-2 rounded-lg border border-white/30 bg-white/5 px-3 xl:flex">
@@ -160,7 +160,7 @@ export function WorkspaceHeader({ onNavigate }: {
                 <input name="kategori" type="search" aria-label="Cari produk, kategori, atau SKU" placeholder="Cari produk, kategori, atau SKU" className="h-11 min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/80" />
                 <button className="min-h-11 px-2 text-sm font-semibold" type="submit">Cari</button>
               </form>
-              <nav aria-label="Navigasi seluler" className="grid gap-1">{links.map((link) => <Link key={link.href} href={link.href} onClick={link.section ? (e) => handleSectionNav(e, link.section!) : undefined} className={navLink}>{link.label}</Link>)}</nav>
+              <nav aria-label="Navigasi seluler" className="grid gap-1">{links.map((link) => <Link key={link.href} href={link.href} aria-current={pathname === link.href || (link.href === "/catalog" && pathname.startsWith("/product/")) ? "page" : undefined} onClick={link.section ? (e) => handleSectionNav(e, link.section!) : undefined} className={navLink}>{link.label}</Link>)}</nav>
             </div>
           </details>
         </div>

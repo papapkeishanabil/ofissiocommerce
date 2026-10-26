@@ -87,10 +87,3 @@ Foto Produk/
 public/_why-preview.html
 .next-checkout-fixture/
 artifacts/storefront-consistency/next-dev-before-route-recovery/
-
-# Local backup artifacts from test scripts
-/.ofissio-backups/
-
-# Local credentials and account notes
-/.env.local.bak-*
-/Daftar Akun Ofissio.txt

@@ -59,6 +59,7 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
           ["product_slug", item.productSlug],
           ["selected_color", item.selectedColor],
           ["selected_sleeve", item.selectedSleeve],
+          ["selected_options", JSON.stringify(item.selectedOptions ?? {})],
           ["size_matrix", JSON.stringify(item.sizeMatrix)],
           ["embroidery_placements", JSON.stringify(item.embroideryPlacements)],
           [

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { CompanyAddressForm } from "@/components/company/CompanyAddressForm";
 import { AccountSidebar } from "@/features/dashboard/components/AccountSidebar";
+import { AccountFooter } from "@/features/dashboard/components/AccountFooter";
 import s from "@/features/dashboard/components/DashboardOverview.module.css";
 
 export function AddressesPage() {
@@ -78,7 +79,7 @@ export function AddressesPage() {
         ]}
         className="mb-4"
       />
-      <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
+      <header className={s.header}>
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-ink">
             <Building2 className="h-6 w-6 text-brand-700" />
@@ -116,11 +117,11 @@ export function AddressesPage() {
           </Button>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className={s.addressGrid}>
           {addresses.map((a) => (
             <li
               key={a.id}
-              className="rounded-2xl border border-line bg-surface p-4"
+              className={s.addressCard}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -191,6 +192,7 @@ export function AddressesPage() {
           />
         )}
       </Modal>
+      <AccountFooter />
       </div>
     </div>
   );
