@@ -31,7 +31,7 @@ const footerLinkClass =
 
 export function WorkspaceFooter() {
   return (
-    <footer className="border-t border-line bg-surface-muted px-3 text-ink sm:px-5 lg:px-6 xl:px-8">
+    <footer className="border-t border-line px-3 text-ink sm:px-5 lg:px-6 xl:px-8" style={{ backgroundColor: "#edf0f3" }}>
       <div className="mx-auto w-full max-w-[1680px] pb-5 pt-8 sm:pt-10">
         <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:gap-x-10 lg:grid-cols-[1.35fr_0.75fr_1fr_1.1fr] lg:gap-x-12">
           <div className="col-span-2 md:col-span-1">
