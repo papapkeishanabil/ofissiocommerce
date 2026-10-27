@@ -118,9 +118,9 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
             </span>
           </div>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-muted">
-            Satu standar ukuran per jenis produk. Produk otomatis mengikuti standar berdasarkan kategori WooCommerce-nya:
-            produk kategori <strong>kemeja</strong> tampil size chart Kemeja, dan seterusnya. Urutan atas menang bila
-            beberapa standar cocok; tandai <strong>fallback</strong> untuk produk di luar semua kategori.
+            Standar yang ditetapkan untuk produk khusus diprioritaskan. Produk lain mengikuti kategori WooCommerce;
+            urutan atas menang bila beberapa standar cocok. Gunakan <strong>fallback</strong> hanya untuk standar umum,
+            bukan untuk standar satu model seperti Sasienala SN.
           </p>
         </div>
         {canUpdate ? (

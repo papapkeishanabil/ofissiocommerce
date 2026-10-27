@@ -19,6 +19,7 @@ export function ProductSizeChart({ rows, name }: { rows: ProductSizeRow[]; name?
         </tr>)}</tbody>
       </table>
     </div>
+    <p className="mt-1 text-xs leading-5 text-ink-muted">Geser tabel untuk melihat seluruh kolom pengukuran.</p>
     <p className="mt-2 text-xs leading-5 text-ink-muted">Ukuran pakaian dalam cm. Bandingkan dengan ukuran pakaian yang biasa Anda gunakan.</p>
     {hasWeight ? <div className="mt-4">
       <p className="mb-2 text-xs font-semibold text-ink">Rekomendasi berdasarkan berat badan</p>
