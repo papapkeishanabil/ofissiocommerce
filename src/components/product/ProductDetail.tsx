@@ -515,7 +515,14 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             ) : null}
 
             {!generic && product.productKind !== "simple" && <ProductColorPicker product={product} color={color} onChange={setColor} />}
-            {generic && product.variantOptions?.filter(option => !isSizeOption(option.name)).map(option => <fieldset key={option.name} className="mt-3">
+            {generic && product.variantOptions?.filter(option => !isSizeOption(option.name)).map(option => isColorOption(option.name) ? (
+              <ProductColorPicker key={option.name} product={product} color={selectedOptions[option.name] ?? color} selectedOptions={selectedOptions} onChange={value => {
+                setSelectedOptions(current => ({ ...current, [option.name]: value }));
+                setColor(value);
+                setSizes(emptySizeMatrix());
+                setError(null);
+              }} />
+            ) : <fieldset key={option.name} className="mt-3">
               <legend className="text-xs font-bold text-ink">{option.name}</legend>
               <div className="mt-2 flex flex-wrap gap-2">{option.values.map(value => <button key={value} type="button" aria-pressed={selectedOptions[option.name] === value} className={`min-h-11 rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${selectedOptions[option.name] === value ? "border-brand-700 bg-surface-muted" : "border-line bg-surface"}`} onClick={() => { setSelectedOptions(current => ({ ...current, [option.name]: value })); if (isColorOption(option.name)) setColor(value); setSizes(emptySizeMatrix()); setError(null); }}>{value}</button>)}</div>
             </fieldset>)}
