@@ -1,4 +1,6 @@
 import "server-only";
+import { getSizeChartStandards } from "@/features/size-charts/size-chart.service";
+import { selectableSizeCharts, NO_SIZE_CHART, SIZE_CHART_META_KEY } from "@/features/size-charts/size-chart-selection";
 import { randomUUID } from "node:crypto";
 import { PRODUCT_KIND_META, MODEL_CODE_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, readProductVariants, mapLegacyProductVariants } from "../product-variants";
 import { ensureSizeVariants } from "./size-variants.service";
@@ -43,6 +45,14 @@ import type { AdminWooProductPayload } from "./woocommerce-product-management.va
 import type { AdminWooQuantityPricingPayload } from "./woocommerce-product-management.validation";
 
 const ADMIN_PAGE_SIZE = 100;
+
+async function validateSelectedSizeChart(payload: AdminWooProductPayload) {
+  if (!payload.sizeChartId || payload.sizeChartId === NO_SIZE_CHART) return;
+  const { standards } = await getSizeChartStandards();
+  if (!selectableSizeCharts(standards, payload.gender).some(standard => standard.id === payload.sizeChartId)) {
+    throw createApiError("VALIDATION_ERROR", "Standar ukuran tidak tersedia atau tidak sesuai dengan gender produk.", 400);
+  }
+}
 const MAX_ADMIN_PAGES = 100;
 
 export async function listAdminWooCommerceProducts(): Promise<
@@ -182,6 +192,7 @@ export async function getAdminWooCommerceProduct(
       replenishmentPolicy: getMetaString(meta, "replenishment_policy") || "internal_warning_only",
       processRoute: getMetaString(meta, "process_route") || "fulfillment",
       gender: getMetaString(meta, "gender") || "unisex",
+      sizeChartId: getMetaString(meta, SIZE_CHART_META_KEY) || undefined,
       sleeveType: getMetaString(meta, "sleeve_type") || "short",
       safetyFeatures: getMetaStringArray(meta, "safety_features"),
       quantityPricingEnabled: quantityPricing.enabled,
@@ -198,6 +209,7 @@ export async function createAdminWooCommerceProduct(input: {
   request?: Request;
 }) {
   try {
+    await validateSelectedSizeChart(input.payload);
     const managedAttributes = await ensureGlobalProductAttributes(input.payload);
     const created = await woocommerceClient.createProduct(
       buildWritePayload(input.payload, undefined, managedAttributes),
@@ -229,6 +241,7 @@ export async function updateAdminWooCommerceProduct(input: {
   request?: Request;
 }) {
   try {
+    await validateSelectedSizeChart(input.payload);
     const [current, managedAttributes] = await Promise.all([
       woocommerceClient.getProductById(input.id),
       ensureGlobalProductAttributes(input.payload),
@@ -416,6 +429,8 @@ function buildWritePayload(
       JSON.stringify(sortQuantityPricingTiers(payload.quantityPricingTiers)),
     ],
   ];
+
+  if (payload.sizeChartId !== undefined) entries.push([SIZE_CHART_META_KEY, payload.sizeChartId]);
 
   if (payload.productKind) {
     entries.push([PRODUCT_KIND_META, payload.productKind], [MODEL_CODE_META, payload.modelCode ?? ""],

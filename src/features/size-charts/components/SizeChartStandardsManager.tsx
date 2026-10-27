@@ -5,6 +5,7 @@ import { CheckCircle2, Plus, Ruler, RotateCcw, Save, ShieldAlert, Trash2 } from 
 
 import { Button } from "@/components/ui/Button";
 import { SIZES } from "@/types/industry";
+import { SIZE_CHART_EDITOR_METRICS } from "../size-chart.metrics";
 import {
   DEFAULT_SIZE_CHART_STANDARDS,
   type SizeChartRow,
@@ -27,12 +28,7 @@ type InitialState = {
   schemaReady: boolean;
 };
 
-const METRICS = [
-  { field: "chest", label: "Lingkar dada (cm)" },
-  { field: "length", label: "Panjang badan (cm)" },
-  { field: "shoulder", label: "Lebar bahu (cm)" },
-  { field: "height", label: "Tinggi badan (cm)" },
-] as const;
+const METRICS = SIZE_CHART_EDITOR_METRICS;
 
 type MetricField = (typeof METRICS)[number]["field"];
 
@@ -41,6 +37,8 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
     initialState.standards.map((standard) => ({ ...standard, rows: [...standard.rows] })),
   );
   const [message, setMessage] = useState<string | null>(null);
+  const [source, setSource] = useState(initialState.source);
+  const [schemaReady, setSchemaReady] = useState(initialState.schemaReady);
   const [isPending, startTransition] = useTransition();
 
   function updateStandard(index: number, patch: Partial<SizeChartStandard>) {
@@ -71,6 +69,8 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
         description: "",
         categorySlugs: [],
         isFallback: false,
+        gender: "men",
+        isDefault: false,
         rows: SIZES.map((size) => ({ size, chest: 0, length: 0, shoulder: 0, height: 0 })),
       },
     ]);
@@ -92,12 +92,16 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
         ok?: boolean;
         message?: string;
         standards?: SizeChartStandard[];
+        source?: InitialState["source"];
+        schemaReady?: boolean;
       };
       if (!response.ok || !result.ok) {
         setMessage(result.message ?? "Standar ukuran belum dapat disimpan.");
         return;
       }
       if (result.standards) setStandards(result.standards.map((standard) => ({ ...standard, rows: [...standard.rows] })));
+      if (result.source) setSource(result.source);
+      if (typeof result.schemaReady === "boolean") setSchemaReady(result.schemaReady);
       setMessage("Standar ukuran tersimpan dan langsung tampil di produk yang cocok.");
     });
   }
@@ -110,15 +114,15 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-brand-50 px-3 text-xs font-black uppercase tracking-[0.14em] text-brand-700"><Ruler className="h-4 w-4" />Panduan ukuran</span>
-            <span className={`inline-flex min-h-8 items-center gap-2 rounded-full px-3 text-xs font-black uppercase tracking-[0.14em] ${initialState.schemaReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
-              {initialState.schemaReady ? <CheckCircle2 className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
-              {initialState.source}
+            <span className={`inline-flex min-h-8 items-center gap-2 rounded-full px-3 text-xs font-black uppercase tracking-[0.14em] ${source === "supabase" && schemaReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
+              {source === "supabase" && schemaReady ? <CheckCircle2 className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+              {source === "fallback" ? "Data bawaan — belum tersimpan" : source}
             </span>
           </div>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-muted">
-            Satu standar ukuran per jenis produk. Produk otomatis mengikuti standar berdasarkan kategori WooCommerce-nya:
-            produk kategori <strong>kemeja</strong> tampil size chart Kemeja, dan seterusnya. Urutan atas menang bila
-            beberapa standar cocok; tandai <strong>fallback</strong> untuk produk di luar semua kategori.
+            Standar yang ditetapkan untuk produk khusus diprioritaskan. Produk lain mengikuti kategori WooCommerce;
+            urutan atas menang bila beberapa standar cocok. Gunakan <strong>fallback</strong> hanya untuk standar umum,
+            bukan untuk standar satu model seperti Sasienala SN.
           </p>
         </div>
         {canUpdate ? (
@@ -136,7 +140,8 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
         ) : null}
       </div>
 
-      {!initialState.schemaReady ? (
+      {source === "fallback" && schemaReady ? <p role="note" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Tabel yang tampil adalah referensi bawaan. Periksa angka pengukuran sebelum menyimpan sebagai standar produk.</p> : null}
+      {!schemaReady ? (
         <div role="alert" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">
           Migration 038 belum aktif. Nilai bawaan ditampilkan hanya sebagai fallback; penyimpanan Supabase belum tersedia.
         </div>
@@ -151,6 +156,15 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
         {standards.map((standard, index) => (
           <fieldset key={standard.id + index} disabled={!canUpdate || busy} className="min-w-0 rounded-2xl border border-line/80 bg-slate-50/70 p-4">
             <legend className="sr-only">{standard.name}</legend>
+            <div className="mb-3 flex flex-wrap items-center gap-5">
+              <label className="text-sm font-semibold text-ink">Gender standar
+                <select value={standard.gender ?? "men"} onChange={event => updateStandard(index, { gender: event.target.value as SizeChartStandard["gender"] })} className={`ml-2 ${INPUT}`}>
+                  <option value="men">Pria</option><option value="women">Wanita</option><option value="unisex">Unisex</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={standard.isDefault === true} onChange={event => updateStandard(index, { isDefault: event.target.checked })} className="h-4 w-4" />Default untuk kategori dan gender ini</label>
+            </div>
+            <p className={`mb-3 text-xs font-semibold ${standard.verified ? "text-emerald-700" : "text-amber-800"}`}>{standard.verified ? "Ukuran telah dikonfirmasi" : "Referensi — perlu verifikasi produksi"}</p>
             <div className="grid gap-3 md:grid-cols-[1.2fr_1.8fr_auto] md:items-end">
               <label className="block text-sm font-bold text-ink">
                 Nama standar
@@ -199,6 +213,11 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
                 ) : null}
               </div>
             </div>
+            <label className="mt-3 block text-sm font-bold text-ink">
+              Produk khusus (slug produk, pisah koma; kosong untuk mengikuti kategori)
+              <input value={(standard.productSlugs ?? []).join(", ")} onChange={event => updateStandard(index, { productSlugs: event.target.value.split(",").map(slug => slug.trim().toLowerCase()).filter(Boolean) })} className={`mt-2 ${INPUT}`} placeholder="cth: kemeja-kantor-wanita-sn-basic-monochrome-series" />
+            </label>
+            <label className="mt-3 flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={standard.verified === true} onChange={event => updateStandard(index, { verified: event.target.checked })} className="h-4 w-4" />Angka ukuran sudah dikonfirmasi dari standar resmi produk</label>
             <input
               value={standard.description ?? ""}
               onChange={(event) => updateStandard(index, { description: event.target.value })}

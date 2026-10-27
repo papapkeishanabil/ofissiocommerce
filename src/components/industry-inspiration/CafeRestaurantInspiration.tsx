@@ -13,7 +13,7 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import styles from "./CafeRestaurantInspiration.module.css";
 
@@ -30,7 +30,7 @@ const FOCUS_CLASSES: Record<RoleFocus, string> = {
   supervisor: styles.focusSupervisor!,
 };
 
-export function CafeRestaurantInspiration({ initialBusiness = "cafe", placements }: { initialBusiness?: BusinessKind; placements?: IndustryInspirationData["cafePlacements"] }) {
+export function CafeRestaurantInspiration({ initialBusiness = "cafe", placements, children }: { initialBusiness?: BusinessKind; placements?: IndustryInspirationData["cafePlacements"]; children?: ReactNode }) {
   const [business, setBusiness] = useState<BusinessKind>(initialBusiness);
   const roles = business === "cafe" ? CAFE_ROLES : RESTAURANT_ROLES;
   const [activeRoleId, setActiveRoleId] = useState(
@@ -211,6 +211,7 @@ export function CafeRestaurantInspiration({ initialBusiness = "cafe", placements
           <Link href={business === "cafe" ? "/paket/kafe/barista" : "/paket/restoran/pelayan"}>Susun Paket Lengkap <ArrowRight aria-hidden="true" /></Link>
         </div>
       </section>
+      {children}
     </main>
   );
 }

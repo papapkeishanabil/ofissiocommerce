@@ -43,14 +43,15 @@ export function SizeQuantityMatrix({
   selectedOptions,
   availableSizes,
 }: SizeQuantityMatrixProps) {
-  const stockKey = productId && color ? JSON.stringify([productId, color, selectedSleeve, selectedOptions]) : "";
+  const optionsQuery = JSON.stringify(Object.fromEntries(Object.entries(selectedOptions ?? {}).sort(([a], [b]) => a.localeCompare(b))));
+  const stockKey = productId && color ? JSON.stringify([productId, color, selectedSleeve, optionsQuery]) : "";
   const [stockState, setStockState] = useState<{ key: string; stock: ProductSizeStock | null }>({ key: "", stock: null });
   useEffect(() => {
     if (!productId || !color) return;
     const controller = new AbortController();
     let disposed = false;
     const timeout = window.setTimeout(() => controller.abort(), 20_000);
-    fetch(`/api/products/${encodeURIComponent(productId)}/size-stock?color=${encodeURIComponent(color)}${selectedSleeve ? `&sleeve=${encodeURIComponent(selectedSleeve)}` : ""}${selectedOptions ? `&options=${encodeURIComponent(JSON.stringify(selectedOptions))}` : ""}`, { signal: controller.signal, cache: "no-store" })
+    fetch(`/api/products/${encodeURIComponent(productId)}/size-stock?color=${encodeURIComponent(color)}${selectedSleeve ? `&sleeve=${encodeURIComponent(selectedSleeve)}` : ""}&options=${encodeURIComponent(optionsQuery)}`, { signal: controller.signal, cache: "no-store" })
       .then(async response => {
         if (!response.ok) throw new Error("Stock unavailable");
         const result = await response.json() as { ok: boolean; stock: ProductSizeStock };
@@ -60,11 +61,10 @@ export function SizeQuantityMatrix({
       .catch(() => { if (!disposed) setStockState({ key: stockKey, stock: null }); })
       .finally(() => window.clearTimeout(timeout));
     return () => { disposed = true; controller.abort(); window.clearTimeout(timeout); };
-  }, [productId, color, selectedSleeve, selectedOptions, stockKey]);
+  }, [productId, color, selectedSleeve, stockKey, optionsQuery]);
   const stockLoading = !!stockKey && stockState.key !== stockKey;
   const currentStock = stockState.key === stockKey ? stockState.stock : null;
   const total = sumSizeMatrix(value);
-  const meetsMoq = total >= moq;
   const effectiveFloor = hasEmbroidery && embroideryMoq != null
     ? Math.max(moq, embroideryMoq)
     : moq;

@@ -11,6 +11,13 @@ export interface ProductSizeRow {
   shoulder?: number;
   /** recommended wearer height in cm — optional, 0/undefined = not measured */
   height?: number;
+  sleeveLength?: number;
+  upperArm?: number;
+  elbow?: number;
+  lowerArm?: number;
+  /** Suggested wearer weight range in kg; not a garment measurement. */
+  weightMin?: number;
+  weightMax?: number;
 }
 
 export interface ProductSpec {

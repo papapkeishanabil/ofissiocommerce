@@ -50,6 +50,7 @@ export interface AdminWooProductInput {
   sizes: string[];
   materials: string[];
   gender: (typeof WOO_GENDERS)[number];
+  sizeChartId?: string;
   sleeveType: (typeof WOO_SLEEVE_TYPES)[number];
   safetyFeatures: string[];
   moq: number;

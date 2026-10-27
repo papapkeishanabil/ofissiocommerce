@@ -62,6 +62,7 @@ export const adminWooProductPayloadSchema = z.object({
   sizes: stringList.min(1, "Pilih minimal satu ukuran dari master."),
   materials: stringList,
   gender: z.enum(WOO_GENDERS),
+  sizeChartId: z.string().trim().max(60).regex(/^[a-z0-9-]*$/).optional(),
   sleeveType: z.enum(WOO_SLEEVE_TYPES),
   safetyFeatures: stringList,
   moq: z.coerce.number().int().positive().max(1_000_000),

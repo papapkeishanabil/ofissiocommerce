@@ -1,0 +1,28 @@
+import assert from "node:assert/strict";
+import { DEFAULT_SIZE_CHART_STANDARDS as defaults, normalizeSizeChartStandards } from "../src/features/size-charts/size-chart.types";
+import { SASIENALA_BASIC_STANDARD as sn } from "../src/features/size-charts/sasienala-standard";
+import { defaultSizeChart, selectableSizeCharts } from "../src/features/size-charts/size-chart-selection";
+import { resolveSizeChart } from "../src/features/size-charts/resolve-size-chart";
+import { sizeChartStandardSchema } from "../src/features/size-charts/size-chart.validation";
+
+const alternative = { ...sn, id: "women-alternative", name: "Wanita alternatif", isDefault: false, productSlugs: [] };
+const standards = [...defaults, alternative];
+const male = defaults[0]!;
+const women = { gender: "women" as const, categorySlugs: ["kemeja-kerja-polos"] };
+assert.equal(defaultSizeChart(standards, women)?.id, sn.id);
+assert.deepEqual(selectableSizeCharts(standards, "women").map(chart => chart.id), [sn.id, alternative.id]);
+assert.ok(selectableSizeCharts(standards, "men").length >= 4);
+assert.ok(!selectableSizeCharts(standards, "men").some(chart => chart.id === sn.id));
+assert.equal(defaultSizeChart(standards, { ...women, gender: "men" })?.gender, "men");
+assert.equal(resolveSizeChart(standards, { ...women, sizeChartId: alternative.id })?.standard.id, alternative.id);
+assert.equal(resolveSizeChart(standards, { ...women, sizeChartId: male.id }), null);
+assert.equal(resolveSizeChart(standards, { ...women, sizeChartId: "none" }), null);
+assert.equal(defaultSizeChart(standards, { ...women, gender: "unisex" }), undefined);
+const legacy = { ...male, gender: undefined };
+assert.equal(selectableSizeCharts([legacy], "women").length, 0);
+assert.equal(selectableSizeCharts([legacy], "men").length, 1);
+const [saved] = normalizeSizeChartStandards([sizeChartStandardSchema.parse(sn)]);
+assert.ok(saved);
+assert.equal(saved.gender, "women");
+assert.equal(saved.isDefault, true);
+console.log("PASS: gender isolation, category defaults, manual override, hidden chart, legacy men's charts, and persistence round-trip.");

@@ -217,6 +217,7 @@ export function mapWooCommerceProductToOfissioProduct(
     available_colors: colors.length ? colors : ["Default"],
     available_sizes: availableSizes.length ? availableSizes : DEFAULT_SIZES,
     material,
+    sizeChartId: getMetaString(meta, "size_chart_id") || undefined,
     gender: normalizeEnum(getMetaString(meta, "gender"), ["men", "women", "unisex"], "unisex"),
     sleeve_type: sleeveType,
     usage: normalizeEnum(getMetaString(meta, "usage"), ["indoor", "outdoor", "both"], "both"),
