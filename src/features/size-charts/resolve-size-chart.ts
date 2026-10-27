@@ -5,9 +5,12 @@
 
 import type { Size } from "@/types/industry";
 import type { SizeChartRow, SizeChartStandard } from "./size-chart.types";
+import { defaultSizeChart, selectableSizeCharts, NO_SIZE_CHART, type SizeChartGender } from "./size-chart-selection";
 
 export interface SizeChartProductInput {
   slug?: string;
+  gender?: SizeChartGender;
+  sizeChartId?: string;
   /** Slug kategori WooCommerce produk (cth: ["kemeja", "kemeja-lapangan"]). */
   categorySlugs: readonly string[];
   /** Ukuran yang tersedia untuk produk ini; kosong = tampilkan semua. */
@@ -24,7 +27,12 @@ export function resolveSizeChart(
   product: SizeChartProductInput,
 ): { rows: SizeChartRow[]; standard: SizeChartStandard } | null {
   const productSlugs = new Set(product.categorySlugs.map((slug) => slug.trim().toLowerCase()).filter(Boolean));
-  const matched =
+  if (product.sizeChartId === NO_SIZE_CHART) return null;
+  const matched = product.sizeChartId
+    ? (product.gender ? selectableSizeCharts(standards, product.gender) : standards).find(standard => standard.id === product.sizeChartId)
+    : product.gender
+    ? defaultSizeChart(standards, { ...product, gender: product.gender })
+    :
     standards.find((standard) => product.slug && standard.productSlugs?.includes(product.slug.trim().toLowerCase())) ??
     standards.find((standard) => !standard.productSlugs?.length && standard.categorySlugs.some((slug) => productSlugs.has(slug))) ??
     standards.find((standard) => !standard.productSlugs?.length && standard.isFallback);

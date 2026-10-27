@@ -37,6 +37,7 @@ export interface ProductImageReference {
 
 /** Canonical product contract. UI-compatible fields remain from Product. */
 export interface OfissioProduct extends Product {
+  sizeChartId?: string;
   stockVariantsReady?: boolean;
   productKind?: "simple" | "variable";
   modelCode?: string;

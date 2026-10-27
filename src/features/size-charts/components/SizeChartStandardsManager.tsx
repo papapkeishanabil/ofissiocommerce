@@ -69,6 +69,8 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
         description: "",
         categorySlugs: [],
         isFallback: false,
+        gender: "men",
+        isDefault: false,
         rows: SIZES.map((size) => ({ size, chest: 0, length: 0, shoulder: 0, height: 0 })),
       },
     ]);
@@ -154,6 +156,14 @@ export function SizeChartStandardsManager({ initialState, canUpdate }: { initial
         {standards.map((standard, index) => (
           <fieldset key={standard.id + index} disabled={!canUpdate || busy} className="min-w-0 rounded-2xl border border-line/80 bg-slate-50/70 p-4">
             <legend className="sr-only">{standard.name}</legend>
+            <div className="mb-3 flex flex-wrap items-center gap-5">
+              <label className="text-sm font-semibold text-ink">Gender standar
+                <select value={standard.gender ?? "men"} onChange={event => updateStandard(index, { gender: event.target.value as SizeChartStandard["gender"] })} className={`ml-2 ${INPUT}`}>
+                  <option value="men">Pria</option><option value="women">Wanita</option><option value="unisex">Unisex</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={standard.isDefault === true} onChange={event => updateStandard(index, { isDefault: event.target.checked })} className="h-4 w-4" />Default untuk kategori dan gender ini</label>
+            </div>
             <p className={`mb-3 text-xs font-semibold ${standard.verified ? "text-emerald-700" : "text-amber-800"}`}>{standard.verified ? "Ukuran telah dikonfirmasi" : "Referensi — perlu verifikasi produksi"}</p>
             <div className="grid gap-3 md:grid-cols-[1.2fr_1.8fr_auto] md:items-end">
               <label className="block text-sm font-bold text-ink">

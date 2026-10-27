@@ -5,7 +5,9 @@ export const SASIENALA_BASIC_STANDARD: SizeChartStandard = {
   id: "sasienala-sn-basic",
   name: "Kemeja Wanita SN (Sasienala) Basic",
   description: "Standar Sasienala Basic sesuai tabel resmi. Ukuran pakaian dalam cm; berat badan hanya rekomendasi pemilihan ukuran.",
-  categorySlugs: [],
+  categorySlugs: ["kemeja-kerja-polos", "kemeja-polos", "kemeja-kantor"],
+  gender: "women",
+  isDefault: true,
   productSlugs: [
     "kemeja-kantor-wanita-sn-basic-brown-series",
     "kemeja-kantor-wanita-sn-basic-green-series",

@@ -74,6 +74,7 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
     replenishmentPolicy: string;
     processRoute: string;
     gender: string;
+    sizeChartId?: string;
     sleeveType: string;
     safetyFeatures: string[];
     quantityPricingEnabled: boolean;

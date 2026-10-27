@@ -4,6 +4,7 @@
 // Pure data — diimport dari client & server (tanpa "server-only").
 
 import { SIZES, type Size } from "@/types/industry";
+import { SASIENALA_BASIC_STANDARD } from "./sasienala-standard";
 
 export interface SizeChartRow {
   size: Size;
@@ -34,6 +35,8 @@ export interface SizeChartStandard {
   /** Exact product slugs take precedence; do not use shared categories for model-specific charts. */
   productSlugs?: string[];
   verified?: boolean;
+  gender?: "men" | "women" | "unisex";
+  isDefault?: boolean;
   /** Terpakai saat tidak ada standar lain yang cocok dengan kategori produk. */
   isFallback?: boolean;
   rows: SizeChartRow[];
@@ -46,9 +49,11 @@ export interface SizeChartStandard {
 export const DEFAULT_SIZE_CHART_STANDARDS: SizeChartStandard[] = [
   {
     id: "kemeja-lengan-pendek",
+    gender: "men",
+    isDefault: true,
     name: "Kemeja Lengan Pendek",
     description: "Kemeja kerja lengan pendek reguler.",
-    categorySlugs: ["kemeja", "kemeja-lapangan"],
+    categorySlugs: ["kemeja", "kemeja-kantor", "kemeja-lapangan", "kemeja-kerja-polos", "kemeja-polos"],
     rows: [
       { size: "S", chest: 96, length: 66, shoulder: 42, height: 160 },
       { size: "M", chest: 100, length: 68, shoulder: 44, height: 165 },
@@ -60,6 +65,7 @@ export const DEFAULT_SIZE_CHART_STANDARDS: SizeChartStandard[] = [
   },
   {
     id: "kemeja-lengan-panjang",
+    gender: "men",
     name: "Kemeja Lengan Panjang",
     description: "Kemeja kerja lengan panjang reguler.",
     categorySlugs: ["kemeja-lengan-panjang"],
@@ -74,6 +80,7 @@ export const DEFAULT_SIZE_CHART_STANDARDS: SizeChartStandard[] = [
   },
   {
     id: "polo",
+    gender: "men",
     name: "Polo Kerja",
     description: "Kaos polo kerja pique.",
     categorySlugs: ["polo"],
@@ -88,6 +95,7 @@ export const DEFAULT_SIZE_CHART_STANDARDS: SizeChartStandard[] = [
   },
   {
     id: "jaket",
+    gender: "men",
     name: "Jaket Kerja",
     description: "Jaket kerja outerwear.",
     categorySlugs: ["jaket"],
@@ -101,6 +109,8 @@ export const DEFAULT_SIZE_CHART_STANDARDS: SizeChartStandard[] = [
     ],
   },
 ];
+
+DEFAULT_SIZE_CHART_STANDARDS.push(SASIENALA_BASIC_STANDARD);
 
 const ID_MAX = 60;
 
@@ -156,6 +166,8 @@ function normalizeStandard(raw: Record<string, unknown>, index: number): SizeCha
       ? [...new Set(raw.productSlugs.map(normalizeSlug).filter(Boolean))].slice(0, 100)
       : [],
     verified: raw.verified === true,
+    gender: raw.gender === "women" || raw.gender === "unisex" ? raw.gender : "men",
+    isDefault: raw.isDefault === true,
     rows: rows.length ? rows : normalizeRows(DEFAULT_SIZE_CHART_STANDARDS[index % DEFAULT_SIZE_CHART_STANDARDS.length]?.rows),
   };
 }

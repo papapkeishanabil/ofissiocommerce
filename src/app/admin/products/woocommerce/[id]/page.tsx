@@ -13,6 +13,7 @@ import { AdminBackLink, AdminPageHeader } from "@/features/admin/components/Admi
 import { getProductEditorTaxonomyOptions } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { AdminProductForm } from "@/features/products/components/AdminProductForm";
 import { getMoqSettings } from "@/features/moq-settings/moq-settings.service";
+import { getSizeChartStandards } from "@/features/size-charts/size-chart.service";
 import { ProductReadinessPanel } from "@/features/products/components/ProductReadinessStatus";
 import { getAdminWooCommerceProduct } from "@/features/products/woocommerce/woocommerce-product-admin.service";
 import { getWordPressMediaRuntimeConfig } from "@/features/products/woocommerce/wordpress-media-upload.service";
@@ -33,9 +34,10 @@ export default async function AdminWooProductDetailPage({ params, searchParams }
   const { uploadWarning } = await searchParams;
   if (!/^\d+$/.test(id)) notFound();
   try {
-    const [product, options] = await Promise.all([
+    const [product, options, sizeChartState] = await Promise.all([
       getAdminWooCommerceProduct(id),
       getProductEditorTaxonomyOptions(),
+      getSizeChartStandards(),
     ]);
     const stockMatrix = canViewStockMonitoring(actor)
       ? await getWooSizeStockMatrix(product.sku).catch(() => ({
@@ -82,6 +84,7 @@ export default async function AdminWooProductDetailPage({ params, searchParams }
           mode="edit"
           product={product}
           options={options}
+          sizeChartStandards={sizeChartState.standards}
           routeMoqDefaults={(await getMoqSettings()).settings}
           productImageMaxMb={getWordPressMediaRuntimeConfig().maxUploadMb}
           glbMaxMb={getStorageRuntimeConfig().maxUploadMb.glb}

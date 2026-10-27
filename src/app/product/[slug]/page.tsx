@@ -54,6 +54,8 @@ export default async function Page({ params }: PageProps) {
   // ukuran tersembunyi total (tidak ada tabel kosong).
   const resolvedSizeChart = resolveSizeChart(sizeChartState?.standards ?? [], {
     slug: product.slug,
+    gender: product.gender,
+    sizeChartId: product.sizeChartId,
     categorySlugs: product.categorySlugs ?? [],
     availableSizes: product.available_sizes,
   });

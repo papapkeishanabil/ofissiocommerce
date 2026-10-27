@@ -25,6 +25,8 @@ export const sizeChartStandardSchema = z.object({
   isFallback: z.boolean().optional(),
   productSlugs: z.array(z.string().trim().toLowerCase().min(1).max(200)).max(100).optional(),
   verified: z.boolean().optional(),
+  gender: z.enum(["men", "women", "unisex"]).optional().default("men"),
+  isDefault: z.boolean().optional(),
   rows: z.array(sizeChartRowSchema).max(SIZES.length),
 });
 
