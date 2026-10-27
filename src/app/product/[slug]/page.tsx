@@ -53,6 +53,7 @@ export default async function Page({ params }: PageProps) {
   // saat sumber data tidak tersedia, sizeChart dikosongkan supaya panduan
   // ukuran tersembunyi total (tidak ada tabel kosong).
   const resolvedSizeChart = resolveSizeChart(sizeChartState?.standards ?? [], {
+    slug: product.slug,
     categorySlugs: product.categorySlugs ?? [],
     availableSizes: product.available_sizes,
   });

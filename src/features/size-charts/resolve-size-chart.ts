@@ -7,6 +7,7 @@ import type { Size } from "@/types/industry";
 import type { SizeChartRow, SizeChartStandard } from "./size-chart.types";
 
 export interface SizeChartProductInput {
+  slug?: string;
   /** Slug kategori WooCommerce produk (cth: ["kemeja", "kemeja-lapangan"]). */
   categorySlugs: readonly string[];
   /** Ukuran yang tersedia untuk produk ini; kosong = tampilkan semua. */
@@ -24,8 +25,9 @@ export function resolveSizeChart(
 ): { rows: SizeChartRow[]; standard: SizeChartStandard } | null {
   const productSlugs = new Set(product.categorySlugs.map((slug) => slug.trim().toLowerCase()).filter(Boolean));
   const matched =
-    standards.find((standard) => standard.categorySlugs.some((slug) => productSlugs.has(slug))) ??
-    standards.find((standard) => standard.isFallback);
+    standards.find((standard) => product.slug && standard.productSlugs?.includes(product.slug.trim().toLowerCase())) ??
+    standards.find((standard) => !standard.productSlugs?.length && standard.categorySlugs.some((slug) => productSlugs.has(slug))) ??
+    standards.find((standard) => !standard.productSlugs?.length && standard.isFallback);
   if (!matched) return null;
 
   const meaningful = matched.rows.filter(

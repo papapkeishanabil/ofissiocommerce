@@ -15,6 +15,12 @@ export interface SizeChartRow {
   shoulder: number;
   /** rekomendasi tinggi badan pemakai (cm); 0 = tidak diukur */
   height: number;
+  sleeveLength?: number;
+  upperArm?: number;
+  elbow?: number;
+  lowerArm?: number;
+  weightMin?: number;
+  weightMax?: number;
 }
 
 export interface SizeChartStandard {
@@ -25,6 +31,9 @@ export interface SizeChartStandard {
   description?: string;
   /** Kategori WooCommerce (slug) yang otomatis memakai standar ini. */
   categorySlugs: string[];
+  /** Exact product slugs take precedence; do not use shared categories for model-specific charts. */
+  productSlugs?: string[];
+  verified?: boolean;
   /** Terpakai saat tidak ada standar lain yang cocok dengan kategori produk. */
   isFallback?: boolean;
   rows: SizeChartRow[];
@@ -121,6 +130,12 @@ function normalizeRows(raw: unknown): SizeChartRow[] {
       length: coerceCm(match?.length),
       shoulder: coerceCm(match?.shoulder),
       height: coerceCm(match?.height),
+      sleeveLength: coerceCm(match?.sleeveLength),
+      upperArm: coerceCm(match?.upperArm),
+      elbow: coerceCm(match?.elbow),
+      lowerArm: coerceCm(match?.lowerArm),
+      weightMin: coerceCm(match?.weightMin),
+      weightMax: coerceCm(match?.weightMax),
     };
   }).filter((row) => row.chest > 0 || row.length > 0 || row.shoulder > 0 || row.height > 0);
 }
@@ -137,6 +152,10 @@ function normalizeStandard(raw: Record<string, unknown>, index: number): SizeCha
       ? [...new Set(raw.categorySlugs.map(normalizeSlug).filter(Boolean))].slice(0, 20)
       : [],
     isFallback: raw.isFallback === true,
+    productSlugs: Array.isArray(raw.productSlugs)
+      ? [...new Set(raw.productSlugs.map(normalizeSlug).filter(Boolean))].slice(0, 100)
+      : [],
+    verified: raw.verified === true,
     rows: rows.length ? rows : normalizeRows(DEFAULT_SIZE_CHART_STANDARDS[index % DEFAULT_SIZE_CHART_STANDARDS.length]?.rows),
   };
 }
