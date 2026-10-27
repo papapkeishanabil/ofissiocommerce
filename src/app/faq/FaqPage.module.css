@@ -1,0 +1,92 @@
+.page { container: faq / inline-size; min-height: 100%; min-width: 0; width: 100%; background: #f1f3f5; color: #0b2344; padding: 24px 24px 56px; }
+.container { width: 100%; margin: 0 auto; }
+:global([data-workspace-scroll]):has(.page) > :global(footer) { background: #f1f3f5; }
+.breadcrumb { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; color: #53647b; font-size: 13px; }
+.breadcrumb a { padding: 8px 0; text-underline-offset: 4px; }
+.breadcrumb a:hover { text-decoration: underline; }
+.hero { display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; gap: 32px; padding: 24px 28px; border-radius: 12px; background: #091d39; color: #fff; }
+.heroCopy h1 { margin: 0; font-size: clamp(25px, 2.6cqi, 36px); font-weight: 750; letter-spacing: -.035em; line-height: 1.2; }
+.heroCopy h1 span { color: #f0bc56; }
+.heroCopy > p { margin: 10px 0 0; color: #c5d3e5; font-size: 14px; line-height: 1.8; }
+.heroNote { border-left: 1px solid #435169; padding: 0 0 0 28px; }
+.heroNote h2 { margin: 0 0 8px; font-size: 18px; line-height: 1.4; letter-spacing: -.02em; font-weight: 600; }
+.heroNote > p { margin: 6px 0 0; line-height: 1.7; color: #b9cbe1; font-size: 13px; }
+.content { display: grid; grid-template-columns: 260px minmax(0, 1fr); align-items: start; gap: 48px; padding-top: 28px; scroll-margin-top: 90px; }
+.sidebar { position: sticky; top: 88px; }
+.topicNav > p { margin: 0 0 16px; color: #68758a; font-size: 13px; }
+.topicNav > a { display: flex; justify-content: space-between; align-items: center; gap: 14px; min-height: 52px; padding: 8px 0; border-bottom: 1px solid #dedfe1; font-size: 14px; font-weight: 600; }
+.topicNav > a:hover { color: #946000; }
+.topicNav > a svg { color: #8d99a8; }
+.sideHelp { margin-top: 36px; padding-top: 4px; }
+.sideHelp > svg { color: #a76e0a; }
+.sideHelp h2 { margin: 14px 0 8px; font-size: 15px; font-weight: 600; }
+.sideHelp p { max-width: 26ch; margin: 0; color: #627086; font-size: 13px; line-height: 1.8; }
+.sideHelp a { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 8px; color: #946000; font-size: 13px; font-weight: 650; }
+.group { scroll-margin-top: 90px; }
+.group + .group { margin-top: 44px; }
+.groupHeading h2 { margin: 0; font-size: 25px; font-weight: 650; letter-spacing: -.025em; }
+.groupHeading p { margin: 8px 0 22px; color: #637187; font-size: 14px; line-height: 1.7; }
+.questions { overflow: hidden; border: 1px solid #dedfe1; border-radius: 12px; background: #fff; }
+.question + .question { border-top: 1px solid #e6e8eb; }
+.question summary { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 22px 24px; min-height: 72px; cursor: pointer; list-style: none; transition: background-color .18s ease; }
+.question summary::-webkit-details-marker { display: none; }
+.question summary:hover { background: #faf8f2; }
+.question summary h3 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.7; }
+.toggle { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: #f2f4f6; color: #637187; }
+.toggle svg { transition: transform .18s ease; }
+.question[open] .toggle { background: #f9edcf; color: #8b5b00; }
+.question[open] .toggle svg { transform: rotate(180deg); }
+.answer { padding: 0 72px 24px 24px; }
+.answer p { max-width: 65ch; margin: 0; color: #596a81; font-size: 14px; line-height: 1.9; }
+.cta { display: flex; justify-content: space-between; align-items: center; gap: 30px; margin-top: 60px; padding: 32px 36px; background: #ffffff; border-radius: 12px; }
+.cta h2 { margin: 0 0 8px; font-size: 23px; letter-spacing: -.025em; font-weight: 650; }
+.cta p { margin: 0; color: #5e6a7b; font-size: 14px; line-height: 1.8; }
+.cta a { display: inline-flex; align-items: center; justify-content: center; gap: 20px; min-height: 48px; padding: 12px 22px; flex-shrink: 0; border-radius: 8px; background: #0b2344; color: #fff; font-size: 14px; font-weight: 600; }
+.cta a:hover { background: #173858; }
+.page :is(a, summary):focus-visible { outline: 2px solid #b77e16; outline-offset: 5px; border-radius: 4px; }
+.hero :is(a):focus-visible { outline-color: #f0bc56; }
+.page ::selection { background: #f2d89c; color: #091d39; }
+@media (max-width: 1050px) {
+  .hero { gap: 24px; padding: 22px 24px; }
+  .heroNote { padding-left: 28px; }
+  .content { grid-template-columns: 200px minmax(0, 1fr); gap: 36px; }
+}
+@media (max-width: 700px) {
+  .page { padding: 16px 12px 40px; }
+  .breadcrumb { margin-bottom: 14px; }
+  .hero { grid-template-columns: 1fr; gap: 18px; padding: 22px; }
+  .heroCopy h1 { font-size: 28px; }
+  .heroCopy > p { margin-top: 8px; font-size: 14px; }
+  .heroNote { padding: 16px 0 0; border-left: 0; border-top: 1px solid #435169; }
+  .heroNote h2 { margin: 0 0 6px; font-size: 17px; }
+  .heroNote > p { margin-top: 4px; }
+  .content { grid-template-columns: 1fr; gap: 32px; padding-top: 30px; }
+  .sidebar { position: static; }
+  .topicNav { display: flex; gap: 8px; flex-wrap: wrap; }
+  .topicNav > p { flex-basis: 100%; margin-bottom: 3px; }
+  .topicNav > a { min-height: 44px; padding: 8px 12px; border: 1px solid #dedfe1; border-radius: 8px; font-size: 12px; gap: 6px; }
+  .topicNav > a svg { display: none; }
+  .sideHelp { display: none; }
+  .groupHeading h2 { font-size: 23px; }
+  .groupHeading p { font-size: 13px; }
+  .question summary { padding: 18px; gap: 12px; }
+  .question summary h3 { font-size: 14px; }
+  .answer { padding: 0 18px 20px; }
+  .group + .group { margin-top: 34px; }
+  .cta { flex-direction: column; align-items: stretch; padding: 26px; margin-top: 36px; gap: 22px; }
+  .cta h2 { font-size: 23px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .question summary, .toggle svg { transition: none; }
+}
+@container faq (max-width: 1050px) {
+  .hero { gap: 24px; padding: 22px 24px; }
+  .heroNote { padding-left: 28px; }
+  .content { grid-template-columns: 200px minmax(0, 1fr); gap: 36px; }
+}
+@container faq (max-width: 700px) {
+  .hero { grid-template-columns: 1fr; gap: 18px; padding: 22px; }
+  .heroNote { padding: 16px 0 0; border-left: 0; border-top: 1px solid #435169; }
+  .content { grid-template-columns: 1fr; gap: 32px; }
+  .sidebar { position: static; }
+}

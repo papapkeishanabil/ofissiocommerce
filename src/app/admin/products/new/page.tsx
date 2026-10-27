@@ -3,6 +3,7 @@ import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
 import { AdminBackLink, AdminPageHeader } from "@/features/admin/components/AdminSurface";
 import { getProductEditorTaxonomyOptions } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { getMoqSettings } from "@/features/moq-settings/moq-settings.service";
+import { getSizeChartStandards } from "@/features/size-charts/size-chart.service";
 import { AdminProductForm } from "@/features/products/components/AdminProductForm";
 import { getWordPressMediaRuntimeConfig } from "@/features/products/woocommerce/wordpress-media-upload.service";
 import { getStorageRuntimeConfig } from "@/features/storage/storage.config";
@@ -12,9 +13,10 @@ export const dynamic = "force-dynamic";
 export default async function AdminNewProductPage() {
   await requireInternalAdminServer("admin:catalog:update");
   try {
-    const [options, moqState] = await Promise.all([
+    const [options, moqState, sizeChartState] = await Promise.all([
       getProductEditorTaxonomyOptions(),
       getMoqSettings(),
+      getSizeChartStandards(),
     ]);
     return (
       <div className="space-y-6">
@@ -27,6 +29,7 @@ export default async function AdminNewProductPage() {
         <AdminProductForm
           mode="create"
           options={options}
+          sizeChartStandards={sizeChartState.standards}
           routeMoqDefaults={moqState.settings}
           productImageMaxMb={getWordPressMediaRuntimeConfig().maxUploadMb}
           glbMaxMb={getStorageRuntimeConfig().maxUploadMb.glb}

@@ -1,6 +1,7 @@
 // src/components/product/ProductDetail.tsx
 
 "use client";
+import { ProductSizeChart } from "./ProductSizeChart";
 import { garmentReference } from "@/components/configurator/garment-scale";
 
 import { productColorDisplayLabel } from "@/lib/product-colors";
@@ -563,48 +564,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                     aria-hidden="true"
                   />
                 </button>
-                {showSizeChart &&
-                  (() => {
-                    const showShoulder = product.sizeChart.some((row) => (row.shoulder ?? 0) > 0);
-                    const showHeight = product.sizeChart.some((row) => (row.height ?? 0) > 0);
-                    return (
-                      <div className="mt-2">
-                        {sizeChartStandardName ? (
-                          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-muted">
-                            {sizeChartStandardName}
-                          </p>
-                        ) : null}
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left text-xs">
-                            <thead>
-                              <tr className="border-b border-line text-[10px] uppercase tracking-wide text-ink-muted">
-                                <th scope="col" className="py-1.5 pr-2 font-bold">Ukuran</th>
-                                <th scope="col" className="py-1.5 px-1 text-right font-bold">Dada</th>
-                                <th scope="col" className="py-1.5 px-1 text-right font-bold">Panjang</th>
-                                {showShoulder ? <th scope="col" className="py-1.5 px-1 text-right font-bold">Bahu</th> : null}
-                                {showHeight ? <th scope="col" className="py-1.5 pl-1 text-right font-bold">Tinggi</th> : null}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {product.sizeChart.map((row, index) => (
-                                <tr key={row.size} className={index % 2 === 1 ? "bg-surface-muted/60" : undefined}>
-                                  <th scope="row" className="py-1.5 pr-2 font-bold text-ink">{row.size}</th>
-                                  <td className="py-1.5 px-1 text-right tabular-nums text-ink">{row.chest > 0 ? `${row.chest} cm` : "—"}</td>
-                                  <td className="py-1.5 px-1 text-right tabular-nums text-ink">{row.length > 0 ? `${row.length} cm` : "—"}</td>
-                                  {showShoulder ? <td className="py-1.5 px-1 text-right tabular-nums text-ink">{(row.shoulder ?? 0) > 0 ? `${row.shoulder} cm` : "—"}</td> : null}
-                                  {showHeight ? <td className="py-1.5 pl-1 text-right tabular-nums text-ink">{(row.height ?? 0) > 0 ? `${row.height} cm` : "—"}</td> : null}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        <p className="mt-2 text-[10px] leading-4 text-ink-muted">
-                          Dada diukur melingkar di bawah ketiak, panjang dari titik bahu hingga ujung bawah,
-                          bahu dari ujung kiri ke ujung kanan, tinggi adalah rekomendasi tinggi pemakai. Toleransi ±2 cm.
-                        </p>
-                      </div>
-                    );
-                  })()}
+                {showSizeChart && <ProductSizeChart rows={product.sizeChart} name={sizeChartStandardName} />}
               </div>
             )}
 

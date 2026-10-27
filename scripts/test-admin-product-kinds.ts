@@ -33,7 +33,12 @@ async function run() {
   try {
     assert(!adminWooProductPayloadSchema.safeParse({ ...payload, productKind: "simple" }).success, "simple needs a real SKU");
     assert(!adminWooProductPayloadSchema.safeParse({ ...payload, modelCode: "" }).success, "variable needs a model code");
-    const first = await createAdminWooCommerceProduct({ payload: adminWooProductPayloadSchema.parse(payload), actorId: "test" });
+    const first = await createAdminWooCommerceProduct({ payload: adminWooProductPayloadSchema.parse({ ...payload, sizeChartId: "sasienala-sn-basic" }), actorId: "test" });
+    assert.equal(first.ofissioMeta.sizeChartId, "sasienala-sn-basic", "chosen chart survives write and detail hydration");
+    assert.equal(products.get(first.id)?.meta_data?.find(meta => meta.key === "size_chart_id")?.value, "sasienala-sn-basic");
+    const countBeforeInvalid = products.size;
+    await assert.rejects(createAdminWooCommerceProduct({ payload: adminWooProductPayloadSchema.parse({ ...payload, gender: "men", sizeChartId: "sasienala-sn-basic" }), actorId: "test" }), /standar ukuran/i);
+    assert.equal(products.size, countBeforeInvalid, "wrong-gender chart must be rejected before provider write");
     const second = await createAdminWooCommerceProduct({ payload: adminWooProductPayloadSchema.parse({ ...payload, name: "Kemeja SN Blue Series" }), actorId: "test" });
     assert.equal(first.modelCode, "SN"); assert.equal(second.modelCode, "SN");
     assert.notEqual(first.sku, second.sku, "same model must receive distinct automatic catalog SKUs");
