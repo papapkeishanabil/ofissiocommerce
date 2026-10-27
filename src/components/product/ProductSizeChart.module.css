@@ -6,17 +6,17 @@
 .chart table thead th:first-child { background: #f1f4f8; }
 .chart table tbody tr:last-child > * { border-bottom: 0; }
 .chart table tbody tr:nth-child(even) td { background: #fafbfd; }
-.weightGuide { margin-top: 20px; padding: 16px; background: #f7f5f0; border: 1px solid #e8e2d7; border-radius: 14px; }
+.weightGuide { margin-top: 20px; padding: 16px; background: #f1f4f8; border: 1px solid #dbe3f1; border-radius: 14px; }
 .heading { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .title { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.5; }
 .subtitle { margin: 3px 0 0; font-size: 12px; line-height: 1.5; color: #64718a; }
-.weightIcon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; color: #85652f; background: #eee7da; border-radius: 10px; }
+.weightIcon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; color: #14294b; background: #e3eaf5; border-radius: 10px; }
 .weightGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
-.weightItem { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px; background: #fff; border: 1px solid #e8e4dd; border-radius: 9px; }
+.weightItem { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px; background: #fff; border: 1px solid #dbe3f1; border-radius: 9px; }
 .sizeBadge { display: grid; place-items: center; min-width: 35px; height: 32px; padding: 0 4px; flex-shrink: 0; border-radius: 6px; color: #fff; background: #14294b; font-size: 12px; font-weight: 700; }
 .weightRange { display: flex; align-items: baseline; gap: 4px; margin: 0; white-space: nowrap; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .weightRange span { color: #697489; font-size: 11px; font-weight: 400; }
-.weightNote { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #e4ded3; color: #626c7d; font-size: 11px; line-height: 1.7; }
+.weightNote { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #dbe3f1; color: #64718a; font-size: 11px; line-height: 1.7; }
 @container (max-width: 340px) {
   .weightGuide { padding: 12px; }
   .weightItem { gap: 7px; padding: 8px; }
