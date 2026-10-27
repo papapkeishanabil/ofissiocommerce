@@ -87,7 +87,7 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
   const feature = data.businessFeature;
 
   return (
-    <section id="usaha" className="scroll-mt-28 bg-[#f8f4ec] py-16 lg:py-20">
+    <section id="usaha" className="scroll-mt-28 bg-[#f5f7f9] py-16 lg:py-20">
       <div className="mx-auto max-w-[1600px] px-6 lg:px-10">
         <header className="mx-auto max-w-4xl text-center">
           <div className="mb-6"><HomeSectionMarker number="02" label="Bisnis dan Korporasi" align="center" /></div>
