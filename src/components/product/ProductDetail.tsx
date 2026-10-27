@@ -60,6 +60,7 @@ import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
 import { ProductGallery } from "./ProductGallery";
 import { ProductColorPicker } from "./ProductColorPicker";
 import styles from "./ProductDetailTheme.module.css";
+import orderStyles from "./ProductOrderFields.module.css";
 import { StudioShell } from "@/components/configurator/StudioShell";
 
 // Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
@@ -540,6 +541,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             {/* Size matrix */}
             <div className="mt-3">
               <SizeQuantityMatrix
+                emphasized
                 productId={product.id}
                 availableSizes={product.available_sizes}
                 color={color}
@@ -557,21 +559,23 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             {/* Size chart reference — expand inline di panel pembelian,
                 hanya saat standar ukuran terpasang. */}
             {product.sizeChart.length > 0 && product.available_sizes.some(size => size !== "OS") && (
-              <div className="mt-2 border-y border-[#dbe3f1] py-2">
+              <div className={orderStyles.guide}>
                 <button
                   type="button"
                   onClick={() => setShowSizeChart((open) => !open)}
                   aria-expanded={showSizeChart}
-                  className="flex w-full min-h-11 items-center gap-2 text-xs font-semibold text-ink transition-colors hover:text-brand-700"
+                  aria-controls={`size-guide-${product.id}`}
+                  aria-label={showSizeChart ? "Sembunyikan size chart" : "Lihat size chart lengkap"}
+                  className={orderStyles.guideButton}
                 >
-                  <Ruler className="h-4 w-4" />
-                  {showSizeChart ? "Sembunyikan size chart" : "Lihat size chart lengkap"}
+                  <span className={orderStyles.guideIcon}><Ruler className="h-5 w-5" aria-hidden="true" /></span>
+                  <span className={orderStyles.guideCopy}><strong>{showSizeChart ? "Sembunyikan size chart" : "Lihat size chart lengkap"}</strong><small>Cek ukuran sebelum memesan.</small></span>
                   <ChevronRight
                     className={`ml-auto h-4 w-4 transition-transform${showSizeChart ? " rotate-90" : ""}`}
                     aria-hidden="true"
                   />
                 </button>
-                {showSizeChart && <ProductSizeChart rows={product.sizeChart} name={sizeChartStandardName} />}
+                <div id={`size-guide-${product.id}`} hidden={!showSizeChart} className={orderStyles.guideContent}>{showSizeChart && <ProductSizeChart rows={product.sizeChart} name={sizeChartStandardName} />}</div>
               </div>
             )}
 
@@ -643,19 +647,22 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                 )}
               </div>
             ) : (
-              <div className="mt-5 rounded-xl border border-dashed border-line bg-surface-muted p-3">
-                <p className="flex items-center gap-1.5 text-xs font-bold text-ink">
-                  <Sparkles className="h-3.5 w-3.5 text-brand-700" />
-                  Catatan pesanan
-                </p>
-                <input
-                  type="text"
+              <div className={orderStyles.notes}>
+                <div className={orderStyles.notesHeading}>
+                  <label htmlFor={`order-note-${product.id}`}><Sparkles className="h-4 w-4" aria-hidden="true" />Catatan pesanan</label>
+                  <span>Opsional</span>
+                </div>
+                <p id={`order-note-help-${product.id}`}>Tambahkan kebutuhan khusus untuk pesanan ini.</p>
+                <textarea
+                  id={`order-note-${product.id}`}
+                  aria-describedby={`order-note-help-${product.id} order-note-count-${product.id}`}
                   value={customization}
                   onChange={(e) => setCustomization(e.target.value)}
-                  placeholder="Tambahkan catatan untuk pesanan ini"
+                  placeholder="Contoh: pisahkan kemasan berdasarkan ukuran."
                   maxLength={120}
-                  className="mt-2 h-9 w-full rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                  rows={3}
                 />
+                <span id={`order-note-count-${product.id}`} className={orderStyles.noteCount}>{customization.length} / 120 karakter</span>
               </div>
             )}
 
