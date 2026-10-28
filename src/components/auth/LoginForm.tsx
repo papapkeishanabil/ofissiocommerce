@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
+import { GoogleAuthButton } from "./GoogleAuthButton";
 
 import { loginSchema, type LoginForm as LoginFormValues } from "@/schemas/auth";
 import { useAuthStore } from "@/stores/auth-store";
@@ -22,12 +23,14 @@ interface LoginFormProps {
    *  has no tab switcher of its own. */
   onSwitchToRegister?: () => void;
   quotationId?: string;
+  allowGoogle?: boolean;
 }
 
 export function LoginForm({
   onSuccess,
   onSwitchToRegister,
   quotationId,
+  allowGoogle = true,
 }: LoginFormProps) {
   const login = useAuthStore((s) => s.login);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -56,6 +59,7 @@ export function LoginForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      {allowGoogle && <GoogleAuthButton quotationId={quotationId} />}
       {serverError && (
         <div
           role="alert"

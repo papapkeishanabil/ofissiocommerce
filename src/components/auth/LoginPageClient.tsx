@@ -48,12 +48,14 @@ export function LoginPageClient({
   verificationComplete = false,
   registrationPending = false,
   registrationError = false,
+  googleError = false,
 }: {
   mode: "customer" | "admin";
   nextPath: string;
   verificationComplete?: boolean;
   registrationPending?: boolean;
   registrationError?: boolean;
+  googleError?: boolean;
 }) {
   const router = useRouter();
   const canRegister = mode === "customer";
@@ -162,7 +164,7 @@ export function LoginPageClient({
         </div>
 
         {/* ===== RIGHT — form panel ===== */}
-        <div className="flex items-center p-7 sm:p-9 lg:p-10 xl:p-12">
+        <div className="flex items-center p-7 sm:p-9 lg:block lg:min-h-0 lg:overflow-y-auto lg:p-10 xl:p-12">
           <div className="mx-auto w-full max-w-[420px]">
             {canRegister ? (
               <div
@@ -234,6 +236,7 @@ export function LoginPageClient({
                 Pendaftaran belum dapat diproses. Periksa kembali data Anda, pastikan email valid, lalu coba kembali.
               </div>
             ) : null}
+            {googleError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-5 text-red-700">Proses masuk dengan Google dibatalkan atau belum berhasil. Coba kembali, pilih akun Google dengan email yang sesuai, atau gunakan email dan password.</p>}
 
             {/* Shared premium field/button treatment — applies to whichever form
                 is active. Keeps the two tabs visually identical. The underlying
@@ -247,6 +250,7 @@ export function LoginPageClient({
                 />
               ) : (
                 <LoginForm
+                  allowGoogle={!isAdmin}
                   quotationId={quotationId ?? undefined}
                   onSuccess={() => router.replace(nextPath)}
                 />

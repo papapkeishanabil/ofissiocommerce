@@ -42,6 +42,7 @@ export default async function LoginPage({
         verificationComplete={query.verified === "1"}
         registrationPending={query.registered === "verification-required"}
         registrationError={query.error === "registration-failed"}
+        googleError={query.error === "google-failed"}
       />
     </div>
   );
