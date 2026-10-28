@@ -1,6 +1,5 @@
 import "server-only";
 import { uniformLiveOfferPrice } from "../product-schema-offer";
-import { PRODUCT_COLOR_VALUES_META, collectProductColorValues, productColorIssues } from "../product-color-quality";
 import { PRODUCT_KIND_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, mapProductVariants } from "../product-variants";
 import { mapPurchaseVariants, PURCHASE_VARIANTS_META } from "../purchase-variants";
 import { COLOR_SIZE_ENABLED_META, COLOR_SIZE_ROWS_META, mapNativeColorSizeVariants } from "../color-size-variants";
@@ -53,9 +52,6 @@ export async function withLiveColorVariants(product: WooCommerceProduct, source:
 /** A failed multi-request save stays unready; retry reuses native rows instead of duplicating them. */
 export async function saveColorVariants(productId: number, input: AdminColorVariantsPayload, source: VariantSource = woocommerceClient) {
   const product = await source.getProductById(productId);
-  const colorIssues = productColorIssues(input.variants.map(row => row.color), { colorVariants: input.variants });
-  if (product.status === "publish" && colorIssues.length) throw createApiError("VALIDATION_ERROR", colorIssues.map(issue => issue.message).join(" "), 400);
-  const colorValues = collectProductColorValues(input.variants.map(row => row.color), { colorVariants: input.variants });
   // Never split an existing aggregate stock figure into invented per-size counts.
   if (getMetaBoolean(product.meta_data ?? [], COLOR_SIZE_ENABLED_META, false) || input.variants.length > 0 && input.variants.every(v => v.stockQuantity == null) && getMetaStringArray(product.meta_data ?? [], "available_sizes").length > 0) {
     const { saveColorSizeVariants } = await import("./color-size-variants.service");
@@ -95,7 +91,7 @@ export async function saveColorVariants(productId: number, input: AdminColorVari
     regular_price: String(regularPrice),
     default_attributes: enabled ? [{ ...(colorAttribute?.id ? { id: colorAttribute.id } : { name: colorAttribute!.name }), option: input.defaultColor }] : [],
     meta_data: replaceMeta(meta, [
-      [PRODUCT_COLOR_VALUES_META, colorValues], [COLOR_VARIANTS_ENABLED_META, enabled], [COLOR_VARIANTS_READY_META, false], [BASE_PRICE_META, regularPrice],
+      [COLOR_VARIANTS_ENABLED_META, enabled], [COLOR_VARIANTS_READY_META, false], [BASE_PRICE_META, regularPrice],
     ]),
   });
   const retained = new Set<number>();

@@ -8,7 +8,6 @@ import { PURCHASE_VARIANTS_META, type PurchaseVariant } from "./purchase-variant
 import { SIZES } from "@/types/industry";
 import { sortProductSizes } from "@/lib/product-size-order";
 import { validateProduct3DModel } from "./product.validation";
-import { PRODUCT_COLOR_VALUES_META, collectProductColorValues, readProductColorValues } from "./product-color-quality";
 import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "./color-variants";
 import {
   CAMERA_PRESETS,
@@ -215,7 +214,6 @@ export function mapWooCommerceProductToOfissioProduct(
       ["fulfillment", "customization", "production"],
       "fulfillment",
     ),
-    colorValues: readProductColorValues(getMetaValue(meta, PRODUCT_COLOR_VALUES_META)),
     colors: colors.length ? colors : ["Default"],
     available_colors: colors.length ? colors : ["Default"],
     available_sizes: availableSizes.length ? availableSizes : DEFAULT_SIZES,
@@ -280,7 +278,7 @@ export function mapWooCommerceProductToOfissioProduct(
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
   const canAddEmbroidery = product.supports_embroidery && validateProduct3DModel(product).ok;
-  return { colorValues: collectProductColorValues(product.colors, product), availableSizes: product.available_sizes, canAddEmbroidery, source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, processRoute: product.processRoute, leadTimeDays: product.leadTimeDays, transactionMode: product.transaction_mode, model3dId: product.model_3d?.id, model3dUrl: product.model_3d?.url, quantityPricing: product.quantityPricing };
+  return { availableSizes: product.available_sizes, canAddEmbroidery, source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, processRoute: product.processRoute, leadTimeDays: product.leadTimeDays, transactionMode: product.transaction_mode, model3dId: product.model_3d?.id, model3dUrl: product.model_3d?.url, quantityPricing: product.quantityPricing };
 }
 
 function stripHtml(value = "") {
