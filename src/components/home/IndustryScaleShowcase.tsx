@@ -94,7 +94,7 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
           <h2 className="text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-950 sm:text-6xl lg:text-[4rem]">
             Seragam Profesional untuk <span className="text-ochre-600">Berbagai Usaha.</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-[55ch] text-base leading-relaxed text-ink-muted sm:text-lg">Dari kebutuhan lapangan hingga organisasi berskala besar. Ofissio siap menjadi mitra andal Anda.</p>
+          <p className="mx-auto mt-5 max-w-[55ch] text-base leading-relaxed text-ink-muted sm:text-lg">{data.lede}</p>
         </header>
 
         <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:gap-0">

@@ -18,11 +18,13 @@ assert.deepEqual(restored.inspiration, DEFAULT_INDUSTRI.inspiration);
 
 const custom = {
   ...restored,
+  lede: "Mitra seragam untuk <bisnis> dan organisasi Anda.",
   businessDescription: "Seragam untuk <tim> bisnis kami.",
   corporateDescription: "Pengadaan terencana untuk tim multi-cabang kami.",
 };
 const payload = siteContentPayloadSchema.parse({ section: "industri", data: custom });
 const saved = industriSectionSchema.parse(JSON.parse(JSON.stringify(payload.data)));
+assert.equal(saved.lede, custom.lede);
 assert.equal(saved.businessDescription, custom.businessDescription);
 assert.equal(saved.corporateDescription, custom.corporateDescription);
 assert.deepEqual(saved.businessFeature, restored.businessFeature);
@@ -30,7 +32,7 @@ assert.deepEqual(saved.groups, restored.groups);
 assert.deepEqual(saved.inspirationPages, restored.inspirationPages);
 assert.equal(industriSectionSchema.parse({ ...legacy, businessDescription: custom.businessDescription }).corporateDescription, DEFAULT_INDUSTRI_DESCRIPTIONS.corporateDescription);
 
-for (const key of ["businessDescription", "corporateDescription"] as const) {
+for (const key of ["lede", "businessDescription", "corporateDescription"] as const) {
   for (const invalid of ["", "   ", "a".repeat(401), null]) {
     assert.equal(siteContentPayloadSchema.safeParse({ section: "industri", data: { ...saved, [key]: invalid } }).success, false);
   }
@@ -40,6 +42,8 @@ for (const key of ["businessDescription", "corporateDescription"] as const) {
 }
 
 const html = renderToStaticMarkup(createElement(IndustryScaleShowcase, { data: saved }));
+assert.ok(html.includes("Mitra seragam untuk &lt;bisnis&gt; dan organisasi Anda."));
+assert.ok(!html.includes("Dari kebutuhan lapangan hingga organisasi berskala besar."));
 assert.ok(html.includes("Seragam untuk &lt;tim&gt; bisnis kami."));
 assert.ok(html.includes(custom.corporateDescription));
 assert.ok(!html.includes(DEFAULT_INDUSTRI_DESCRIPTIONS.businessDescription));
@@ -59,6 +63,7 @@ async function verifyMockPersistence() {
   const reloaded = (await getSiteContent()).sections.find((section) => section.key === "industri")!;
   assert.deepEqual(reloaded.data, saved);
   const publicHtml = renderToStaticMarkup(createElement(IndustryScaleShowcase, { data: industriSectionSchema.parse(reloaded.data) }));
+  assert.ok(publicHtml.includes("Mitra seragam untuk &lt;bisnis&gt; dan organisasi Anda."));
   assert.ok(publicHtml.includes(custom.corporateDescription));
   console.log("PASS: actual CMS service save/read with mock storage, legacy rows and public rendering after reload; real CMS writes: 0");
 }
