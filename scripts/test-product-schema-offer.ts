@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { PRODUCT_MOCK_DATA } from "../src/features/products/product.mock-data";
-import { uniformLiveOfferPrice, structuredOfferPrice } from "../src/features/products/product-schema-offer";
+import { uniformLiveOfferPrice, uniformLiveOfferAvailability, structuredOfferPrice } from "../src/features/products/product-schema-offer";
 import { productStructuredData } from "../src/lib/seo";
 import type { OfissioProduct } from "../src/features/products/product.types";
 import type { WooCommerceProduct, WooCommerceProductVariation } from "../src/features/products/woocommerce/woocommerce.types";
@@ -19,6 +19,13 @@ assert.equal(uniformLiveOfferPrice({ ...raw, status: "draft" }, [variation("1250
 assert.equal(uniformLiveOfferPrice(raw, [variation("125000"), variation("999000", "private")]), 125000);
 assert.equal(uniformLiveOfferPrice(raw, [{ ...variation("100000"), regular_price: "125000", sale_price: "100000" }]), undefined);
 assert.equal(uniformLiveOfferPrice({ ...raw, type: "simple", regular_price: "125000" }), 125000);
+assert.equal(uniformLiveOfferAvailability(raw, [{ ...variation("125000"), stock_status: "instock" }]), "InStock");
+assert.equal(uniformLiveOfferAvailability(raw, [{ ...variation("125000"), stock_status: "instock" }, { ...variation("125000"), stock_status: "outofstock" }]), undefined);
+assert.equal(uniformLiveOfferAvailability(raw, [{ ...variation("125000"), stock_status: "outofstock" }]), "OutOfStock");
+assert.equal(uniformLiveOfferAvailability(raw, [{ ...variation("125000"), stock_status: "onbackorder" }]), "BackOrder");
+assert.equal(uniformLiveOfferAvailability(raw, [variation("125000")]), undefined);
+assert.equal(uniformLiveOfferAvailability(raw, []), undefined);
+assert.equal(uniformLiveOfferAvailability({ ...raw, type: "simple", stock_status: "instock" }), "InStock");
 
 const fixture = PRODUCT_MOCK_DATA[0];assert.ok(fixture);
 const product: OfissioProduct = { ...fixture, source: "woocommerce", status: "published", transaction_mode: "HYBRID",
@@ -37,6 +44,9 @@ assert.equal(node.offers["@type"], "Offer");
 assert.equal(node.offers.price, 125000);
 assert.equal(node.offers.priceCurrency, "IDR");
 assert.ok(!("availability" in node.offers), "Stock status must not be guessed");
+const stocked = productStructuredData({ ...product, liveOfferAvailability: "InStock" })!["@graph"][0]!;
+assert.ok("offers" in stocked && stocked.offers);
+assert.equal(stocked.offers.availability, "https://schema.org/InStock");
 assert.ok(!("aggregateRating" in node), "Ratings must not be fabricated");
 assert.equal(productStructuredData({ ...product, source: "mock" }), null);
 console.log("PASS: live uniform-price evidence; missing/mixed/sale prices rejected; quotes, MOQ and tier mismatches excluded; Product Offer has required price/currency without invented stock or reviews.");

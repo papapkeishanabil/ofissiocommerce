@@ -26,6 +26,10 @@ export function productStructuredData(product: OfissioProduct) {
   const colors = [...new Set((product.available_colors ?? []).map(value => value.trim()).filter(value => value && value.toLowerCase() !== "default"))];
   const suggestedGender = product.gender === "men" ? "male" : product.gender === "women" ? "female" : product.gender === "unisex" ? "unisex" : undefined;
   const sleeve = product.sleeve_type === "long" ? "Lengan panjang" : product.sleeve_type === "short" ? "Lengan pendek" : undefined;
+  const additionalProperties = [
+    ...(sleeve ? [{ "@type": "PropertyValue", name: "Tipe lengan", value: sleeve }] : []),
+    ...(colors.length > 1 ? [{ "@type": "PropertyValue", name: "Pilihan warna", value: colors.join(", ") }] : []),
+  ];
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -36,11 +40,12 @@ export function productStructuredData(product: OfissioProduct) {
         brand: { "@type": "Brand", name: "Ofissio" },
         ...(product.material ? { material: product.material } : {}),
         ...(sizes.length ? { size: sizes } : {}),
-        ...(colors.length ? { color: colors } : {}),
+        ...(colors.length === 1 ? { color: colors[0] } : {}),
         ...(suggestedGender ? { audience: { "@type": "PeopleAudience", suggestedGender } } : {}),
-        ...(sleeve ? { additionalProperty: [{ "@type": "PropertyValue", name: "Tipe lengan", value: sleeve }] } : {}),
+        ...(additionalProperties.length ? { additionalProperty: additionalProperties } : {}),
         ...(offerPrice ? { offers: {
           "@type": "Offer", url, price: offerPrice, priceCurrency: "IDR",
+          ...(product.liveOfferAvailability ? { availability: `https://schema.org/${product.liveOfferAvailability}` } : {}),
           seller: { "@type": "Organization", name: "Ofissio", url: SITE_URL },
         } } : {}),
       },

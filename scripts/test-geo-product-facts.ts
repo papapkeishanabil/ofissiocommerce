@@ -10,7 +10,9 @@ const product = { ...fixture, source: "woocommerce" as const, gender: "men" as c
 const node = (p: typeof product | typeof fixture) => JSON.parse(serializeJsonLd(productStructuredData(p)))["@graph"][0];
 const frm = node(product);
 assert.deepEqual(frm.size, ["S", "M", "L", "XL", "2XL", "3XL"]);
-assert.deepEqual(frm.color, ["Putih", "Hitam"]);
+assert.ok(!("color" in frm), "Available alternatives must not be represented as repeated colors of one item");
+assert.equal(frm.additionalProperty.find((p: { name: string }) => p.name === "Pilihan warna").value, "Putih, Hitam");
+assert.equal(node({ ...product, available_colors: ["Putih"] }).color, "Putih");
 assert.equal(frm.material, "Toyobo");
 assert.deepEqual(frm.audience, { "@type": "PeopleAudience", suggestedGender: "male" });
 assert.equal(frm.additionalProperty[0].value, "Lengan panjang");

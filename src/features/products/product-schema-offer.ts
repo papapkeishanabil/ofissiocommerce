@@ -15,6 +15,19 @@ export function uniformLiveOfferPrice(product: WooCommerceProduct, rows?: readon
   return prices.every(price => price === prices[0]) ? prices[0] : undefined;
 }
 
+/** Don't call a multi-variant product in stock if native variant statuses disagree. */
+export function uniformLiveOfferAvailability(product: WooCommerceProduct, rows?: readonly WooCommerceProductVariation[]) {
+  if (product.status !== "publish" || product.purchasable === false) return undefined;
+  const sources = product.type === "variable" ? rows?.filter(row => row.status === "publish") : [product];
+  if (!sources?.length || !sources.every(row => row.stock_status === sources[0]?.stock_status)) return undefined;
+  switch (sources[0]?.stock_status) {
+    case "instock": return "InStock";
+    case "outofstock": return "OutOfStock";
+    case "onbackorder": return "BackOrder";
+    default: return undefined;
+  }
+}
+
 /** No stock assertion, bulk discount, quote, or variant-specific price is invented. */
 export function structuredOfferPrice(product: OfissioProduct) {
   const price = product.liveOfferPrice;

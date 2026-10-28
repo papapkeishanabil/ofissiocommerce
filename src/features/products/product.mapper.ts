@@ -204,6 +204,7 @@ export function mapWooCommerceProductToOfissioProduct(
     industries,
     priceFrom,
     liveOfferPrice: raw.liveOfferPrice,
+    liveOfferAvailability: raw.liveOfferAvailability,
     moq,
     leadTimeDays: parseLeadTimeDays(leadTime),
     lead_time: leadTime,
