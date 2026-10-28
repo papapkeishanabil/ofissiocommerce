@@ -75,6 +75,9 @@ export type WooCommerceCouponWritePayload = Partial<Omit<WooCommerceCoupon, "id"
 export type WooCommerceCouponUpdatePayload = Partial<Omit<WooCommerceCoupon, "id" | "usage_count">>;
 
 export interface WooCommerceProduct {
+  /** Transient evidence from native variations; never persisted as product metadata. */
+  liveOfferPrice?: number;
+  purchasable?: boolean;
   id: number;
   date_created?: string;
   date_created_gmt?: string;

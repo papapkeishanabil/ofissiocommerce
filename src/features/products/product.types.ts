@@ -37,6 +37,8 @@ export interface ProductImageReference {
 
 /** Canonical product contract. UI-compatible fields remain from Product. */
 export interface OfissioProduct extends Product {
+  /** Uniform live native price, checked against storefront pricing before schema output. */
+  liveOfferPrice?: number;
   sizeChartId?: string;
   stockVariantsReady?: boolean;
   productKind?: "simple" | "variable";
@@ -59,6 +61,7 @@ export interface OfissioProduct extends Product {
    */
   descriptionHtml?: string;
   subcategory: string; lead_time: string; transaction_mode: TransactionMode;
+  colorValues?: Record<string, string>;
   available_sizes: string[]; available_colors: string[]; gender: "men" | "women" | "unisex";
   sleeve_type: "short" | "long"; usage: "indoor" | "outdoor" | "both";
   safety_features: string[]; supports_embroidery: boolean; supports_screen_printing: boolean;

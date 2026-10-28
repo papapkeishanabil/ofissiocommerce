@@ -1,4 +1,6 @@
 import "server-only";
+import { uniformLiveOfferPrice } from "../product-schema-offer";
+import { PRODUCT_COLOR_VALUES_META, collectProductColorValues, productColorIssues } from "../product-color-quality";
 import { PRODUCT_KIND_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, mapProductVariants } from "../product-variants";
 import { mapPurchaseVariants, PURCHASE_VARIANTS_META } from "../purchase-variants";
 import { COLOR_SIZE_ENABLED_META, COLOR_SIZE_ROWS_META, mapNativeColorSizeVariants } from "../color-size-variants";
@@ -35,22 +37,25 @@ export async function withLiveColorVariants(product: WooCommerceProduct, source:
     const options = readVariantOptions(getMetaValue(product.meta_data ?? [], VARIANT_OPTIONS_META));
     const rows = await listColorVariationRows(product.id, source);
     const variants = mapProductVariants(rows, options).map(row => ({ ...row, imageSrc: toProxiedWordPressMediaUrl(row.imageSrc, process.env.WORDPRESS_MEDIA_BASE_URL?.trim() ?? "") }));
-    return { ...product, meta_data: [...(product.meta_data ?? []).filter(row => row.key !== GENERIC_VARIANTS_META), { key: GENERIC_VARIANTS_META, value: variants }] };
+    return { ...product, liveOfferPrice: uniformLiveOfferPrice(product, rows), meta_data: [...(product.meta_data ?? []).filter(row => row.key !== GENERIC_VARIANTS_META), { key: GENERIC_VARIANTS_META, value: variants }] };
   }
   if (!getMetaBoolean(product.meta_data ?? [], COLOR_VARIANTS_ENABLED_META, false)) {
-    if (product.type !== "variable") return product;
+    if (product.type !== "variable") return { ...product, liveOfferPrice: uniformLiveOfferPrice(product) };
     const rows = await listColorVariationRows(product.id, source);
-    return { ...product, meta_data: [...(product.meta_data ?? []).filter(row => row.key !== PURCHASE_VARIANTS_META), { key: PURCHASE_VARIANTS_META, value: mapPurchaseVariants(rows) }] };
+    return { ...product, liveOfferPrice: uniformLiveOfferPrice(product, rows), meta_data: [...(product.meta_data ?? []).filter(row => row.key !== PURCHASE_VARIANTS_META), { key: PURCHASE_VARIANTS_META, value: mapPurchaseVariants(rows) }] };
   }
   const rows = await listColorVariationRows(product.id, source);
   const order = readColorVariants(product).map((variant) => variant.id);
   const variants = mapNativeColorVariants(product, rows).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-  return { ...product, meta_data: [...(product.meta_data ?? []).filter((row) => row.key !== COLOR_VARIANTS_META && row.key !== COLOR_SIZE_ROWS_META), { key: COLOR_VARIANTS_META, value: JSON.stringify(variants) }, { key: COLOR_SIZE_ROWS_META, value: JSON.stringify(mapNativeColorSizeVariants(rows)) }] };
+  return { ...product, liveOfferPrice: uniformLiveOfferPrice(product, rows), meta_data: [...(product.meta_data ?? []).filter((row) => row.key !== COLOR_VARIANTS_META && row.key !== COLOR_SIZE_ROWS_META), { key: COLOR_VARIANTS_META, value: JSON.stringify(variants) }, { key: COLOR_SIZE_ROWS_META, value: JSON.stringify(mapNativeColorSizeVariants(rows)) }] };
 }
 
 /** A failed multi-request save stays unready; retry reuses native rows instead of duplicating them. */
 export async function saveColorVariants(productId: number, input: AdminColorVariantsPayload, source: VariantSource = woocommerceClient) {
   const product = await source.getProductById(productId);
+  const colorIssues = productColorIssues(input.variants.map(row => row.color), { colorVariants: input.variants });
+  if (product.status === "publish" && colorIssues.length) throw createApiError("VALIDATION_ERROR", colorIssues.map(issue => issue.message).join(" "), 400);
+  const colorValues = collectProductColorValues(input.variants.map(row => row.color), { colorVariants: input.variants });
   // Never split an existing aggregate stock figure into invented per-size counts.
   if (getMetaBoolean(product.meta_data ?? [], COLOR_SIZE_ENABLED_META, false) || input.variants.length > 0 && input.variants.every(v => v.stockQuantity == null) && getMetaStringArray(product.meta_data ?? [], "available_sizes").length > 0) {
     const { saveColorSizeVariants } = await import("./color-size-variants.service");
@@ -90,7 +95,7 @@ export async function saveColorVariants(productId: number, input: AdminColorVari
     regular_price: String(regularPrice),
     default_attributes: enabled ? [{ ...(colorAttribute?.id ? { id: colorAttribute.id } : { name: colorAttribute!.name }), option: input.defaultColor }] : [],
     meta_data: replaceMeta(meta, [
-      [COLOR_VARIANTS_ENABLED_META, enabled], [COLOR_VARIANTS_READY_META, false], [BASE_PRICE_META, regularPrice],
+      [PRODUCT_COLOR_VALUES_META, colorValues], [COLOR_VARIANTS_ENABLED_META, enabled], [COLOR_VARIANTS_READY_META, false], [BASE_PRICE_META, regularPrice],
     ]),
   });
   const retained = new Set<number>();

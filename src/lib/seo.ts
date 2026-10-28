@@ -1,4 +1,5 @@
 import type { OfissioProduct } from "@/features/products/product.types";
+import { structuredOfferPrice } from "@/features/products/product-schema-offer";
 
 export const SITE_URL = "https://ofissio.com";
 export const productUrl = (slug: string) => `${SITE_URL}/product/${encodeURIComponent(slug)}`;
@@ -20,6 +21,7 @@ export function productStructuredData(product: OfissioProduct) {
   // Mock fallback data must never be represented as a real merchant product.
   if (product.source !== "woocommerce") return null;
   const url = productUrl(product.slug);
+  const offerPrice = structuredOfferPrice(product);
   const sizes = [...new Set((product.available_sizes ?? []).map(value => value.trim()).filter(Boolean))];
   const colors = [...new Set((product.available_colors ?? []).map(value => value.trim()).filter(value => value && value.toLowerCase() !== "default"))];
   const suggestedGender = product.gender === "men" ? "male" : product.gender === "women" ? "female" : product.gender === "unisex" ? "unisex" : undefined;
@@ -37,8 +39,10 @@ export function productStructuredData(product: OfissioProduct) {
         ...(colors.length ? { color: colors } : {}),
         ...(suggestedGender ? { audience: { "@type": "PeopleAudience", suggestedGender } } : {}),
         ...(sleeve ? { additionalProperty: [{ "@type": "PropertyValue", name: "Tipe lengan", value: sleeve }] } : {}),
-        // Offers are deliberately omitted until per-variant price and stock
-        // can be guaranteed to match the purchasable selection on this page.
+        ...(offerPrice ? { offers: {
+          "@type": "Offer", url, price: offerPrice, priceCurrency: "IDR",
+          seller: { "@type": "Organization", name: "Ofissio", url: SITE_URL },
+        } } : {}),
       },
       {
         "@type": "BreadcrumbList",
