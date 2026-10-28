@@ -16,7 +16,7 @@ export function uniformLiveOfferPrice(product: WooCommerceProduct, rows?: readon
 }
 
 /** Don't call a multi-variant product in stock if native variant statuses disagree. */
-export function uniformLiveOfferAvailability(product: WooCommerceProduct, rows?: readonly WooCommerceProductVariation[]) {
+export function uniformLiveOfferAvailability(product: WooCommerceProduct, rows?: readonly WooCommerceProductVariation[]): WooCommerceProduct["liveOfferAvailability"] {
   if (product.status !== "publish" || product.purchasable === false) return undefined;
   const sources = product.type === "variable" ? rows?.filter(row => row.status === "publish") : [product];
   if (!sources?.length || !sources.every(row => row.stock_status === sources[0]?.stock_status)) return undefined;
