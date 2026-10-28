@@ -4,6 +4,7 @@ import { selectableSizeCharts, NO_SIZE_CHART, SIZE_CHART_META_KEY } from "@/feat
 import { randomUUID } from "node:crypto";
 import { PRODUCT_KIND_META, MODEL_CODE_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, readProductVariants, mapLegacyProductVariants } from "../product-variants";
 import { ensureSizeVariants } from "./size-variants.service";
+import { syncLegacyVariantPrices } from "./legacy-price-sync.service";
 import { stockSize } from "../color-size-variants";
 import { PURCHASE_VARIANTS_META, type PurchaseVariant } from "../purchase-variants";
 import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "../color-variants";
@@ -264,6 +265,7 @@ export async function updateAdminWooCommerceProduct(input: {
       enabled: input.payload.quantityPricingEnabled,
     });
     await ensureSizeVariants(updated, woocommerceClient);
+    await syncLegacyVariantPrices(await woocommerceClient.getProductById(updated.id), input.payload.regularPrice, woocommerceClient);
     return getAdminWooCommerceProduct(updated.id);
   } catch (error) {
     logProductAudit("product_update_failed", input.id, input, {

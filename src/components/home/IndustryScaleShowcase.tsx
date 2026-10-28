@@ -94,7 +94,7 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
           <h2 className="text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-950 sm:text-6xl lg:text-[4rem]">
             Seragam Profesional untuk <span className="text-ochre-600">Berbagai Usaha.</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-[55ch] text-base leading-relaxed text-ink-muted sm:text-lg">Dari kebutuhan lapangan hingga organisasi berskala besar. Ofissio siap menjadi mitra andal Anda.</p>
+          <p className="mx-auto mt-5 max-w-[55ch] text-base leading-relaxed text-ink-muted sm:text-lg">{data.lede}</p>
         </header>
 
         <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:gap-0">
@@ -104,7 +104,7 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
               <h3 className="shrink-0 text-2xl font-extrabold tracking-[-0.025em] text-brand-950 sm:text-3xl">Bisnis Naik Kelas</h3>
               <span className="h-px flex-1 bg-ochre-500/70" aria-hidden="true" />
             </div>
-            <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">Seragam kerja dan penampilan profesional yang dirancang untuk menonjolkan performa tim di berbagai industri.</p>
+            <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">{data.businessDescription}</p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-[1.08fr_0.92fr]">
               <Link href={feature ? inspirationHref(feature.industry) : lead ? industryHref(lead) : "/inspirasi"} className="group relative aspect-[4/5] self-start sm:aspect-[1/2] overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_68px_-38px_rgba(8,29,67,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
@@ -125,7 +125,7 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
               <h3 className="shrink-0 text-2xl font-extrabold tracking-[-0.025em] text-brand-950 sm:text-3xl">Solusi Korporasi</h3>
               <span className="h-px flex-1 bg-ochre-500/70" aria-hidden="true" />
             </div>
-            <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">Pengadaan seragam terstruktur untuk perusahaan dan organisasi berskala besar dengan standar tinggi.</p>
+            <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-ink-muted sm:text-lg">{data.corporateDescription}</p>
 
             <Link href="/inspirasi/solusi-korporasi" className="relative mt-8 block overflow-hidden rounded-xl bg-[#e8e3da] shadow-[0_22px_58px_-38px_rgba(8,29,67,0.58)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700" style={{ aspectRatio: HOME_FRAME_RATIOS.corporate }}>
               <Image src={corporatePhotoFor(data)} alt="Tim berseragam Ofissio untuk solusi korporasi" fill unoptimized sizes="(max-width: 1024px) 100vw, 46vw" style={frameFor("Corporate", data, "corporate")} />

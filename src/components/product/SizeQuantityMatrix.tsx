@@ -9,9 +9,11 @@ import type { ProductSizeStock } from "@/features/stock-monitoring/product-size-
 import { SIZES, type Size, type SizeMatrix } from "@/types/industry";
 import { sumSizeMatrix } from "@/types/cart";
 import { toNonNegInt } from "@/lib/utils";
-import { AlertTriangle, CheckCircle2, Minus, Plus } from "lucide-react";
+import orderStyles from "./ProductOrderFields.module.css";
+import { AlertTriangle, CheckCircle2, Info, Minus, Plus } from "lucide-react";
 
 interface SizeQuantityMatrixProps {
+  emphasized?: boolean;
   value: SizeMatrix;
   onChange: (next: SizeMatrix) => void;
   moq: number;
@@ -31,6 +33,7 @@ interface SizeQuantityMatrixProps {
 
 export function SizeQuantityMatrix({
   value,
+  emphasized = false,
   onChange,
   moq,
   sizeChart,
@@ -80,13 +83,16 @@ export function SizeQuantityMatrix({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <h3 className="text-sm font-bold text-ink">{availableSizes?.length === 1 && availableSizes[0] === "OS" ? "Jumlah produk" : "Atur quantity per ukuran"}</h3>
-        <span className="text-[11px] text-ink-muted">MOQ: {moq} pcs</span>
+    <div className={emphasized ? `${orderStyles.quantityPanel} space-y-3` : "space-y-3"}>
+      <div data-part="quantity-heading" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <div>
+          <h3 className="text-sm font-bold text-ink">{availableSizes?.length === 1 && availableSizes[0] === "OS" ? "Jumlah produk" : emphasized ? "Pilih ukuran & jumlah" : "Atur quantity per ukuran"}</h3>
+          {emphasized && <><p className={orderStyles.intro}>{availableSizes?.length === 1 && availableSizes[0] === "OS" ? "Masukkan jumlah produk yang ingin dipesan." : "Isi jumlah pada setiap ukuran yang ingin dipesan."}</p><span className={orderStyles.minimum}>Min. pemesanan {effectiveFloor} pcs</span></>}
+        </div>
+        {!emphasized && <span className="text-[11px] text-ink-muted">MOQ: {moq} pcs</span>}
       </div>
 
-      <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2" role="list">
+      <ul data-part="size-list" className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2" role="list">
         {SIZES.filter(s => availableSizes ? availableSizes.some(size => size.toUpperCase().replace(/^XXL$/, "2XL") === s) : !["OS", "XS", "4XL", "5XL"].includes(s)).map((s) => {
           const sizeLabel = s === "OS" ? "Jumlah" : s === "2XL" ? "XXL" : s;
           const chart = sizeChart?.find((c) => c.size === s);
@@ -94,17 +100,17 @@ export function SizeQuantityMatrix({
           const stock = currentStock?.rows.find(row => row.size.toUpperCase().replace(/^XXL$/, "2XL").replace(/^XXXL$/, "3XL") === s);
           const available = stock?.availableQty;
           return (
-            <li key={s} className="min-w-0 rounded-lg border border-line bg-surface p-2">
-              <div className="mb-1 flex items-baseline justify-between">
-                <span className="text-xs font-bold text-ink">{sizeLabel}</span>
+            <li key={s} data-part="size-card" data-selected={qty > 0} className="min-w-0 rounded-lg border border-line bg-surface p-2">
+              <div data-part="size-heading" className="mb-1 flex items-baseline justify-between">
+                <span data-part="size-name" className="text-xs font-bold text-ink">{sizeLabel}{emphasized && qty > 0 && <CheckCircle2 aria-label="Ukuran terisi" />}</span>
                 {chart && (chart.chest > 0 || chart.length > 0) && (
-                  <span className="text-[10px] text-ink-muted">
+                  <span data-part="size-measurements" className="text-[10px] text-ink-muted">
                     {chart.chest > 0 ? `${chart.chest}cm` : "—"} ×{" "}
                     {chart.length > 0 ? `${chart.length}cm` : "—"}
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] items-center rounded-md border border-line bg-surface focus-within:border-ochre-600">
+              <div data-part="stepper" className="grid grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] items-center rounded-md border border-line bg-surface focus-within:border-ochre-600">
                 <button
                   type="button"
                   aria-label={`Kurangi ${sizeLabel}`}
@@ -150,17 +156,17 @@ export function SizeQuantityMatrix({
       </ul>
 
       {/* Total + MOQ validation */}
-      <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface-muted px-3 py-3 [&_svg]:shrink-0">
+      <div data-part="quantity-total" data-state={total === 0 ? "empty" : meetsFloor ? "ready" : "warning"} className="flex flex-col gap-2 rounded-xl border border-line bg-surface-muted px-3 py-3 [&_svg]:shrink-0">
         <div className="flex items-center justify-between gap-3 whitespace-nowrap">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          <span data-part="total-label" className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Total qty
           </span>
-          <span className="text-lg font-bold tabular-nums text-ink" aria-live="polite">{total} pcs</span>
+          <span data-part="total-value" className="text-lg font-bold tabular-nums text-ink" aria-live="polite">{total.toLocaleString("id-ID")} <small>pcs</small></span>
         </div>
         {total === 0 ? (
           <p className="flex items-center gap-1.5 text-xs text-ink-muted">
-            <AlertTriangle className="h-4 w-4" />
-            Pilih jumlah per ukuran untuk memesan.
+            <Info className="h-4 w-4" />
+            {availableSizes?.length === 1 && availableSizes[0] === "OS" ? "Masukkan jumlah untuk melanjutkan pesanan." : "Isi jumlah di atas untuk melanjutkan pesanan."}
           </p>
         ) : hasEmbroidery && embroideryMoq != null && embroideryMoq > moq && total < embroideryMoq ? (
           <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
