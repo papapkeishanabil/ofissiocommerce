@@ -14,6 +14,7 @@ import { readOptionalCommerceSetting } from "@/features/products/product-commerc
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ variant?: string | string[] }>;
 }
 
 // Global embroidery pricing is live Supabase data and must not be frozen into
@@ -40,8 +41,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function Page({ params }: PageProps) {
+export default async function Page({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const query = await searchParams;
+  const initialVariantSku = typeof query.variant === "string" ? query.variant : undefined;
   const product = await productServerService.getProductBySlug(slug);
   if (!product) notFound();
   const [pricingState, moqState, sizeChartState] = await Promise.all([
@@ -64,6 +67,8 @@ export default async function Page({ params }: PageProps) {
     <>
     {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />}
     <ProductDetail
+      key={`${product.id}:${initialVariantSku ?? ""}`}
+      initialVariantSku={initialVariantSku}
       product={{ ...product, sizeChart: resolvedSizeChart?.rows ?? [] }}
       globalEmbroideryPricing={pricingState?.pricing ?? { enabled: false, mode: "flat_per_piece", zones: [] }}
       moqSettings={moqState?.settings}

@@ -1,5 +1,6 @@
 import type { OfissioProduct } from "@/features/products/product.types";
 import { structuredOfferPrice } from "@/features/products/product-schema-offer";
+import { variantProductGroup } from "./product-variant-schema";
 
 export const SITE_URL = "https://ofissio.com";
 export const productUrl = (slug: string) => `${SITE_URL}/product/${encodeURIComponent(slug)}`;
@@ -33,7 +34,7 @@ export function productStructuredData(product: OfissioProduct) {
   return {
     "@context": "https://schema.org",
     "@graph": [
-      {
+      variantProductGroup(product, url, productImages(product)) ?? {
         "@type": "Product", "@id": `${url}#product`, url,
         name: product.name, description: product.description,
         sku: product.sku, image: productImages(product),

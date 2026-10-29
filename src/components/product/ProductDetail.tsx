@@ -8,6 +8,7 @@ import { productColorDisplayLabel } from "@/lib/product-colors";
 import { colorVariantGallery, selectedColorVariant } from "@/features/products/color-variants";
 import { isColorOption, isSizeOption, selectedVariantPrice, matchingProductVariant } from "@/features/products/product-variants";
 import { sleeveOptions } from "@/features/products/purchase-variants";
+import { linkedProductVariant, linkedVariantSizes } from "@/features/products/product-variant-links";
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -60,6 +61,7 @@ import { SizeQuantityMatrix } from "./SizeQuantityMatrix";
 import { ProductGallery } from "./ProductGallery";
 import { ProductColorPicker } from "./ProductColorPicker";
 import styles from "./ProductDetailTheme.module.css";
+import orderStyles from "./ProductOrderFields.module.css";
 import { StudioShell } from "@/components/configurator/StudioShell";
 
 // Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
@@ -80,6 +82,7 @@ const Uniform3DConfigurator = dynamic(
 );
 
 interface ProductDetailProps {
+  initialVariantSku?: string;
   pricingUnavailable?: boolean;
   purchasingUnavailable?: boolean;
   product: OfissioProduct;
@@ -91,10 +94,10 @@ interface ProductDetailProps {
 
 
 
-export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, sizeChartStandardName, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
+export function ProductDetail({ product, initialVariantSku, globalEmbroideryPricing, moqSettings, sizeChartStandardName, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
   const router = useRouter();
   const generic = product.productKind === "variable";
-  const defaultGeneric = product.productVariants?.find(v => v.sku === product.defaultVariantSku) ?? product.productVariants?.[0];
+  const defaultGeneric = linkedProductVariant(product, initialVariantSku) ?? product.productVariants?.find(v => v.sku === product.defaultVariantSku) ?? product.productVariants?.[0];
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => Object.fromEntries((product.variantOptions ?? []).filter(o => !isSizeOption(o.name)).map(o => [o.name, defaultGeneric?.options[o.name] ?? o.values[0] ?? ""])));
   const sleeves = useMemo(() => product.productKind ? [] : sleeveOptions(product), [product]);
   const [selectedSleeve, setSelectedSleeve] = useState(sleeves[0] || "");
@@ -102,7 +105,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
     const colorOption = product.variantOptions?.find(o => isColorOption(o.name));
     return generic && colorOption ? defaultGeneric?.options[colorOption.name] ?? colorOption.values[0] ?? "Default" : product.defaultColor && product.colors.includes(product.defaultColor) ? product.defaultColor : product.colors[0] || "Default";
   });
-  const [sizes, setSizes] = useState<SizeMatrix>(() => emptySizeMatrix());
+  const [sizes, setSizes] = useState<SizeMatrix>(() => ({ ...emptySizeMatrix(), ...linkedVariantSizes(product, initialVariantSku) }));
   const activeGenericVariant = generic ? matchingProductVariant(product, selectedOptions, Object.entries(sizes).find(([, q]) => q > 0)?.[0]) ?? product.productVariants?.find(row => Object.entries(selectedOptions).every(([name, value]) => row.options[name] === value)) : undefined;
   const galleryImages = useMemo(() => {
     if (!activeGenericVariant?.imageSrc) return colorVariantGallery(product, color);
@@ -515,7 +518,14 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             ) : null}
 
             {!generic && product.productKind !== "simple" && <ProductColorPicker product={product} color={color} onChange={setColor} />}
-            {generic && product.variantOptions?.filter(option => !isSizeOption(option.name)).map(option => <fieldset key={option.name} className="mt-3">
+            {generic && product.variantOptions?.filter(option => !isSizeOption(option.name)).map(option => isColorOption(option.name) ? (
+              <ProductColorPicker key={option.name} product={product} color={selectedOptions[option.name] ?? color} selectedOptions={selectedOptions} onChange={value => {
+                setSelectedOptions(current => ({ ...current, [option.name]: value }));
+                setColor(value);
+                setSizes(emptySizeMatrix());
+                setError(null);
+              }} />
+            ) : <fieldset key={option.name} className="mt-3">
               <legend className="text-xs font-bold text-ink">{option.name}</legend>
               <div className="mt-2 flex flex-wrap gap-2">{option.values.map(value => <button key={value} type="button" aria-pressed={selectedOptions[option.name] === value} className={`min-h-11 rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${selectedOptions[option.name] === value ? "border-brand-700 bg-surface-muted" : "border-line bg-surface"}`} onClick={() => { setSelectedOptions(current => ({ ...current, [option.name]: value })); if (isColorOption(option.name)) setColor(value); setSizes(emptySizeMatrix()); setError(null); }}>{value}</button>)}</div>
             </fieldset>)}
@@ -533,6 +543,7 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             {/* Size matrix */}
             <div className="mt-3">
               <SizeQuantityMatrix
+                emphasized
                 productId={product.id}
                 availableSizes={product.available_sizes}
                 color={color}
@@ -550,21 +561,23 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
             {/* Size chart reference — expand inline di panel pembelian,
                 hanya saat standar ukuran terpasang. */}
             {product.sizeChart.length > 0 && product.available_sizes.some(size => size !== "OS") && (
-              <div className="mt-2 border-y border-[#dbe3f1] py-2">
+              <div className={orderStyles.guide}>
                 <button
                   type="button"
                   onClick={() => setShowSizeChart((open) => !open)}
                   aria-expanded={showSizeChart}
-                  className="flex w-full min-h-11 items-center gap-2 text-xs font-semibold text-ink transition-colors hover:text-brand-700"
+                  aria-controls={`size-guide-${product.id}`}
+                  aria-label={showSizeChart ? "Sembunyikan size chart" : "Lihat size chart lengkap"}
+                  className={orderStyles.guideButton}
                 >
-                  <Ruler className="h-4 w-4" />
-                  {showSizeChart ? "Sembunyikan size chart" : "Lihat size chart lengkap"}
+                  <span className={orderStyles.guideIcon}><Ruler className="h-5 w-5" aria-hidden="true" /></span>
+                  <span className={orderStyles.guideCopy}><strong>{showSizeChart ? "Sembunyikan size chart" : "Lihat size chart lengkap"}</strong><small>Cek ukuran sebelum memesan.</small></span>
                   <ChevronRight
                     className={`ml-auto h-4 w-4 transition-transform${showSizeChart ? " rotate-90" : ""}`}
                     aria-hidden="true"
                   />
                 </button>
-                {showSizeChart && <ProductSizeChart rows={product.sizeChart} name={sizeChartStandardName} />}
+                <div id={`size-guide-${product.id}`} hidden={!showSizeChart} className={orderStyles.guideContent}>{showSizeChart && <ProductSizeChart rows={product.sizeChart} name={sizeChartStandardName} />}</div>
               </div>
             )}
 
@@ -636,19 +649,22 @@ export function ProductDetail({ product, globalEmbroideryPricing, moqSettings, s
                 )}
               </div>
             ) : (
-              <div className="mt-5 rounded-xl border border-dashed border-line bg-surface-muted p-3">
-                <p className="flex items-center gap-1.5 text-xs font-bold text-ink">
-                  <Sparkles className="h-3.5 w-3.5 text-brand-700" />
-                  Catatan pesanan
-                </p>
-                <input
-                  type="text"
+              <div className={orderStyles.notes}>
+                <div className={orderStyles.notesHeading}>
+                  <label htmlFor={`order-note-${product.id}`}><Sparkles className="h-4 w-4" aria-hidden="true" />Catatan pesanan</label>
+                  <span>Opsional</span>
+                </div>
+                <p id={`order-note-help-${product.id}`}>Tambahkan kebutuhan khusus untuk pesanan ini.</p>
+                <textarea
+                  id={`order-note-${product.id}`}
+                  aria-describedby={`order-note-help-${product.id} order-note-count-${product.id}`}
                   value={customization}
                   onChange={(e) => setCustomization(e.target.value)}
-                  placeholder="Tambahkan catatan untuk pesanan ini"
+                  placeholder="Contoh: pisahkan kemasan berdasarkan ukuran."
                   maxLength={120}
-                  className="mt-2 h-9 w-full rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                  rows={3}
                 />
+                <span id={`order-note-count-${product.id}`} className={orderStyles.noteCount}>{customization.length} / 120 karakter</span>
               </div>
             )}
 
