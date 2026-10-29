@@ -78,6 +78,7 @@ export interface WooCommerceProduct {
   /** Transient evidence from native variations; never persisted as product metadata. */
   liveOfferPrice?: number;
   liveOfferAvailability?: "InStock" | "OutOfStock" | "BackOrder";
+  liveVariantAvailability?: Record<string, "InStock" | "OutOfStock" | "BackOrder">;
   purchasable?: boolean;
   id: number;
   date_created?: string;

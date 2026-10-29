@@ -37,7 +37,9 @@ export function variantProductGroup(product: OfissioProduct, url: string, images
         ...(color && row.options[color.name] !== "Default" ? { color: row.options[color.name] } : {}),
         additionalProperty: options.filter(o => !isSizeOption(o.name) && !isColorOption(o.name)).map(o => ({ "@type": "PropertyValue", name: o.name, value: row.options[o.name] })),
         isVariantOf: { "@id": `${url}#product` },
-        offers: { "@type": "Offer", url: variantUrl, price: row.regularPrice, priceCurrency: "IDR", seller: { "@type": "Organization", name: "Ofissio", url: "https://ofissio.com" } },
+        offers: { "@type": "Offer", url: variantUrl, price: row.regularPrice, priceCurrency: "IDR",
+          ...(product.liveVariantAvailability?.[String(row.id)] ? { availability: `https://schema.org/${product.liveVariantAvailability[String(row.id)]}` } : {}),
+          seller: { "@type": "Organization", name: "Ofissio", url: "https://ofissio.com" } },
       };
     }),
   };
