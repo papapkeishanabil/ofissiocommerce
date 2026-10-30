@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
-import { Onest } from "next/font/google";
+import { adminFont as onest } from "@/features/admin/admin-font";
 import { redirect } from "next/navigation";
 
 import { LoginPageClient } from "@/components/auth/LoginPageClient";
 import { storefrontFont } from "@/components/shell/storefront-font";
 
 export const metadata: Metadata = { title: "Masuk" };
-
-const onest = Onest({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-admin",
-  display: "swap",
-});
 
 export default async function LoginPage({
   searchParams,
@@ -42,6 +35,7 @@ export default async function LoginPage({
         verificationComplete={query.verified === "1"}
         registrationPending={query.registered === "verification-required"}
         registrationError={query.error === "registration-failed"}
+        googleError={query.error === "google-failed"}
       />
     </div>
   );
