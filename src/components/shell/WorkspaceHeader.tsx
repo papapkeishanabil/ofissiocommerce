@@ -154,7 +154,7 @@ export function WorkspaceHeader({ onNavigate }: {
           </Link>
           <details className="group xl:hidden">
             <summary aria-label="Buka menu utama" className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-lg hover:bg-white/10 [&::-webkit-details-marker]:hidden"><Menu className="h-5 w-5" aria-hidden="true" /></summary>
-            <div className="absolute inset-x-0 top-full border-t border-white/15 bg-[#071c3a] p-4 shadow-lg">
+            <div className="absolute inset-x-0 top-full border-t border-white/15 bg-[var(--ofissio-shell-navy)] p-4 shadow-lg">
               <form action="/catalog" role="search" onSubmit={onNavigate} className="mb-3 flex items-center gap-2 rounded-lg border border-white/30 px-3">
                 <Search className="h-5 w-5" aria-hidden="true" />
                 <input name="kategori" type="search" aria-label="Cari produk, kategori, atau SKU" placeholder="Cari produk, kategori, atau SKU" className="h-11 min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/80" />

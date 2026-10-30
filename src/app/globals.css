@@ -4,6 +4,8 @@
 @source not "../../.next-account-ui-qa";
 @source not "../../artifacts/storefront-consistency/next-dev-before-route-recovery";
 
+:root { --ofissio-shell-navy: #122162; }
+
 /* Customer-facing commerce shares Studio's colors and action tokens, but keeps
    the platform typography scale (Tailwind text-* defaults). Admin stays scoped
    to its own typography and colors. Semantic action tokens also cover login,
@@ -43,7 +45,7 @@
 .storefront-product-panel { container-type: inline-size; }
 .commerce-breadcrumb-row { min-height: 44px; padding-block: 4px; }
 .storefront-header { font-family: var(--font-storefront), Arial, sans-serif; line-height: 1.5; }
-.workspace-chrome-header { height: 64px; background-color: #071c3a; }
+.workspace-chrome-header { height: 64px; background-color: var(--ofissio-shell-navy); }
 @media (min-width: 1024px) {
   .workspace-chrome-header { height: 56px; }
 }
