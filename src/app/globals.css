@@ -4,7 +4,7 @@
 @source not "../../.next-account-ui-qa";
 @source not "../../artifacts/storefront-consistency/next-dev-before-route-recovery";
 
-:root { --ofissio-shell-navy: #122162; }
+:root { --ofissio-shell-navy: #122162; --ofissio-shell-header-height: 64px; }
 
 /* Customer-facing commerce shares Studio's colors and action tokens, but keeps
    the platform typography scale (Tailwind text-* defaults). Admin stays scoped
@@ -45,9 +45,9 @@
 .storefront-product-panel { container-type: inline-size; }
 .commerce-breadcrumb-row { min-height: 44px; padding-block: 4px; }
 .storefront-header { font-family: var(--font-storefront), Arial, sans-serif; line-height: 1.5; }
-.workspace-chrome-header { height: 64px; background-color: var(--ofissio-shell-navy); }
+.workspace-chrome-header { height: var(--ofissio-shell-header-height); background-color: var(--ofissio-shell-navy); }
 @media (min-width: 1024px) {
-  .workspace-chrome-header { height: 56px; }
+  :root { --ofissio-shell-header-height: 56px; }
 }
 .storefront-product-title { font-size: clamp(1.125rem, 5cqi, 1.5rem); }
 .storefront-product-price { font-size: clamp(1.375rem, 6cqi, 1.75rem); }
