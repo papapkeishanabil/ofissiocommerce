@@ -6,7 +6,8 @@ import { garmentReference } from "@/components/configurator/garment-scale";
 
 import { productColorDisplayLabel } from "@/lib/product-colors";
 import { colorVariantGallery, selectedColorVariant } from "@/features/products/color-variants";
-import { isColorOption, isSizeOption, selectedVariantPrice, matchingProductVariant } from "@/features/products/product-variants";
+import { isColorOption, isSizeOption, isSleeveOption, selectedVariantPrice, matchingProductVariant } from "@/features/products/product-variants";
+import { selectedSleeveSizeChart, type SleeveSizeCharts } from "@/features/size-charts/sleeve-size-charts";
 import { sleeveOptions } from "@/features/products/purchase-variants";
 import { linkedProductVariant, linkedVariantSizes } from "@/features/products/product-variant-links";
 
@@ -82,6 +83,7 @@ const Uniform3DConfigurator = dynamic(
 );
 
 interface ProductDetailProps {
+  sleeveSizeCharts?: SleeveSizeCharts;
   initialVariantSku?: string;
   pricingUnavailable?: boolean;
   purchasingUnavailable?: boolean;
@@ -94,13 +96,17 @@ interface ProductDetailProps {
 
 
 
-export function ProductDetail({ product, initialVariantSku, globalEmbroideryPricing, moqSettings, sizeChartStandardName, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
+export function ProductDetail({ product, initialVariantSku, globalEmbroideryPricing, moqSettings, sizeChartStandardName, sleeveSizeCharts, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
   const router = useRouter();
   const generic = product.productKind === "variable";
   const defaultGeneric = linkedProductVariant(product, initialVariantSku) ?? product.productVariants?.find(v => v.sku === product.defaultVariantSku) ?? product.productVariants?.[0];
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => Object.fromEntries((product.variantOptions ?? []).filter(o => !isSizeOption(o.name)).map(o => [o.name, defaultGeneric?.options[o.name] ?? o.values[0] ?? ""])));
   const sleeves = useMemo(() => product.productKind ? [] : sleeveOptions(product), [product]);
   const [selectedSleeve, setSelectedSleeve] = useState(sleeves[0] || "");
+  const sleeveOption = product.variantOptions?.find(option => isSleeveOption(option.name));
+  const activeSizeChart = sleeveSizeCharts ? selectedSleeveSizeChart(sleeveSizeCharts, sleeveOption ? selectedOptions[sleeveOption.name] : selectedSleeve || product.sleeve_type) : null;
+  const sizeChartRows = sleeveSizeCharts ? activeSizeChart?.rows ?? [] : product.sizeChart;
+  const activeSizeChartName = sleeveSizeCharts ? activeSizeChart?.standard.name : sizeChartStandardName;
   const [color, setColor] = useState<string>(() => {
     const colorOption = product.variantOptions?.find(o => isColorOption(o.name));
     return generic && colorOption ? defaultGeneric?.options[colorOption.name] ?? colorOption.values[0] ?? "Default" : product.defaultColor && product.colors.includes(product.defaultColor) ? product.defaultColor : product.colors[0] || "Default";
@@ -552,7 +558,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
                 value={sizes}
                 onChange={setSizes}
                 moq={product.moq}
-                sizeChart={product.sizeChart}
+                sizeChart={sizeChartRows}
                 embroideryMoq={embroideryMoq}
                 hasEmbroidery={lineHasEmbroidery}
               />
@@ -560,7 +566,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
 
             {/* Size chart reference — expand inline di panel pembelian,
                 hanya saat standar ukuran terpasang. */}
-            {product.sizeChart.length > 0 && product.available_sizes.some(size => size !== "OS") && (
+            {sizeChartRows.length > 0 && product.available_sizes.some(size => size !== "OS") && (
               <div className={orderStyles.guide}>
                 <button
                   type="button"
@@ -577,7 +583,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
                     aria-hidden="true"
                   />
                 </button>
-                <div id={`size-guide-${product.id}`} hidden={!showSizeChart} className={orderStyles.guideContent}>{showSizeChart && <ProductSizeChart rows={product.sizeChart} name={sizeChartStandardName} />}</div>
+                <div id={`size-guide-${product.id}`} hidden={!showSizeChart} className={orderStyles.guideContent}>{showSizeChart && <ProductSizeChart rows={sizeChartRows} name={activeSizeChartName} />}</div>
               </div>
             )}
 

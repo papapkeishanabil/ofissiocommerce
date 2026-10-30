@@ -10,6 +10,8 @@ import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global
 import { getMoqSettings } from "@/features/moq-settings/moq-settings.service";
 import { getSizeChartStandards } from "@/features/size-charts/size-chart.service";
 import { resolveSizeChart } from "@/features/size-charts/resolve-size-chart";
+import { resolveSleeveSizeCharts } from "@/features/size-charts/sleeve-size-charts";
+import { isSleeveOption } from "@/features/products/product-variants";
 import { readOptionalCommerceSetting } from "@/features/products/product-commerce-settings";
 
 interface PageProps {
@@ -62,6 +64,10 @@ export default async function Page({ params, searchParams }: PageProps) {
     categorySlugs: product.categorySlugs ?? [],
     availableSizes: product.available_sizes,
   });
+  const sleeveSizeCharts = resolveSleeveSizeCharts(sizeChartState?.standards ?? [], {
+    slug: product.slug, gender: product.gender, sizeChartId: product.sizeChartId,
+    categorySlugs: product.categorySlugs ?? [], availableSizes: product.available_sizes,
+  }, product.variantOptions?.find(option => isSleeveOption(option.name))?.values ?? []);
   const structuredData = productStructuredData(product);
   return (
     <>
@@ -75,6 +81,7 @@ export default async function Page({ params, searchParams }: PageProps) {
       pricingUnavailable={!pricingState}
       purchasingUnavailable={!moqState}
       sizeChartStandardName={resolvedSizeChart?.standard.name}
+      sleeveSizeCharts={sleeveSizeCharts}
     />
     </>
   );
