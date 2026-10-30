@@ -113,14 +113,14 @@
 .navigation { gap:7px; }
 .navigation>a,.navigation>button { min-height:44px;padding:12px 14px;border-radius:10px;font-size:13px;color:#52617d; }
 .navigation :is(a,button):hover { background:#eff4ff;color:#142766; }
-.navigation [aria-current=page] { background:#142766;color:#fff;font-weight:600; }
-.navigation [aria-current=page]:hover { background:#10245f;color:#fff; }
+.navigation [aria-current=page] { background:var(--customer-action-primary, #142766);color:#fff;font-weight:600; }
+.navigation [aria-current=page]:hover { background:var(--customer-action-hover, #10245f);color:#fff; }
 .navigation [aria-current=page] small { background:#ffffff26;color:#fff; }
 .sidebarHelp { margin:42px 12px 0;padding-top:22px; }
 .header h1 { color:#142766; font-weight:700;letter-spacing:-.025em; }
 .header p { font-size:14px;line-height:1.7;max-width:660px; }
-.primary { background:#142766;min-height:44px;border-radius:10px;padding:11px 16px;font-size:13px; }
-.primary:hover { background:#10245f; }
+.primary { background:var(--customer-action-primary, #142766);min-height:44px;border-radius:10px;padding:11px 16px;font-size:13px; }
+.primary:hover { background:var(--customer-action-hover, #10245f); }
 .outline { min-height:42px;border-radius:9px;border-color:#dbe3f1;font-size:12px; }
 .outline:hover { background:#eff4ff;border-color:#a8b5d2; }
 .panel,.summary,.tableWrap { border-radius:16px;border-color:#dbe3f1;box-shadow:0 3px 12px #14276606; }
@@ -146,7 +146,7 @@
 .search { max-width:420px;border-radius:10px;min-height:44px;background:#fff;border-color:#dbe3f1; }
 .filters { gap:6px;border:1px solid #dbe3f1;border-radius:12px;background:#fff;padding:5px;width:fit-content;flex-wrap:wrap; }
 .filters button { min-height:40px;padding:8px 13px;border:0;border-radius:8px; }
-.filters [aria-pressed=true] { background:#142766;color:#fff; }
+.filters [aria-pressed=true] { background:var(--customer-action-primary, #142766);color:#fff; }
 .filters [aria-pressed=true] small { background:#ffffff26;color:#fff; }
 .gold { border-color:#a8b5d2;color:#142766;border-radius:9px;min-height:42px; }
 .gold:hover { background:#eff4ff; }
