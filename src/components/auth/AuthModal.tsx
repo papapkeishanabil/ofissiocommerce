@@ -75,10 +75,10 @@ export function AuthModal() {
           card edges and top; the card's overflow-hidden + rounded-2xl clip the
           band's top corners into the card. */}
       <div data-customer-auth className="-mx-5 -mt-4">
-        <div className="relative overflow-hidden bg-[#071c3a] px-5 py-5 text-white">
+        <div className="auth-brand-panel relative overflow-hidden bg-[#071c3a] px-5 py-5 text-white">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
+            className="auth-brand-glow pointer-events-none absolute inset-0"
           >
             <div className="absolute -bottom-10 -left-8 h-44 w-44 bg-[radial-gradient(circle,rgba(74,107,216,0.42),transparent_66%)]" />
           </div>

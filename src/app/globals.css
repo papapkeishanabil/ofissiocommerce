@@ -54,7 +54,16 @@
 .storefront-scope input::placeholder,
 .storefront-scope textarea::placeholder { color: #63728c; }
 .storefront-scope .storefront-header input::placeholder { color: #d8dfea; }
+.storefront-scope [data-customer-auth] {
+  --action-primary: var(--ofissio-shell-navy);
+  --action-hover: #1c327e;
+  --action-disabled: #e8edf7;
+  --action-disabled-ink: #647398;
+}
+.storefront-scope [data-customer-auth] .auth-brand-panel { background: var(--ofissio-shell-navy); }
+.storefront-scope [data-customer-auth] .auth-brand-glow { display: none; }
 .storefront-scope [data-customer-auth] button[type="submit"] { background: var(--action-primary); }
+.storefront-scope [data-customer-auth] button[type="submit"]:focus-visible { outline-color: var(--ofissio-shell-navy); }
 .storefront-scope [data-customer-auth] button[type="submit"]:hover { background: var(--action-hover); }
 .storefront-scope [data-customer-auth] button[type="submit"]:disabled { background: var(--action-disabled); color: var(--action-disabled-ink); }
 
