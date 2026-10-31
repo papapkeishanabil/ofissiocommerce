@@ -91,7 +91,7 @@ export function CartLineItemView({ item, index = 0 }: CartLineItemViewProps) {
 
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {item.color !== "Default" && <span className="inline-flex items-center gap-2 text-sm text-ink">
-              <span className="h-4 w-4 rounded-full border border-black/10" style={productColorSwatchStyle(item.color)} aria-hidden="true" />
+              <span className="h-4 w-4 rounded-full border border-black/10" style={productColorSwatchStyle(item.color, item)} aria-hidden="true" />
               {productColorDisplayLabel(item.color)}
             </span>}
             <Badge tone="neutral">{item.totalQty} pcs</Badge>

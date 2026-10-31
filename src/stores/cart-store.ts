@@ -1,3 +1,4 @@
+import { productFabricColor } from "@/lib/product-colors";
 // src/stores/cart-store.ts
 // Client-side cart with localStorage persistence.
 // Phase 4 will replace this with a server-persisted CartSession scoped by
@@ -79,6 +80,8 @@ export const useCartStore = create<CartState>()(
         if (variantIssue) return { ok: false, reason: variantIssue };
         const selectedVariant = product.productKind === "variable" ? matchingProductVariant(product, selectedOptions ?? {}, Object.entries(sizes).find(([, q]) => q > 0)?.[0]) : undefined;
         const variantSnapshot = selectedVariant ? { sku: selectedVariant.sku, image: selectedVariant.imageSrc || product.mainImage || null, parentSku: product.sku } : colorVariantSnapshot(product, color);
+        const selectedColorValue = productFabricColor(product, color);
+        const colorSnapshot = selectedColorValue ? { [color]: selectedColorValue } : undefined;
         const totalQty = sumSizeMatrix(sizes);
         if (totalQty <= 0) {
           return { ok: false, reason: "Quantitas belum diisi." };
@@ -151,6 +154,7 @@ export const useCartStore = create<CartState>()(
           next[idx] = {
             ...cur,
             ...variantSnapshot,
+          colorValues: colorSnapshot,
             color,
             selectedSleeve,
             selectedOptions,
@@ -195,6 +199,7 @@ export const useCartStore = create<CartState>()(
           productName: product.name,
           ...mapOfissioProductToCartItem(product),
           ...variantSnapshot,
+          colorValues: colorSnapshot,
           color,
           selectedSleeve,
           selectedOptions,
