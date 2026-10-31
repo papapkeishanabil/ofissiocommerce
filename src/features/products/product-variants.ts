@@ -16,13 +16,13 @@ export const isSizeOption = (name: string) => /^(pa_)?(ukuran|size)$/i.test(name
 export const isSleeveOption = (name: string) => /^(pa_)?(lengan|panjang[-_ ]lengan|tipe[-_ ]lengan|sleeve)$/i.test(name);
 
 export const variantOptionSchema = z.object({
-  name: z.string().trim().min(1).max(60),
-  values: z.array(z.string().trim().min(1).max(100)).min(1).max(60),
+  name: z.string().trim().min(1, "Isi nama pilihan varian, misalnya Warna atau Ukuran.").max(60),
+  values: z.array(z.string().trim().min(1, "Isi nilai pilihan varian atau hapus nilai yang kosong.").max(100)).min(1, "Isi minimal satu nilai untuk setiap pilihan varian.").max(60),
 });
 export const productVariantSchema = z.object({
   id: z.number().int().positive().optional(),
   options: z.record(z.string().trim().min(1).max(60), z.string().trim().min(1).max(100)),
-  sku: z.string().trim().min(1).max(100).regex(/^[A-Za-z0-9._-]+$/, "Format SKU tidak valid."),
+  sku: z.string().trim().min(1, "Isi SKU stok untuk setiap kombinasi varian. Gunakan Terapkan ke semua ukuran untuk mengisi SKU per ukuran.").max(100).regex(/^[A-Za-z0-9._-]+$/, "Format SKU tidak valid."),
   imageSrc: z.string().max(2000).default(""),
   fabricColor: z.string().trim().regex(/^(?:#[0-9a-f]{6})?$/i, "Gunakan HEX enam digit, misalnya #B69A84.").transform(value => value.toLowerCase()).optional(),
   regularPrice: z.number().positive().max(10_000_000_000),
@@ -43,9 +43,9 @@ export function readProductVariants(value: unknown): ProductVariant[] {
 export const selectedOptionsSchema = z.record(z.string().trim().min(1).max(60), z.string().trim().min(1).max(100)).refine(value => Object.keys(value).length <= 8, "Terlalu banyak pilihan varian.");
 
 export const productVariantsSchema = z.object({
-  options: z.array(variantOptionSchema).min(1).max(8),
-  variants: z.array(productVariantSchema).min(1).max(1000),
-  defaultVariantSku: z.string().trim().min(1).max(100),
+  options: z.array(variantOptionSchema).min(1, "Tambahkan minimal satu pilihan di Varian Produk, misalnya Warna atau Ukuran.").max(8),
+  variants: z.array(productVariantSchema).min(1, "Kombinasi varian belum dibuat. Di bagian Varian Produk, lengkapi pilihan lalu klik Buat / perbarui kombinasi.").max(1000),
+  defaultVariantSku: z.string().trim().min(1, "Pilih varian yang tampil pertama setelah mengisi SKU stok.").max(100),
 }).superRefine((input, ctx) => {
   const issue = (message: string) => ctx.addIssue({ code: "custom", message });
   if (new Set(input.options.map(o => optionKey(o.name))).size !== input.options.length) issue("Nama pilihan varian tidak boleh berulang.");

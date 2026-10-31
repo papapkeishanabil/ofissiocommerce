@@ -59,7 +59,7 @@ export function ProductVariantEditor({ options, onOptionsChange, variants, onCha
         </div>;
       })}</div>
     </section>}
-    {!variants.length ? <p className="text-sm text-ink-muted">Belum ada kombinasi. Tambahkan pilihan, lalu buat kombinasi dan hapus yang tidak dijual.</p> : <>
+    {!variants.length ? <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">Belum ada kombinasi varian. Lengkapi pilihan di atas, lalu klik <strong>Buat / perbarui kombinasi</strong>. Isi SKU stok dan pilih varian yang tampil pertama sebelum menyimpan produk.</p> : <>
       <label className="block max-w-lg text-sm font-semibold text-ink">Varian yang tampil pertama<select className={`${INPUT} mt-2`} value={defaultSku} onChange={e => onDefaultChange(e.target.value)} required><option value="">Pilih varian setelah mengisi SKU</option>{variants.filter(v => v.sku).map((row, i) => <option key={i} value={row.sku}>{Object.values(row.options).join(" / ")} — {row.sku}</option>)}</select></label>
       {sizeOption ? <section aria-label="Pengisian otomatis SKU ukuran" className="space-y-4">
         <div><h3 className="text-sm font-bold text-ink">Isi sekali per varian, SKU ukuran dibuat otomatis</h3><p className="mt-1 text-xs leading-5 text-ink-muted">Isi SKU varian tanpa ukuran, misalnya KK-006LPD. Sistem menambahkan -S, -M, dan ukuran lainnya. Foto dan harga dapat diterapkan ke seluruh ukuran. Harga quantity tetap mengikuti tier produk.</p></div>
