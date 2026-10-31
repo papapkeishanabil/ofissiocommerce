@@ -48,12 +48,14 @@ export function LoginPageClient({
   verificationComplete = false,
   registrationPending = false,
   registrationError = false,
+  googleError = false,
 }: {
   mode: "customer" | "admin";
   nextPath: string;
   verificationComplete?: boolean;
   registrationPending?: boolean;
   registrationError?: boolean;
+  googleError?: boolean;
 }) {
   const router = useRouter();
   const canRegister = mode === "customer";
@@ -101,8 +103,8 @@ export function LoginPageClient({
     <main data-customer-auth={!isAdmin || undefined} className="relative isolate grid min-h-dvh w-full place-items-center overflow-hidden bg-cool-100 px-4 py-[clamp(1rem,3.5vh,2.5rem)] text-ink sm:px-6 lg:px-10">
       <section className="relative grid w-full max-w-[1120px] overflow-hidden rounded-[28px] border border-line bg-surface shadow-soft-lg lg:h-[min(760px,calc(100dvh-5rem))] lg:min-h-[620px] lg:grid-cols-[1.02fr_0.98fr]">
         {/* ===== LEFT — brand panel ===== */}
-        <div className="relative flex overflow-hidden bg-brand-900 p-7 text-white sm:p-8 lg:p-9 xl:p-10">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="auth-brand-panel relative flex overflow-hidden bg-brand-900 p-7 text-white sm:p-8 lg:p-9 xl:p-10">
+          <div aria-hidden="true" className="auth-brand-glow pointer-events-none absolute inset-0">
             <div className="absolute bottom-0 left-0 h-72 w-full bg-[radial-gradient(circle_at_bottom_left,rgba(74,107,216,0.42),transparent_66%)]" />
           </div>
 
@@ -162,7 +164,7 @@ export function LoginPageClient({
         </div>
 
         {/* ===== RIGHT — form panel ===== */}
-        <div className="flex items-center p-7 sm:p-9 lg:p-10 xl:p-12">
+        <div className="flex items-center p-7 sm:p-9 lg:block lg:min-h-0 lg:overflow-y-auto lg:p-10 xl:p-12">
           <div className="mx-auto w-full max-w-[420px]">
             {canRegister ? (
               <div
@@ -234,6 +236,7 @@ export function LoginPageClient({
                 Pendaftaran belum dapat diproses. Periksa kembali data Anda, pastikan email valid, lalu coba kembali.
               </div>
             ) : null}
+            {googleError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-5 text-red-700">Proses masuk dengan Google dibatalkan atau belum berhasil. Coba kembali, pilih akun Google dengan email yang sesuai, atau gunakan email dan password.</p>}
 
             {/* Shared premium field/button treatment — applies to whichever form
                 is active. Keeps the two tabs visually identical. The underlying
@@ -247,6 +250,7 @@ export function LoginPageClient({
                 />
               ) : (
                 <LoginForm
+                  allowGoogle={!isAdmin}
                   quotationId={quotationId ?? undefined}
                   onSuccess={() => router.replace(nextPath)}
                 />

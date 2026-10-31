@@ -687,6 +687,8 @@ export interface IndustriGroup {
   tiles: IndustriTile[];
 }
 export interface IndustriSectionData {
+  businessDescription: string;
+  corporateDescription: string;
   businessFeature?: { image: string; imageAlt: string; industry: string; x: number; y: number; fit: "cover" | "contain" };
   eyebrow: string;
   headline: TextSegment[];
@@ -803,7 +805,14 @@ export const industryInspirationPagesSchema = z.array(industryInspirationSchema)
     });
   });
 
+export const DEFAULT_INDUSTRI_DESCRIPTIONS = {
+  businessDescription: "Seragam kerja dan penampilan profesional yang dirancang untuk menonjolkan performa tim di berbagai industri.",
+  corporateDescription: "Pengadaan seragam terstruktur untuk perusahaan dan organisasi berskala besar dengan standar tinggi.",
+};
+
 export const industriSectionSchema = z.object({
+  businessDescription: nonEmpty(400).default(DEFAULT_INDUSTRI_DESCRIPTIONS.businessDescription),
+  corporateDescription: nonEmpty(400).default(DEFAULT_INDUSTRI_DESCRIPTIONS.corporateDescription),
   businessFeature: z.object({
     image: z.string().trim().min(1).max(2000),
     imageAlt: z.string().trim().min(1).max(200),
@@ -843,6 +852,7 @@ export const industriSectionSchema = z.object({
 });
 
 export const DEFAULT_INDUSTRI: IndustriSectionData = {
+  ...DEFAULT_INDUSTRI_DESCRIPTIONS,
   eyebrow: "Cocok untuk Berbagai Usaha",
   headline: [
     { text: "Dari Bengkel sampai Perusahaan, " },
@@ -1407,11 +1417,13 @@ export const SECTION_REGISTRY: SectionEntry[] = [
   },
   {
     key: "industri",
-    label: "§02 Cocok untuk Berbagai Usaha",
-    description: "Eyebrow, judul, paragraf, dan grup industri (Bisnis Naik Kelas / Solusi Korporasi). Tiap tile merutekan ke katalog via nilai Industri kanonik.",
+    label: "§02 Bisnis dan Korporasi",
+    description: "Deskripsi dua kolom homepage, foto utama Bisnis Naik Kelas, grup industri, dan halaman inspirasi.",
     schema: industriSectionSchema,
     default: DEFAULT_INDUSTRI,
     fields: [
+      { kind: "textarea", key: "businessDescription", label: "Deskripsi Bisnis Naik Kelas", rows: 3, maxLength: 400, help: "Teks di bawah judul Bisnis Naik Kelas pada Section 02 homepage." },
+      { kind: "textarea", key: "corporateDescription", label: "Deskripsi Solusi Korporasi", rows: 3, maxLength: 400, help: "Teks di bawah judul Solusi Korporasi pada Section 02 homepage." },
       { kind: "text", key: "eyebrow", label: "Eyebrow", placeholder: "cth: Cocok untuk Berbagai Usaha", maxLength: 60 },
       {
         kind: "segments",

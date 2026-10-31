@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Info } from "lucide-react";
+import { GoogleAuthButton } from "./GoogleAuthButton";
 
 import {
   registerSchema,
@@ -82,6 +83,7 @@ export function RegisterForm({
       className="space-y-4"
       noValidate
     >
+      <GoogleAuthButton quotationId={quotationId} />
       {quotationId ? (
         <input type="hidden" name="quotationId" value={quotationId} />
       ) : null}

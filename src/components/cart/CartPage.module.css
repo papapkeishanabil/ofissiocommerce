@@ -51,7 +51,7 @@
 .shopLink:hover{border-color:#142766}
 .tabs{gap:6px;border:1px solid #dbe3f1;padding:5px;border-radius:12px;background:#fff;width:fit-content;margin:0 0 24px}
 .tab{min-height:42px;padding:9px 16px;border:0;border-radius:8px;color:#52617d}
-.tab[aria-pressed=true]{background:#142766;color:#fff}
+.tab[aria-pressed=true]{background:var(--customer-action-primary, #142766);color:#fff}
 .tab[aria-pressed=true] .count{background:#ffffff26;color:#fff}
 .count{background:#eff4ff;color:#142766}
 .workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,390px);gap:22px;align-items:start;margin-bottom:24px}
@@ -71,9 +71,9 @@
 .lineBody>dl{justify-self:end}
 .empty{max-width:none;padding:64px 24px;text-align:center;border:1px solid #dbe3f1;border-radius:16px;background:#fff}
 .empty>svg{margin:auto;color:#324382}
-.empty .primary{margin:24px auto 12px;background:#142766;border-radius:10px;min-height:44px}
-.primary{background:#142766;border-radius:10px}
-.primary:hover{background:#10245f}
+.empty .primary{margin:24px auto 12px;background:var(--customer-action-primary, #142766);border-radius:10px;min-height:44px}
+.primary{background:var(--customer-action-primary, #142766);border-radius:10px}
+.primary:hover{background:var(--customer-action-hover, #10245f)}
 @media(max-width:1100px){.workspace{grid-template-columns:minmax(0,1fr) minmax(300px,350px);gap:16px}.lineBody{grid-template-columns:1fr}.linePrice{grid-column:auto;grid-row:auto;text-align:left}.lineBody>dl{justify-self:start}}
 @media(max-width:850px){.workspace{grid-template-columns:1fr}.orderSummary{position:static}.header{align-items:flex-start}.header h1{font-size:25px}.checkoutBar{position:static}.checkoutBar>div:last-child{width:100%}.checkoutBar>div:last-child>*{flex:1}.lineBody{grid-template-columns:minmax(0,1fr) auto}.linePrice{grid-column:2;grid-row:1;text-align:right}.lineBody>dl{justify-self:end}}
 @media(max-width:480px){.header{flex-direction:column;gap:14px}.tabs{width:100%;gap:3px}.tab{flex:1;justify-content:center;padding:9px 7px;font-size:11px}.listHeading{padding:16px}.listHeading h2{font-size:15px}.lineBody{padding:16px;grid-template-columns:1fr}.linePrice{grid-column:auto;grid-row:auto;text-align:left}.lineBody>dl{justify-self:start}.note{padding:16px}.checkoutBar{padding:16px}.checkoutBar>div:last-child{flex-direction:column}.checkoutBar>div:last-child>*{flex:auto}.header p{font-size:13px}}
