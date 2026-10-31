@@ -65,6 +65,7 @@ export default async function Page({ params, searchParams }: PageProps) {
     availableSizes: product.available_sizes,
   });
   const sleeveSizeCharts = resolveSleeveSizeCharts(sizeChartState?.standards ?? [], {
+    sleeveSizeChartIds: product.sleeveSizeChartIds,
     slug: product.slug, gender: product.gender, sizeChartId: product.sizeChartId,
     categorySlugs: product.categorySlugs ?? [], availableSizes: product.available_sizes,
   }, product.variantOptions?.find(option => isSleeveOption(option.name))?.values ?? []);

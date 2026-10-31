@@ -25,6 +25,7 @@ function materialize(id: number, input: WooCommerceProductWritePayload): WooComm
 async function run() {
   woocommerceClient.getAttributes = async () => structuredClone(attributes);
   woocommerceClient.getAttributeTerms = async () => ["Merah", "OS", "men", "women", "unisex", "short", "long"].map((name, index) => ({ id: index + 1, name, slug: name.toLowerCase() }));
+  woocommerceClient.createAttributeTerm = async (_id, input) => ({ id: 9999, name: input.name, slug: input.name.toLowerCase() });
   woocommerceClient.getProductById = async id => structuredClone(products.get(Number(id))!);
   woocommerceClient.getProductVariations = async () => [];
   woocommerceClient.createProduct = async input => {
@@ -33,6 +34,17 @@ async function run() {
   try {
     assert(!adminWooProductPayloadSchema.safeParse({ ...payload, productKind: "simple" }).success, "simple needs a real SKU");
     assert(!adminWooProductPayloadSchema.safeParse({ ...payload, modelCode: "" }).success, "variable needs a model code");
+    const unknown = adminWooProductPayloadSchema.parse({ ...payload, productKind: "simple", sku: "COLOR-UNKNOWN", status: "publish", colors: ["VendorShade"] });
+    const beforeColorCheck = products.size;
+    await assert.rejects(createAdminWooCommerceProduct({ payload: unknown, actorId: "test" }), /Warna VendorShade belum diatur/);
+    assert.equal(products.size, beforeColorCheck, "unknown published color must be rejected before product creation");
+    const draftColor = await createAdminWooCommerceProduct({ payload: { ...unknown, status: "draft", sku: "COLOR-DRAFT" }, actorId: "test" });
+    assert.equal(draftColor.status, "draft", "incomplete colors may be saved as drafts");
+    await assert.rejects(updateAdminWooCommerceProduct({ id: draftColor.id, payload: { ...unknown, sku: "COLOR-DRAFT" }, actorId: "test" }), /Warna VendorShade belum diatur/);
+    const customColor = await createAdminWooCommerceProduct({ payload: { ...unknown, sku: "COLOR-CUSTOM", colorValues: { VendorShade: "#123456" } }, actorId: "test" });
+    assert.deepEqual(customColor.colorValues, { VendorShade: "#123456" }, "custom RGB survives write and admin reload");
+    assert(!adminWooProductPayloadSchema.safeParse({ ...unknown, colorValues: { VendorShade: "rgb(1,2,3)" } }).success);
+    assert(!adminWooProductPayloadSchema.safeParse({ ...unknown, colorValues: { VendorShade: "#123456", VENDORshade: "#abcdef" } }).success, "normalized duplicate RGB keys cannot bypass validation");
     const first = await createAdminWooCommerceProduct({ payload: adminWooProductPayloadSchema.parse({ ...payload, sizeChartId: "sasienala-sn-basic" }), actorId: "test" });
     assert.equal(first.ofissioMeta.sizeChartId, "sasienala-sn-basic", "chosen chart survives write and detail hydration");
     assert.equal(products.get(first.id)?.meta_data?.find(meta => meta.key === "size_chart_id")?.value, "sasienala-sn-basic");
@@ -49,6 +61,24 @@ async function run() {
     const existing = products.get(first.id)!; existing.variations = [42];
     await assert.rejects(updateAdminWooCommerceProduct({ id: first.id, payload: simplePayload, actorId: "test" }), /sudah memiliki varian/);
     assert.equal(existing.type, "variable", "stored variations cannot be silently disabled by changing product kind");
+    const pair = { short: "kemeja-lengan-pendek", long: "kemeja-lengan-panjang" };
+    const pairedInput = adminWooProductPayloadSchema.parse({ ...payload, gender: "men", modelCode: "KK-013", sleeveSizeChartIds: pair });
+    const paired = await createAdminWooCommerceProduct({ payload: pairedInput, actorId: "test" });
+    assert.deepEqual(paired.ofissioMeta.sleeveSizeChartIds, pair, "Both selections survive provider write and admin reload");
+    const countBeforeInvalidPair = products.size;
+    await assert.rejects(createAdminWooCommerceProduct({ payload: { ...pairedInput, sleeveSizeChartIds: { ...pair, long: "sasienala-sn-basic" } }, actorId: "test" }), /standar ukuran/i);
+    assert.equal(products.size, countBeforeInvalidPair, "Wrong-gender selection rejected before write");
+    assert(!adminWooProductPayloadSchema.safeParse({ ...pairedInput, sleeveSizeChartIds: { short: pair.short } }).success, "Both keys required");
+    woocommerceClient.updateProduct = async (id, patch) => {
+      const before = products.get(Number(id))!;
+      const row = { ...before, ...patch, attributes: patch.attributes?.map(a => ({ ...a, name: a.name ?? attributes.find(attr => attr.id === a.id)?.name ?? "", slug: attributes.find(attr => attr.id === a.id)?.slug ?? "" })) ?? before.attributes, meta_data: [...(before.meta_data ?? []).filter(m => !patch.meta_data?.some(n => n.key === m.key)), ...(patch.meta_data ?? [])] } as WooCommerceProduct;
+      products.set(Number(id), row);return structuredClone(row);
+    };
+    const legacyInput = { ...pairedInput, sleeveSizeChartIds: undefined };
+    assert.deepEqual((await updateAdminWooCommerceProduct({ id: paired.id, payload: legacyInput, actorId: "test" })).ofissioMeta.sleeveSizeChartIds, pair, "Older clients do not erase saved settings");
+    const customPair = { short: pair.long, long: pair.long };
+    assert.deepEqual((await updateAdminWooCommerceProduct({ id: paired.id, payload: { ...pairedInput, sleeveSizeChartIds: customPair }, actorId: "test" })).ofissioMeta.sleeveSizeChartIds, customPair, "Custom choices remain explicit after reload");
+    assert.equal((await updateAdminWooCommerceProduct({ id: paired.id, payload: { ...pairedInput, sleeveSizeChartIds: null }, actorId: "test" })).ofissioMeta.sleeveSizeChartIds, undefined, "Switching to one standard can clear the pair");
     console.log("PASS: repeated model codes, unique automatic catalog SKUs, simple direct SKU, required fields and stored-variant conversion protection.");
   } finally { Object.assign(woocommerceClient, original); }
 }

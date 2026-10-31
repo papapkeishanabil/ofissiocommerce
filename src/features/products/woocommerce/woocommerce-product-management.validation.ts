@@ -63,6 +63,10 @@ export const adminWooProductPayloadSchema = z.object({
   materials: stringList,
   gender: z.enum(WOO_GENDERS),
   sizeChartId: z.string().trim().max(60).regex(/^[a-z0-9-]*$/).optional(),
+  sleeveSizeChartIds: z.object({
+    short: z.string().trim().min(1).max(60).regex(/^[a-z0-9-]+$/),
+    long: z.string().trim().min(1).max(60).regex(/^[a-z0-9-]+$/),
+  }).strict().nullable().optional(),
   sleeveType: z.enum(WOO_SLEEVE_TYPES),
   safetyFeatures: stringList,
   moq: z.coerce.number().int().positive().max(1_000_000),

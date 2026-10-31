@@ -75,6 +75,7 @@ export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
     processRoute: string;
     gender: string;
     sizeChartId?: string;
+    sleeveSizeChartIds?: import("../../size-charts/sleeve-size-chart-settings").SleeveSizeChartIds;
     sleeveType: string;
     safetyFeatures: string[];
     quantityPricingEnabled: boolean;

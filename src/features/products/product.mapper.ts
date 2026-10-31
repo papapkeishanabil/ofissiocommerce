@@ -1,4 +1,5 @@
 import { PRODUCT_KIND_META, MODEL_CODE_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, readProductVariants } from "./product-variants";
+import { readSleeveSizeChartIds, SLEEVE_SIZE_CHART_META_KEY } from "../size-charts/sleeve-size-chart-settings";
 import {
   normalizeIndustrySlug,
   slugifyTaxonomy,
@@ -221,6 +222,7 @@ export function mapWooCommerceProductToOfissioProduct(
     available_sizes: availableSizes.length ? availableSizes : DEFAULT_SIZES,
     material,
     sizeChartId: getMetaString(meta, "size_chart_id") || undefined,
+    sleeveSizeChartIds: readSleeveSizeChartIds(getMetaValue(meta, SLEEVE_SIZE_CHART_META_KEY)),
     gender: normalizeEnum(getMetaString(meta, "gender"), ["men", "women", "unisex"], "unisex"),
     sleeve_type: sleeveType,
     usage: normalizeEnum(getMetaString(meta, "usage"), ["indoor", "outdoor", "both"], "both"),

@@ -3,9 +3,12 @@
 import Link from "next/link";
 import type { SizeChartStandard } from "@/features/size-charts/size-chart.types";
 import { defaultSizeChart, selectableSizeCharts, NO_SIZE_CHART } from "@/features/size-charts/size-chart-selection";
+import { defaultSleeveSizeChartIds } from "@/features/size-charts/sleeve-size-chart-settings";
+import { sleeveSizeKey } from "@/features/size-charts/sleeve-size-charts";
+import { ProductSizeChartFields } from "./ProductSizeChartFields";
 import { ProductVariantEditor } from "./ProductVariantEditor";
 import { detachVariantImage, resolveVariantImage } from "../variant-image-references";
-import { productVariantsSchema, isColorOption, isSizeOption, type ProductVariantInput, type VariantOption } from "../product-variants";
+import { productVariantsSchema, isColorOption, isSizeOption, isSleeveOption, type ProductVariantInput, type VariantOption } from "../product-variants";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Box, Calculator, CheckCircle2, FileBox, ImageIcon, Loader2, PackagePlus, Plus, RotateCcw, Save, Settings2, Shirt, SunMedium, Trash2, X } from "lucide-react";
@@ -206,6 +209,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       ...(key === "gender" && current.sizeChartId && current.sizeChartId !== NO_SIZE_CHART &&
         !selectableSizeCharts(sizeChartStandards, value as AdminWooProductInput["gender"]).some(chart => chart.id === current.sizeChartId)
         ? { sizeChartId: "" } : {}),
+      ...(key === "gender" && current.sleeveSizeChartIds && Object.values(current.sleeveSizeChartIds).some(id => id !== NO_SIZE_CHART && !selectableSizeCharts(sizeChartStandards, value as AdminWooProductInput["gender"]).some(chart => chart.id === id)) ? { sleeveSizeChartIds: undefined } : {}),
     }));
 
   const availableSizeCharts = selectableSizeCharts(sizeChartStandards, form.gender);
@@ -214,6 +218,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
     categorySlugs: options.categories.filter(category => form.categoryIds.includes(category.id)).map(category => category.slug),
     slug: form.slug,
   });
+  const sleeveChoices = new Set(genericOptions.find(option => isSleeveOption(option.name))?.values.map(sleeveSizeKey));
+  const hasSleeveSizeVariants = form.productKind === "variable" && sleeveChoices.has("short") && sleeveChoices.has("long");
+  const effectiveSleeveSizeChartIds = form.sleeveSizeChartIds ?? defaultSleeveSizeChartIds(form.sizeChartId || automaticSizeChart?.id);
 
   function setPreviewAdjustment(key: keyof ModelColorAdjustment, value: number) {
     if (variantsEnabled && previewVariant) {
@@ -285,6 +292,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
     setMessage(null);
     try {
       const targetId = workingProductId;
+      const submittedForm = { ...form, sleeveSizeChartIds: hasSleeveSizeVariants ? effectiveSleeveSizeChartIds : null };
       const response = await fetch(
         targetId ? `/api/admin/products/woocommerce/${targetId}` : "/api/admin/products/woocommerce",
         {
@@ -295,10 +303,10 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
             ...MOCK_INTERNAL_HEADERS,
           },
           body: JSON.stringify(form.productKind === "variable" ? {
-            ...form,
+            ...submittedForm,
             colors: genericOptions.find(o => isColorOption(o.name))?.values ?? (form.colors.length ? form.colors : ["Default"]),
             sizes: genericOptions.find(o => isSizeOption(o.name))?.values ?? ["OS"],
-          } : form.productKind === "simple" ? { ...form, colors: form.colors.length ? form.colors : ["Default"], sizes: ["OS"] } : form),
+          } : form.productKind === "simple" ? { ...submittedForm, colors: form.colors.length ? form.colors : ["Default"], sizes: ["OS"] } : submittedForm),
         },
       );
       const payload = (await response.json().catch(() => null)) as ApiProductResponse | null;
@@ -833,15 +841,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
               <option value="unisex">Unisex</option><option value="men">Pria</option><option value="women">Wanita</option>
             </select>
           </Field>
-          <Field label="Standar ukuran">
-            <select aria-label="Standar ukuran" className={INPUT} value={form.sizeChartId ?? ""} onChange={event => set("sizeChartId", event.target.value)}>
-              <option value="">Otomatis — {automaticSizeChart?.name ?? "belum ada standar yang cocok"}</option>
-              {availableSizeCharts.map(chart => <option key={chart.id} value={chart.id}>{chart.name}</option>)}
-              {form.sizeChartId && form.sizeChartId !== NO_SIZE_CHART && !availableSizeCharts.some(chart => chart.id === form.sizeChartId) && <option value={form.sizeChartId} disabled>Standar tidak tersedia untuk gender ini</option>}
-              <option value={NO_SIZE_CHART}>Tanpa panduan ukuran</option>
-            </select>
-            <p className="mt-1 text-xs text-slate-500">Pilihan otomatis mengikuti kategori dan gender. Pilih standar lain untuk menetapkannya khusus pada produk ini.</p>
-          </Field>
+          <ProductSizeChartFields dual={hasSleeveSizeVariants} standards={availableSizeCharts} automaticName={automaticSizeChart?.name}
+            baseId={form.sizeChartId} onBaseChange={value => set("sizeChartId", value)} sleeveIds={effectiveSleeveSizeChartIds}
+            onSleeveChange={(sleeve, value) => set("sleeveSizeChartIds", { ...effectiveSleeveSizeChartIds, [sleeve]: value })} />
           <Field label="Tipe lengan">
             {form.productKind === "variable" && genericOptions.some(o => /^(lengan|tipe lengan|sleeve|sleeve type)$/i.test(o.name.trim())) ? <p className="min-h-11 rounded-lg border border-line bg-slate-50 px-3 py-2 text-sm text-ink">Mengikuti Varian Produk: {genericOptions.find(o => /^(lengan|tipe lengan|sleeve|sleeve type)$/i.test(o.name.trim()))?.values.join(" / ")}</p> : <select className={INPUT} value={form.sleeveType} onChange={(e) => set("sleeveType", e.target.value as AdminWooProductInput["sleeveType"])}>
               <option value="short">Pendek</option><option value="long">Panjang</option>
@@ -1126,6 +1128,7 @@ function initialForm(product?: AdminWooCommerceProductDetail, routeMoqDefaults?:
     materials: findAttribute(attributes, ["material", "bahan"]),
     gender: product?.ofissioMeta.gender === "men" || product?.ofissioMeta.gender === "women" ? product.ofissioMeta.gender : "unisex",
     sizeChartId: product?.ofissioMeta.sizeChartId ?? "",
+    sleeveSizeChartIds: product?.ofissioMeta.sleeveSizeChartIds,
     sleeveType: product?.ofissioMeta.sleeveType === "long" ? "long" : "short",
     safetyFeatures: product?.ofissioMeta.safetyFeatures ?? [],
     moq: product?.ofissioMeta.moq || routeMoqDefaults?.fulfillment || 20,

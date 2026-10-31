@@ -11,6 +11,7 @@ export interface SizeChartProductInput {
   slug?: string;
   gender?: SizeChartGender;
   sizeChartId?: string;
+  sleeveSizeChartIds?: import("./sleeve-size-chart-settings").SleeveSizeChartIds;
   /** Slug kategori WooCommerce produk (cth: ["kemeja", "kemeja-lapangan"]). */
   categorySlugs: readonly string[];
   /** Ukuran yang tersedia untuk produk ini; kosong = tampilkan semua. */

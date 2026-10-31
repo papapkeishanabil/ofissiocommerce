@@ -14,6 +14,10 @@ export function sleeveSizeKey(value: string | undefined) {
 export function resolveSleeveSizeCharts(standards: readonly SizeChartStandard[], product: SizeChartProductInput, sleeveChoices: readonly string[]): SleeveSizeCharts | undefined {
   const choices = new Set(sleeveChoices.map(sleeveSizeKey));
   if (!choices.has("short") || !choices.has("long")) return undefined;
+  if (product.sleeveSizeChartIds) return {
+    short: resolveSizeChart(standards, { ...product, sizeChartId: product.sleeveSizeChartIds.short }),
+    long: resolveSizeChart(standards, { ...product, sizeChartId: product.sleeveSizeChartIds.long }),
+  };
   const base = resolveSizeChart(standards, product);
   if (!base || !["kemeja-lengan-pendek", "kemeja-lengan-panjang"].includes(base.standard.id)) return undefined;
   return {

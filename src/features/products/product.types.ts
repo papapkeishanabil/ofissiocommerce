@@ -42,6 +42,7 @@ export interface OfissioProduct extends Product {
   liveOfferAvailability?: "InStock" | "OutOfStock" | "BackOrder";
   liveVariantAvailability?: Record<string, "InStock" | "OutOfStock" | "BackOrder">;
   sizeChartId?: string;
+  sleeveSizeChartIds?: import("../size-charts/sleeve-size-chart-settings").SleeveSizeChartIds;
   stockVariantsReady?: boolean;
   productKind?: "simple" | "variable";
   modelCode?: string;
