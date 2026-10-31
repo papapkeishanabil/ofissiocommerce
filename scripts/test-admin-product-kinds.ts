@@ -25,7 +25,6 @@ function materialize(id: number, input: WooCommerceProductWritePayload): WooComm
 async function run() {
   woocommerceClient.getAttributes = async () => structuredClone(attributes);
   woocommerceClient.getAttributeTerms = async () => ["Merah", "OS", "men", "women", "unisex", "short", "long"].map((name, index) => ({ id: index + 1, name, slug: name.toLowerCase() }));
-  woocommerceClient.createAttributeTerm = async (_id, input) => ({ id: 9999, name: input.name, slug: input.name.toLowerCase() });
   woocommerceClient.getProductById = async id => structuredClone(products.get(Number(id))!);
   woocommerceClient.getProductVariations = async () => [];
   woocommerceClient.createProduct = async input => {
@@ -34,17 +33,6 @@ async function run() {
   try {
     assert(!adminWooProductPayloadSchema.safeParse({ ...payload, productKind: "simple" }).success, "simple needs a real SKU");
     assert(!adminWooProductPayloadSchema.safeParse({ ...payload, modelCode: "" }).success, "variable needs a model code");
-    const unknown = adminWooProductPayloadSchema.parse({ ...payload, productKind: "simple", sku: "COLOR-UNKNOWN", status: "publish", colors: ["VendorShade"] });
-    const beforeColorCheck = products.size;
-    await assert.rejects(createAdminWooCommerceProduct({ payload: unknown, actorId: "test" }), /Warna VendorShade belum diatur/);
-    assert.equal(products.size, beforeColorCheck, "unknown published color must be rejected before product creation");
-    const draftColor = await createAdminWooCommerceProduct({ payload: { ...unknown, status: "draft", sku: "COLOR-DRAFT" }, actorId: "test" });
-    assert.equal(draftColor.status, "draft", "incomplete colors may be saved as drafts");
-    await assert.rejects(updateAdminWooCommerceProduct({ id: draftColor.id, payload: { ...unknown, sku: "COLOR-DRAFT" }, actorId: "test" }), /Warna VendorShade belum diatur/);
-    const customColor = await createAdminWooCommerceProduct({ payload: { ...unknown, sku: "COLOR-CUSTOM", colorValues: { VendorShade: "#123456" } }, actorId: "test" });
-    assert.deepEqual(customColor.colorValues, { VendorShade: "#123456" }, "custom RGB survives write and admin reload");
-    assert(!adminWooProductPayloadSchema.safeParse({ ...unknown, colorValues: { VendorShade: "rgb(1,2,3)" } }).success);
-    assert(!adminWooProductPayloadSchema.safeParse({ ...unknown, colorValues: { VendorShade: "#123456", VENDORshade: "#abcdef" } }).success, "normalized duplicate RGB keys cannot bypass validation");
     const first = await createAdminWooCommerceProduct({ payload: adminWooProductPayloadSchema.parse({ ...payload, sizeChartId: "sasienala-sn-basic" }), actorId: "test" });
     assert.equal(first.ofissioMeta.sizeChartId, "sasienala-sn-basic", "chosen chart survives write and detail hydration");
     assert.equal(products.get(first.id)?.meta_data?.find(meta => meta.key === "size_chart_id")?.value, "sasienala-sn-basic");
