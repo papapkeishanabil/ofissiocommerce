@@ -41,6 +41,30 @@ export type AuthTokens = {
   expiresIn: number;
 };
 
+export async function exchangeGoogleCode(code: string, verifier: string, quotationId?: string) {
+  const config = requireSupabaseAuthConfig();
+  const response = await safeFetch(`${config.url}/auth/v1/token?grant_type=pkce`, {
+    method: "POST",
+    headers: authHeaders(config.anonKey),
+    body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
+  });
+  if (!response.ok) throw createApiError("UNAUTHORIZED", "Sesi Google tidak valid. Silakan coba lagi.", 401);
+  const payload = await response.json();
+  const tokens = tokensFromPayload(payload);
+  const user = tokens ? await getUserByAccessToken(config.url, config.anonKey, tokens.accessToken) : null;
+  if (!tokens || !user?.email || !user.email_confirmed_at) {
+    throw createApiError("UNAUTHORIZED", "Email Google belum terverifikasi.", 401);
+  }
+  const client = getSupabaseAdminClient()!;
+  const internal = await client.select<Record<string, unknown>>("internal_user_profiles", {
+    filters: { auth_user_id: user.id }, limit: 1,
+  });
+  if (internal.length) throw createApiError("FORBIDDEN", "Gunakan halaman masuk internal untuk akun ini.", 403);
+  if (quotationId) await resolveQuotationRegistrationTarget(quotationId, user.email);
+  await repairCustomerRegistration(user, quotationId);
+  return { tokens, session: await resolveSafeSession(user) };
+}
+
 export async function signInWithSupabase(
   email: string,
   password: string,
