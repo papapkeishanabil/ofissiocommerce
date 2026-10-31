@@ -12,6 +12,7 @@ import { logAuditEvent } from "@/lib/security/audit-log";
 import {
   createApiError,
   safeErrorResponse,
+  toPublicErrorMessage,
 } from "@/lib/security/safe-error-response";
 import {
   createRateLimitKey,
@@ -76,12 +77,18 @@ export async function POST(request: Request, context: RouteContext) {
     const files = form
       .getAll("files")
       .filter((value): value is File => value instanceof File && value.size > 0);
+    const retained = form.get("retainedImages");
+    const retainedImages = retained === null ? undefined : validateInput(
+      adminProductImagesPatchSchema,
+      { images: typeof retained === "string" ? JSON.parse(retained) : null },
+    ).images;
     if (files.length === 0) {
       throw createApiError("VALIDATION_ERROR", "Pilih foto produk.", 400);
     }
     const result = await uploadAdminProductImages({
       productId: id,
       files,
+      retainedImages,
       actorId: actor.id,
       request,
     });
@@ -95,7 +102,7 @@ export async function POST(request: Request, context: RouteContext) {
         action: "product_image_upload_failed",
         entityType: "product",
         entityId: productId == null ? null : String(productId),
-        metadata: { reason: "request_rejected" },
+        metadata: { reason: "request_rejected", message: toPublicErrorMessage(error) },
       });
     }
     return safeErrorResponse(error, "Foto produk belum dapat diunggah.", 400);

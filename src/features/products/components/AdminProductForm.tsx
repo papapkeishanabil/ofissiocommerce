@@ -262,7 +262,13 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
     }
     if (form.productKind === "variable") {
       const parsed = productVariantsSchema.safeParse({ options: genericOptions, variants: genericVariants, defaultVariantSku: defaultGenericSku });
-      if (!parsed.success) { setMessage({ tone: "error", text: parsed.error.issues[0]?.message || "Lengkapi varian produk." }); return; }
+      if (!parsed.success) {
+        setMessage({ tone: "error", text: parsed.error.issues[0]?.message || "Lengkapi varian produk." });
+        const section = document.getElementById("product-variants");
+        section?.focus({ preventScroll: true });
+        section?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
       const missingPhoto = genericVariants.find(row => row.imageSrc && !variantImages.some(image => image.src === resolveVariantImage(row.imageSrc, resolvedVariantImages.current)));
       if (missingPhoto) { setMessage({ tone: "error", text: `Foto untuk ${missingPhoto.sku} sudah tidak ada di galeri. Pilih foto pengganti di Varian Produk atau pilih Gunakan foto utama, lalu terapkan ke semua ukuran. Produk belum disimpan.` }); return; }
     }
@@ -325,13 +331,17 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         if (savedImages) {
           set("imageUrls", savedImages.map((image) => image.src));
         }
-      } catch {
-        uploadWarnings.push("foto gagal diupload");
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "Foto belum dapat disimpan.";
+        uploadWarnings.push(`foto belum tersimpan: ${reason}`);
+        if (form.productKind === "variable" || (!form.productKind && (variantsEnabled || product?.colorVariantsEnabled || saved.colorVariantsEnabled))) {
+          variantsFailed = true;
+          uploadWarnings.push("varian belum disimpan karena menunggu foto");
+        }
       }
 
-      if (form.productKind === "variable") {
+      if (form.productKind === "variable" && !variantsFailed) {
         try {
-          if (uploadWarnings.length) throw new Error("Foto belum berhasil disimpan. Simpan kembali setelah upload berhasil.");
           const variants = genericVariants.map(row => ({ ...row, imageSrc: resolveVariantImage(row.imageSrc, resolvedVariantImages.current) }));
           setGenericVariants(variants);
           const response = await fetch(`/api/admin/products/woocommerce/${saved.id}/variants`, {
@@ -346,9 +356,8 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
           uploadWarnings.push(`varian gagal: ${error instanceof Error ? error.message : "Simpan ulang varian."}`);
         }
       }
-      if (!form.productKind && (variantsEnabled || product?.colorVariantsEnabled || saved.colorVariantsEnabled)) {
+      if (!form.productKind && !variantsFailed && (variantsEnabled || product?.colorVariantsEnabled || saved.colorVariantsEnabled)) {
         try {
-          if (uploadWarnings.length) throw new Error("Foto belum berhasil disimpan. Simpan kembali setelah upload foto berhasil.");
           const variants = variantsEnabled ? visibleVariants.map((variant) => ({ ...variant, imageSrc: resolvedVariantImages.current[variant.imageSrc] ?? variant.imageSrc })) : [];
           // Preserve uploaded photo references even if the provider rejects a SKU.
           setVariantDrafts(variants);
@@ -433,7 +442,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       if (uploadWarnings.length > 0) {
         setMessage({
           tone: "warning",
-          text: `Produk berhasil disimpan, tetapi ${uploadWarnings.join(" dan ")}. Anda dapat retry dari halaman edit.`,
+          text: `Data utama produk tersimpan, tetapi ${uploadWarnings.join("; ")}. Periksa bagian Foto Produk, lalu klik Simpan Perubahan lagi.`,
         });
       } else if (readiness.isVisibleInOfissio) {
         setMessage({
@@ -711,9 +720,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         </details>
       </FormSection>
 
-      {form.productKind === "variable" && <FormSection icon={Shirt} title="Varian Produk" description="Atur pilihan produk beserta SKU, foto, dan harga yang sesuai.">
+      {form.productKind === "variable" && <div id="product-variants" tabIndex={-1} className="scroll-mt-28"><FormSection icon={Shirt} title="Varian Produk" description="Atur pilihan produk beserta SKU, foto, dan harga yang sesuai.">
         <ProductVariantEditor options={genericOptions} onOptionsChange={setGenericOptions} variants={genericVariants} onChange={setGenericVariants} images={variantImages} regularPrice={form.regularPrice} modelCode={form.modelCode} defaultSku={defaultGenericSku} onDefaultChange={setDefaultGenericSku} disabled={busy} />
-      </FormSection>}
+      </FormSection></div>}
       {!form.productKind && <div id="color-variants" className="scroll-mt-28">
         <FormSection icon={Shirt} title="Varian Warna" description="Pasangkan setiap warna dengan SKU dan foto yang sesuai.">
           <ColorVariantEditor
