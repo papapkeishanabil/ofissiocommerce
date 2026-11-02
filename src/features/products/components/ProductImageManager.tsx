@@ -132,6 +132,9 @@ export const ProductImageManager = forwardRef<
         });
         const formData = new FormData();
         pending.forEach((item) => formData.append("files", item.file));
+        // Send the gallery after local removals; the server keeps old photos
+        // until the replacement uploads succeed, and counts only the final set.
+        formData.set("retainedImages", JSON.stringify(currentRemoteImages(items)));
         const uploadResponse = await fetch(
           `/api/admin/products/woocommerce/${targetProductId}/images`,
           {

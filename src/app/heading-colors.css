@@ -1,0 +1,22 @@
+/* Brand headings only: keep body copy, controls and semantic colors separate. */
+@layer base {
+  .storefront-scope :where(h1, h2, h3, h4, h5, h6) {
+    color: var(--ofissio-heading-color, var(--ofissio-shell-navy));
+  }
+
+  /* Headings inside dark panels retain their existing white foreground. */
+  .storefront-scope .text-white {
+    --ofissio-heading-color: #fff;
+  }
+}
+
+@layer utilities {
+  .storefront-scope :is(h1, h2, h3, h4, h5, h6):is(.text-ink, .text-ink-strong, .text-brand-500, .text-brand-600, .text-brand-700, .text-brand-800, .text-brand-900, .text-brand-950),
+  .storefront-scope :is(h1, h2, h3, h4, h5, h6) :is(.text-ink, .text-ink-strong, .text-brand-500, .text-brand-600, .text-brand-700, .text-brand-800, .text-brand-900, .text-brand-950) {
+    color: var(--ofissio-shell-navy);
+  }
+}
+
+.storefront-scope .rich-text :is(h2, h3, h4) {
+  color: var(--ofissio-shell-navy);
+}

@@ -272,3 +272,6 @@
 .viewerHint { background:#142766;color:#fff; }
 @media(min-width:1024px) { .rail { padding:18px 14px;border-right:1px solid #e5eaf4; } .stage { border-top-right-radius:16px; } }
 @media(max-width:639px) { .layout { padding:10px;gap:10px; } .panel { padding:16px; } .footer { padding:12px; } .title { font-size:20px; } .breadcrumb { min-height:44px; } }
+
+/* Studio labels used as headings share the storefront navy. */
+.shell :is(h2,h3,h4).label { color:var(--ofissio-shell-navy, #122162); }

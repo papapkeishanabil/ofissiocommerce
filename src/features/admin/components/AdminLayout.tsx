@@ -1,18 +1,11 @@
 import type { ReactNode } from "react";
-import { Onest } from "next/font/google";
+import { adminFont as onest } from "../admin-font";
 
 import { requireInternalAdminServer } from "../admin.service";
 import { AdminHeader } from "./AdminHeader";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminNotificationProvider } from "@/features/admin-notifications/components/AdminNotificationProvider";
 import { AdminStickyNotifications } from "@/features/admin-notifications/components/AdminStickyNotifications";
-
-const onest = Onest({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-admin",
-  display: "swap",
-});
 
 export async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requireInternalAdminServer("admin:view");

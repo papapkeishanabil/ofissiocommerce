@@ -49,6 +49,24 @@ async function run() {
     const existing = products.get(first.id)!; existing.variations = [42];
     await assert.rejects(updateAdminWooCommerceProduct({ id: first.id, payload: simplePayload, actorId: "test" }), /sudah memiliki varian/);
     assert.equal(existing.type, "variable", "stored variations cannot be silently disabled by changing product kind");
+    const pair = { short: "kemeja-lengan-pendek", long: "kemeja-lengan-panjang" };
+    const pairedInput = adminWooProductPayloadSchema.parse({ ...payload, gender: "men", modelCode: "KK-013", sleeveSizeChartIds: pair });
+    const paired = await createAdminWooCommerceProduct({ payload: pairedInput, actorId: "test" });
+    assert.deepEqual(paired.ofissioMeta.sleeveSizeChartIds, pair, "Both selections survive provider write and admin reload");
+    const countBeforeInvalidPair = products.size;
+    await assert.rejects(createAdminWooCommerceProduct({ payload: { ...pairedInput, sleeveSizeChartIds: { ...pair, long: "sasienala-sn-basic" } }, actorId: "test" }), /standar ukuran/i);
+    assert.equal(products.size, countBeforeInvalidPair, "Wrong-gender selection rejected before write");
+    assert(!adminWooProductPayloadSchema.safeParse({ ...pairedInput, sleeveSizeChartIds: { short: pair.short } }).success, "Both keys required");
+    woocommerceClient.updateProduct = async (id, patch) => {
+      const before = products.get(Number(id))!;
+      const row = { ...before, ...patch, attributes: patch.attributes?.map(a => ({ ...a, name: a.name ?? attributes.find(attr => attr.id === a.id)?.name ?? "", slug: attributes.find(attr => attr.id === a.id)?.slug ?? "" })) ?? before.attributes, meta_data: [...(before.meta_data ?? []).filter(m => !patch.meta_data?.some(n => n.key === m.key)), ...(patch.meta_data ?? [])] } as WooCommerceProduct;
+      products.set(Number(id), row);return structuredClone(row);
+    };
+    const legacyInput = { ...pairedInput, sleeveSizeChartIds: undefined };
+    assert.deepEqual((await updateAdminWooCommerceProduct({ id: paired.id, payload: legacyInput, actorId: "test" })).ofissioMeta.sleeveSizeChartIds, pair, "Older clients do not erase saved settings");
+    const customPair = { short: pair.long, long: pair.long };
+    assert.deepEqual((await updateAdminWooCommerceProduct({ id: paired.id, payload: { ...pairedInput, sleeveSizeChartIds: customPair }, actorId: "test" })).ofissioMeta.sleeveSizeChartIds, customPair, "Custom choices remain explicit after reload");
+    assert.equal((await updateAdminWooCommerceProduct({ id: paired.id, payload: { ...pairedInput, sleeveSizeChartIds: null }, actorId: "test" })).ofissioMeta.sleeveSizeChartIds, undefined, "Switching to one standard can clear the pair");
     console.log("PASS: repeated model codes, unique automatic catalog SKUs, simple direct SKU, required fields and stored-variant conversion protection.");
   } finally { Object.assign(woocommerceClient, original); }
 }

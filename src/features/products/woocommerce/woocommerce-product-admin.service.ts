@@ -1,5 +1,6 @@
 import "server-only";
 import { getSizeChartStandards } from "@/features/size-charts/size-chart.service";
+import { readSleeveSizeChartIds, SLEEVE_SIZE_CHART_META_KEY } from "@/features/size-charts/sleeve-size-chart-settings";
 import { selectableSizeCharts, NO_SIZE_CHART, SIZE_CHART_META_KEY } from "@/features/size-charts/size-chart-selection";
 import { randomUUID } from "node:crypto";
 import { PRODUCT_KIND_META, MODEL_CODE_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, readProductVariants, mapLegacyProductVariants } from "../product-variants";
@@ -48,9 +49,10 @@ import type { AdminWooQuantityPricingPayload } from "./woocommerce-product-manag
 const ADMIN_PAGE_SIZE = 100;
 
 async function validateSelectedSizeChart(payload: AdminWooProductPayload) {
-  if (!payload.sizeChartId || payload.sizeChartId === NO_SIZE_CHART) return;
+  const ids = (payload.sleeveSizeChartIds ? Object.values(payload.sleeveSizeChartIds) : [payload.sizeChartId]).filter((id): id is string => Boolean(id) && id !== NO_SIZE_CHART);
+  if (!ids.length) return;
   const { standards } = await getSizeChartStandards();
-  if (!selectableSizeCharts(standards, payload.gender).some(standard => standard.id === payload.sizeChartId)) {
+  if (ids.some(id => !selectableSizeCharts(standards, payload.gender).some(standard => standard.id === id))) {
     throw createApiError("VALIDATION_ERROR", "Standar ukuran tidak tersedia atau tidak sesuai dengan gender produk.", 400);
   }
 }
@@ -194,6 +196,7 @@ export async function getAdminWooCommerceProduct(
       processRoute: getMetaString(meta, "process_route") || "fulfillment",
       gender: getMetaString(meta, "gender") || "unisex",
       sizeChartId: getMetaString(meta, SIZE_CHART_META_KEY) || undefined,
+      sleeveSizeChartIds: readSleeveSizeChartIds(getMetaValue(meta, SLEEVE_SIZE_CHART_META_KEY)),
       sleeveType: getMetaString(meta, "sleeve_type") || "short",
       safetyFeatures: getMetaStringArray(meta, "safety_features"),
       quantityPricingEnabled: quantityPricing.enabled,
@@ -433,6 +436,7 @@ function buildWritePayload(
   ];
 
   if (payload.sizeChartId !== undefined) entries.push([SIZE_CHART_META_KEY, payload.sizeChartId]);
+  if (payload.sleeveSizeChartIds !== undefined) entries.push([SLEEVE_SIZE_CHART_META_KEY, JSON.stringify(payload.sleeveSizeChartIds)]);
 
   if (payload.productKind) {
     entries.push([PRODUCT_KIND_META, payload.productKind], [MODEL_CODE_META, payload.modelCode ?? ""],

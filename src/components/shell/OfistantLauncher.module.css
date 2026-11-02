@@ -9,7 +9,7 @@
   padding: 0 13px 0 10px;
   border: 1px solid rgb(255 255 255 / 15%);
   border-radius: 999px;
-  background: #10245f;
+  background: var(--ofissio-shell-navy);
   color: #fff;
   box-shadow: 0 3px 10px rgb(16 36 95 / 18%);
   font-size: 13px;

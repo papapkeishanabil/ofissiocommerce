@@ -12,7 +12,7 @@ import {
 } from "@/lib/security/upload-security";
 
 import type { AdminProductImage } from "./woocommerce-product-admin.types";
-import type { WooCommerceImage } from "./woocommerce.types";
+import type { WooCommerceImage, WooCommerceProduct, WooCommerceProductWritePayload } from "./woocommerce.types";
 import {
   PRODUCT_IMAGE_EXTENSIONS,
   PRODUCT_IMAGE_MAX_COUNT,
@@ -38,7 +38,7 @@ export async function listAdminProductImages(productId: number) {
 }
 
 export async function uploadAdminProductImages(
-  input: ProductImageActorInput & { files: File[] },
+  input: ProductImageActorInput & { files: File[]; retainedImages?: AdminProductImagesPatch["images"] },
 ) {
   const product = await woocommerceClient.getProductById(input.productId);
   const sku = product.sku?.trim();
@@ -54,7 +54,8 @@ export async function uploadAdminProductImages(
   }
 
   const current = normalizeImages(product.images ?? [], product.name);
-  if (current.length + input.files.length > PRODUCT_IMAGE_MAX_COUNT) {
+  const retained = input.retainedImages === undefined ? current : resolveGalleryReferences(current, input.retainedImages);
+  if (retained.length + input.files.length > PRODUCT_IMAGE_MAX_COUNT) {
     throw createApiError(
       "VALIDATION_ERROR",
       `Maksimal ${PRODUCT_IMAGE_MAX_COUNT} foto per produk.`,
@@ -125,7 +126,7 @@ export async function uploadAdminProductImages(
         nextUploadIndex += 1;
         const validated = validatedFiles[index];
         if (!validated) return;
-        const position = current.length + index;
+        const position = retained.length + index;
         const title = `${sku} ${
           position === 0 ? "main image" : `gallery image ${position}`
         }`;
@@ -162,22 +163,12 @@ export async function uploadAdminProductImages(
     await Promise.all(Array.from({ length: workerCount }, () => uploadWorker()));
     uploadedImages.push(...uploadResults);
 
-    const nextImages = [...current, ...uploadedImages];
-    const fallbackUsed = await updateWooProductImagesWithFallback(
-      input.productId,
-      nextImages,
-      new Set(uploadedImages.flatMap((image) => (image.id ? [image.id] : []))),
-    );
-    logImageAudit("product_images_updated", input, {
-      imageCount: nextImages.length,
-      uploadedCount: uploadedImages.length,
-      wordpressSourceFallback: fallbackUsed,
-    });
+    const nextImages = [...retained, ...uploadedImages];
+    const persisted = await persistGallery(input, product, current, nextImages,
+      new Set(uploadedImages.flatMap(image => image.id ? [image.id] : [])));
     return {
-      images: fallbackUsed
-        ? await listAdminProductImages(input.productId)
-        : nextImages,
-      uploadedImages,
+      images: persisted.images,
+      uploadedImages: persisted.images.slice(retained.length),
     };
   } catch (error) {
     logImageAudit("product_images_update_failed", input, {
@@ -201,83 +192,97 @@ export async function updateAdminProductImages(
   const product = await woocommerceClient.getProductById(input.productId);
   const current = normalizeImages(product.images ?? [], product.name);
   try {
-    const next = input.payload.images.map((submitted) => {
-      const matching = current.find(
-        (image) =>
-          (submitted.id != null && image.id === submitted.id) ||
-          image.src === submitted.src,
-      );
-      if (!matching || matching.src !== submitted.src) {
-        throw createApiError(
-          "VALIDATION_ERROR",
-          "Daftar foto berisi referensi yang tidak dikenal.",
-          400,
-        );
-      }
-      return {
-        ...matching,
-        name: submitted.name?.trim() || matching.name,
-        alt: submitted.alt?.trim() || matching.alt,
-      };
-    });
-
-    const currentOrder = current.map(imageKey);
-    const nextOrder = next.map(imageKey);
-    const removed = current.filter((image) => !nextOrder.includes(imageKey(image)));
-    const primaryChanged = currentOrder[0] !== nextOrder[0];
-    const reordered =
-      currentOrder.filter((key) => nextOrder.includes(key)).join("|") !==
-      nextOrder.filter((key) => currentOrder.includes(key)).join("|");
-
-    // Save Photo Products is also usable independently of the main form.
-    // Move references first, so deleting a gallery entry never leaves a native
-    // variation pointing at a removed photo after a successful gallery save.
-    const variants = product.type === "variable" && removed.length
-      ? await listColorVariationRows(product.id) : [];
-    const affected = variants.filter(row => row.status === "publish" && row.image?.src && !next.some(image => image.id === row.image?.id || image.src === row.image?.src));
-    if (affected.length && !next[0]) throw createApiError("VALIDATION_ERROR", "Foto masih dipakai varian. Tambahkan foto pengganti sebelum menghapus foto terakhir.", 400);
-    for (const row of affected) {
-      const primary = next[0]!;
-      await woocommerceClient.updateProductVariation(product.id, row.id, {
-        attributes: row.attributes ?? [], image: toWooWriteImage(primary),
-        ...(getMetaBoolean(row.meta_data ?? [], GENERIC_VARIANT_MARKER, false)
-          ? { meta_data: [{ key: "ofissio_variant_inherit_image", value: "1" }] } : {}),
-      });
-    }
-    let storedVariants = readProductVariants(getMetaValue(product.meta_data ?? [], GENERIC_VARIANTS_META));
-    for (const row of affected) storedVariants = detachVariantImage(storedVariants, row.image!.src);
-
-    await woocommerceClient.updateProduct(input.productId, {
-      images: next.map(toWooWriteImage),
-      ...(affected.length ? { meta_data: [{ key: GENERIC_VARIANTS_META, value: storedVariants }] } : {}),
-    });
-    if (removed.length > 0) {
-      logImageAudit("product_image_removed", input, {
-        removedCount: removed.length,
-      });
-    }
-    if (primaryChanged) {
-      logImageAudit("product_primary_image_changed", input, {
-        hasPrimaryImage: next.length > 0,
-      });
-    }
-    if (reordered) {
-      logImageAudit("product_images_reordered", input, {
-        imageCount: next.length,
-      });
-    }
-    logImageAudit("product_images_updated", input, {
-      imageCount: next.length,
-    });
-    return {
-      images: next,
-    };
+    const next = resolveGalleryReferences(current, input.payload.images);
+    return await persistGallery(input, product, current, next);
   } catch (error) {
     logImageAudit("product_images_update_failed", input, {
       reason: "validation_or_woocommerce_error",
     });
     throw error;
   }
+}
+
+function resolveGalleryReferences(current: AdminProductImage[], submittedImages: AdminProductImagesPatch["images"]) {
+  const next = submittedImages.map((submitted) => {
+    const matching = current.find(
+      (image) =>
+        (submitted.id != null && image.id === submitted.id) ||
+        image.src === submitted.src,
+    );
+    if (!matching || matching.src !== submitted.src) {
+      throw createApiError(
+        "VALIDATION_ERROR",
+        "Daftar foto berisi referensi yang tidak dikenal.",
+        400,
+      );
+    }
+    return {
+      ...matching,
+      name: submitted.name?.trim() || matching.name,
+      alt: submitted.alt?.trim() || matching.alt,
+    };
+  });
+  if (new Set(next.map(imageKey)).size !== next.length) throw createApiError("VALIDATION_ERROR", "Daftar foto tidak boleh berulang.", 400);
+  return next;
+}
+
+async function persistGallery(input: ProductImageActorInput, product: WooCommerceProduct, current: AdminProductImage[], next: AdminProductImage[], uploadedIds = new Set<number>()) {
+  const currentOrder = current.map(imageKey);
+  const nextOrder = next.map(imageKey);
+  const removed = current.filter((image) => !nextOrder.includes(imageKey(image)));
+  const primaryChanged = currentOrder[0] !== nextOrder[0];
+  const reordered =
+    currentOrder.filter((key) => nextOrder.includes(key)).join("|") !==
+    nextOrder.filter((key) => currentOrder.includes(key)).join("|");
+
+  // Save Photo Products is also usable independently of the main form.
+  // Move references first, so deleting a gallery entry never leaves a native
+  // variation pointing at a removed photo after a successful gallery save.
+  const variants = product.type === "variable" && removed.length
+    ? await listColorVariationRows(product.id) : [];
+  const affected = variants.filter(row => row.status === "publish" && row.image?.src && !next.some(image => image.id === row.image?.id || image.src === row.image?.src));
+  if (affected.length && !next[0]) throw createApiError("VALIDATION_ERROR", "Foto masih dipakai varian. Tambahkan foto pengganti sebelum menghapus foto terakhir.", 400);
+  for (const row of affected) {
+    const primary = next[0]!;
+    await woocommerceClient.updateProductVariation(product.id, row.id, {
+      attributes: row.attributes ?? [], image: toWooWriteImage(primary),
+      ...(getMetaBoolean(row.meta_data ?? [], GENERIC_VARIANT_MARKER, false)
+        ? { meta_data: [{ key: "ofissio_variant_inherit_image", value: "1" }] } : {}),
+    });
+  }
+  let storedVariants = readProductVariants(getMetaValue(product.meta_data ?? [], GENERIC_VARIANTS_META));
+  for (const row of affected) storedVariants = detachVariantImage(storedVariants, row.image!.src);
+
+  const metaData = affected.length ? [{ key: GENERIC_VARIANTS_META, value: storedVariants }] : undefined;
+  let fallbackUsed = false;
+  if (uploadedIds.size > 0) {
+    fallbackUsed = await updateWooProductImagesWithFallback(input.productId, next, uploadedIds, metaData);
+  } else {
+    await woocommerceClient.updateProduct(input.productId, {
+      images: next.map(toWooWriteImage), ...(metaData ? { meta_data: metaData } : {}),
+    });
+  }
+  if (removed.length > 0) {
+    logImageAudit("product_image_removed", input, {
+      removedCount: removed.length,
+    });
+  }
+  if (primaryChanged) {
+    logImageAudit("product_primary_image_changed", input, {
+      hasPrimaryImage: next.length > 0,
+    });
+  }
+  if (reordered) {
+    logImageAudit("product_images_reordered", input, {
+      imageCount: next.length,
+    });
+  }
+  logImageAudit("product_images_updated", input, {
+    imageCount: next.length, uploadedCount: uploadedIds.size, wordpressSourceFallback: fallbackUsed,
+  });
+  return {
+    images: fallbackUsed ? await listAdminProductImages(input.productId) : next,
+  };
 }
 
 function normalizeImages(images: WooCommerceImage[], productName: string) {
@@ -314,11 +319,13 @@ async function updateWooProductImagesWithFallback(
   productId: number,
   images: AdminProductImage[],
   newlyUploadedMediaIds: Set<number>,
+  metaData?: WooCommerceProductWritePayload["meta_data"],
 ) {
   const mediaBaseUrl = getWordPressMediaRuntimeConfig().baseUrl;
   try {
     await woocommerceClient.updateProduct(productId, {
       images: images.map(toWooWriteImage),
+      ...(metaData ? { meta_data: metaData } : {}),
     });
     return false;
   } catch {
@@ -332,6 +339,7 @@ async function updateWooProductImagesWithFallback(
             }
           : toWooWriteImage(image),
       ),
+      ...(metaData ? { meta_data: metaData } : {}),
     });
     return true;
   }

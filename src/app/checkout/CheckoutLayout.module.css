@@ -1,0 +1,7 @@
+/* Match the cart's canvas and white surfaces within checkout only. */
+.shell {
+  --color-surface: #fff;
+  --color-surface-muted: #eff4ff;
+  --color-cool-50: #f5f7ff;
+  background-color: #eef2fb;
+}

@@ -36,6 +36,7 @@ export interface CartLineItem {
   model3dId?: string;
   model3dUrl?: string;
   canAddEmbroidery?: boolean;
+  colorValues?: Record<string, string>;
   color: string;
   selectedSleeve?: string;
   selectedOptions?: Record<string, string>;

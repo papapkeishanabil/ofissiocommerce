@@ -4,7 +4,7 @@
 .breadcrumb { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; color: #53647b; font-size: 13px; }
 .breadcrumb a { padding: 8px 0; text-underline-offset: 4px; }
 .breadcrumb a:hover { text-decoration: underline; }
-.hero { display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; gap: 32px; padding: 24px 28px; border-radius: 12px; background: #091d39; color: #fff; }
+.hero { --ofissio-heading-color: #fff; display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; gap: 32px; padding: 24px 28px; border-radius: 12px; background: #091d39; color: #fff; }
 .heroCopy h1 { margin: 0; font-size: clamp(25px, 2.6cqi, 36px); font-weight: 750; letter-spacing: -.035em; line-height: 1.2; }
 .heroCopy h1 span { color: #f0bc56; }
 .heroCopy > p { margin: 10px 0 0; color: #c5d3e5; font-size: 14px; line-height: 1.8; }

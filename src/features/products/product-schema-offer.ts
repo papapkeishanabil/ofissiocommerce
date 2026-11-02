@@ -28,6 +28,17 @@ export function uniformLiveOfferAvailability(product: WooCommerceProduct, rows?:
   }
 }
 
+/** Only native, published variation statuses may describe an individual SKU. */
+export function liveVariantAvailability(rows: readonly WooCommerceProductVariation[]): NonNullable<WooCommerceProduct["liveVariantAvailability"]> {
+  const statuses: NonNullable<WooCommerceProduct["liveVariantAvailability"]> = {};
+  for (const row of rows) {
+    if (row.status !== "publish") continue;
+    const value = row.stock_status === "instock" ? "InStock" : row.stock_status === "outofstock" ? "OutOfStock" : row.stock_status === "onbackorder" ? "BackOrder" : undefined;
+    if (value) statuses[String(row.id)] = value;
+  }
+  return statuses;
+}
+
 /** No stock assertion, bulk discount, quote, or variant-specific price is invented. */
 export function structuredOfferPrice(product: OfissioProduct) {
   const price = product.liveOfferPrice;

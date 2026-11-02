@@ -1,5 +1,5 @@
 import "server-only";
-import { uniformLiveOfferPrice, uniformLiveOfferAvailability } from "../product-schema-offer";
+import { uniformLiveOfferPrice, uniformLiveOfferAvailability, liveVariantAvailability } from "../product-schema-offer";
 import { PRODUCT_KIND_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, mapProductVariants } from "../product-variants";
 import { mapPurchaseVariants, PURCHASE_VARIANTS_META } from "../purchase-variants";
 import { COLOR_SIZE_ENABLED_META, COLOR_SIZE_ROWS_META, mapNativeColorSizeVariants } from "../color-size-variants";
@@ -36,7 +36,7 @@ export async function withLiveColorVariants(product: WooCommerceProduct, source:
     const options = readVariantOptions(getMetaValue(product.meta_data ?? [], VARIANT_OPTIONS_META));
     const rows = await listColorVariationRows(product.id, source);
     const variants = mapProductVariants(rows, options).map(row => ({ ...row, imageSrc: toProxiedWordPressMediaUrl(row.imageSrc, process.env.WORDPRESS_MEDIA_BASE_URL?.trim() ?? "") }));
-    return { ...product, liveOfferPrice: uniformLiveOfferPrice(product, rows), liveOfferAvailability: uniformLiveOfferAvailability(product, rows), meta_data: [...(product.meta_data ?? []).filter(row => row.key !== GENERIC_VARIANTS_META), { key: GENERIC_VARIANTS_META, value: variants }] };
+    return { ...product, liveVariantAvailability: liveVariantAvailability(rows), liveOfferPrice: uniformLiveOfferPrice(product, rows), liveOfferAvailability: uniformLiveOfferAvailability(product, rows), meta_data: [...(product.meta_data ?? []).filter(row => row.key !== GENERIC_VARIANTS_META), { key: GENERIC_VARIANTS_META, value: variants }] };
   }
   if (!getMetaBoolean(product.meta_data ?? [], COLOR_VARIANTS_ENABLED_META, false)) {
     if (product.type !== "variable") return { ...product, liveOfferPrice: uniformLiveOfferPrice(product), liveOfferAvailability: uniformLiveOfferAvailability(product) };

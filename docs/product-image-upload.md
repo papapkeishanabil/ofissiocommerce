@@ -63,13 +63,22 @@ Foto pertama menjadi gambar utama kartu katalog. Foto berikutnya menjadi gallery
 ## API internal
 
 - `GET /api/admin/products/woocommerce/[id]/images`
-- `POST /api/admin/products/woocommerce/[id]/images` dengan multipart field `files`
+- `POST /api/admin/products/woocommerce/[id]/images` dengan multipart field `files` dan opsional `retainedImages` (JSON daftar foto lama yang dipertahankan).
 - `PATCH /api/admin/products/woocommerce/[id]/images` dengan urutan image terbaru
 
 Semua endpoint memakai internal admin guard, permission `admin:catalog:view` atau `admin:catalog:update`, rate limit, validasi, safe error, dan audit log. Customer, anonymous, serta role tanpa `admin:catalog:update` tidak dapat upload.
 
+## Mengganti banyak foto sekaligus
+
+Form mengirim foto lama yang masih dipertahankan bersama unggahan baru. Batas 20 dihitung dari galeri akhir, sehingga mengganti 13 foto lama dengan 11 foto baru menghasilkan 11 foto, bukan 24. Server memvalidasi referensi foto sebelum upload; foto lama tetap terpasang sampai unggahan pengganti selesai. Referensi foto varian yang dihapus dialihkan ke foto utama dengan SKU, stok, dan harga tetap dipertahankan. Klien lama tanpa `retainedImages` tetap memakai perilaku menambah foto.
+
+Jika penyimpanan foto gagal, notifikasi form menampilkan alasan dari API, varian belum dikirim, dan file yang belum terunggah tetap tersedia untuk dicoba lagi pada halaman yang sama. Jangan menutup atau memuat ulang halaman sebelum mencoba kembali. Audit penolakan upload menyimpan pesan aman dari API agar penyebab dapat ditelusuri.
+
+Regresi: `npx tsx --require ./scripts/register-server-only.cjs scripts/test-product-image-replacement.ts`, `npx tsx --require ./scripts/register-server-only.cjs scripts/test-variant-gallery.ts`, dan `python scripts/webtest-image-replacement.py` (dev server lokal pada port 8000; seluruh API browser dimock).
+
 ## Troubleshooting
 
+- **Kombinasi varian belum dibuat:** produk berjenis Dengan varian memerlukan kombinasi beserta SKU stok. Lengkapi pilihan pada Varian Produk, klik **Buat / perbarui kombinasi**, isi SKU, lalu pilih varian yang tampil pertama. Untuk stok per ukuran, sertakan pilihan Ukuran. Form menghentikan simpan sebelum penulisan data dan mengarahkan fokus ke editor; tidak membuat atau mengganti SKU otomatis. Untuk menyimpan foto secara terpisah, gunakan **Simpan Foto Produk**.
 - **Upload 401/403:** pastikan user WordPress memiliki permission upload media dan Application Password masih aktif.
 - **Endpoint tidak ditemukan:** cek `WORDPRESS_MEDIA_BASE_URL` dan permalink/REST API WordPress.
 - **Foto tidak tampil:** cek Media Library dan array `images` pada produk WooCommerce.

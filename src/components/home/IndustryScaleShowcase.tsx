@@ -71,7 +71,7 @@ function MiniIndustry({ tile, data }: { tile: IndustriTile; data: IndustriSectio
         {photo ? <Image src={photo} alt={`Seragam ${tile.label}`} fill unoptimized sizes="(max-width: 1024px) 55vw, 18vw" style={frameFor(tile.industry, data, "card")} /> : null}
       </div>
       <div className="flex flex-col justify-center p-5">
-        <Icon className="h-7 w-7 text-ochre-600" strokeWidth={1.6} aria-hidden="true" />
+        <Icon className="h-7 w-7 text-ochre-400" strokeWidth={1.6} aria-hidden="true" />
         <h3 className="mt-3 text-lg font-extrabold leading-[1.05] tracking-[-0.02em] text-brand-950">{compactTitle(tile)}</h3>
         <span className="mt-4 h-px w-10 bg-ochre-500 transition-[width] duration-300 group-hover:w-16" aria-hidden="true" />
       </div>
@@ -92,7 +92,7 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
         <header className="mx-auto max-w-4xl text-center">
           <div className="mb-6"><HomeSectionMarker number="02" label="Bisnis dan Korporasi" align="center" /></div>
           <h2 className="text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-950 sm:text-6xl lg:text-[4rem]">
-            Seragam Profesional untuk <span className="text-ochre-600">Berbagai Usaha.</span>
+            Seragam Profesional untuk <span className="text-ochre-400">Berbagai Usaha.</span>
           </h2>
           <p className="mx-auto mt-5 max-w-[55ch] text-base leading-relaxed text-ink-muted sm:text-lg">{data.lede}</p>
         </header>
@@ -100,7 +100,7 @@ export function IndustryScaleShowcase({ data }: { data: IndustriSectionData }) {
         <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:gap-0">
           <article className="lg:pr-12 xl:pr-16">
             <div className="flex items-center gap-5">
-              <TrendingUp className="h-9 w-9 shrink-0 text-ochre-600" strokeWidth={1.65} aria-hidden="true" />
+              <TrendingUp className="h-9 w-9 shrink-0 text-ochre-400" strokeWidth={1.65} aria-hidden="true" />
               <h3 className="shrink-0 text-2xl font-extrabold tracking-[-0.025em] text-brand-950 sm:text-3xl">Bisnis Naik Kelas</h3>
               <span className="h-px flex-1 bg-ochre-500/70" aria-hidden="true" />
             </div>

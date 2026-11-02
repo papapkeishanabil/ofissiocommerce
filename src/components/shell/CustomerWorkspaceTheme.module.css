@@ -15,3 +15,20 @@
 .theme :global(footer){background:#f4f6f9}
 .theme :global([data-workspace-scroll]>footer){display:none}
 .theme :global([data-workspace-scroll]>footer){display:none}
+
+/* Customer actions share the Ofissio navy without changing storefront themes. */
+.theme.theme.theme:global(.storefront-scope) {
+  --customer-action-primary: var(--ofissio-shell-navy, #122162);
+  --customer-action-hover: #1c327e;
+  --action-primary: var(--customer-action-primary);
+  --action-hover: var(--customer-action-hover);
+}
+.theme.theme.theme :is(button,a,input,select,textarea,summary):focus-visible {
+  outline-color: var(--customer-action-primary);
+}
+.theme.theme.theme :is(button,a):global(.bg-brand-700) {
+  background-color: var(--customer-action-primary);
+}
+.theme.theme.theme :is(button,a):global(.bg-brand-700):hover {
+  background-color: var(--customer-action-hover);
+}

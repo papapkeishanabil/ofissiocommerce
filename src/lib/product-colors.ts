@@ -1,6 +1,61 @@
 import type { CSSProperties } from "react";
 
 const COLOR_SWATCHES: Record<string, string> = {
+  "Army Green": "#535d44",
+  "Hijau Army": "#535d44",
+  "cream khaki": "#e9e1d5",
+  "khaki cream": "#e9e1d5",
+  "khaki krem": "#e9e1d5",
+  "tan": "#bc7f45",
+  "biru dongker": "#1e3a8a",
+  "dongker": "#1e3a8a",
+  "orange": "#f97316",
+  "lime": "#84cc16",
+  "hijau stabilo": "#84cc16",
+  "hijau tua": "#166534",
+  "green": "#16a34a",
+  "biru royal": "#1d4ed8",
+  "blue": "#2563eb",
+  "merah marun": "#7f1d1d",
+  "merah muda": "#f9a8d4",
+  "red": "#dc2626",
+  "dark gray": "#475569",
+  "gray": "#94a3b8",
+  "cream": "#f2e5c4",
+  "coklat": "#92400e",
+  "brown": "#92400e",
+  "purple": "#7e22ce",
+  "toska": "#0d9488",
+  "zaitun": "#4d7c0f",
+  "abu tua": "#555963",
+  "abu asap": "#a1aab6",
+  "abu muda": "#ced2d6",
+  "abu kebiruan": "#879eae",
+  "purple grey": "#aaa0b2",
+  "biru navy": "#24354c",
+  "baby blue": "#a6c5df",
+  "biru aqua": "#68c6d0",
+  "biru benhur": "#2853b8",
+  "biru langit": "#76bce7",
+  "biru muda": "#b1d4e8",
+  "biru wardah": "#61a8bc",
+  "butter yellow": "#f3e5a4",
+  "daisy yellow": "#f1cd54",
+  "kuning mustard": "#bf9528",
+  "lilac": "#c8aed8",
+  "ungu manggis": "#674060",
+  "army": "#535d44",
+  "camel": "#bc7f45",
+  "putih saku": "#f8fafc",
+  "Fuschia": "#da738e",
+  "Fuchsia": "#da738e",
+  "Apricot": "#edb8a7",
+  "Salmon": "#dcaea3",
+  "Dusty Pink": "#bf939b",
+  "Peach": "#dab3ac",
+  "Rose Pink": "#e8b5cc",
+  "Merah Cabe": "#cc333d",
+
   Navy: "#1e3a8a",
   Black: "#0f172a",
   White: "#f8fafc",
@@ -126,10 +181,13 @@ export function fabricColorForName(name: string) {
 
 /** Saved sRGB takes precedence over approximate names, including migrated variants. */
 export function productFabricColor(product: {
+  colorValues?: Record<string, string>;
   productVariants?: { options: Record<string, string>; fabricColor?: string }[];
   colorVariants?: { color: string; fabricColor?: string }[];
 }, name: string): string | undefined {
   const valid = (value?: string) => value && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined;
+  const saved = Object.entries(product.colorValues ?? {}).find(([key]) => normalized(key) === normalized(name))?.[1];
+  if (valid(saved)) return valid(saved);
   const rows = product.productVariants?.filter(row => Object.entries(row.options).some(([key, value]) => /^(pa_)?(warna|color)$/i.test(key) && normalized(value) === normalized(name)));
   if (rows?.length) return rows.map(row => valid(row.fabricColor)).find(Boolean);
   return valid(product.colorVariants?.find(row => normalized(row.color) === normalized(name))?.fabricColor);
@@ -141,8 +199,10 @@ export function productColorPalette(colorName: string) {
   return [...new Set(colors)];
 }
 
-export function productColorSwatchStyle(colorName: string): CSSProperties {
+export function productColorSwatchStyle(colorName: string, product?: Parameters<typeof productFabricColor>[0]): CSSProperties {
   const colors = productColorPalette(colorName);
+  const saved = product && productFabricColor(product, colorName);
+  if (colors.length < 2 && saved) return { backgroundColor: saved };
   if (colors.length < 2) return { backgroundColor: colors[0] ?? UNKNOWN_COLOR };
 
   const stopSize = 100 / colors.length;

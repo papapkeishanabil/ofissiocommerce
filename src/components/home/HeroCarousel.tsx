@@ -182,7 +182,7 @@ function PackagePanel({ panel }: { panel: HeroPackagePanel }) {
           );
         })}
       </div>
-      <div className="mt-3 flex items-center gap-2 text-sm font-bold text-ochre-300">
+      <div className="mt-3 flex items-center gap-2 text-sm font-bold text-ochre-400">
         <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
         Siap bordir logo
         <span className="font-semibold text-white/90">, {panel.pill}</span>
@@ -216,7 +216,7 @@ function ProductPanel({
       )}
       <div className="mt-1 text-xl font-extrabold leading-tight">{panel.name}</div>
       <p className="mt-1 text-sm font-medium leading-relaxed text-white/90">{panel.subtitle}</p>
-      <div className="mt-2 flex items-start gap-2 text-sm font-semibold text-ochre-300">
+      <div className="mt-2 flex items-start gap-2 text-sm font-semibold text-ochre-400">
         <Check className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden="true" />
         {panel.features[0]}
       </div>
@@ -233,7 +233,7 @@ function PromoPanel({ panel }: { panel: HeroPromoPanel }) {
       </div>
       <p className="mt-2 text-sm font-medium leading-relaxed text-white/90">{panel.sub}</p>
       <div className="mt-3 text-sm font-semibold text-white/80">
-        Kode: <strong className="font-extrabold tracking-wide text-ochre-300">{panel.code}</strong>
+        Kode: <strong className="font-extrabold tracking-wide text-ochre-400">{panel.code}</strong>
       </div>
       <div className="mt-2 flex items-center gap-2 text-xs font-medium text-white/65">
         <Clock className="h-3.5 w-3.5 text-ochre-400" strokeWidth={2} aria-hidden="true" />
@@ -323,7 +323,7 @@ function HeroTrustRail({
     <div className="relative flex flex-col justify-center gap-4 text-white">
       <span aria-hidden="true" className="absolute bottom-7 left-5 top-7 w-px bg-ochre-400/55" />
       <div className="relative flex items-start gap-4 pb-1">
-        <span className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-ochre-400 bg-[#07101e]/80 text-sm font-extrabold tabular-nums text-ochre-300 shadow-[0_0_0_5px_rgba(7,16,30,0.35)]">
+        <span className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-ochre-400 bg-[#07101e]/80 text-sm font-extrabold tabular-nums text-ochre-400 shadow-[0_0_0_5px_rgba(7,16,30,0.35)]">
           01
         </span>
         <div className="min-w-0 flex-1 pt-0.5">{context}</div>
@@ -332,7 +332,7 @@ function HeroTrustRail({
         const Icon = resolveHomepageIcon(item.icon);
         return (
           <div key={item.label} className="relative flex items-center gap-4">
-            <span className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-ochre-400/70 bg-[#07101e]/80 text-xs font-extrabold tabular-nums text-ochre-300 shadow-[0_0_0_5px_rgba(7,16,30,0.35)]">
+            <span className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-ochre-400/70 bg-[#07101e]/80 text-xs font-extrabold tabular-nums text-ochre-400 shadow-[0_0_0_5px_rgba(7,16,30,0.35)]">
               {String(index + 2).padStart(2, "0")}
             </span>
             <span className="flex min-w-0 items-start gap-3 pt-0.5">
@@ -462,7 +462,7 @@ export function HeroCarousel({
                     className={layerClasses(on, reduce)}
                   >
                     <span className="mb-[clamp(1rem,2.5vh,1.5rem)] inline-flex items-center gap-3 text-xs font-extrabold uppercase tracking-[0.14em] text-white">
-                      <EyebrowIcon className="h-3.5 w-3.5 text-ochre-300" aria-hidden="true" />
+                      <EyebrowIcon className="h-3.5 w-3.5 text-ochre-400" aria-hidden="true" />
                       <span aria-hidden="true" className="h-px w-8 bg-ochre-400" />
                       {s.eyebrowText}
                     </span>

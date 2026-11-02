@@ -40,7 +40,8 @@
 .gallery [aria-label='Pilih foto produk'] button[aria-pressed=true] { background:#eff4ff; }
 .gallery [aria-label='Pilih foto produk'] img { mix-blend-mode:normal; }
 .description :global(.rich-text) { color:#52617d; }
-.description :global(.rich-text) :is(h2,h3,h4,strong) { color:#142766; }
+.description :global(.rich-text) strong { color:#142766; }
+.description :global(.rich-text) :is(h2,h3,h4) { color:var(--ofissio-shell-navy, #122162); }
 .description :global(.rich-text) li::marker { color:#324382; }
 .purchase [role='group'][aria-label='Pilihan warna'] button { background-color:#fff; }
 .purchase [role='group'][aria-label='Pilihan warna'] button[aria-pressed=true]:not([style]) { background-color:#eff4ff; }

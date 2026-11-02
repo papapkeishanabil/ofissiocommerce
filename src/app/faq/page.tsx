@@ -83,7 +83,7 @@ export default function FaqPage() {
         </div>
         <section className={styles.cta} aria-labelledby="faq-next">
           <div><h2 id="faq-next">Sudah menemukan jawabannya?</h2><p>Temukan seragam yang sesuai dengan cara tim Anda bekerja.</p></div>
-          <Link href="/catalog">Jelajahi produk <ArrowRight size={18} aria-hidden="true" /></Link>
+          <Link href="/panduan/memilih-kemeja-seragam-kerja">Bandingkan semua produk <ArrowRight size={18} aria-hidden="true" /></Link>
         </section>
       </div>
     </main>

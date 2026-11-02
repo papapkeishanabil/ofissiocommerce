@@ -40,7 +40,9 @@ export interface OfissioProduct extends Product {
   /** Uniform live native price, checked against storefront pricing before schema output. */
   liveOfferPrice?: number;
   liveOfferAvailability?: "InStock" | "OutOfStock" | "BackOrder";
+  liveVariantAvailability?: Record<string, "InStock" | "OutOfStock" | "BackOrder">;
   sizeChartId?: string;
+  sleeveSizeChartIds?: import("../size-charts/sleeve-size-chart-settings").SleeveSizeChartIds;
   stockVariantsReady?: boolean;
   productKind?: "simple" | "variable";
   modelCode?: string;

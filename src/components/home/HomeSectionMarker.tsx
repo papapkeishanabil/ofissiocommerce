@@ -8,7 +8,7 @@ type HomeSectionMarkerProps = {
 export function HomeSectionMarker({ number, label, tone = "light", align = "left" }: HomeSectionMarkerProps) {
   return (
     <div
-      className={`flex items-center gap-3 ${align === "center" ? "justify-center" : "justify-start"} ${tone === "dark" ? "text-ochre-400" : "text-ochre-600"}`}
+      className={`flex items-center gap-3 ${align === "center" ? "justify-center" : "justify-start"} text-ochre-400`}
     >
       <span className="text-base font-extrabold tabular-nums sm:text-lg">{number}</span>
       <span className={`h-px w-9 ${tone === "dark" ? "bg-ochre-400" : "bg-ochre-500"}`} aria-hidden="true" />

@@ -33,7 +33,7 @@ export async function HomePage() {
           <div className="max-w-2xl lg:sticky lg:top-28">
             <HomeSectionMarker number="01" label="Bisnis Naik Kelas" />
             <h2 className="mt-6 text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-ink-strong sm:text-6xl lg:text-[4rem]">
-              Bisnis Naik Kelas Dimulai dari <span className="text-brand-600">Tim yang Tampil Profesional.</span>
+              Bisnis Naik Kelas Dimulai dari <span className="text-ochre-400">Tim yang Tampil Profesional.</span>
             </h2>
             <p className="mt-6 max-w-[62ch] text-lg leading-relaxed text-ink-muted sm:text-xl">
               Seragam adalah identitas bisnis yang dilihat pelanggan setiap hari. Dari anggota tim pertama hingga tim yang terus bertambah, Ofissio menjaga tampilan bisnis Anda tetap konsisten dan profesional di setiap fase pertumbuhan.
@@ -47,14 +47,14 @@ export async function HomePage() {
                   key={b.title}
                   className="group grid gap-5 border-t border-line py-7 first:border-t-0 sm:grid-cols-[4rem_minmax(0,1fr)_2.5rem] sm:items-start sm:gap-6 sm:py-8"
                 >
-                  <span className="grid h-14 w-14 place-items-center rounded-xl bg-brand-700 text-ochre-400 transition-colors duration-300 group-hover:bg-brand-800 group-hover:text-ochre-300">
+                  <span className="grid h-14 w-14 place-items-center rounded-xl bg-brand-700 text-ochre-400 transition-colors duration-300 group-hover:bg-brand-800 group-hover:text-ochre-400">
                     <Icon className="h-7 w-7" strokeWidth={1.7} aria-hidden="true" />
                   </span>
                   <div>
                     <h3 className="text-xl font-extrabold tracking-[-0.02em] text-ink-strong sm:text-2xl">{b.title}</h3>
                     <p className="mt-2 max-w-[48ch] text-base leading-relaxed text-ink-muted sm:text-lg">{b.desc}</p>
                   </div>
-                  <span className="self-start text-right text-sm font-bold tabular-nums tracking-[0.12em] text-ochre-600">
+                  <span className="self-start text-right text-sm font-bold tabular-nums tracking-[0.12em] text-ochre-400">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                 </article>
@@ -149,7 +149,7 @@ export async function HomePage() {
             <div className="max-w-3xl">
               <HomeSectionMarker number={sectionNumber(6)} label="Solusi Korporasi" />
               <h2 id="korporasi-heading" className="mt-6 max-w-[16ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-950 sm:text-6xl lg:text-[4rem]">
-                Solusi Korporasi dengan <span className="text-ochre-600">Standar Pengadaan Profesional.</span>
+                Solusi Korporasi dengan <span className="text-ochre-400">Standar Pengadaan Profesional.</span>
               </h2>
             </div>
             <div className="flex flex-col items-start gap-6 lg:items-end lg:pb-1">
@@ -158,7 +158,7 @@ export async function HomePage() {
               </p>
               <Link href="#cta" className="group inline-flex min-h-11 items-center gap-3 rounded-full border border-brand-950/20 px-5 py-2.5 text-sm font-bold text-brand-950 transition-colors hover:border-ochre-600 hover:bg-ochre-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre-600">
                 Konsultasikan kebutuhan
-                <ArrowRight className="h-4 w-4 text-ochre-600 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                <ArrowRight className="h-4 w-4 text-ochre-400 transition-transform group-hover:translate-x-1" aria-hidden="true" />
               </Link>
             </div>
           </div>
@@ -174,7 +174,7 @@ export async function HomePage() {
                 className="object-cover object-[50%_34%]"
               />
               <div className="absolute inset-x-5 bottom-5 rounded-2xl border border-white/40 bg-[#fffdf9]/90 p-4 shadow-lg backdrop-blur-sm sm:inset-x-7 sm:bottom-7 sm:max-w-sm sm:p-5">
-                <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-ochre-700">Satu rencana untuk banyak peran</p>
+                <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-ochre-400">Satu rencana untuk banyak peran</p>
                 <p className="mt-2 text-sm leading-relaxed text-brand-950">Satukan kebutuhan kantor, operasional, dan lapangan dalam pengadaan yang lebih rapi.</p>
               </div>
             </div>
@@ -185,24 +185,24 @@ export async function HomePage() {
                   const Icon = resolveHomepageIcon(item.icon);
                   return (
                     <li key={item.title} className="group grid gap-4 py-5 first:pt-3 last:pb-6 sm:grid-cols-[2.75rem_minmax(0,1fr)_2rem] sm:items-start sm:gap-5">
-                      <span className="text-lg font-extrabold tabular-nums text-ochre-600">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="text-lg font-extrabold tabular-nums text-ochre-400">{String(index + 1).padStart(2, "0")}</span>
                       <div>
                         <h3 className="text-lg font-extrabold leading-tight tracking-[-0.02em] text-brand-950 sm:text-xl">{item.title}</h3>
                         <p className="mt-2 text-sm leading-relaxed text-ink-muted">{item.desc}</p>
                       </div>
-                      <Icon className="hidden h-6 w-6 text-ochre-600 sm:block" strokeWidth={1.7} aria-hidden="true" />
+                      <Icon className="hidden h-6 w-6 text-ochre-400 sm:block" strokeWidth={1.7} aria-hidden="true" />
                     </li>
                   );
                 })}
               </ol>
               <div className="mt-auto border-t border-brand-950/10 pt-5">
                 <div className="flex items-start gap-4">
-                  <Phone className="mt-0.5 h-6 w-6 shrink-0 text-ochre-600" strokeWidth={1.7} aria-hidden="true" />
+                  <Phone className="mt-0.5 h-6 w-6 shrink-0 text-ochre-400" strokeWidth={1.7} aria-hidden="true" />
                   <div>
                     <p className="text-base font-extrabold text-brand-950">Konsultasi Pengadaan</p>
                     <Link href="#cta" className="group mt-2 inline-flex items-center gap-2 border-b border-ochre-600 pb-1 text-sm font-bold text-brand-950 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ochre-600">
                       Bicara dengan tim kami
-                      <ArrowRight className="h-4 w-4 text-ochre-600 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                      <ArrowRight className="h-4 w-4 text-ochre-400 transition-transform group-hover:translate-x-1" aria-hidden="true" />
                     </Link>
                   </div>
                 </div>
@@ -218,7 +218,7 @@ export async function HomePage() {
           <div className="relative z-10">
             <HomeSectionMarker number={sectionNumber(7)} label={content.produk_pilihan.eyebrow} />
             <h2 className="mt-6 max-w-[15ch] text-4xl font-extrabold leading-[1.02] tracking-[-0.035em] text-brand-950 sm:text-6xl lg:text-[4rem]">
-              <Headline segments={content.produk_pilihan.headline} highlightClass="text-ochre-600" />
+              <Headline segments={content.produk_pilihan.headline} highlightClass="text-ochre-400" />
             </h2>
             <p className="mt-7 max-w-[42ch] text-base leading-relaxed text-ink-muted sm:text-lg">{content.produk_pilihan.lede}</p>
 
@@ -227,7 +227,7 @@ export async function HomePage() {
                 <Link
                   key={item.title}
                   href={item.href}
-                  className={`group flex min-h-14 items-center justify-between gap-4 border-t border-brand-950/15 px-1 text-base font-bold transition-colors first:border-t-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${index === 1 ? "text-ochre-700" : "text-brand-950 hover:text-ochre-700"}`}
+                  className={`group flex min-h-14 items-center justify-between gap-4 border-t border-brand-950/15 px-1 text-base font-bold transition-colors first:border-t-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${index === 1 ? "text-ochre-400" : "text-brand-950 hover:text-ochre-400"}`}
                 >
                   {item.title}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
@@ -283,7 +283,7 @@ export async function HomePage() {
         <div className="mx-auto max-w-[1600px] px-6">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] lg:gap-16">
             <div>
-              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-ochre-300">
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-ochre-400">
                 <Sparkles className="h-4 w-4" aria-hidden="true" /> {content.cta.eyebrow}
               </div>
               <h2 className="mt-5 text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-[3.75rem]">

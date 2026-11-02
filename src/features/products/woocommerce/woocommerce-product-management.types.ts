@@ -51,6 +51,7 @@ export interface AdminWooProductInput {
   materials: string[];
   gender: (typeof WOO_GENDERS)[number];
   sizeChartId?: string;
+  sleeveSizeChartIds?: import("../../size-charts/sleeve-size-chart-settings").SleeveSizeChartIds | null;
   sleeveType: (typeof WOO_SLEEVE_TYPES)[number];
   safetyFeatures: string[];
   moq: number;
