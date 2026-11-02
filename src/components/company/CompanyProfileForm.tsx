@@ -194,9 +194,9 @@ export function CompanyProfileForm({ onSuccess, layout, onDirtyChange }: Company
       </div>
 
       </fieldset>
-      <div className={layout === "account" ? styles.footer : "contents"}>
+      <div className={layout === "account" ? styles.footer : styles.checkoutFooter}>
       {layout === "account" && <span>* Kolom wajib diisi</span>}
-      <Button type="submit" className="w-full" disabled={submitting}>
+      <Button type="submit" className={layout === "account" ? "w-full" : `w-full ${styles.checkoutSave}`} disabled={submitting}>
         {submitting ? "Menyimpan..." : "Simpan Profil Perusahaan"}
       </Button>
       </div>
