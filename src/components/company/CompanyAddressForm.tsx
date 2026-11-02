@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 
 import { addressSchema, type AddressForm as AddressValues } from "@/schemas/auth";
 import { useAuthStore } from "@/stores/auth-store";
+import { checkoutPhone } from "@/features/checkout/checkout-customer";
 import type { Address } from "@/types/account";
 
 import { Button } from "@/components/ui/Button";
@@ -38,7 +39,7 @@ export function CompanyAddressForm({ address, onSuccess, checkout = false, onDir
     defaultValues: {
       label: address?.label ?? (checkout ? "Pengiriman" : ""),
       recipientName: address?.recipientName ?? session?.user.fullName ?? "",
-      recipientPhone: address?.recipientPhone ?? session?.user.whatsapp ?? "",
+      recipientPhone: checkoutPhone(address?.recipientPhone ?? session?.user.whatsapp),
       street: address?.street ?? "",
       city: address?.city ?? "",
       province: address?.province ?? "",

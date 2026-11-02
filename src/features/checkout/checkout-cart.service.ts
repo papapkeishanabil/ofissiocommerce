@@ -228,7 +228,7 @@ async function resolveEmbroideryLogoFiles(
   return resolved;
 }
 
-export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<CheckoutCartRecord> {
+export async function syncCheckoutCart(input: SyncCheckoutCartInput, customer?: import("./checkout-customer").CheckoutCustomer): Promise<CheckoutCartRecord> {
   const parsed = syncCheckoutCartSchema.parse(input);
   const moqSettings = (await getMoqSettings()).settings;
   const items = await Promise.all(
@@ -242,6 +242,7 @@ export async function syncCheckoutCart(input: SyncCheckoutCartInput): Promise<Ch
   const discountTotal = promotion?.discountTotal ?? 0;
   const record: CheckoutCartRecord = {
     id: `cart_${randomUUID()}`,
+    customer,
     companyId: parsed.companyId,
     orderNote: parsed.orderNote,
     userId: parsed.userId,

@@ -308,7 +308,9 @@ export function mapPaymentOrderToTracking(input: {
       input.paymentReferenceId ??
       `OF-ORD-${input.order.id.slice(-8).toUpperCase()}`,
     companyId: input.order.companyId,
-    companyName: input.companyName || DEFAULT_COMPANY_NAME,
+    companyName: input.order.customer
+      ? input.order.customer.companyName || input.order.customer.name
+      : input.companyName || DEFAULT_COMPANY_NAME,
     orderDate: input.order.createdAt,
     fulfillmentType,
     paymentStatus: input.paymentStatus,

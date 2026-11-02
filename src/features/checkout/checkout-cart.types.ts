@@ -21,6 +21,8 @@ export interface CheckoutCartItemInput {
 }
 
 export interface SyncCheckoutCartInput {
+  customerType?: "individual" | "company";
+  shippingAddressId?: string;
   orderNote?: string;
   companyId: string;
   userId: string;
@@ -72,6 +74,7 @@ export interface ValidatedCheckoutCartItem {
 }
 
 export interface CheckoutCartRecord {
+  customer?: import("./checkout-customer").CheckoutCustomer;
   orderNote?: string;
   id: string;
   companyId: string;

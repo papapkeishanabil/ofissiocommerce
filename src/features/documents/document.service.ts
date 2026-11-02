@@ -71,7 +71,7 @@ import {
   uploadGeneratedPdf,
 } from "./providers/storage-document.provider";
 
-const INVOICE_RENDERER_VERSION = "invoice-customer-details-v2";
+const INVOICE_RENDERER_VERSION = "invoice-checkout-customer-v4";
 const EMBROIDERY_WORK_ORDER_RENDERER_VERSION = "bwo-ofissio-v1";
 const PRODUCTION_WORK_ORDER_RENDERER_VERSION = "pwo-ofissio-v1";
 
@@ -1252,17 +1252,20 @@ function invoiceRecipient(order: PaymentOrderRecord, customer?: AdminOrderCustom
         /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(text)) return null;
     return text;
   };
-  const address = customer?.billingAddress;
+  const snapshot = order.customer;
+  const address = snapshot?.shippingAddress ?? customer?.billingAddress;
   const street = displayText(address?.street);
   const companyAddress = street
     ? [street, displayText(address?.city), displayText(address?.province), displayText(address?.postalCode)]
         .filter(Boolean).join(", ")
     : null;
   return {
-    companyName: displayText(customer?.companyName),
+    companyName: snapshot
+      ? displayText(snapshot.companyName || snapshot.name)
+      : displayText(customer?.companyName),
     companyAddress,
-    picName: displayText(customer?.picName) ?? displayText(address?.recipientName),
-    picPhone: displayText(customer?.picWhatsapp) ?? displayText(address?.recipientPhone) ?? displayText(customer?.phone),
+    picName: displayText(snapshot?.name) ?? displayText(customer?.picName) ?? displayText(address?.recipientName),
+    picPhone: displayText(snapshot?.phone) ?? displayText(customer?.picWhatsapp) ?? displayText(address?.recipientPhone) ?? displayText(customer?.phone),
   };
 }
 

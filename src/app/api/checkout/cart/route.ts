@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { syncCheckoutCart } from "@/features/checkout/checkout-cart.service";
+import { resolveCheckoutCustomer } from "@/features/checkout/checkout-customer.service";
 import { syncCheckoutCartSchema } from "@/features/checkout/checkout-cart.validation";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { requireAuth } from "@/lib/security/auth-guard";
@@ -28,11 +29,14 @@ export async function POST(request: Request) {
     requireRole(session, "cart:write");
     requireCompanyAccess(session, parsed.companyId, request, "checkout_cart");
 
+    const customer = parsed.customerType
+      ? await resolveCheckoutCustomer(session, parsed.customerType, parsed.shippingAddressId)
+      : undefined;
     const cart = await syncCheckoutCart({
       ...parsed,
       companyId: session.companyId,
       userId: session.userId,
-    });
+    }, customer);
     logAuditEvent({
       request,
       actorId: session.userId,

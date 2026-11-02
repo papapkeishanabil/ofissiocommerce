@@ -1,7 +1,7 @@
 // src/components/checkout/CheckoutPage.tsx
 // Multi-step gated checkout with Phase 5 payment/shipping foundation:
 //   1. auth (handled by AuthModal via ui-store)
-//   2. company profile completion
+//   2. account identity, with optional company profile completion
 //   3. shipping address selection
 //   4. order review
 //   5. backend-priced shipping + mock/iPaymu payment boundary
@@ -17,7 +17,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { useUIStore } from "@/stores/ui-store";
 import { formatIDR } from "@/types/product";
 import { hasCartCustomization, type CartLineItem } from "@/types/cart";
-import type { Address, Company } from "@/types/account";
+import type { Address } from "@/types/account";
 import type { ShippingRate } from "@/features/shipping/shipping.types";
 import { resolveOrderProcessingInfo } from "@/features/products/order-processing";
 import {
@@ -33,6 +33,7 @@ import { ProductThumb } from "@/components/ui/ProductThumb";
 import { CompanyProfileForm } from "@/components/company/CompanyProfileForm";
 import { CompanyAddressForm } from "@/components/company/CompanyAddressForm";
 import { PromotionBox, type PromotionLine } from "@/features/promotions/components/PromotionBox";
+import { isCheckoutCompanyComplete } from "@/features/checkout/checkout-customer";
 import { CheckoutFrame } from "./CheckoutFrame";
 
 /** Payload baris untuk validasi kode promo di PromotionBox. */
@@ -42,19 +43,6 @@ function toPromotionLines(items: CartLineItem[]): PromotionLine[] {
     quantity: item.totalQty,
     subtotal: item.finalEstimatedTotal ?? item.estimatedPrice,
   }));
-}
-
-/** Check only profile fields (excludes address). */
-function isProfileFieldsComplete(c: Company): boolean {
-  return (
-    !!c.companyName &&
-    !!c.industry &&
-    c.employeeCount > 0 &&
-    !!c.phone &&
-    !!c.picName &&
-    !!c.picEmail &&
-    !!c.picWhatsapp
-  );
 }
 
 export function CheckoutPage() {
@@ -76,7 +64,8 @@ export function CheckoutPage() {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [backendSubtotal, setBackendSubtotal] = useState<number | null>(null);
   const [backendDiscount, setBackendDiscount] = useState<number | null>(null);
-  const [profileSaved, setProfileSaved] = useState(false);
+  const [checkoutAsCompany, setCheckoutAsCompany] = useState(false);
+  const [companyDirty, setCompanyDirty] = useState(false);
   const [addressDirty, setAddressDirty] = useState(false);
 
   const clientSubtotal = useMemo(
@@ -171,44 +160,9 @@ export function CheckoutPage() {
     );
   }
 
-  // Step 2: complete profile (fields only, not address).
-  const profileFieldsComplete = session ? isProfileFieldsComplete(session.company) : false;
-
-  if (!session || !profileFieldsComplete) {
-    return (
-      <CheckoutFrame
-        step={1}
-        title="Lengkapi profil perusahaan"
-        description="Data ini dipakai untuk faktur, quotation, dan pengiriman."
-        aside={
-          <CondensedSummary
-            items={items}
-            subtotal={subtotal}
-            discountTotal={discountTotal}
-            tax={tax}
-            total={total}
-            promotionCode={appliedPromotion?.code}
-          />
-        }
-      >
-        {profileSaved && (
-          <div
-            role="status"
-            className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-          >
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-            Profil perusahaan berhasil disimpan. Silakan lanjut ke alamat pengiriman.
-          </div>
-        )}
-
-        <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
-          <CompanyProfileForm
-            onSuccess={() => setProfileSaved(true)}
-          />
-        </div>
-      </CheckoutFrame>
-    );
-  }
+  if (!session) return null;
+  const companyNeedsSave = checkoutAsCompany &&
+    (companyDirty || !isCheckoutCompanyComplete(session.company));
 
   // Step 3: shipping address.
   const defaultAddr = session.company.addresses.find((a) => a.isDefaultShipping);
@@ -219,19 +173,22 @@ export function CheckoutPage() {
   );
 
   function handlePayment() {
-    if (!session || !selectedAddress) return;
+    if (!session || !selectedAddress || companyNeedsSave) return;
     setSubmitting(true);
     void createPayment();
   }
 
   async function syncCartForBackend() {
     if (!session) throw new Error("Sesi checkout tidak tersedia.");
+    if (companyNeedsSave) throw new Error("Lengkapi dan simpan profil perusahaan terlebih dahulu.");
     const response = await fetch("/api/checkout/cart", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         companyId: session.company.id,
         userId: session.user.id,
+        customerType: checkoutAsCompany ? "company" : "individual",
+        shippingAddressId: selectedAddress?.id,
         promotionCode: appliedPromotion?.code ?? null,
         orderNote: useCartStore.getState().orderNote,
         items: items.map((item) => ({
@@ -263,7 +220,7 @@ export function CheckoutPage() {
   }
 
   async function handleCheckShipping() {
-    if (!selectedAddress || !session) return;
+    if (!selectedAddress || !session || companyNeedsSave) return;
     setShippingLoading(true);
     setCheckoutMessage(null);
     try {
@@ -314,7 +271,7 @@ export function CheckoutPage() {
   }
 
   async function createPayment() {
-    if (!session || !selectedAddress) return;
+    if (!session || !selectedAddress || companyNeedsSave) return;
     setCheckoutMessage(null);
     try {
       const cartId = await syncCartForBackend();
@@ -381,7 +338,7 @@ export function CheckoutPage() {
                 size="sm"
                 className="min-h-11 w-full justify-start"
                 onClick={() => void handleCheckShipping()}
-                disabled={shippingLoading || !selectedAddress || addressDirty}
+                disabled={shippingLoading || !selectedAddress || addressDirty || companyNeedsSave}
                 aria-busy={shippingLoading}
               >
                 {shippingLoading ? (
@@ -452,15 +409,34 @@ export function CheckoutPage() {
           <button className="mt-3 text-xs font-semibold underline" onClick={handleRequestQuote}>Request Quotation</button>
         </section>
       </div>}
-      footer={<><div><strong className="text-xl tabular-nums">{formatIDR(total)}</strong><p className="text-xs text-ink-muted">{selectedShippingRate?"Termasuk pengiriman dan estimasi PPN":"Menunggu pengiriman, termasuk estimasi PPN"}</p></div><div className="flex flex-wrap gap-2"><ButtonLink href="/cart" variant="outline">Kembali ke Keranjang</ButtonLink><Button disabled={submitting||shippingLoading} onClick={()=>{
+      footer={<><div><strong className="text-xl tabular-nums">{formatIDR(total)}</strong><p className="text-xs text-ink-muted">{selectedShippingRate?"Termasuk pengiriman dan estimasi PPN":"Menunggu pengiriman, termasuk estimasi PPN"}</p></div><div className="flex flex-wrap gap-2"><ButtonLink href="/cart" variant="outline">Kembali ke Keranjang</ButtonLink><Button disabled={submitting||shippingLoading||companyNeedsSave} onClick={()=>{
         if (!selectedAddress || addressDirty) { (document.getElementById("checkout-recipient") as HTMLFormElement|null)?.requestSubmit(); return; }
         if (requiresEmbroideryConsultation) { handleRequestQuote(); return; }
         if (!selectedShippingRate) { void handleCheckShipping(); return; }
         handlePayment();
-      }}>{submitting?"Memproses...":shippingLoading?"Menghitung ongkir...":!selectedAddress||addressDirty?"Simpan penerima":requiresEmbroideryConsultation?"Minta Estimasi Bordir":!selectedShippingRate?"Pilih pengiriman":"Lanjut Pembayaran"}</Button></div></>}
+      }}>{companyNeedsSave?"Simpan profil perusahaan dahulu":submitting?"Memproses...":shippingLoading?"Menghitung ongkir...":!selectedAddress||addressDirty?"Simpan penerima":requiresEmbroideryConsultation?"Minta Estimasi Bordir":!selectedShippingRate?"Pilih pengiriman":"Lanjut Pembayaran"}</Button></div></>}
     >
+      <section className="mb-4 rounded-lg border border-line bg-surface p-4 sm:p-6" aria-labelledby="checkout-customer-heading">
+        <h2 id="checkout-customer-heading" className="text-base font-bold">Informasi customer</h2>
+        <p className="mt-3 font-semibold">{session.user.fullName}</p>
+        <p className="mt-1 break-all text-sm text-ink-muted">{session.user.email}</p>
+        <label className="mt-5 flex min-h-11 cursor-pointer items-center gap-3 border-t border-line pt-4">
+          <input type="checkbox" checked={checkoutAsCompany} disabled={submitting || shippingLoading}
+            aria-controls="checkout-company-profile"
+            onChange={(event) => { setCheckoutAsCompany(event.target.checked); setShippingRates([]); setSelectedShippingRateId(null); setCheckoutMessage(null); }}
+            className="h-5 w-5 shrink-0 accent-brand-700" />
+          <span className="text-sm font-semibold">Saya memesan atas nama perusahaan</span>
+        </label>
+        <div id="checkout-company-profile" hidden={!checkoutAsCompany}>
+          {checkoutAsCompany && <div className="mt-5 border-t border-line pt-5">
+            <h3 className="mb-2 text-base font-bold">Lengkapi profil perusahaan</h3>
+            <p className="mb-5 text-sm text-ink-muted">Data ini digunakan untuk pesanan dan faktur atas nama perusahaan.</p>
+            <CompanyProfileForm onDirtyChange={setCompanyDirty} onSuccess={() => { setCompanyDirty(false); setCheckoutMessage("Profil perusahaan berhasil disimpan."); }} />
+          </div>}
+        </div>
+      </section>
       <section className="rounded-lg border border-line bg-surface p-4">
-        <h2 className="mb-3 text-base font-bold">Informasi penerima</h2>
+        <h2 className="mb-3 text-base font-bold">Alamat pengiriman</h2>
         {session.company.addresses.length>1 && <label className="mb-3 block text-xs">Alamat tersimpan<select value={effectiveAddressId??""} onChange={e=>{setSelectedAddressId(e.target.value);setShippingRates([]);setSelectedShippingRateId(null);setAddressDirty(false);}} className="mt-1 block h-10 w-full rounded-lg border border-line px-2">{session.company.addresses.map(a=><option key={a.id} value={a.id}>{a.label} ({a.recipientName})</option>)}</select></label>}
         <CompanyAddressForm key={selectedAddress?.id??"new"} checkout address={selectedAddress} onDirtyChange={setAddressDirty} onSuccess={()=>{setShippingRates([]);setSelectedShippingRateId(null);setCheckoutMessage(null);}} />
       </section>

@@ -231,6 +231,13 @@ export interface WooCommerceCreateOrderInput {
   set_paid?: boolean;
   customer_note?: string;
   billing?: WooCommerceBilling;
+  shipping?: WooCommerceBilling & {
+    address_1: string;
+    city: string;
+    state: string;
+    postcode: string;
+    country: string;
+  };
   line_items: WooCommerceOrderLineItem[];
   shipping_lines?: WooCommerceShippingLine[];
   coupon_lines?: Array<{ code: string }>;

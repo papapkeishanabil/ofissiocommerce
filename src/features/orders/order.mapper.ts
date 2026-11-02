@@ -21,6 +21,11 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
 }): WooCommerceCreateOrderInput {
   const { payment } = input;
   const order = ensureOrderProcessRouting(input.order);
+  const customer = order.customer;
+  const companyName = customer ? customer.companyName : input.companyName;
+  const name = customer?.name ?? input.picName;
+  const phone = customer?.phone ?? input.picWhatsapp;
+  const address = customer?.shippingAddress;
   return {
     status: mapPaymentStatusToWooCommerceStatus(payment.status),
     currency: "IDR",
@@ -28,14 +33,20 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
     customer_note: [
       order.orderNote || null,
       `Ofissio order ${order.orderNumber ?? order.id}`,
-      input.companyName ? `Company: ${input.companyName}` : null,
+      companyName ? `Company: ${companyName}` : null,
       input.quotationId ? `Quotation: ${input.quotationId}` : null,
     ].filter(Boolean).join(" | "),
     billing: {
-      first_name: input.picName ?? input.companyName ?? "Ofissio Customer",
-      company: input.companyName ?? undefined,
-      phone: input.picWhatsapp ?? undefined,
+      first_name: name ?? companyName ?? "Ofissio Customer",
+      company: companyName ?? undefined,
+      phone: phone ?? undefined,
+      email: customer?.email || undefined,
     },
+    shipping: address ? {
+      first_name: address.recipientName, company: companyName ?? undefined,
+      address_1: address.street, city: address.city, state: address.province,
+      postcode: address.postalCode, country: "ID", phone: address.recipientPhone,
+    } : undefined,
     line_items: order.items.flatMap(splitOrderSizeVariants).map((item, index): WooCommerceOrderLineItem => {
       const productId =
         item.source === "woocommerce" && /^\d+$/.test(item.sourceId)
@@ -109,9 +120,11 @@ export function mapPaymentOrderToWooCommerceOrder(input: {
       ["ofissio_order_id", order.id],
       ["ofissio_order_number", order.orderNumber ?? order.id],
       ["company_id", order.companyId],
-      ["company_name", input.companyName],
-      ["pic_name", input.picName],
-      ["pic_whatsapp", input.picWhatsapp],
+      ["company_name", companyName],
+      ["customer_type", customer?.type],
+      ["customer_npwp", customer?.npwp],
+      ["pic_name", name],
+      ["pic_whatsapp", phone],
       ["quotation_id", input.quotationId ?? order.quotationId],
       ["payment_provider", payment.provider],
       ["payment_reference", payment.referenceId],

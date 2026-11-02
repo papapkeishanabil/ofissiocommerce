@@ -133,6 +133,7 @@ export async function createPaymentFromCart(input: {
     orderNumber: referenceId,
     cartId: cart.id,
     orderNote: cart.orderNote,
+    customer: cart.customer,
     companyId: cart.companyId,
     userId: cart.userId,
     items: cart.items,

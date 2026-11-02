@@ -17,6 +17,21 @@ export async function getAdminOrderCustomerSnapshot(input: {
   tracking: CustomerTrackingOrder | null;
 }): Promise<AdminOrderCustomerSnapshot> {
   const { order, tracking } = input;
+  if (order.customer) {
+    const customer = order.customer;
+    return {
+      companyId: order.companyId,
+      companyName: customer.companyName || customer.name,
+      legalName: customer.companyName ?? null,
+      industry: null,
+      phone: customer.phone,
+      picName: customer.name,
+      picEmail: customer.email,
+      picWhatsapp: customer.phone,
+      shippingAddress: customer.shippingAddress,
+      billingAddress: customer.shippingAddress,
+    };
+  }
   const company = await repositoryRegistry.company
     .getCompanyById(order.companyId)
     .catch(() => null);

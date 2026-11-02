@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/schemas/auth";
 import { INDUSTRY_META } from "@/data/industries";
 import { useAuthStore } from "@/stores/auth-store";
+import { checkoutPhone } from "@/features/checkout/checkout-customer";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -21,9 +22,10 @@ import styles from "./CompanyProfileForm.module.css";
 interface CompanyProfileFormProps {
   onSuccess?: () => void;
   layout?: "account";
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function CompanyProfileForm({ onSuccess, layout }: CompanyProfileFormProps) {
+export function CompanyProfileForm({ onSuccess, layout, onDirtyChange }: CompanyProfileFormProps) {
   const refresh = useAuthStore((s) => s.refresh);
   const session = useAuthStore((s) => s.session);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -33,7 +35,8 @@ export function CompanyProfileForm({ onSuccess, layout }: CompanyProfileFormProp
   const {
     register: field,
     handleSubmit,
-    formState: { errors },
+    reset,
+    formState: { errors, isDirty },
   } = useForm<CompanyProfileValues>({
     resolver: zodResolver(companyProfileSchema),
     defaultValues: {
@@ -44,9 +47,11 @@ export function CompanyProfileForm({ onSuccess, layout }: CompanyProfileFormProp
       phone: c?.phone ?? "",
       picName: c?.picName ?? "",
       picEmail: c?.picEmail ?? "",
-      picWhatsapp: c?.picWhatsapp ?? "",
+      picWhatsapp: checkoutPhone(c?.picWhatsapp),
     },
   });
+
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
 
   const onSubmit = handleSubmit(async (values) => {
     if (!session) return;
@@ -66,6 +71,7 @@ export function CompanyProfileForm({ onSuccess, layout }: CompanyProfileFormProp
         throw new Error(result.message ?? "Gagal menyimpan profil perusahaan.");
       }
       await refresh();
+      reset(values);
       onSuccess?.();
     } catch (error) {
       setServerError(

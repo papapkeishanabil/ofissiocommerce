@@ -108,6 +108,7 @@ export type PaymentOrderStatus =
   | "cancelled";
 
 export interface PaymentOrderRecord {
+  customer?: import("@/features/checkout/checkout-customer").CheckoutCustomer;
   orderNote?: string;
   id: string;
   orderNumber?: string | null;
