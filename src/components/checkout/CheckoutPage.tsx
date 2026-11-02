@@ -237,7 +237,8 @@ export function CheckoutPage() {
       const fields = [...new Set(parsed.error.issues.map((issue) => String(issue.path[0])))];
       setShippingHelp(`Lengkapi atau perbaiki ${fields.map((field) => labels[field] ?? field).join(", ")} terlebih dahulu, lalu simpan informasi penerima.`);
       form.requestSubmit(); // Show the same inline validation errors as the address form.
-      const input = form.elements.namedItem(fields[0]) as HTMLElement | null;
+      const firstField = fields[0];
+      const input = firstField ? form.elements.namedItem(firstField) as HTMLElement | null : null;
       input?.scrollIntoView({ block: "center" });
       input?.focus({ preventScroll: true });
       return;
