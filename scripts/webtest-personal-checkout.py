@@ -37,6 +37,12 @@ with sync_playwright() as p:
   checkbox=page.get_by_role('checkbox',name='Saya memesan atas nama perusahaan')
   expect(checkbox).not_to_be_checked()
   expect(page.locator('#co-name')).to_have_count(0)
+  shipping=page.get_by_role('button',name='Belum dipilih',exact=True)
+  expect(shipping).to_be_enabled()
+  shipping.click()
+  for field in ['nomor telepon', 'alamat lengkap', 'kota', 'kode pos (5 digit)', 'provinsi']:
+   expect(page.locator('#shipping-prerequisite')).to_contain_text(field)
+  assert not payloads, 'Incomplete address must not request shipping'
   page.get_by_label('Alamat',exact=True).fill('Jalan Contoh 123')
   checkbox.check()
   expect(page.get_by_role('heading',name='Lengkapi profil perusahaan')).to_be_visible()
@@ -48,6 +54,18 @@ with sync_playwright() as p:
   page.get_by_label('Kota',exact=True).fill('Bandung')
   page.get_by_label('Kode pos').fill('40115')
   page.get_by_label('Provinsi').fill('Jawa Barat')
+  page.get_by_label('Kode pos').fill('')
+  shipping.click()
+  expect(page.locator('#shipping-prerequisite')).to_contain_text('kode pos (5 digit) terlebih dahulu')
+  expect(page.get_by_label('Kode pos')).to_be_focused()
+  page.get_by_label('Kode pos').fill('1234')
+  shipping.click()
+  expect(page.locator('#shipping-prerequisite')).to_contain_text('kode pos (5 digit)')
+  page.get_by_label('Kode pos').fill('40115')
+  shipping.click()
+  expect(page.locator('#shipping-prerequisite')).to_contain_text('Alamat sudah lengkap. Klik Simpan informasi penerima')
+  expect(page.get_by_role('button',name='Simpan informasi penerima')).to_be_focused()
+  assert not payloads, 'Unsaved address must not request shipping'
   page.get_by_role('button',name='Simpan informasi penerima').click()
   expect(page.get_by_role('button',name='Pilih pengiriman',exact=True)).to_be_enabled()
   page.get_by_role('button',name='Pilih pengiriman',exact=True).click()
@@ -75,4 +93,4 @@ with sync_playwright() as p:
   assert not errors,errors
   context.close()
  browser.close()
- print('PASS desktop/mobile: default personal, Google identity, blank phone, optional company gate, address survives toggle, address save and shipping payload; no real writes')
+ print('PASS desktop/mobile: personal/company checkout, shipping prerequisite messages, missing/invalid postal code focus, save-address guidance, shipping payload; no real writes')

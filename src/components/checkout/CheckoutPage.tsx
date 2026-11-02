@@ -34,6 +34,7 @@ import { CompanyProfileForm } from "@/components/company/CompanyProfileForm";
 import { CompanyAddressForm } from "@/components/company/CompanyAddressForm";
 import { PromotionBox, type PromotionLine } from "@/features/promotions/components/PromotionBox";
 import { isCheckoutCompanyComplete } from "@/features/checkout/checkout-customer";
+import { addressSchema } from "@/schemas/auth";
 import { CheckoutFrame } from "./CheckoutFrame";
 
 /** Payload baris untuk validasi kode promo di PromotionBox. */
@@ -67,6 +68,7 @@ export function CheckoutPage() {
   const [checkoutAsCompany, setCheckoutAsCompany] = useState(false);
   const [companyDirty, setCompanyDirty] = useState(false);
   const [addressDirty, setAddressDirty] = useState(false);
+  const [shippingHelp, setShippingHelp] = useState<string | null>(null);
 
   const clientSubtotal = useMemo(
     () => items.reduce((a, it) => a + (it.finalEstimatedTotal ?? it.estimatedPrice), 0),
@@ -219,6 +221,38 @@ export function CheckoutPage() {
     return result.cartId;
   }
 
+  function requestShipping() {
+    if (companyNeedsSave) {
+      setShippingHelp("Lengkapi dan simpan profil perusahaan terlebih dahulu sebelum memilih layanan pengiriman.");
+      document.getElementById("co-name")?.focus();
+      document.getElementById("checkout-company-profile")?.scrollIntoView({ block: "center" });
+      return;
+    }
+    const form = document.getElementById("checkout-recipient") as HTMLFormElement | null;
+    if (!form) return;
+    const data = Object.fromEntries(new FormData(form));
+    const parsed = addressSchema.safeParse({ ...data, isDefaultShipping: undefined, isDefaultBilling: undefined });
+    if (!parsed.success) {
+      const labels: Record<string, string> = { recipientName: "nama penerima", recipientPhone: "nomor telepon", street: "alamat lengkap", city: "kota", province: "provinsi", postalCode: "kode pos (5 digit)", label: "label alamat" };
+      const fields = [...new Set(parsed.error.issues.map((issue) => String(issue.path[0])))];
+      setShippingHelp(`Lengkapi atau perbaiki ${fields.map((field) => labels[field] ?? field).join(", ")} terlebih dahulu, lalu simpan informasi penerima.`);
+      form.requestSubmit(); // Show the same inline validation errors as the address form.
+      const input = form.elements.namedItem(fields[0]) as HTMLElement | null;
+      input?.scrollIntoView({ block: "center" });
+      input?.focus({ preventScroll: true });
+      return;
+    }
+    if (!selectedAddress || addressDirty) {
+      setShippingHelp("Alamat sudah lengkap. Klik Simpan informasi penerima terlebih dahulu, lalu pilih layanan pengiriman.");
+      const save = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+      save?.scrollIntoView({ block: "center" });
+      save?.focus({ preventScroll: true });
+      return;
+    }
+    setShippingHelp(null);
+    void handleCheckShipping();
+  }
+
   async function handleCheckShipping() {
     if (!selectedAddress || !session || companyNeedsSave) return;
     setShippingLoading(true);
@@ -337,8 +371,9 @@ export function CheckoutPage() {
                 variant="outline"
                 size="sm"
                 className="min-h-11 w-full justify-start"
-                onClick={() => void handleCheckShipping()}
-                disabled={shippingLoading || !selectedAddress || addressDirty || companyNeedsSave}
+                onClick={requestShipping}
+                disabled={shippingLoading || submitting}
+                aria-describedby="shipping-prerequisite"
                 aria-busy={shippingLoading}
               >
                 {shippingLoading ? (
@@ -348,6 +383,13 @@ export function CheckoutPage() {
                 )}
                 {shippingLoading ? "Menghitung…" : selectedShippingRate ? "Ubah pengiriman" : "Belum dipilih"}
               </Button>
+              <p id="shipping-prerequisite" role="status" aria-live="polite" className="text-sm leading-relaxed text-ink-muted">
+                {shippingHelp ?? (companyNeedsSave
+                  ? "Lengkapi dan simpan profil perusahaan terlebih dahulu untuk memilih pengiriman."
+                  : !selectedAddress || addressDirty
+                    ? "Lengkapi alamat pengiriman dan kode pos, lalu simpan informasi penerima. Klik tombol di atas untuk memeriksa data yang masih perlu dilengkapi."
+                    : "")}
+              </p>
             </div>
 
             {hasMadeToOrder && (
@@ -423,7 +465,7 @@ export function CheckoutPage() {
         <label className="mt-5 flex min-h-11 cursor-pointer items-center gap-3 border-t border-line pt-4">
           <input type="checkbox" checked={checkoutAsCompany} disabled={submitting || shippingLoading}
             aria-controls="checkout-company-profile"
-            onChange={(event) => { setCheckoutAsCompany(event.target.checked); setShippingRates([]); setSelectedShippingRateId(null); setCheckoutMessage(null); }}
+            onChange={(event) => { setCheckoutAsCompany(event.target.checked); setShippingRates([]); setSelectedShippingRateId(null); setCheckoutMessage(null); setShippingHelp(null); }}
             className="h-5 w-5 shrink-0 accent-brand-700" />
           <span className="text-sm font-semibold">Saya memesan atas nama perusahaan</span>
         </label>
@@ -431,14 +473,14 @@ export function CheckoutPage() {
           {checkoutAsCompany && <div className="mt-5 border-t border-line pt-5">
             <h3 className="mb-2 text-base font-bold">Lengkapi profil perusahaan</h3>
             <p className="mb-5 text-sm text-ink-muted">Data ini digunakan untuk pesanan dan faktur atas nama perusahaan.</p>
-            <CompanyProfileForm onDirtyChange={setCompanyDirty} onSuccess={() => { setCompanyDirty(false); setCheckoutMessage("Profil perusahaan berhasil disimpan."); }} />
+            <CompanyProfileForm onDirtyChange={setCompanyDirty} onSuccess={() => { setCompanyDirty(false); setShippingHelp(null); setCheckoutMessage("Profil perusahaan berhasil disimpan."); }} />
           </div>}
         </div>
       </section>
-      <section className="rounded-lg border border-line bg-surface p-4">
+      <section className="rounded-lg border border-line bg-surface p-4" onInputCapture={() => setShippingHelp(null)}>
         <h2 className="mb-3 text-base font-bold">Alamat pengiriman</h2>
         {session.company.addresses.length>1 && <label className="mb-3 block text-xs">Alamat tersimpan<select value={effectiveAddressId??""} onChange={e=>{setSelectedAddressId(e.target.value);setShippingRates([]);setSelectedShippingRateId(null);setAddressDirty(false);}} className="mt-1 block h-10 w-full rounded-lg border border-line px-2">{session.company.addresses.map(a=><option key={a.id} value={a.id}>{a.label} ({a.recipientName})</option>)}</select></label>}
-        <CompanyAddressForm key={selectedAddress?.id??"new"} checkout address={selectedAddress} onDirtyChange={setAddressDirty} onSuccess={()=>{setShippingRates([]);setSelectedShippingRateId(null);setCheckoutMessage(null);}} />
+        <CompanyAddressForm key={selectedAddress?.id??"new"} checkout address={selectedAddress} onDirtyChange={setAddressDirty} onSuccess={()=>{setShippingRates([]);setSelectedShippingRateId(null);setCheckoutMessage(null);setShippingHelp(null);}} />
       </section>
     </CheckoutFrame>
   );
