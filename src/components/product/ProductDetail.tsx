@@ -400,7 +400,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
         />
       </div>
 
-      <div className="mx-auto grid w-full max-w-[1680px] min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.32fr)_minmax(430px,0.68fr)] xl:gap-6 2xl:grid-cols-[minmax(0,1.38fr)_minmax(470px,0.62fr)]">
+      <div className="mx-auto grid w-full max-w-[1680px] min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(480px,0.8fr)] xl:gap-6">
         {/* Left: gallery + info */}
         <div className="contents xl:block xl:space-y-4">
           <div ref={heroRef} className="order-1">
