@@ -52,7 +52,7 @@ function categoryLabelFromSlug(slug: string) {
 }
 
   function facetValues(p: OfissioProduct): Record<string,string[]> {
-    return { Gender:p.gender === "men" ? ["Pria"] : p.gender === "women" ? ["Wanita"] : ["Pria", "Wanita"], Ukuran:p.available_sizes ?? [], Bahan:p.material ? [p.material] : [], Fitur:p.safety_features ?? [], Ketersediaan:[p.fulfillment === "READY_STOCK" ? "Ready Stock" : "Made to Order"] };
+    return { Gender:p.gender === "men" ? ["Pria"] : p.gender === "women" ? ["Wanita"] : ["Pria", "Wanita"], Bahan:p.material ? [p.material] : [], Fitur:p.safety_features ?? [] };
   }
 
 function categoryPreviewProducts(items: OfissioProduct[], gender?: string) {

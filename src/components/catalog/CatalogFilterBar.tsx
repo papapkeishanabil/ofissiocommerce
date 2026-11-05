@@ -38,7 +38,9 @@ export function CatalogFilterBar({ industry, category, color, industries, colors
         <div className="catalog-industry-options"><label><input type="radio" name="industry" checked={!industry} disabled={pending} onChange={() => apply("industry","")}/><span>Semua industri</span><small>{total}</small></label>
         {industries.map(item => <label key={item.slug}><input type="radio" name="industry" checked={industry === item.slug} disabled={pending} onChange={() => apply("industry",item.slug)}/><span>{item.label}</span><small>{item.count}</small></label>)}
       </div></details>}
-      {colors.length > 0 && <details open className="catalog-filter-section"><summary>Warna <ChevronDown size={18}/></summary><div className={`catalog-color-swatches ${colorStyles.colors}`}>
+      {colors.length > 0 && <details open className="catalog-filter-section"><summary>Warna <ChevronDown size={18}/></summary>
+        <label className={colorStyles.allColors}><input type="radio" name="catalog-color" value="" checked={!color} disabled={pending} onChange={() => apply("color", "")}/><span>Semua warna</span></label>
+        <div className={`catalog-color-swatches ${colorStyles.colors}`}>
         {colorGroups.map(family => {
           const shadeSelected = family.shades.some(item => item.slug === color);
           const expanded = expandedColors[family.slug] ?? (shadeSelected || color === family.slug);
