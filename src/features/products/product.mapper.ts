@@ -177,6 +177,7 @@ export function mapWooCommerceProductToOfissioProduct(
     id: `wc-${raw.id}`,
     source: "woocommerce",
     source_id: String(raw.id),
+    totalSales: typeof raw.total_sales === "number" && Number.isSafeInteger(raw.total_sales) && raw.total_sales >= 0 ? raw.total_sales : undefined,
     productKind: getMetaString(meta, PRODUCT_KIND_META) as "simple" | "variable" || undefined,
     modelCode: getMetaString(meta, MODEL_CODE_META),
     variantOptions: readVariantOptions(getMetaValue(meta, VARIANT_OPTIONS_META)),

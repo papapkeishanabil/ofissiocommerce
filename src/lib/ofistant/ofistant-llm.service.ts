@@ -19,6 +19,7 @@
 // `is…Configured()` + `{ok:true,…}|{ok:false,reason}`. Never throws.
 
 import "server-only";
+import { shippingConversationSchema } from "./ofistant-shipping.schema";
 
 import {
   generateText,
@@ -132,6 +133,7 @@ const pageContextSchema = z.object({
 
 /** Loose mirror of OfistantContext the client sends; validated permissively. */
 export const ofistantContextPayloadSchema = z.object({
+  pendingShippingRequest: shippingConversationSchema.nullable().optional(),
   companyId: z.string().nullable().optional(),
   companyName: z.string().nullable().optional(),
   currentOrderId: z.string().nullable().optional(),

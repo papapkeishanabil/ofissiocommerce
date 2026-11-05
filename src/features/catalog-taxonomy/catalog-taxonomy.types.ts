@@ -106,6 +106,9 @@ export interface CatalogSearchResult {
     category: string;
     industries: string[];
     regularPrice: number;
+    totalSales?: number;
+    mainImage?: string | null;
+    material?: string;
     quantityPricing?: QuantityPricing;
     globalEmbroideryPricing: EmbroideryPricing;
     supportedEmbroideryZones: EmbroideryPricingZoneId[];

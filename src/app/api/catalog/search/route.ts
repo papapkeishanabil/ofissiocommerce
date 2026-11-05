@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       windowMs: 60_000,
     });
     const { q } = parseQueryParams(searchQuerySchema, request);
-    const result = await searchCatalogProducts(q);
+    const result = await searchCatalogProducts(q, { requireVerified: true });
     return NextResponse.json(
       { ok: true, result },
       { headers: { "Cache-Control": "no-store" } },

@@ -19,6 +19,7 @@ import { CatalogFilterBar } from "./CatalogFilterBar";
 import { CatalogProductCard } from "./CatalogProductCard";
 import { ProductImagePlaceholder } from "./ProductImagePlaceholder";
 import { CATALOG_COLOR_FAMILIES, matchesCatalogColor } from "./catalog-colors";
+import { matchesCatalogTextQuery } from "@/features/catalog-taxonomy/catalog-broad-search";
 
 interface ProductCatalogProps {
   products: OfissioProduct[];
@@ -28,6 +29,7 @@ interface ProductCatalogProps {
   category?: string;
   industryLabel?: string;
   categoryLabel?: string;
+  searchQuery?: string;
   /** filter warna (slug dari available_colors) */
   color?: string;
   categoryStrict?: boolean;
@@ -73,6 +75,7 @@ export function ProductCatalog({
   category,
   industryLabel,
   categoryLabel,
+  searchQuery,
   color,
   categoryStrict = true,
   taxonomyCategories = [],
@@ -163,7 +166,7 @@ export function ProductCatalog({
   for (const product of products) for (const [key,values] of Object.entries(facetValues(product))) facets[key] = [...new Set([...(facets[key] ?? []), ...values.filter(Boolean)])];
   const [query, setQuery] = useState("");
   const [view, setView] = useState("grid");
-  const sortedProducts = useMemo(() => filteredProducts.filter(p => Object.entries(selected).every(([key,value]) => !value || facetValues(p)[key]?.includes(value))).filter(p => [p.name,p.sku,p.category,...(p.searchableTerms ?? [])].join(" ").toLocaleLowerCase("id").includes(query.trim().toLocaleLowerCase("id"))).sort((a,b) => sort === "price-asc" ? a.priceFrom-b.priceFrom : sort === "price-desc" ? b.priceFrom-a.priceFrom : sort === "name" ? a.name.localeCompare(b.name,"id") : 0), [filteredProducts, sort, query, selected]);
+  const sortedProducts = useMemo(() => filteredProducts.filter(p => Object.entries(selected).every(([key,value]) => !value || facetValues(p)[key]?.includes(value))).filter(p => matchesCatalogTextQuery(p, query)).sort((a,b) => sort === "price-asc" ? a.priceFrom-b.priceFrom : sort === "price-desc" ? b.priceFrom-a.priceFrom : sort === "name" ? a.name.localeCompare(b.name,"id") : 0), [filteredProducts, sort, query, selected]);
 
   // Warna yang benar-benar tersedia pada produk — basis chip filter "Warna".
   const presentColors = useMemo(() => {
@@ -240,7 +243,7 @@ export function ProductCatalog({
   return (
     <div className="catalog-page">
       <div className="catalog-semantic-heading"><Breadcrumbs items={crumbs} /></div>
-      <header className="catalog-heading"><h1>Katalog Produk</h1><p>Seragam kerja untuk kebutuhan tim Anda.</p></header>
+      <header className="catalog-search-intro mb-5 mt-3 max-w-3xl"><h1 className="text-2xl font-bold leading-tight">Katalog Seragam Kerja</h1><p className="mt-2 text-sm leading-relaxed text-ink-muted">Pilih kemeja kerja, seragam kantor, dan seragam lapangan untuk kebutuhan tim Anda. Produk ready stock dapat dilengkapi bordir logo.</p><p className="mt-2 text-sm leading-relaxed text-ink-muted">Butuh bantuan memilih bahan dan ukuran? Baca <Link href="/panduan/memilih-kemeja-seragam-kerja" className="underline underline-offset-4">panduan memilih kemeja seragam kerja</Link>.</p></header>
       {categoryGroups.length > 0 && <nav className="catalog-categories" aria-label="Kategori produk">
         <Link className={"catalog-category-all" + (!category ? " is-active" : "")} href={categoryHref()} aria-current={!category ? "page" : undefined}><span className="catalog-category-visual"><LayoutGrid size={26}/></span><span className="catalog-category-copy"><b>Semua Produk</b><small>{products.length} produk</small></span><ArrowRight size={16}/></Link>
         {categoryGroups.map(group => {
@@ -257,6 +260,7 @@ export function ProductCatalog({
       <div className="catalog-workspace">
       <CatalogFilterBar industry={industry} category={category} color={color} industries={presentIndustries} colors={presentColors} total={products.length} facets={facets} selected={selected} onFacetChange={(key,value) => setSelected(previous => ({...previous,[key]:value}))} onReset={() => { setSelected({}); setQuery(""); }}/>
       <section className="catalog-results" aria-label="Produk katalog">
+      {searchQuery && <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-ink"><span className="min-w-0 break-words">Pencarian: {searchQuery}</span><Link className="shrink-0 underline underline-offset-4" href={categoryHref(category)}>Hapus pencarian</Link></div>}
       <div className="catalog-toolbar"><label className="catalog-search"><Search size={22}/><input type="search" aria-label="Cari produk dalam katalog" placeholder="Cari produk dalam katalog..." value={query} onChange={event => setQuery(event.target.value)}/></label><label className="catalog-sort">Urutkan <select aria-label="Urutkan produk" value={sort} onChange={event => setSort(event.target.value)}><option value="default">Rekomendasi</option><option value="price-asc">Harga terendah</option><option value="price-desc">Harga tertinggi</option><option value="name">Nama A-Z</option></select></label><div className="catalog-view" aria-label="Tampilan produk">{[{value:"grid",Icon:LayoutGrid,label:"Grid"},{value:"list",Icon:List,label:"Daftar"}].map(({value,Icon,label}) => <button key={value} type="button" aria-label={label} aria-pressed={view === value} onClick={() => setView(value)}><Icon size={22}/></button>)}</div></div>
       <div className="catalog-results-summary" aria-live="polite"><span>{sortedProducts.length} produk{activeCategory ? ", " + activeCategory : ""}{activeIndustry ? ", " + activeIndustry : ""}{activeColor ? ", " + activeColor : ""}</span></div>
       {sortedProducts.length ? <div className={"catalog-product-grid" + (view === "list" ? " is-list" : "")}>{sortedProducts.map(p=><CatalogProductCard key={p.id} product={p} colorFilter={color}/>)}</div> : <div className="catalog-empty"><PackageOpen size={36}/><h2>Belum ada produk yang sesuai</h2><p>Coba ubah filter atau lihat pilihan kategori lainnya.</p><Link href="/catalog">Lihat semua produk</Link><div>{alternativeCategories.slice(0,4).map(item=><Link key={item.slug} href={categoryHref(item.slug)}>{item.name}</Link>)}{alternativeIndustries.slice(0,3).map(item=><Link key={item.slug} href={"/catalog?industri="+encodeURIComponent(item.slug)}>{item.name}</Link>)}</div></div>}

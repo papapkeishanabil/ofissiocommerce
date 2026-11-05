@@ -1,4 +1,6 @@
 import "server-only";
+import { getDatabaseRuntimeConfig } from "@/features/database/database.config";
+import { createApiError } from "@/lib/security/safe-error-response";
 
 import type { EmbroideryPricing } from "@/features/products/embroidery-pricing";
 import { readGlobalEmbroideryPricing, writeGlobalEmbroideryPricing } from "./global-embroidery-pricing.repository";
@@ -10,8 +12,17 @@ export async function getGlobalEmbroideryPricing() {
   return { ...state, pricing };
 }
 
-export async function getPublicGlobalEmbroideryPricing() {
+export function assertVerifiedEmbroideryState(state: { source: string; schemaReady: boolean }) {
+  const database = getDatabaseRuntimeConfig();
+  if (!state.schemaReady || state.source === "fallback" ||
+      (database.requestedProvider !== "mock" && state.source !== "supabase") ||
+      (process.env.NODE_ENV === "production" && state.source !== "supabase"))
+    throw createApiError("PROVIDER_UNAVAILABLE", "Tarif bordir belum dapat diperiksa dari sistem.", 503);
+}
+
+export async function getPublicGlobalEmbroideryPricing(options: { requireVerified?: boolean } = {}) {
   const state = await getGlobalEmbroideryPricing();
+  if (options.requireVerified) assertVerifiedEmbroideryState(state);
   return {
     zones: state.pricing.enabled
       ? state.pricing.zones.filter((zone) => zone.enabled).map((zone) => ({

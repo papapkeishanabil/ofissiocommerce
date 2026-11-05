@@ -91,6 +91,7 @@ export function WorkspaceHeader({ onNavigate }: {
     { label: "Cara Order", href: "/#cara", section: "cara" },
     { label: "Produk", href: "/catalog" },
     { label: "Promo", href: "/promo" },
+    { label: "Tentang Kami", href: "/tentang-kami" },
   ];
   const navLink = "rounded-lg px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10";
 

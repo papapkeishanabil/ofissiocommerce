@@ -6,6 +6,7 @@ import { formatIDR } from "@/types/product";
 import type { Industry } from "@/types/industry";
 import { INSPIRATION_ROUTES } from "@/features/site-content/industry-inspiration.routes";
 import { productCardDescription } from "@/lib/product-card-description";
+import { hasIndustryRoleSelection, industryExampleDetails, industrySelectionIntro, selectIndustryExamples } from "@/features/site-content/industry-product-selection";
 
 function productImage(product: OfissioProduct) {
   if (product.mainImage) return product.mainImage;
@@ -18,7 +19,8 @@ export function IndustryProductSelection({ products, industry = "Bengkel", secti
   industry?: Industry;
   sectionId?: string;
 }) {
-  const visibleProducts = products.filter((product) => productImage(product)).slice(0, 6);
+  const roleSelection = hasIndustryRoleSelection(industry);
+  const visibleProducts = selectIndustryExamples(products.filter((product) => productImage(product)), industry);
   const label = INSPIRATION_ROUTES[industry].label;
   const catalogHref = `/catalog?industri=${encodeURIComponent(industry)}`;
 
@@ -32,8 +34,9 @@ export function IndustryProductSelection({ products, industry = "Bengkel", secti
             Temukan seragam untuk ritme kerja tim Anda.
           </h2>
           <p className="mx-auto mt-5 max-w-[58ch] text-base leading-relaxed text-ink-muted sm:text-lg">
-            Mulai dari kebutuhan tim Anda, lalu bandingkan model dalam pilihan {label}. Lihat detail setiap produk untuk memastikan bahan, ukuran, dan ketentuan pemesanannya.
+            {industrySelectionIntro(industry) ?? `Mulai dari kebutuhan tim Anda, lalu bandingkan model dalam pilihan ${label}. Lihat detail setiap produk untuk memastikan bahan, ukuran, dan ketentuan pemesanannya.`}
           </p>
+          {roleSelection ? <p className="mx-auto mt-3 max-w-[65ch] text-sm leading-relaxed text-ink-muted">Contoh di bawah membantu Anda mulai membandingkan. Temukan model dan seri warna lainnya melalui seluruh produk {label}.</p> : null}
         </div>
 
         <div className="mt-14 flex items-end justify-between gap-6 border-b border-ochre-500/45 pb-5">
@@ -48,7 +51,7 @@ export function IndustryProductSelection({ products, industry = "Bengkel", secti
 
         {visibleProducts.length > 0 ? (
           <div className={`mt-7 grid gap-5 ${visibleProducts.length === 1 ? "mx-auto max-w-md" : visibleProducts.length === 2 ? "mx-auto max-w-4xl sm:grid-cols-2" : "md:grid-cols-3"}`}>
-            {visibleProducts.map((product) => {
+            {visibleProducts.map(({ product, role }) => {
               const image = productImage(product)!;
               const description = productCardDescription(product.short_description, product.name);
               return (
@@ -60,8 +63,11 @@ export function IndustryProductSelection({ products, industry = "Bengkel", secti
                     <span className="absolute left-4 top-4 rounded-full border border-white/75 bg-white/85 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-brand-950 backdrop-blur-sm">{product.category}</span>
                   </div>
                   <div className="flex flex-1 flex-col p-5 sm:p-6">
+                    {role ? <p className="mb-3 text-xs font-bold leading-5 text-ochre-700">{role}</p> : null}
                     <h4 className="text-xl font-bold leading-snug tracking-[-0.02em] text-brand-950">{product.name}</h4>
-                    {description ? (
+                    {roleSelection ? (
+                      <p className="mt-3 text-[0.9375rem] leading-6 text-ink-muted">{industryExampleDetails(product)}. Bandingkan pilihan warna dan tabel ukuran pada detail produk.</p>
+                    ) : description ? (
                       <p className="mt-3 line-clamp-3 text-[0.9375rem] leading-6 text-ink-muted">{description}</p>
                     ) : null}
                     <div className="mt-auto pt-6">
@@ -93,6 +99,18 @@ export function IndustryProductSelection({ products, industry = "Bengkel", secti
         <Link href={catalogHref} className="group mt-7 inline-flex min-h-12 items-center gap-2 border-b border-ochre-500 py-2 text-sm font-bold text-brand-950 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600 sm:hidden">
           Lihat seluruh produk {label} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
         </Link>
+        {roleSelection ? (
+          <aside aria-label="Panduan memilih ukuran dan memesan" className="mt-10 rounded-2xl border border-line bg-white p-6 sm:p-8">
+            <h3 className="text-xl font-bold text-brand-950">Sesuaikan ukuran, lalu siapkan logo tim Anda.</h3>
+            <p className="mt-3 max-w-[85ch] text-sm leading-7 text-ink-muted">Gunakan tabel ukuran pada detail produk sesuai model dan pilihan lengan. Untuk produk dengan dua pilihan lengan, pilih varian pendek atau panjang terlebih dahulu agar panduan ukurannya sesuai.</p>
+            <p className="mt-2 max-w-[85ch] text-sm leading-7 text-ink-muted">Minimum pesanan dengan bordir adalah 8 pcs untuk satu model dan satu warna yang sama; ukuran boleh berbeda-beda. Unggah logo melalui sistem Ofissio dan periksa biaya bordir saat menyiapkan pesanan.</p>
+            <div className="mt-4 flex flex-wrap gap-x-8 gap-y-2">
+              <Link href="/panduan/memilih-kemeja-seragam-kerja" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-brand-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4">Panduan memilih kemeja <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+              <Link href="/faq" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-brand-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4">FAQ produk & bordir <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-ink-muted">Koleksi lengkap, termasuk produk baru yang ditambahkan ke industri ini, dapat ditemukan melalui <Link href={catalogHref} className="font-semibold text-brand-800 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4">seluruh produk {label}</Link>.</p>
+          </aside>
+        ) : null}
       </div>
     </section>
   );

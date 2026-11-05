@@ -79,6 +79,16 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/product/kemeja-kerja-teknisi-kt-001",
+        destination: "/product/kemeja-kerja-kt-001",
+        statusCode: 301,
+      },
+      {
+        source: "/product/kemeja-kantor-kk-016",
+        destination: "/product/kemeja-kerja-kk-016",
+        statusCode: 301,
+      },
+      {
         source: "/favicon.ico",
         destination: "/favicon.svg",
         permanent: true,

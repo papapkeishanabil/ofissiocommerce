@@ -51,6 +51,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { OfistantOpenButton } from "./OfistantOpenButton";
+import { HomeBackgroundVideo } from "./HomeBackgroundVideo";
 import { resolveHomepageIcon } from "@/features/site-content/icon-registry";
 import type {
   HeroCta,
@@ -429,20 +430,11 @@ export function HeroCarousel({
     >
       {/* Video background — kept clear across the product area; contrast is
           concentrated behind the copy instead of tinting the whole frame. */}
-      <video
-        key={videoSrc || "/hero-workers.mp4"}
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="metadata"
-        className="absolute inset-0 h-full w-full object-cover brightness-[1.08] contrast-[1.04] saturate-[1.04]"
-      >
-        <source
-          src={videoSrc || "/hero-workers.mp4"}
-          type={(videoSrc || "/hero-workers.mp4").toLowerCase().includes(".webm") ? "video/webm" : "video/mp4"}
-        />
-      </video>
+      <HomeBackgroundVideo
+        src={videoSrc || "/hero-workers.mp4"}
+        eager
+        className="brightness-[1.08] contrast-[1.04] saturate-[1.04]"
+      />
       <div className="absolute inset-y-0 left-0 w-full bg-[linear-gradient(90deg,rgba(3,7,18,0.68)_0%,rgba(3,7,18,0.44)_44%,rgba(3,7,18,0.16)_78%,rgba(3,7,18,0)_100%)] sm:w-[72%] xl:w-[64%]" />
       <div className="relative z-10 mx-auto w-full max-w-[1600px] px-4 py-[clamp(3rem,7vh,5rem)] sm:px-6 lg:px-[clamp(1.5rem,3vw,3rem)]">
         <div className="grid items-center gap-[clamp(2rem,4vw,5rem)] xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.38fr)]">
@@ -453,6 +445,7 @@ export function HeroCarousel({
               {slides.map((s, i) => {
                 const on = i === active;
                 const EyebrowIcon = resolveHomepageIcon(s.eyebrowIcon);
+                const Heading = i === 0 ? "h1" : "h2";
                 return (
                   <div
                     key={i}
@@ -467,9 +460,9 @@ export function HeroCarousel({
                       {s.eyebrowText}
                     </span>
 
-                    <h1 className="max-w-[15ch] text-[clamp(2.35rem,3.7vw,3.75rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-white [text-shadow:0_2px_22px_rgba(7,13,28,0.55)]">
+                    <Heading className="max-w-[15ch] text-[clamp(2.35rem,3.7vw,3.75rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-white [text-shadow:0_2px_22px_rgba(7,13,28,0.55)]">
                       <HeroHeadline segments={s.title} />
-                    </h1>
+                    </Heading>
 
                     <p className="mt-[clamp(1rem,2.5vh,1.5rem)] max-w-xl text-[clamp(1rem,1.35vw,1.25rem)] leading-[1.65] text-white/90 [text-shadow:0_2px_14px_rgba(7,13,28,0.6)]">
                       {s.subhead}

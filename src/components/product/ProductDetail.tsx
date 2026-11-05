@@ -9,7 +9,7 @@ import { colorVariantGallery, selectedColorVariant } from "@/features/products/c
 import { isColorOption, isSizeOption, isSleeveOption, selectedVariantPrice, matchingProductVariant } from "@/features/products/product-variants";
 import { selectedSleeveSizeChart, type SleeveSizeCharts } from "@/features/size-charts/sleeve-size-charts";
 import { sleeveOptions } from "@/features/products/purchase-variants";
-import { linkedProductVariant, linkedVariantSizes } from "@/features/products/product-variant-links";
+import { linkedProductVariant, linkedVariantSelection, linkedVariantSizes } from "@/features/products/product-variant-links";
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -99,15 +99,17 @@ interface ProductDetailProps {
 export function ProductDetail({ product, initialVariantSku, globalEmbroideryPricing, moqSettings, sizeChartStandardName, sleeveSizeCharts, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
   const router = useRouter();
   const generic = product.productKind === "variable";
+  const linkedSelection = linkedVariantSelection(product, initialVariantSku);
   const defaultGeneric = linkedProductVariant(product, initialVariantSku) ?? product.productVariants?.find(v => v.sku === product.defaultVariantSku) ?? product.productVariants?.[0];
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => Object.fromEntries((product.variantOptions ?? []).filter(o => !isSizeOption(o.name)).map(o => [o.name, defaultGeneric?.options[o.name] ?? o.values[0] ?? ""])));
   const sleeves = useMemo(() => product.productKind ? [] : sleeveOptions(product), [product]);
-  const [selectedSleeve, setSelectedSleeve] = useState(sleeves[0] || "");
+  const [selectedSleeve, setSelectedSleeve] = useState(linkedSelection?.sleeve || sleeves[0] || "");
   const sleeveOption = product.variantOptions?.find(option => isSleeveOption(option.name));
   const activeSizeChart = sleeveSizeCharts ? selectedSleeveSizeChart(sleeveSizeCharts, sleeveOption ? selectedOptions[sleeveOption.name] : selectedSleeve || product.sleeve_type) : null;
   const sizeChartRows = sleeveSizeCharts ? activeSizeChart?.rows ?? [] : product.sizeChart;
   const activeSizeChartName = sleeveSizeCharts ? activeSizeChart?.standard.name : sizeChartStandardName;
   const [color, setColor] = useState<string>(() => {
+    if (linkedSelection?.color) return linkedSelection.color;
     const colorOption = product.variantOptions?.find(o => isColorOption(o.name));
     return generic && colorOption ? defaultGeneric?.options[colorOption.name] ?? colorOption.values[0] ?? "Default" : product.defaultColor && product.colors.includes(product.defaultColor) ? product.defaultColor : product.colors[0] || "Default";
   });

@@ -1,4 +1,6 @@
 import "server-only";
+import { getDatabaseRuntimeConfig } from "@/features/database/database.config";
+import { createApiError } from "@/lib/security/safe-error-response";
 
 import { getBiteshipCourierCatalog } from "@/features/carrier-shipping/providers/biteship.provider";
 import { getCarrierShippingConfig } from "@/features/carrier-shipping/carrier-shipping.config";
@@ -31,8 +33,11 @@ export async function updateShippingSettings(enabledServices: string[], actorId:
   return writeShippingSettings(enabledServices, actorId);
 }
 
-export async function getCheckoutCourierSelection() {
+export async function getCheckoutCourierSelection(options: { requireVerified?: boolean } = {}) {
   const settings = await readShippingSettings();
+  if (options.requireVerified && (!settings.schemaReady || settings.source === "fallback" ||
+    ((process.env.NODE_ENV === "production" || getDatabaseRuntimeConfig().requestedProvider !== "mock") && settings.source !== "supabase")))
+    throw createApiError("PROVIDER_UNAVAILABLE", "Pilihan kurir belum dapat diperiksa dari sistem.", 503);
   // A persisted row is authoritative, including an intentionally empty selection.
   if (settings.schemaReady && settings.updatedAt) return settings.enabledServices;
   const legacy = getCarrierShippingConfig().biteship.courierFilter;

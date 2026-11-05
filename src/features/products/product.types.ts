@@ -37,6 +37,8 @@ export interface ProductImageReference {
 
 /** Canonical product contract. UI-compatible fields remain from Product. */
 export interface OfissioProduct extends Product {
+  /** Units sold recorded by WooCommerce; undefined means unavailable. */
+  totalSales?: number;
   /** Uniform live native price, checked against storefront pricing before schema output. */
   liveOfferPrice?: number;
   liveOfferAvailability?: "InStock" | "OutOfStock" | "BackOrder";

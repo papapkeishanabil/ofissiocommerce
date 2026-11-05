@@ -4,11 +4,15 @@ import { validateProductForCatalog } from "@/features/products/product.validatio
 import { SITE_URL, productUrl } from "@/lib/seo";
 import { INSPIRATION_PAGES } from "@/features/site-content/industry-inspiration.routes";
 
+import { readPublishedPage } from "@/features/page-builder/page.repository";
+import { ABOUT_US_URL } from "@/features/page-builder/about-us.seo";
+
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const products = await productServerService.getPublishedProducts();
+  const [products, aboutUs] = await Promise.all([productServerService.getPublishedProducts(), readPublishedPage("about-us")]);
   const urls = [SITE_URL, `${SITE_URL}/catalog`, `${SITE_URL}/inspirasi`, `${SITE_URL}/faq`, `${SITE_URL}/panduan/memilih-kemeja-seragam-kerja`,
+    ...(aboutUs ? [ABOUT_US_URL] : []),
     ...INSPIRATION_PAGES.map(page => `${SITE_URL}/inspirasi/${page.slug}`),
     ...products.filter(product => product.source === "woocommerce" && validateProductForCatalog(product).ok)
       .map(product => productUrl(product.slug))];

@@ -6,6 +6,7 @@
 // To add a new intent/rule: append a rule function to RULES below.
 
 import { productService } from "@/features/products/product.service";
+import { resolveProductReferences } from "@/features/catalog-taxonomy/catalog-product-reference";
 import { getOfistantOrderStatusText } from "@/features/tracking/tracking.service";
 import { moqSizeSpread } from "@/types/cart";
 import { SIZES } from "@/types/industry";
@@ -189,12 +190,6 @@ function buildEstimateResponse(
 }
 
 /** Real product names to offer as quick replies when an estimate needs a product. */
-function pickProductQuickReplies(ctx: OfistantContext, limit = 3): string[] {
-  const list = ctx.selectedIndustry
-    ? productService.getProductsByIndustry(ctx.selectedIndustry)
-    : productService.getPublishedProducts();
-  return list.slice(0, limit).map((p) => p.name);
-}
 
 /**
  * No-product response for an estimate request: stash the requested qty + zones
@@ -205,14 +200,9 @@ function estimateNeedsProduct(
   ctx: OfistantContext,
   detected: DetectedIntent,
 ): OfistantResponse {
-  const productReplies = pickProductQuickReplies(ctx, 3);
   return {
-    message:
-      productReplies.length > 0
-        ? "Estimasi butuh produk spesifik. Pilih salah satu produk di bawah, atau ketik namanya:"
-        : "Estimasi butuh produk spesifik. Saat ini belum ada produk aktif yang bisa saya hitungkan. Coba buka katalog atau hubungi CS Ofissio.",
-    quickReplies:
-      productReplies.length > 0 ? productReplies : ["Lihat katalog", "Hubungi CS Ofissio"],
+    message: "Produk mana yang ingin dihitung? Sebutkan kode produknya, misalnya KK-011, agar saya memeriksa harga dan tarif yang sesuai dari sistem.",
+    quickReplies: ["Lihat katalog", "Hubungi CS Ofissio"],
     contextPatch: {
       pendingEstimateRequest: {
         qty: detected.requestedQty ?? 0,
@@ -277,6 +267,10 @@ const quantityPricing: Rule = ({
     // Carry the (qty, zones) request forward; offer real products to pick.
     return estimateNeedsProduct(ctx, detected);
   }
+  if (detected.requestedQty && ctx.pendingEstimateRequest?.zones.length) {
+    const estimate = buildEstimateResponse(product, detected.requestedQty, ctx.pendingEstimateRequest.zones);
+    return { ...estimate, contextPatch: { ...withProductViewed(ctx, product.id, product.slug), pendingEstimateRequest: null } };
+  }
   const pricing = product.quantityPricing;
   if (!pricing?.enabled || pricing.tiers.length === 0) {
     return {
@@ -306,6 +300,7 @@ const quantityPricing: Rule = ({
     message: est.message,
     action: est.action,
     quickReplies: est.quickReplies,
+    contextPatch: withProductViewed(ctx, product.id, product.slug),
   };
 };
 
@@ -324,11 +319,12 @@ const embroideryPricing: Rule = ({
     // Carry the (qty, zones) request forward; offer real products to pick.
     return estimateNeedsProduct(ctx, detected);
   }
-  const selectedZones = detected.requestedEmbroideryZones ?? [];
+  const selectedZones = detected.requestedEmbroideryZones?.length ? detected.requestedEmbroideryZones : ctx.pendingEstimateRequest?.zones ?? [];
   if (!detected.requestedQty) {
     return {
       message: `Sebutkan jumlah pesanan untuk menghitung bordir ${selectedZones.map(embroideryZoneLabel).join(" dan ")} pada ${product.name}. Harga final mengikuti quotation admin.`,
       quickReplies: ["Hitung 100 pcs", "Request quotation"],
+      contextPatch: { ...withProductViewed(ctx, product.id, product.slug), pendingEstimateRequest: { qty: 0, zones: selectedZones } },
     };
   }
   const est = buildEstimateResponse(
@@ -340,6 +336,7 @@ const embroideryPricing: Rule = ({
     message: est.message,
     action: est.action,
     quickReplies: est.quickReplies,
+    contextPatch: { ...withProductViewed(ctx, product.id, product.slug), pendingEstimateRequest: null },
   };
 };
 
@@ -356,7 +353,7 @@ const resolvePendingEstimate: Rule = ({ text, ctx, catalogSearchResult }) => {
   const pending = ctx.pendingEstimateRequest;
   if (!pending) return null;
   const exactName = text.trim().toLowerCase();
-  const product = (catalogSearchResult?.products ?? []).find(
+  const product = resolveProductReferences(catalogSearchResult?.products ?? [], text)[0] ?? (catalogSearchResult?.products ?? []).find(
     (p) => p.name.toLowerCase() === exactName,
   );
   if (!product) return null; // not an exact product pick → defer to other rules
@@ -372,7 +369,7 @@ const resolvePendingEstimate: Rule = ({ text, ctx, catalogSearchResult }) => {
       quickReplies: ["Hitung 100 pcs", "Request quotation"],
       contextPatch: {
         ...withProductViewed(ctx, product.id, product.slug),
-        pendingEstimateRequest: null,
+        pendingEstimateRequest: { qty: 0, zones: pending.zones },
       },
     };
   }
@@ -385,6 +382,56 @@ const resolvePendingEstimate: Rule = ({ text, ctx, catalogSearchResult }) => {
       ...withProductViewed(ctx, product.id, product.slug),
       pendingEstimateRequest: null,
     },
+  };
+};
+
+function catalogRecommendations(result: CatalogSearchResult | null) {
+  const products = [...(result?.products ?? [])]
+    .sort((a, b) => (b.totalSales ?? -1) - (a.totalSales ?? -1))
+    .slice(0, 1).map(product => ({
+    id: product.id,
+    slug: product.slug,
+    name: product.name,
+    image: product.mainImage ?? null,
+    material: product.material,
+    priceFrom: product.regularPrice,
+  }));
+  const params = new URLSearchParams();
+  if (result) {
+    if (result.normalization.categorySlugs[0]) params.set("kategori", result.normalization.categorySlugs[0]);
+    if (result.normalization.industrySlugs[0]) params.set("industri", result.normalization.industrySlugs[0]);
+    params.set("q", result.normalization.originalQuery);
+  }
+  return { products, moreProductsHref: `/catalog${params.size ? `?${params}` : ""}` };
+}
+
+const shipping: Rule = ({ text, ctx, cart, taxonomy, catalogSearchResult }) => {
+  if (detectIntent(text, taxonomy).intent !== "ASK_SHIPPING") return null;
+  const referenced = resolveProductReferences(catalogSearchResult?.products ?? [], text);
+  const product = referenced[0];
+  const recommendations = product && catalogSearchResult
+    ? catalogRecommendations({ ...catalogSearchResult, products: referenced }) : null;
+  return {
+    message: `Baik, ${address(ctx)}.${product ? ` Produk yang Anda maksud adalah ${product.name}. Pilih ukuran dan jumlahnya melalui Lihat detail, lalu cek ongkir dengan alamat tujuan di checkout.` : " Untuk mengetahui ongkir, pilih produk, ukuran, dan jumlahnya, lalu isi alamat tujuan di checkout."} Nominal ongkir mengikuti perhitungan dan pilihan kurir di checkout.`,
+    ...(recommendations ?? {}),
+    quickReplies: cart.itemCount > 0 ? ["Lihat keranjang", "Hubungi CS Ofissio"] : ["Lihat katalog", "Hubungi CS Ofissio"],
+    contextPatch: product ? withProductViewed(ctx, product.id, product.slug) : undefined,
+  };
+};
+
+const productReference: Rule = ({ text, ctx, taxonomy, catalogSearchResult }) => {
+  if (!catalogSearchResult) return null;
+  const referenced = resolveProductReferences(catalogSearchResult.products, text);
+  const product = referenced[0];
+  if (!product) return null;
+  // Keep pricing, tracking, checkout and explicit mutation intents in their
+  // existing flows; this rule only resolves product discovery by article code.
+  const intent = detectIntent(text, taxonomy).intent;
+  if (!["UNKNOWN", "SEARCH_CATALOG", "ASK_BROWSE", "ASK_RECOMMEND"].includes(intent)) return null;
+  return {
+    message: `Baik, ${address(ctx)}. Produk yang Anda maksud adalah ${product.name}. Berikut detail produknya.`,
+    ...catalogRecommendations({ ...catalogSearchResult, products: referenced }),
+    contextPatch: withProductViewed(ctx, product.id, product.slug),
   };
 };
 
@@ -406,11 +453,14 @@ const searchCatalog: Rule = ({
     ? ` untuk industri ${detected.industry}`
     : "";
   const isEmpty = catalogSearchResult?.resultCount === 0;
+  const recommendations = catalogRecommendations(catalogSearchResult);
+  const hasProducts = recommendations.products.length > 0;
   return {
     message: isEmpty
-      ? `Belum ada produk aktif untuk ${detected.category}${industryText}. Saya tetap buka hasil filter dan menyediakan kategori atau industri alternatif.`
-      : `Baik ${address(ctx)}, saya buka katalog ${detected.category}${industryText}. Hasil hanya berasal dari katalog produk yang aktif.`,
-    action: {
+      ? `Belum ditemukan ${detected.category.toLocaleLowerCase("id-ID")}${industryText} yang sesuai dengan pencarian Anda. Coba ubah pilihan atau lihat produk lainnya.`
+      : `Baik, ${address(ctx)}. Berikut pilihan ${detected.category.toLocaleLowerCase("id-ID")}${industryText} yang bisa Anda pertimbangkan.`,
+    ...(hasProducts ? recommendations : {}),
+    action: hasProducts ? undefined : {
       type: "SHOW_PRODUCTS",
       payload: {
         category: detected.category,
@@ -428,7 +478,7 @@ const searchCatalog: Rule = ({
             .map((item) => item.name) ?? []),
           "Hubungi CS Ofissio",
         ]
-      : ["Lihat kategori lain", "Hubungi CS Ofissio"],
+      : hasProducts ? [] : ["Lihat katalog", "Hubungi CS Ofissio"],
     contextPatch: detected.industry
       ? withSelectedIndustry(ctx, detected.industry)
       : undefined,
@@ -446,11 +496,14 @@ const selectIndustry: Rule = ({
     return null;
   }
   const isEmpty = catalogSearchResult?.resultCount === 0;
+  const recommendations = catalogRecommendations(catalogSearchResult);
+  const hasProducts = recommendations.products.length > 0;
   return {
     message: isEmpty
-      ? `Belum ada produk aktif untuk industri ${d.industry}. Saya buka hasilnya bersama alternatif kategori/industri yang tersedia.`
-      : `Baik ${address(ctx)}, saya tampilkan produk aktif untuk industri ${d.industry}. Hasil dibaca dari katalog, bukan dibuat oleh Ofistant.`,
-    action: {
+      ? `Belum ditemukan produk yang sesuai untuk ${d.industry}. Anda bisa melihat pilihan lainnya di katalog.`
+      : `Baik, ${address(ctx)}. Berikut pilihan seragam untuk ${d.industry} yang bisa Anda pertimbangkan.`,
+    ...(hasProducts ? recommendations : {}),
+    action: hasProducts ? undefined : {
       type: "SHOW_PRODUCTS",
       payload: {
         industry: d.industry,
@@ -465,7 +518,7 @@ const selectIndustry: Rule = ({
             .map((item) => item.name) ?? []),
           "Hubungi CS Ofissio",
         ]
-      : ["Lihat kategori lain", "Hubungi CS Ofissio"],
+      : hasProducts ? [] : ["Lihat katalog", "Hubungi CS Ofissio"],
     contextPatch: withSelectedIndustry(ctx, d.industry),
   };
 };
@@ -770,11 +823,13 @@ const fallback: Rule = ({ text, ctx }) => {
 // ordered list — first match wins
 export const RULES: Rule[] = [
   humanHandoff,
+  shipping,
   greeting,
   askHelp,
   embroideryPricing,
   quantityPricing,
   resolvePendingEstimate,
+  productReference,
   searchCatalog,
   viewCart,
   checkout,

@@ -1,0 +1,617 @@
+{
+  "schemaVersion": 1,
+  "title": "Tentang Ofissio | Seragam Kerja Ready Stock & Bordir Logo",
+  "description": "Kenali Ofissio, brand seragam kerja ready stock dengan layanan bordir logo untuk berbagai usaha. Jelajahi perjalanan, koleksi, dan proses produksi kami.",
+  "sections": [
+    {
+      "id": "hero",
+      "type": "hero",
+      "visible": true,
+      "label": "Tentang OFISSIO",
+      "title": "Tentang",
+      "accent": "OFISSIO",
+      "paragraphs": [
+        "Sejak 2018, OFISSIO berkembang dari layanan pembuatan seragam berdasarkan pesanan menjadi brand dengan koleksi ready stock sendiri.",
+        "Kini, OFISSIO menyediakan pilihan seragam kerja bagi berbagai usaha, mulai dari UKM yang sedang berkembang hingga perusahaan besar, dilengkapi layanan personalisasi bordir logo."
+      ],
+      "items": [],
+      "buttons": [
+        {
+          "label": "Lihat Koleksi Produk",
+          "href": "/catalog"
+        },
+        {
+          "label": "Konsultasi Kebutuhan",
+          "href": "https://wa.me/6285959440993"
+        }
+      ],
+      "images": [
+        {
+          "id": "about-hero",
+          "src": "/about-us/hero-campus-selected.png",
+          "mobileSrc": "",
+          "alt": "Tim mengenakan koleksi OFISSIO - visual persiapan prototype",
+          "caption": "Tim mengenakan koleksi OFISSIO",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; ai-illustration",
+          "desktop": {
+            "ratio": 2.4029666254635353,
+            "x": 62,
+            "y": 52,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 2.4029666254635353,
+            "x": 64,
+            "y": 53,
+            "fit": "cover"
+          }
+        }
+      ],
+      "layout": "editorial",
+      "background": "#122162",
+      "foreground": "#ffffff",
+      "accentColor": "#e8a92a",
+      "desktop": {
+        "padding": 64,
+        "gap": 28,
+        "align": "left",
+        "reverse": false
+      },
+      "mobile": {
+        "padding": 28,
+        "gap": 18,
+        "align": "left",
+        "reverse": false
+      },
+      "requiresReview": true,
+      "reviewNote": "Konfirmasi tahun awal perjalanan brand sebelum publikasi.",
+      "verified": false,
+      "verifiedAt": "",
+      "panelTitle": "",
+      "panelDescription": ""
+    },
+    {
+      "id": "story",
+      "type": "story",
+      "visible": true,
+      "label": "Cerita Kami",
+      "title": "Perjalanan",
+      "accent": "OFISSIO",
+      "paragraphs": [
+        "Perjalanan OFISSIO dimulai dengan mengerjakan pesanan seragam satu demi satu. Dari setiap pekerjaan, kami belajar memahami kebutuhan pelanggan, karakter bahan, serta detail yang menentukan kenyamanan dan kerapian pakaian kerja.",
+        "Pengalaman tersebut mendorong kami mengembangkan koleksi ready stock dengan merek OFISSIO sendiri.",
+        "Hingga kini, OFISSIO telah mengembangkan lebih dari 100 artikel produk, memproduksi lebih dari 70.000 pcs untuk kebutuhan stok, serta mencatat penjualan lebih dari 50.000 pcs secara akumulatif melalui marketplace seperti Tokopedia, Shopee, dan TikTok.",
+        "Perjalanan ini terus berlanjut seiring berkembangnya kebutuhan pelanggan, dari usaha kecil dan menengah hingga perusahaan berskala besar."
+      ],
+      "items": [
+        "Laundry",
+        "Apotek",
+        "Bengkel",
+        "Toko Ritel",
+        "Kafe",
+        "Restoran",
+        "Perkantoran",
+        "Industri"
+      ],
+      "buttons": [],
+      "images": [],
+      "layout": "editorial",
+      "background": "#f3f6fa",
+      "foreground": "#122162",
+      "accentColor": "#e8a92a",
+      "desktop": {
+        "padding": 64,
+        "gap": 28,
+        "align": "left",
+        "reverse": false
+      },
+      "mobile": {
+        "padding": 28,
+        "gap": 18,
+        "align": "left",
+        "reverse": false
+      },
+      "requiresReview": true,
+      "reviewNote": "Verifikasi catatan 100 artikel, 70.000 pcs produksi dan 50.000 pcs penjualan; isi tanggal acuan data.",
+      "verified": false,
+      "verifiedAt": "",
+      "panelTitle": "Pilihan untuk beragam lingkungan kerja",
+      "panelDescription": "Contoh bidang usaha yang dapat memanfaatkan produk dan layanan OFISSIO."
+    },
+    {
+      "id": "store",
+      "type": "store",
+      "visible": true,
+      "label": "Toko OFISSIO",
+      "title": "Toko",
+      "accent": "OFISSIO",
+      "paragraphs": [
+        "Melengkapi pengalaman berbelanja secara online, toko OFISSIO menghadirkan ruang bagi pelanggan untuk mengenal koleksi seragam kerja secara langsung.",
+        "Berbagai pilihan model, warna, dan detail produk ditampilkan untuk membantu pelanggan menemukan seragam yang sesuai dengan karakter usaha maupun kebutuhan tim mereka."
+      ],
+      "items": [],
+      "buttons": [],
+      "images": [
+        {
+          "id": "about-store-exterior",
+          "src": "/about-us/store-exterior-selected.png",
+          "mobileSrc": "",
+          "alt": "Eksterior toko OFISSIO",
+          "caption": "Eksterior toko OFISSIO",
+          "status": "real-photo",
+          "source": "Foto asli toko OFISSIO; dikonfirmasi pemilik",
+          "desktop": {
+            "ratio": 2.45,
+            "x": 61,
+            "y": 28,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.9,
+            "x": 61,
+            "y": 30,
+            "fit": "cover"
+          }
+        },
+        {
+          "id": "about-store-interior",
+          "src": "/about-us/store-showroom-illustration.png",
+          "mobileSrc": "",
+          "alt": "Interior toko OFISSIO",
+          "caption": "Interior toko OFISSIO",
+          "status": "real-photo",
+          "source": "Foto asli toko OFISSIO; dikonfirmasi pemilik",
+          "desktop": {
+            "ratio": 2.1,
+            "x": 50,
+            "y": 45,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.2,
+            "x": 50,
+            "y": 45,
+            "fit": "cover"
+          }
+        },
+        {
+          "id": "about-store-display",
+          "src": "/about-us/store-interior-selected.png",
+          "mobileSrc": "",
+          "alt": "Rak dan display produk toko OFISSIO",
+          "caption": "Rak dan display produk",
+          "status": "real-photo",
+          "source": "Foto asli toko OFISSIO; dikonfirmasi pemilik",
+          "desktop": {
+            "ratio": 2.1,
+            "x": 40,
+            "y": 42,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.2,
+            "x": 40,
+            "y": 42,
+            "fit": "cover"
+          }
+        }
+      ],
+      "layout": "split",
+      "background": "#ffffff",
+      "foreground": "#122162",
+      "accentColor": "#e8a92a",
+      "desktop": {
+        "padding": 64,
+        "gap": 28,
+        "align": "left",
+        "reverse": false
+      },
+      "mobile": {
+        "padding": 28,
+        "gap": 18,
+        "align": "left",
+        "reverse": false
+      },
+      "requiresReview": true,
+      "reviewNote": "Konfirmasi status operasional toko sebelum menampilkan narasi ini ke publik.",
+      "verified": false,
+      "verifiedAt": "",
+      "panelTitle": "",
+      "panelDescription": ""
+    },
+    {
+      "id": "collection",
+      "type": "collection",
+      "visible": true,
+      "label": "Koleksi dan Produk",
+      "title": "Koleksi",
+      "accent": "OFISSIO",
+      "paragraphs": [
+        "Koleksi OFISSIO mencakup berbagai pilihan seragam kerja, mulai dari kemeja kantor, kemeja lapangan, seragam safety, hingga jaket untuk beragam kebutuhan pekerjaan."
+      ],
+      "items": [],
+      "buttons": [
+        {
+          "label": "Lihat Koleksi Produk",
+          "href": "/catalog"
+        }
+      ],
+      "images": [
+        {
+          "id": "about-collection-main",
+          "src": "/about-us/section03-editorial/ofissio-collection-flatlay-v4-final.png",
+          "mobileSrc": "",
+          "alt": "Ilustrasi editorial koleksi seragam pada meja batu terang dengan sudut pandang miring dan cahaya alami",
+          "caption": "Koleksi seragam kerja OFISSIO - Ilustrasi editorial",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; ai-illustration",
+          "desktop": {
+            "ratio": 1.6666666666666667,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.6,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          }
+        },
+        {
+          "id": "about-collection-detail",
+          "src": "/about-us/section03-editorial/ofissio-hanging-collection-v3.png",
+          "mobileSrc": "",
+          "alt": "Ilustrasi kemeja pada hanger berurutan FRM Putih, KL-005, KS-004, KK-006, KK-016",
+          "caption": "Kemeja yang Digantung - Ilustrasi",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; ai-illustration",
+          "desktop": {
+            "ratio": 2.8,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.3333333333333333,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          }
+        },
+        {
+          "id": "about-collection-folded",
+          "src": "/about-us/section03-editorial/ofissio-folded-sn-v1.png",
+          "mobileSrc": "",
+          "alt": "Ilustrasi empat kemeja SN Basic terlipat, Fuschia, Daisy Yellow, Tosca, dan Biru Wardah, dilihat dari depan kiri pada meja studio",
+          "caption": "Ilustrasi produk terlipat",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; ai-illustration",
+          "desktop": {
+            "ratio": 2.4,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.3333333333333333,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          }
+        }
+      ],
+      "layout": "editorial",
+      "background": "#f3f6fa",
+      "foreground": "#122162",
+      "accentColor": "#e8a92a",
+      "desktop": {
+        "padding": 64,
+        "gap": 28,
+        "align": "left",
+        "reverse": false
+      },
+      "mobile": {
+        "padding": 28,
+        "gap": 18,
+        "align": "left",
+        "reverse": false
+      },
+      "requiresReview": false,
+      "reviewNote": "",
+      "verified": false,
+      "verifiedAt": "",
+      "panelTitle": "",
+      "panelDescription": ""
+    },
+    {
+      "id": "operations",
+      "type": "operations",
+      "visible": true,
+      "label": "Di Balik OFISSIO",
+      "title": "Di Balik",
+      "accent": "OFISSIO",
+      "paragraphs": [
+        "Selama bertahun-tahun, OFISSIO telah mencoba dan mengevaluasi berbagai jenis kain sebelum memilih material seperti American Drill, Tropical, dan Baby Canvas yang sesuai dengan karakter serta kebutuhan setiap produk.",
+        "Pengalaman dan masukan pelanggan terus memperdalam pemahaman kami mengenai kenyamanan, ketepatan ukuran, kerapian jahitan, dan konsistensi kualitas.",
+        "Pembelajaran tersebut kami terapkan melalui prosedur produksi yang terstruktur serta pemeriksaan kualitas yang ketat pada berbagai tahapan, mulai dari persiapan bahan hingga finishing."
+      ],
+      "items": [],
+      "buttons": [],
+      "images": [
+        {
+          "id": "about-cutting",
+          "src": "/about-us/selected-reference.png",
+          "mobileSrc": "",
+          "alt": "Pemotongan Bahan - visual persiapan prototype",
+          "caption": "Pemotongan Bahan",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; design-reference",
+          "desktop": {
+            "ratio": 1.65,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.5,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "referenceCrop": {
+            "x": 324,
+            "y": 962,
+            "width": 204,
+            "height": 91,
+            "sourceWidth": 991,
+            "sourceHeight": 1588
+          }
+        },
+        {
+          "id": "about-sewing",
+          "src": "/about-us/selected-reference.png",
+          "mobileSrc": "",
+          "alt": "Penjahitan - visual persiapan prototype",
+          "caption": "Penjahitan",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; design-reference",
+          "desktop": {
+            "ratio": 1.65,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.5,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "referenceCrop": {
+            "x": 762,
+            "y": 962,
+            "width": 183,
+            "height": 91,
+            "sourceWidth": 991,
+            "sourceHeight": 1588
+          }
+        },
+        {
+          "id": "about-embroidery",
+          "src": "/about-us/selected-reference.png",
+          "mobileSrc": "",
+          "alt": "Bordir Logo - visual persiapan prototype",
+          "caption": "Bordir Logo",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; design-reference",
+          "desktop": {
+            "ratio": 1.65,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.5,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "referenceCrop": {
+            "x": 543,
+            "y": 962,
+            "width": 206,
+            "height": 91,
+            "sourceWidth": 991,
+            "sourceHeight": 1588
+          }
+        },
+        {
+          "id": "about-qc",
+          "src": "/about-us/selected-reference.png",
+          "mobileSrc": "",
+          "alt": "Pemeriksaan Kualitas - visual persiapan prototype",
+          "caption": "Pemeriksaan Kualitas",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; design-reference",
+          "desktop": {
+            "ratio": 1.65,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.5,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "referenceCrop": {
+            "x": 324,
+            "y": 1088,
+            "width": 204,
+            "height": 94,
+            "sourceWidth": 991,
+            "sourceHeight": 1588
+          }
+        },
+        {
+          "id": "about-finishing-packing",
+          "src": "/about-us/selected-reference.png",
+          "mobileSrc": "",
+          "alt": "Finishing dan Pengemasan - visual persiapan prototype",
+          "caption": "Finishing dan Pengemasan",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; design-reference",
+          "desktop": {
+            "ratio": 1.65,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.5,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "referenceCrop": {
+            "x": 543,
+            "y": 1088,
+            "width": 206,
+            "height": 94,
+            "sourceWidth": 991,
+            "sourceHeight": 1588
+          }
+        },
+        {
+          "id": "about-warehouse",
+          "src": "/about-us/selected-reference.png",
+          "mobileSrc": "",
+          "alt": "Penyimpanan Produk - visual persiapan prototype",
+          "caption": "Penyimpanan Produk",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; design-reference",
+          "desktop": {
+            "ratio": 1.65,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.5,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "referenceCrop": {
+            "x": 762,
+            "y": 1088,
+            "width": 183,
+            "height": 94,
+            "sourceWidth": 991,
+            "sourceHeight": 1588
+          }
+        }
+      ],
+      "layout": "mosaic",
+      "background": "#f3f6fa",
+      "foreground": "#122162",
+      "accentColor": "#e8a92a",
+      "desktop": {
+        "padding": 64,
+        "gap": 28,
+        "align": "left",
+        "reverse": false
+      },
+      "mobile": {
+        "padding": 28,
+        "gap": 18,
+        "align": "left",
+        "reverse": false
+      },
+      "requiresReview": true,
+      "reviewNote": "Verifikasi klaim bahan, proses produksi dan pemeriksaan kualitas. Foto saat ini merupakan referensi ilustrasi.",
+      "verified": false,
+      "verifiedAt": "",
+      "panelTitle": "",
+      "panelDescription": ""
+    },
+    {
+      "id": "closing",
+      "type": "closing",
+      "visible": true,
+      "label": "Jelajahi OFISSIO",
+      "title": "Jelajahi",
+      "accent": "OFISSIO",
+      "paragraphs": [
+        "Kenali koleksi seragam kerja OFISSIO dan temukan pilihan yang sesuai dengan kebutuhan bisnis Anda."
+      ],
+      "items": [],
+      "buttons": [
+        {
+          "label": "Lihat Koleksi Produk",
+          "href": "/catalog"
+        },
+        {
+          "label": "Konsultasi Kebutuhan",
+          "href": "https://wa.me/6285959440993"
+        }
+      ],
+      "images": [
+        {
+          "id": "about-closing",
+          "src": "/about-us/selected-reference.png",
+          "mobileSrc": "",
+          "alt": "Koleksi kemeja untuk penutup - visual persiapan prototype",
+          "caption": "Koleksi kemeja untuk penutup",
+          "status": "illustration",
+          "source": "Prototype pilihan pengguna; design-reference",
+          "desktop": {
+            "ratio": 2.1,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "mobile": {
+            "ratio": 1.7,
+            "x": 50,
+            "y": 50,
+            "fit": "cover"
+          },
+          "referenceCrop": {
+            "x": 432,
+            "y": 1378,
+            "width": 557,
+            "height": 208,
+            "sourceWidth": 991,
+            "sourceHeight": 1588
+          }
+        }
+      ],
+      "layout": "editorial",
+      "background": "#ffffff",
+      "foreground": "#122162",
+      "accentColor": "#e8a92a",
+      "desktop": {
+        "padding": 64,
+        "gap": 28,
+        "align": "left",
+        "reverse": false
+      },
+      "mobile": {
+        "padding": 28,
+        "gap": 18,
+        "align": "left",
+        "reverse": false
+      },
+      "requiresReview": false,
+      "reviewNote": "",
+      "verified": false,
+      "verifiedAt": "",
+      "panelTitle": "",
+      "panelDescription": ""
+    }
+  ]
+}

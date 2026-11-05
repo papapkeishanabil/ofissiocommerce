@@ -25,6 +25,7 @@ export type Intent =
   | "ASK_REGISTER"
   | "ASK_QUOTATION"
   | "ASK_TRACKING"
+  | "ASK_SHIPPING"
   | "ASK_3D_CONFIGURATOR"
   | "ASK_QUANTITY_PRICE"
   | "ASK_EMBROIDERY_PRICE"
@@ -41,6 +42,10 @@ export interface DetectedIntent {
   catalogSearch?: CatalogSearchNormalization;
   requestedQty?: number;
   requestedEmbroideryZones?: EmbroideryPricingZoneId[];
+}
+
+export function isShippingQuestion(text: string) {
+  return /\b(ongkir(?:nya)?|ongkos\s+kirim|biaya\s+(?:kirim|pengiriman)|tarif\s+(?:kirim|pengiriman)|shipping\s+(?:cost|fee)|delivery\s+fee)\b/i.test(text);
 }
 
 export function detectIndustry(
@@ -75,7 +80,7 @@ export function detectIntent(
   if (!value) return { intent: "UNKNOWN" };
 
   if (
-    /\b(halo|hai|hi|hallo|hello|selamat (pagi|siang|sore|malam)|pagi|siang|sore|malam)\b/.test(
+    !isShippingQuestion(value) && /\b(halo|hai|hi|hallo|hello|selamat (pagi|siang|sore|malam)|pagi|siang|sore|malam)\b/.test(
       value,
     ) ||
     /^(p|bu|pak|kak)$/i.test(value)
@@ -120,11 +125,15 @@ export function detectIntent(
   ) {
     return { intent: "ASK_TRACKING" };
   }
+  if (isShippingQuestion(value)) {
+    return { intent: "ASK_SHIPPING", ...taxonomyFields };
+  }
   if (
     /\b(harga|berapa|biaya|estimasi|ongkos)\b/.test(value) &&
     /\b(bordir|embroidery)\b/.test(value)
     || requestedEmbroideryZones.length > 0 &&
-      (requestedQty != null || /\b(harga|berapa|biaya|estimasi|ongkos)\b/.test(value))
+      (requestedQty != null || /\b(harga|berapa|biaya|estimasi|ongkos)\b/.test(value) ||
+        /\b(bordir|embroidery)\b/.test(value) && !/\b(3d|atur|preview)\b/.test(value))
   ) {
     return {
       intent: "ASK_EMBROIDERY_PRICE",

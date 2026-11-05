@@ -6,11 +6,19 @@ import { productServerService } from "@/features/products/product.server-service
 import { createApiError } from "@/lib/security/safe-error-response";
 import { getCheckoutCourierSelection } from "@/features/shipping-settings/shipping-settings.service";
 
-import type { ShippingProviderAdapter, ShippingRate } from "../shipping.types";
+import type { OfissioProduct } from "@/features/products/product.types";
+import type { ShippingProviderAdapter, ShippingRateRequest, ShippingRate } from "../shipping.types";
 
 export const biteshipCheckoutShippingProvider: ShippingProviderAdapter = {
   name: "biteship",
   async getRates({ request }) {
+    const products = await Promise.all(request.items.map((item) => productServerService.getProductById(item.productId)));
+    return getLiveShippingRatesForProducts(request, products.filter((product): product is OfissioProduct => Boolean(product)));
+  },
+};
+
+/** Shared checkout/Ofistant calculation; products supplied here are server-resolved. */
+export async function getLiveShippingRatesForProducts(request: ShippingRateRequest, products: OfissioProduct[], options: { requireVerifiedSettings?: boolean } = {}): Promise<ShippingRate[]> {
     const config = getCarrierShippingConfig();
     if (config.provider !== "biteship" || !config.biteship.isConfigured) {
       throw createApiError(
@@ -20,9 +28,8 @@ export const biteshipCheckoutShippingProvider: ShippingProviderAdapter = {
       );
     }
 
-    const items = await Promise.all(
-      request.items.map(async (item) => {
-        const product = await productServerService.getProductById(item.productId);
+    const items = request.items.map((item) => {
+        const product = products.find((candidate) => candidate.id === item.productId);
         if (!product) {
           throw createApiError("NOT_FOUND", "Produk pengiriman tidak ditemukan.", 404);
         }
@@ -51,10 +58,9 @@ export const biteshipCheckoutShippingProvider: ShippingProviderAdapter = {
           value: Math.max(1, Math.round(product.priceFrom)),
           ...measurements,
         };
-      }),
-    );
+      });
 
-    const enabledServices = await getCheckoutCourierSelection();
+    const enabledServices = await getCheckoutCourierSelection({ requireVerified: options.requireVerifiedSettings });
     const courierFilter = [
       ...new Set(
         enabledServices
@@ -119,8 +125,8 @@ export const biteshipCheckoutShippingProvider: ShippingProviderAdapter = {
       isAvailable: true,
     });
     return mapped;
-  },
-};
+}
+
 
 function checkoutRateId(providerId: string, index: number) {
   const safe = providerId.replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 90);

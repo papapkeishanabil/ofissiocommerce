@@ -14,7 +14,6 @@ import { create } from "zustand";
 
 import {
   applyResponse,
-  respond,
 } from "@/lib/ofistant/ofistant.service";
 import {
   REQUIRES_CONFIRMATION,
@@ -30,13 +29,15 @@ import {
   withCatalogSearchVocabulary,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import type {
-  CatalogSearchResult,
   PublicCatalogTaxonomy,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.types";
-import { detectIntent } from "@/lib/ofistant/ofistant.intent";
 
 interface OfistantState {
   messages: ChatMessage[];
+  historyOwner: string | null;
+  conversationId: string;
+  generation: number;
+  historyNotice: string | null;
   context: OfistantContext;
   typing: boolean;
   quickReplies: string[];
@@ -81,6 +82,10 @@ const WELCOME_TEXT =
 
 export const useOfistantStore = create<OfistantState>((set, get) => ({
   messages: [],
+  historyOwner: null,
+  conversationId: "",
+  generation: 0,
+  historyNotice: null,
   context: emptyContext(),
   typing: false,
   quickReplies: [],
@@ -123,9 +128,12 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
 
   sendUserTurn: (text, opts) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || get().typing || trimmed.length > 800) return;
 
     const state = get();
+    const generation = state.generation;
+    const conversationId = state.conversationId || crypto.randomUUID();
+    const turnId = crypto.randomUUID();
     const userMsg: ChatMessage = {
       id: genMsgId("user"),
       role: "user",
@@ -139,6 +147,7 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
 
     set({
       messages: [...state.messages, userMsg],
+      conversationId,
       typing: true,
       quickReplies: [],
       pendingAction: null,
@@ -148,6 +157,7 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
     // round-trip provides the rest of the natural think time.
     const delay = 150;
     window.setTimeout(async () => {
+      if (get().generation !== generation) return;
       const ctx = get().context;
 
       // Prior messages (excluding the current user turn just pushed), capped.
@@ -158,77 +168,40 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
           role: (m.role === "system" ? "assistant" : m.role) as
             | "user"
             | "assistant",
-          text: m.text,
+          text: m.text.slice(0, 2000),
         }));
 
       try {
         const resp = await fetch("/api/ofistant/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: trimmed, context: ctx, cart, history }),
+          body: JSON.stringify({ message: trimmed, context: ctx, cart, history, ...(state.historyOwner ? { conversationId, turnId } : {}) }),
         });
         if (!resp.ok) throw new Error(`http ${resp.status}`);
         const payload = (await resp.json()) as {
           ok?: boolean;
           result?: OfistantResponse;
+          historySaved?: boolean;
         };
         if (!payload.ok || !payload.result) throw new Error("bad payload");
+        if (get().generation !== generation) return;
         const res = payload.result;
+        if (state.historyOwner && payload.historySaved !== true) set({ historyNotice: "Sebagian pesan belum tersimpan di riwayat. Percakapan lengkap masih tersedia selama halaman ini terbuka." });
 
         set({ context: applyResponse(ctx, res) });
         get().applyAssistant(res.message, res);
         return;
       } catch {
         // Emergency fallback: route unreachable (offline / dev server down).
+        if (get().generation !== generation) return;
+        if (state.historyOwner) set({ historyNotice: "Koneksi terputus. Pesan ini belum tersimpan di riwayat." });
         await get().runLocalFallback(trimmed, ctx, cart);
       }
     }, delay);
   },
 
-  runLocalFallback: async (text, ctx, cart) => {
-    const taxonomy = get().catalogTaxonomy;
-    const detected = detectIntent(text, taxonomy ?? undefined);
-    let catalogSearchResult: CatalogSearchResult | null = null;
-    if (
-      detected.intent === "SEARCH_CATALOG" ||
-      detected.intent === "SELECT_INDUSTRY" ||
-      detected.intent === "ASK_QUANTITY_PRICE" ||
-      detected.intent === "ASK_EMBROIDERY_PRICE"
-    ) {
-      const pricingSearchQuery =
-        detected.intent === "ASK_QUANTITY_PRICE" ||
-        detected.intent === "ASK_EMBROIDERY_PRICE"
-          ? [detected.category, detected.industry].filter(Boolean).join(" ") ||
-            ctx.selectedProductSlug ||
-            text
-          : text;
-      catalogSearchResult = await fetch(
-        `/api/catalog/search?q=${encodeURIComponent(pricingSearchQuery)}`,
-      )
-        .then(async (response) => {
-          if (!response.ok) return null;
-          const payload = (await response.json()) as {
-            ok?: boolean;
-            result?: CatalogSearchResult;
-          };
-          return payload.ok ? payload.result ?? null : null;
-        })
-        .catch(() => null);
-    }
-    const res = respond({
-      text,
-      ctx,
-      cart,
-      taxonomy,
-      catalogSearchResult,
-    });
-
-    // Apply context patch first so the assistant message reflects the
-    // fresh state.
-    const nextCtx = applyResponse(ctx, res);
-    set({ context: nextCtx });
-
-    get().applyAssistant(res.message, res);
+  runLocalFallback: async () => {
+    get().applyAssistant("Saya belum dapat memeriksa data sistem saat ini. Silakan coba lagi sebentar. Saya belum bisa memastikan produk, harga, atau tarif sebelum sistem berhasil diperiksa.", { message: "" });
   },
 
   applyAssistant: (text, res) => {
@@ -243,6 +216,8 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
       ts: Date.now(),
       action: needsConfirm ? res.action : res.action,
       requiresConfirm: needsConfirm,
+      products: res.products,
+      moreProductsHref: res.moreProductsHref,
     };
 
     set((s) => ({
@@ -283,6 +258,9 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
 
   reset: () =>
     set({
+      conversationId: crypto.randomUUID(),
+      generation: get().generation + 1,
+      historyNotice: null,
       messages: [
         {
           id: genMsgId("assistant"),

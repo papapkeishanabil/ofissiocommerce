@@ -4,6 +4,7 @@ import { ArrowRight, MessageCircle, Phone, ShieldCheck, Sparkles } from "lucide-
 
 import { ReadyStockOrderSection } from "./ReadyStockOrderSection";
 import { HeroIntro } from "./HeroIntro";
+import { HomeBackgroundVideo } from "./HomeBackgroundVideo";
 import { HomeSectionMarker } from "./HomeSectionMarker";
 import { corporatePhotoFor, IndustryScaleShowcase } from "./IndustryScaleShowcase";
 import { OfistantOpenButton } from "./OfistantOpenButton";
@@ -73,15 +74,9 @@ export async function HomePage() {
           dock below it so they never compete with stage labels baked into the film. */}
       <section className="scroll-reveal overflow-hidden bg-black">
         <div className="relative flex min-h-[75dvh] flex-col justify-start overflow-hidden py-14 sm:py-16 lg:h-[min(56.25vw,calc(100dvh-13rem))] lg:min-h-0 lg:py-[clamp(3rem,5vw,6rem)] xl:h-[min(56.25vw,calc(100dvh-4rem))]">
-          <video
-            key={content.bordir.mediaSrc || "/KK-006.mp4"}
+          <HomeBackgroundVideo
             src={content.bordir.mediaSrc || "/KK-006.mp4"}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="absolute inset-0 h-full w-full object-cover object-[center_55%]"
+            objectPosition="center 55%"
           />
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.68)_0%,rgba(0,0,0,0.38)_34%,rgba(0,0,0,0.10)_62%,transparent_82%)]" />
           <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden w-[42%] bg-gradient-to-l from-black/70 via-black/35 to-transparent xl:block" />
@@ -221,6 +216,9 @@ export async function HomePage() {
               <Headline segments={content.produk_pilihan.headline} highlightClass="text-ochre-400" />
             </h2>
             <p className="mt-7 max-w-[42ch] text-base leading-relaxed text-ink-muted sm:text-lg">{content.produk_pilihan.lede}</p>
+            <p className="mt-4 max-w-[48ch] text-base leading-relaxed text-ink-muted">
+              Jelajahi <Link href="/catalog?kategori=kemeja" className="font-semibold text-brand-950 underline underline-offset-4">koleksi kemeja kerja</Link> untuk seragam kantor dan kebutuhan lapangan. Temukan bahan dan ukuran yang sesuai melalui <Link href="/panduan/memilih-kemeja-seragam-kerja" className="font-semibold text-brand-950 underline underline-offset-4">panduan memilih seragam kerja</Link>.
+            </p>
 
             <nav aria-label="Kategori produk pilihan" className="mt-9 max-w-sm border-y border-brand-950/15">
               {content.produk_pilihan.items.slice(0, 3).map((item, index) => (

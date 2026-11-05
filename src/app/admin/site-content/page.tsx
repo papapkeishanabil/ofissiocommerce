@@ -38,6 +38,8 @@ export default async function AdminSiteContentPage() {
           {state.source}
         </span>
       </AdminPageHeader>
+      <Link href="/admin/pages/about-us" className="block rounded-xl border border-line bg-white p-5 shadow-soft-sm hover:bg-brand-50/40"><strong>Page Builder ? About Us</strong><p className="mt-2 text-sm text-ink-muted">Kelola draft, live preview, urutan section, Publish, dan riwayat versi.</p></Link>
+
 
       {!state.schemaReady ? (
         <div

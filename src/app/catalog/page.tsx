@@ -1,3 +1,4 @@
+import { catalogMetadata } from "@/features/seo/storefront-metadata";
 import type { Metadata } from "next";
 
 import { ProductCatalog } from "@/components/catalog/ProductCatalog";
@@ -7,20 +8,18 @@ import {
   withCatalogSearchVocabulary,
 } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
 import { normalizeCatalogSearch } from "@/features/catalog-taxonomy/catalog-search";
+import { matchStorefrontCatalogProducts } from "@/features/catalog-taxonomy/catalog-broad-search";
 import { getPublicCatalogTaxonomy } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { productServerService } from "@/features/products/product.server-service";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "https://ofissio.com/catalog" },
-  title: "Katalog Produk",
-  description: "Telusuri seragam kerja untuk setiap industri di Ofissio.",
-};
+export const metadata: Metadata = catalogMetadata;
 
 interface PageProps {
   searchParams: Promise<{
     industri?: string;
     kategori?: string;
     warna?: string;
+    q?: string;
     /** Alias lama dari konten homepage ("?category=") — diperlakukan sama. */
     category?: string;
   }>;
@@ -33,14 +32,18 @@ export default async function Page({ searchParams }: PageProps) {
     getPublicCatalogTaxonomy(),
   ]);
   const searchTaxonomy = withCatalogSearchVocabulary(taxonomy);
+  const query = search.q?.trim().slice(0, 800);
+  const matchingProducts = query
+    ? matchStorefrontCatalogProducts(products, query, normalizeCatalogSearch(query, searchTaxonomy), taxonomy)
+    : products;
   const rawKategori = search.kategori ?? search.category;
   const normalizedIndustry = search.industri
     ? normalizeCatalogSearch(search.industri, searchTaxonomy).industrySlugs[0] ??
       normalizeIndustrySlug(search.industri)
     : undefined;
   const normalizedCategory = rawKategori
-    ? normalizeCatalogSearch(rawKategori, searchTaxonomy).categorySlugs[0] ??
-      slugifyTaxonomy(rawKategori)
+    ? (slugifyTaxonomy(rawKategori) === "kemeja" ? "kemeja"
+      : normalizeCatalogSearch(rawKategori, searchTaxonomy).categorySlugs[0] ?? slugifyTaxonomy(rawKategori))
     : undefined;
   const industry = taxonomy.industries.find(
     (item) =>
@@ -56,13 +59,14 @@ export default async function Page({ searchParams }: PageProps) {
 
   return (
     <ProductCatalog
-      products={products}
+      products={matchingProducts}
+      searchQuery={query}
       industry={industry?.slug}
       category={category?.slug ?? normalizedCategory}
       industryLabel={industry?.name}
       categoryLabel={category?.name ?? rawKategori}
       color={search.warna}
-      categoryStrict={Boolean(activeCategory)}
+      categoryStrict={Boolean(activeCategory) && normalizedCategory !== "kemeja"}
       taxonomyCategories={taxonomy.categories}
       taxonomyIndustries={taxonomy.industries}
       alternativeCategories={taxonomy.categories.filter(

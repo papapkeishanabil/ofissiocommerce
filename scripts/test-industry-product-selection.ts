@@ -1,0 +1,42 @@
+import assert from "node:assert/strict";
+import type { OfissioProduct } from "../src/features/products/product.types";
+import { industryExampleDetails, industrySelectionIntro, selectIndustryExamples } from "../src/features/site-content/industry-product-selection";
+
+function fixture(slug: string, overrides: Partial<OfissioProduct> = {}) {
+  return { id: slug, slug, status: "published", gender: "men", material: "Bahan admin", sleeve_type: "short", ...overrides } as OfissioProduct;
+}
+const sn = fixture("kemeja-kantor-wanita-sn-basic-green-series", { gender: "women" });
+const km = fixture("kemeja-kerja-casual-km");
+const frm = fixture("frm", { sleeve_type: "long" });
+const kt = fixture("kemeja-kerja-kt-001");
+const kk = fixture("kemeja-kerja-kk-014");
+const pool = [sn, fixture("kemeja-kantor-wanita-sn-basic-brown-series", { gender: "women" }), km, frm, kt, kk];
+const clinic = selectIndustryExamples(pool, "Kesehatan");
+const store = selectIndustryExamples(pool, "Bangunan");
+assert.deepEqual(clinic.slice(0, 3).map((item) => item.product.slug), [km.slug, frm.slug, sn.slug]);
+assert.deepEqual(store.slice(0, 4).map((item) => item.product.slug), [km.slug, kk.slug, sn.slug, kt.slug]);
+assert.equal(clinic.filter((item) => item.product.slug.includes("sn-basic")).length, 1);
+assert.ok(selectIndustryExamples([sn], "Kesehatan").every((item) => item.product === sn), "Do not fetch a featured product absent from the industry pool");
+assert.equal(selectIndustryExamples([fixture("frm", { status: "draft" })], "Kesehatan").length, 0);
+assert.equal(selectIndustryExamples([fixture(km.slug, { gender: "women" })], "Kesehatan")[0]?.role, "Pilihan lain untuk tim Anda", "A changed gender must not retain a curated male role");
+const newcomer = fixture("model-baru");
+assert.ok(selectIndustryExamples([sn, newcomer], "Bangunan").some((item) => item.product === newcomer));
+assert.deepEqual(selectIndustryExamples([], "Bangunan"), []);
+assert.deepEqual(selectIndustryExamples(pool, "Bengkel").map((item) => item.product), pool, "Other industry ordering remains unchanged");
+assert.match(industryExampleDetails(fixture("dua-lengan", { variantOptions: [{ name: "Lengan", values: ["Pendek", "Panjang"] }] })), /Pendek \/ Panjang/);
+assert.match(industryExampleDetails(fixture("bahan-baru", { material: "Material terbaru admin" })), /Material terbaru admin/);
+const snMono = fixture("kemeja-kantor-wanita-sn-basic-monochrome-series", { gender: "women" });
+const snBlue = fixture("sn-basic-shirt-blue-series", { gender: "women" });
+const dual = fixture("kemeja-kerja-kk-013", { variantOptions: [{ name: "Lengan", values: ["Pendek", "Panjang"] }] });
+const expanded = [sn, snBlue, snMono, ...pool.slice(2), dual];
+const hotel = selectIndustryExamples(expanded, "Perhotelan");
+const retail = selectIndustryExamples(expanded, "Retail");
+assert.deepEqual(hotel.slice(0, 4).map((item) => item.product.slug), [frm.slug, snMono.slug, km.slug, dual.slug]);
+assert.deepEqual(retail.slice(0, 4).map((item) => item.product.slug), [km.slug, snBlue.slug, kk.slug, kt.slug]);
+assert.equal(hotel.filter((item) => item.product.gender === "women").length, 1, "SN Blue and SN series use the same example family");
+assert.equal(retail.filter((item) => item.product.gender === "women").length, 1);
+assert.match(industrySelectionIntro("Perhotelan")!, /resepsionis/);
+assert.match(industrySelectionIntro("Retail")!, /stok toko/);
+assert.equal(industrySelectionIntro("Bengkel"), undefined);
+assert.ok(!selectIndustryExamples([snMono, km], "Perhotelan").some((item) => item.product.slug === frm.slug));
+console.log("PASS: role selection, live industry membership, draft exclusion, gender edits, model diversity, new products, mixed sleeves and unchanged other industries");

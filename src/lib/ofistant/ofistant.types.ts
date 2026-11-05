@@ -88,6 +88,7 @@ export interface OfistantPageContext {
 
 /** Ofistant's memory of the current session. */
 export interface OfistantContext {
+  pendingShippingRequest?: import("./ofistant-shipping.schema").ShippingConversation | null;
   companyId: string | null;
   companyName: string | null;
   currentOrderId: string | null;
@@ -122,6 +123,7 @@ export interface OfistantContext {
 
 export function emptyContext(): OfistantContext {
   return {
+    pendingShippingRequest: null,
     companyId: null,
     companyName: null,
     currentOrderId: null,
@@ -142,6 +144,15 @@ export function emptyContext(): OfistantContext {
 }
 
 /** A single chat message in the conversation. */
+export interface OfistantProductRecommendation {
+  id: string;
+  slug: string;
+  name: string;
+  image: string | null;
+  material?: string;
+  priceFrom: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -154,6 +165,8 @@ export interface ChatMessage {
   requiresConfirm?: boolean;
   /** short label set when this message originated from a quick reply */
   viaQuickReply?: string;
+  products?: OfistantProductRecommendation[];
+  moreProductsHref?: string;
 }
 
 /**
@@ -163,6 +176,8 @@ export interface ChatMessage {
  */
 export interface OfistantResponse {
   message: string;
+  products?: OfistantProductRecommendation[];
+  moreProductsHref?: string;
   action?: OfistantAction;
   quickReplies?: string[];
   /** whether the assistant message needs the user to confirm before running */

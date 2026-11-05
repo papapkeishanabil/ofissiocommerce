@@ -1,0 +1,15 @@
+{
+  "/api/site-content/video/site-content/hero/72c0e35e-6b12-4bd6-a468-41a621f24728-kemeja-ks-003-web-banner-final-kling.mp4": {
+    "poster": "/media/home/hero-ks003-v1.webp",
+    "desktop": "/media/home/hero-ks003-v1-desktop.mp4",
+    "mobile": "/media/home/hero-ks003-v1-mobile.mp4"
+  },
+  "/api/site-content/video/site-content/bordir/b04ed8f7-4624-4cce-825c-fdad7b009b14-vid-section-04.mp4": {
+    "poster": "/media/home/bordir-v1.webp"
+  },
+  "/hero-workers.mp4": {
+    "poster": "/media/home/hero-workers-v1.webp",
+    "desktop": "/media/home/hero-workers-v1-desktop.mp4",
+    "mobile": "/media/home/hero-workers-v1-mobile.mp4"
+  }
+}

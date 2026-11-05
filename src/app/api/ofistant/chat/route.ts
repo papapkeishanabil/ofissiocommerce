@@ -10,6 +10,9 @@
 // Response contract is always { ok: true, result: OfistantResponse, source }.
 
 import { NextResponse } from "next/server";
+import { respondWithShippingRates } from "@/lib/ofistant/ofistant-shipping.service";
+import { saveChatTurn } from "@/features/ofistant-history/history.chat";
+import { historyTurnSchema } from "@/features/ofistant-history/history.schema";
 import { z } from "zod";
 
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
@@ -51,7 +54,7 @@ const bodySchema = z.object({
   history: z.array(chatMessagePayloadSchema).max(20).optional(),
 });
 
-export async function POST(req: Request) {
+async function respondToChat(req: Request) {
   try {
     rateLimitOrThrow({
       key: createRateLimitKey(req, "ofistant.chat"),
@@ -85,11 +88,16 @@ export async function POST(req: Request) {
       await getPublicCatalogTaxonomy(),
     );
     const intent = detectIntent(body.message, taxonomy);
+    if (intent.intent !== "ASK_HUMAN" && intent.intent !== "ASK_TRACKING") {
+      const shipping = await respondWithShippingRates({ message: body.message, history: body.history ?? [], context: ctx, identity: session ? { companyId: session.companyId, userId: session.userId } : null });
+      if (shipping) return NextResponse.json({ ok: true, source: "shipping-system", result: shipping });
+    }
     if (
       intent.intent === "ASK_EMBROIDERY_PRICE" &&
-      (intent.requestedEmbroideryZones?.length ?? 0) === 0
+      (intent.requestedEmbroideryZones?.length ?? 0) === 0 &&
+      !ctx.pendingEstimateRequest?.zones.length
     ) {
-      const pricing = await getPublicGlobalEmbroideryPricing();
+      const pricing = await getPublicGlobalEmbroideryPricing({ requireVerified: true });
       if (pricing.zones.length === 0) {
         return NextResponse.json({
           ok: true,
@@ -227,7 +235,12 @@ export async function POST(req: Request) {
         },
       });
     }
-    const catalogSearchResult = await searchCatalogProducts(body.message);
+    let catalogSearchResult = await searchCatalogProducts(body.message, { requireVerified: true });
+    if (!catalogSearchResult.resultCount && ctx.selectedProductSlug &&
+      !/\b[a-z]{1,6}[\s-]*\d{3,6}[a-z]{0,3}\b/i.test(body.message) &&
+      (intent.intent === "ASK_QUANTITY_PRICE" || intent.intent === "ASK_EMBROIDERY_PRICE")) {
+      catalogSearchResult = await searchCatalogProducts(ctx.selectedProductSlug, { requireVerified: true });
+    }
     const ruleResult = respond({
       text: body.message,
       ctx,
@@ -235,6 +248,16 @@ export async function POST(req: Request) {
       taxonomy,
       catalogSearchResult,
     });
+    if ((intent.intent === "ASK_QUANTITY_PRICE" || intent.intent === "ASK_EMBROIDERY_PRICE") &&
+      ruleResult.action?.type === "OPEN_PRODUCT_DETAIL") {
+      const slug = ruleResult.action.payload.slug;
+      const product = catalogSearchResult.products.find((p) => p.slug === slug);
+      if (product) {
+        ruleResult.products = [{ id: product.id, slug: product.slug, name: product.name, image: product.mainImage ?? null, material: product.material, priceFrom: product.regularPrice }];
+        ruleResult.moreProductsHref = `/catalog?q=${encodeURIComponent(product.name)}`;
+        ruleResult.action = undefined;
+      }
+    }
 
     // ---- LLM only when rules fell through to the generic fallback -----
     // (the natural-conversation turns the rules can't parse) and the LLM
@@ -265,4 +288,35 @@ export async function POST(req: Request) {
       500,
     );
   }
+}
+
+
+// Persist only server-generated replies, never assistant text supplied by clients.
+export async function POST(req: Request) {
+  const input = await req.clone().json().catch(() => null);
+  let session: ReturnType<typeof getCurrentSession> = null;
+  try { session = getCurrentSession(req); } catch { /* Anonymous catalog help remains available. */ }
+  if (session && input?.conversationId) {
+    const origin = req.headers.get("origin");
+    if (origin && new URL(origin).host !== req.headers.get("host"))
+      return NextResponse.json({ ok: false, message: "Permintaan tidak valid." }, { status: 403 });
+    if (!historyTurnSchema.safeParse(input).success)
+      return NextResponse.json({ ok: false, message: "Identitas percakapan tidak valid." }, { status: 400 });
+  }
+  const response = await respondToChat(req);
+  response.headers.set("Cache-Control", "private, no-store");
+  if (!response.ok) return response;
+  const body = await response.json();
+  if (body.ok && body.result && body.source !== "shipping-system" && input?.context?.pendingShippingRequest) {
+    body.result.contextPatch = { ...body.result.contextPatch, pendingShippingRequest: null };
+  }
+  if (session && input?.conversationId && body.ok && body.result) {
+    try {
+      await saveChatTurn(session, input, body.result);
+      body.historySaved = true;
+    } catch {
+      body.historySaved = false;
+    }
+  }
+  return NextResponse.json(body, { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
 }
