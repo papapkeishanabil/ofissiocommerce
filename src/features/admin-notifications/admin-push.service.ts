@@ -7,6 +7,7 @@ import { getSupabaseAdminClient } from "@/features/database/supabase-admin.clien
 import { logInternalError } from "@/lib/security/safe-error-response";
 import type { InternalRole } from "@/lib/security/security.types";
 import type { AdminNotification } from "./admin-notification.types";
+import { isLiveChatNotification, canReceiveChatNotification } from "@/features/ofistant-support/support-notification";
 
 export interface AdminPushSubscriptionInput {
   endpoint: string;
@@ -89,7 +90,9 @@ export async function sendAdminWebPush(
   const rows = await client.select("admin_push_subscriptions", {
     filters: { active: true },
   });
-  const eligible = rows.filter((row) =>
+  const eligible = rows.filter((row) => isLiveChatNotification(notification)
+    ? canReceiveChatNotification(notification, { role: row.recipient_role as InternalRole, userId: String(row.user_id) })
+    :
     (!notification.recipientRole || row.recipient_role === notification.recipientRole) &&
     (!notification.recipientUserId || row.user_id === notification.recipientUserId),
   );
@@ -107,7 +110,9 @@ export async function sendAdminWebPush(
           body: notification.message,
           url,
           tag: notification.id,
+          chat: isLiveChatNotification(notification),
         }),
+        { TTL: 3600, urgency: "high", timeout: 10000 },
       );
       return true;
     } catch (error) {

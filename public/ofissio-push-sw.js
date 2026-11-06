@@ -14,6 +14,9 @@ self.addEventListener("push", (event) => {
       body: data.body,
       tag: data.tag || "ofissio-admin",
       renotify: true,
+      icon: "/brand/app-icon-192-v1.png",
+      badge: "/favicon-ofissio-32.png",
+      silent: false,
       data: { url: data.url },
     }),
   );
@@ -21,13 +24,15 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(
+  const parsedUrl = new URL(
     event.notification.data?.url || "/admin/notifications",
     self.location.origin,
-  ).href;
+  );
+  const targetUrl = parsedUrl.origin === self.location.origin && parsedUrl.pathname.startsWith("/admin/")
+    ? parsedUrl.href : new URL("/admin/chats", self.location.origin).href;
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
-      const existing = windows.find((client) => client.url.startsWith(self.location.origin));
+      const existing = windows.find((client) => new URL(client.url).origin === self.location.origin && new URL(client.url).pathname.startsWith("/admin/"));
       if (existing) {
         existing.navigate(targetUrl);
         return existing.focus();

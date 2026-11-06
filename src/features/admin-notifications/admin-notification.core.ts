@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isLiveChatNotification } from "@/features/ofistant-support/support-notification";
 
 import type { AdminNotificationRepository } from "@/features/repositories/repository.types";
 
@@ -109,6 +110,7 @@ export function createAdminNotificationManager(
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
       return {
         totalUnread: rows.filter((notification) => notification.status === "unread").length,
+        latestChatNotifications: rows.filter(isLiveChatNotification).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 20),
         ordersUnread: pendingOrders.length,
         quotationsUnread: pendingQuotations.length,
         requestsUnread: pendingRequests.length,

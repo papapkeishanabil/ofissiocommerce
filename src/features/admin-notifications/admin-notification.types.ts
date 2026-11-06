@@ -73,6 +73,7 @@ export interface AdminNotificationListFilters {
 }
 
 export interface AdminNotificationSummary {
+  latestChatNotifications?: AdminNotification[];
   totalUnread: number;
   ordersUnread: number;
   quotationsUnread: number;

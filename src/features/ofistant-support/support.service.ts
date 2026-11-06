@@ -5,7 +5,9 @@ import { requireCompanyUser } from "@/features/auth/auth.service";
 import { requireInternalAdmin } from "@/features/admin/admin.service";
 import { createApiError, safeErrorResponse } from "@/lib/security/safe-error-response";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { notifyCustomerChat } from "./support-notification.service";
+import { logInternalError } from "@/lib/security/safe-error-response";
 import type { SupportResult } from "./support.types";
 
 export interface SupportActor { userId: string; companyId: string; name: string; staff: boolean }
@@ -66,6 +68,13 @@ export async function supportRoute(request: Request, staff: boolean) {
     const action = "action" in payload ? payload.action : payload.conversationId ? "read" : "list";
     if ((!staff && (action === "claim" || action === "list")) || (staff && action === "start")) throw createApiError("FORBIDDEN");
     const result = await supportCommand(actor, action, payload);
+    if (!staff && write && (action === "start" || action === "send")) {
+      const messageId = "messageId" in payload ? payload.messageId : undefined;
+      after(async () => {
+        try { await notifyCustomerChat(action, messageId, result); }
+        catch (error) { logInternalError(error, { area: "ofistant_chat_notification" }); }
+      });
+    }
     return NextResponse.json({ ok: true, result }, { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
   } catch (error) {
     const response = safeErrorResponse(error);
