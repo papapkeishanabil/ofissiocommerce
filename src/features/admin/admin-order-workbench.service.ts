@@ -94,6 +94,7 @@ export async function getAdminOrderArtworkPreviews(
   >();
   for (const item of order.items) {
     for (const placement of item.embroideryPlacements) {
+      if (placement.textBordir) continue;
       if (!placement.logoFileId || placementByFileId.has(placement.logoFileId)) continue;
       placementByFileId.set(placement.logoFileId, {
         filename: placement.logoFileName || "Logo customer",

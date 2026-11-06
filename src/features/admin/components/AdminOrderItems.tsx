@@ -5,7 +5,8 @@ import type { AdminOrderArtworkPreview } from "@/features/admin/admin.types";
 import { formatRupiah } from "@/features/admin/admin.utils";
 import type { ValidatedCheckoutCartItem } from "@/features/checkout/checkout-cart.types";
 import { SIZES } from "@/types/industry";
-import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
+import { embroiderySizeLabel, embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
+import { embroideryTextSummary } from "@/lib/embroidery-names";
 
 import { AdminBadge } from "./AdminBadge";
 import { AdminProductThumb } from "./AdminProductThumb";
@@ -155,10 +156,10 @@ export function AdminOrderItems({
                               </AdminBadge>
                             </div>
                             <p className="mt-1 break-words text-sm font-semibold text-ink-muted">
-                              {placement.logoFileName || "Nama file tidak tersedia"}
+                              {embroideryTextSummary(placement) || "Nama file tidak tersedia"}
                             </p>
                             <p className="mt-1 text-xs text-ink-muted">
-                              {placement.widthCm} × {placement.heightCm} cm, Rotasi {placement.rotation}°
+                              {embroiderySizeLabel(placement)}, Rotasi {placement.rotation}°
                             </p>
                             {placement.notes ? (
                               <p className="mt-2 text-sm text-ink-muted">Catatan: {placement.notes}</p>
@@ -168,7 +169,7 @@ export function AdminOrderItems({
                                 <ArtworkAction href={preview.signedUrl} icon={Eye} label="Lihat artwork" />
                                 <ArtworkAction href={preview.signedUrl} icon={Download} label="Download" download />
                               </div>
-                            ) : (
+                            ) : placement.textBordir ? <p className="mt-2 text-xs text-ink-muted">Tulisan dan pembagian nama tersimpan pada pesanan ini.</p> : (
                               <p className="mt-2 text-xs font-semibold text-amber-800">
                                 Preview file belum tersedia. Periksa status upload customer.
                               </p>

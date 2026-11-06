@@ -1,8 +1,9 @@
 import "server-only";
+import { embroiderySizeLabel } from "@/types/uniform-3d";
 
 import { formatInvoiceDate } from "../../document.utils";
 import type { EmbroideryWorkOrderPdfData } from "../../document.types";
-import { SimplePdfDocument } from "../pdf-renderer";
+import { SimplePdfDocument, wrapText } from "../pdf-renderer";
 import type { PdfTemplate } from "../pdf.types";
 
 const NAVY = "#061a56";
@@ -133,17 +134,15 @@ function drawItems(doc: SimplePdfDocument, data: EmbroideryWorkOrderPdfData) {
       doc.text("TITIK", LEFT + 19.5, py + 38, { size: 5.8, font: "mono", color: MUTED, align: "center" });
 
       doc.text(placement.zone.toUpperCase(), LEFT + 53, py + 10, { size: 8.5, font: "bold", color: NAVY });
-      doc.text(`${placement.technique}   |   ${placement.widthCm} x ${placement.heightCm} cm   |   Rotasi ${placement.rotation}°`, LEFT + 53, py + 27, { size: 7.2, color: INK });
+      doc.text(`${placement.technique}   |   ${embroiderySizeLabel(placement)}   |   Rotasi ${placement.rotation}°`, LEFT + 53, py + 27, { size: 7.2, color: INK });
       doc.text("ARTWORK", LEFT + 53, py + 44, { size: 5.7, font: "mono", color: MUTED });
       doc.text(placement.logoFileName || "Belum dilampirkan", LEFT + 101, py + 43, { size: 6.8, font: "bold", color: NAVY });
       doc.strokeRect(RIGHT - 69, py + 8, 56, 54, LINE, 0.7);
       doc.text("PREVIEW", RIGHT - 41, py + 23, { size: 5.7, font: "mono", color: MUTED, align: "center" });
       doc.text("ARTWORK", RIGHT - 41, py + 36, { size: 6.5, font: "bold", color: NAVY, align: "center" });
       doc.text("akan tampil di sini", RIGHT - 41, py + 49, { size: 4.9, color: MUTED, align: "center" });
-      if (placement.notes) {
-        doc.text(`Catatan: ${placement.notes}`, LEFT + 53, py + 58, { size: 6.2, color: MUTED });
-      }
       doc.cursorY = py + 82;
+      if (placement.notes) drawFlowText(doc, data, `Catatan ${placement.zone}: ${placement.notes}`);
     });
   });
 }
@@ -186,8 +185,17 @@ function drawApproval(doc: SimplePdfDocument, data: EmbroideryWorkOrderPdfData) 
     doc.text("Nama / Tanggal / Paraf", x + cardWidth / 2, y + 49, { size: 5.8, color: MUTED, align: "center" });
   });
   doc.text("CATATAN", LEFT, y + 75, { size: 6.2, font: "mono", color: MUTED });
-  doc.text(data.notes || "Tidak ada catatan tambahan.", LEFT + 52, y + 75, { size: 7, color: INK });
-  doc.cursorY = y + 94;
+  doc.cursorY = y + 89;
+  drawFlowText(doc, data, data.notes || "Tidak ada catatan tambahan.");
+}
+
+function drawFlowText(doc: SimplePdfDocument, data: EmbroideryWorkOrderPdfData, value: string) {
+  for (const line of wrapText(value, WIDTH - 18, 7)) {
+    ensurePage(doc, data, 12);
+    doc.text(line, LEFT + 9, doc.cursorY, {size:7,color:INK});
+    doc.cursorY += 10;
+  }
+  doc.cursorY += 8;
 }
 
 function infoCell(doc: SimplePdfDocument, x: number, y: number, width: number, label: string, value: string) {

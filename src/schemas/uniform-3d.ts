@@ -18,6 +18,7 @@ export const embroideryTechniqueSchema = z.enum([
 ]);
 
 export const logoPlacementSchema = z.object({
+  sizingMode: z.literal("customer").optional(),
   textBordir: z.object({
     mode: z.enum(["same", "individual"]),
     name: z.string().trim().max(40),
@@ -46,6 +47,15 @@ export const logoPlacementSchema = z.object({
   notes: z.string().max(240).optional(),
 });
 export type LogoPlacementForm = z.infer<typeof logoPlacementSchema>;
+
+export const embroideryPlacementSchema = z.union([
+  logoPlacementSchema,
+  logoPlacementSchema.extend({
+    sizingMode: z.literal("ofissio"),
+    widthCm: z.null(),
+    heightCm: z.null(),
+  }),
+]);
 
 export const uniform3DConfigSchema = z.object({
   productId: z.string().min(1),

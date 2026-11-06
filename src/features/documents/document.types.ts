@@ -211,8 +211,9 @@ export interface EmbroideryWorkOrderPdfPlacement {
   zone: string;
   technique: string;
   logoFileName: string | null;
-  widthCm: number;
-  heightCm: number;
+  sizingMode?: "customer" | "ofissio";
+  widthCm: number | null;
+  heightCm: number | null;
   rotation: number;
   notes: string | null;
 }

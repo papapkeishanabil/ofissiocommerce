@@ -1,5 +1,5 @@
 import type { SizeMatrix } from "@/types/industry";
-import type { LogoPlacement } from "@/types/uniform-3d";
+import type { EmbroideryPlacement } from "@/types/uniform-3d";
 import type {
   QuantityPricingBasis,
   QuantityPricingMode,
@@ -17,7 +17,7 @@ export interface CheckoutCartItemInput {
   selectedOptions?: Record<string, string>;
   sizeMatrix: SizeMatrix;
   customization: string | null;
-  embroideryPlacements: LogoPlacement[];
+  embroideryPlacements: EmbroideryPlacement[];
 }
 
 export interface SyncCheckoutCartInput {
@@ -70,7 +70,7 @@ export interface ValidatedCheckoutCartItem {
   model3dId: string;
   model3dUrl: string;
   customization: string | null;
-  embroideryPlacements: LogoPlacement[];
+  embroideryPlacements: EmbroideryPlacement[];
 }
 
 export interface CheckoutCartRecord {

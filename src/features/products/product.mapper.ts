@@ -8,7 +8,6 @@ import { COLOR_SIZE_ENABLED_META, readColorSizeVariants } from "./color-size-var
 import { PURCHASE_VARIANTS_META, type PurchaseVariant } from "./purchase-variants";
 import { SIZES } from "@/types/industry";
 import { sortProductSizes } from "@/lib/product-size-order";
-import { validateProduct3DModel } from "./product.validation";
 import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "./color-variants";
 import {
   CAMERA_PRESETS,
@@ -128,15 +127,15 @@ export function mapWooCommerceProductToOfissioProduct(
   const transactionMode = normalizeTransactionMode(
     getMetaString(meta, "transaction_mode"),
   );
-  const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
+  const supportsEmbroidery = true;
   const configuredEmbroideryZones = normalizeEmbroideryZones(
     getMetaStringArray(meta, "embroidery_zones"),
   );
   // Studio positions include both back areas. Keep the viewer's middle_back
   // identifier; pricing normalizes it to the Admin's existing center_back zone.
-  const embroideryZones = has3DModel && supportsEmbroidery
-    ? [...EMBROIDERY_ZONES]
-    : configuredEmbroideryZones;
+  const embroideryZones = has3DModel ? [...EMBROIDERY_ZONES] : configuredEmbroideryZones.length
+    ? configuredEmbroideryZones
+    : [...EMBROIDERY_ZONES];
   const cameraPresets = normalizeCameraPresets(
     getMetaStringArray(meta, "camera_presets"),
   );
@@ -282,7 +281,7 @@ export function mapWooCommerceProductToOfissioProduct(
   };
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
-  const canAddEmbroidery = product.supports_embroidery && validateProduct3DModel(product).ok;
+  const canAddEmbroidery = true;
   return { availableSizes: product.available_sizes, canAddEmbroidery, source: product.source, sourceId: product.source_id, image: product.mainImage ?? null, priceFrom: product.priceFrom, regularPrice: product.priceFrom, moq: product.moq, fulfillmentType: product.fulfillment, processRoute: product.processRoute, leadTimeDays: product.leadTimeDays, transactionMode: product.transaction_mode, model3dId: product.model_3d?.id, model3dUrl: product.model_3d?.url, quantityPricing: product.quantityPricing };
 }
 

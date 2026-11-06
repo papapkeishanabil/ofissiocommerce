@@ -47,7 +47,8 @@ import {
 } from "@/features/quotation/quotation-requirement";
 import { quotationSourceLabel } from "@/features/quotation/custom-quotation";
 import type { TechnicalGarmentSpecification } from "@/features/quotation/quotation.types";
-import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
+import { embroiderySizeLabel, embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
+import { embroideryTextSummary } from "@/lib/embroidery-names";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -558,11 +559,12 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
                                       <div className="min-w-0">
                                         <p className="font-bold text-ink">{zoneLabel(placement.zone)}</p>
                                         <p className="truncate text-xs font-semibold text-ink-muted" title={placement.logoFileName}>
-                                          {placement.logoFileName}
+                                          {embroideryTextSummary(placement)}
                                         </p>
                                         <p className="text-xs text-ink-muted">
-                                          {embroideryTechniqueLabel(placement.technique)}, {placement.widthCm}×{placement.heightCm} cm, Rotasi {placement.rotation}°
+                                          {embroideryTechniqueLabel(placement.technique)}, {embroiderySizeLabel(placement)}, Rotasi {placement.rotation}°
                                         </p>
+                                        {placement.notes && <p className="mt-1 whitespace-pre-wrap break-words text-xs text-ink-muted">Catatan: {placement.notes}</p>}
                                       </div>
                                     </div>
                                   </div>

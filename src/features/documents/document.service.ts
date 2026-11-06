@@ -22,7 +22,7 @@ import type { ProcessOrderDetail } from "@/features/process-orders/process-order
 import { storageService } from "@/features/storage/storage.service";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError, logInternalError } from "@/lib/security/safe-error-response";
-import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
+import { embroiderySizeLabel, embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
 
 import { getDocumentRuntimeConfig } from "./document.config";
 import { documentRepository } from "./document.repository";
@@ -1065,7 +1065,7 @@ function quotationCustomizationSummary(
       zoneLabel(placement.zone),
       embroideryTechniqueLabel(placement.technique),
       embroideryTextSummary(placement),
-      `${placement.widthCm}x${placement.heightCm} cm`,
+      embroiderySizeLabel(placement),
       `Rotasi ${placement.rotation} deg`,
       placement.notes,
     ]
@@ -1187,7 +1187,7 @@ export function mapProcessOrderToEmbroideryWorkOrderPdfData(input: {
     deadline: processOrder.deadline,
     priority: processOrder.priority,
     assignedTeam: processOrder.assignedTeam,
-    notes: processOrder.notes,
+    notes: [processOrder.notes, ...input.detail.tasks.filter(task => task.taskKey === "embroidery_approval" && task.status === "completed").map(task => `Konfirmasi bordir: ${task.notes ?? ""}`)].filter(Boolean).join("\n") || null,
     items: input.detail.items.map((item) => ({
       productName: item.productName,
       sku: item.sku,
@@ -1199,10 +1199,11 @@ export function mapProcessOrderToEmbroideryWorkOrderPdfData(input: {
         zone: zoneLabel(placement.zone),
         technique: embroideryTechniqueLabel(placement.technique),
         logoFileName: placement.logoFileName ?? null,
+        sizingMode: placement.sizingMode,
         widthCm: placement.widthCm,
         heightCm: placement.heightCm,
         rotation: placement.rotation,
-        notes: placement.textBordir ? embroideryTextSummary(placement) : placement.notes ?? null,
+        notes: [placement.textBordir ? embroideryTextSummary(placement) : null, placement.notes].filter(Boolean).join("; ") || null,
       })),
     })),
     locationLabel: config.companyLocationLabel,
@@ -1295,7 +1296,7 @@ function invoiceItemDescription(item: PaymentOrderRecord["items"][number]) {
       zoneLabel(placement.zone),
       embroideryTechniqueLabel(placement.technique),
       embroideryTextSummary(placement),
-      `${placement.widthCm}x${placement.heightCm} cm`,
+      embroiderySizeLabel(placement),
       `Rotasi ${placement.rotation} deg`,
     ]
       .filter(Boolean)

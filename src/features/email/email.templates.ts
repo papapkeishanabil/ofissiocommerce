@@ -1,4 +1,5 @@
 import type { ValidatedCheckoutCartItem } from "@/features/checkout/checkout-cart.types";
+import { embroideryTextSummary } from "@/lib/embroidery-names";
 import type { PaymentOrderRecord, PaymentRecord } from "@/features/payment/payment.types";
 import {
   processRouteCustomerLabel,
@@ -14,7 +15,8 @@ import { quotationTaxLabel } from "@/features/quotation/quotation.utils";
 import {
   embroideryTechniqueLabel,
   zoneLabel,
-  type LogoPlacement,
+  type EmbroideryPlacement,
+  embroiderySizeLabel,
 } from "@/types/uniform-3d";
 
 import {
@@ -548,13 +550,13 @@ function sizeSummary(item: SizeSummaryItem) {
   return summary || "Tidak ada";
 }
 
-function embroideryPlacementSummary(placement: LogoPlacement) {
+function embroideryPlacementSummary(placement: EmbroideryPlacement) {
   return [
     zoneLabel(placement.zone),
     embroideryTechniqueLabel(placement.technique),
-    `${placement.widthCm}x${placement.heightCm} cm`,
+    embroiderySizeLabel(placement),
     `rotasi ${placement.rotation} deg`,
-    `file ${placement.logoFileName}`,
+    embroideryTextSummary(placement),
     placement.notes?.trim() ? `catatan: ${placement.notes.trim()}` : null,
   ]
     .filter(Boolean)
@@ -607,10 +609,10 @@ function embroideryEmailCardDetails(
       return {
         zone: zoneLabel(placement.zone),
         technique: embroideryTechniqueLabel(placement.technique),
-        dimensions: `${placement.widthCm} × ${placement.heightCm} cm`,
+        dimensions: embroiderySizeLabel(placement),
         rotation: `${placement.rotation}°`,
         fileName: placement.logoFileName,
-        notes: placement.notes?.trim() || null,
+        notes: [placement.textBordir ? embroideryTextSummary(placement) : null, placement.notes?.trim()].filter(Boolean).join("; ") || null,
         priceFormula:
           includePricing && priceLine
             ? `${priceLine.quantity} pcs × ${formatMoney(priceLine.unitPrice)}${setupFee}`

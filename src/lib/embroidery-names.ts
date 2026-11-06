@@ -1,7 +1,7 @@
 import type { LogoPlacement } from "@/types/uniform-3d";
 import { zoneLabel } from "@/types/uniform-3d";
 
-export function validateNameAllocations(placements: readonly LogoPlacement[], sizes: Record<string, number>): string | null {
+export function validateNameAllocations(placements: readonly Pick<LogoPlacement, "textBordir" | "zone">[], sizes: Record<string, number>): string | null {
   for (const placement of placements) {
     const text = placement.textBordir;
     if (!text || text.mode === "same") continue;
@@ -17,7 +17,7 @@ export function validateNameAllocations(placements: readonly LogoPlacement[], si
   return null;
 }
 
-export function embroideryTextSummary(placement: LogoPlacement) {
+export function embroideryTextSummary(placement: Pick<LogoPlacement, "textBordir" | "logoFileName">) {
   const text = placement.textBordir;
   if (!text) return placement.logoFileName;
   const names = text.mode === "same" ? `${text.name} — semua seragam` : text.allocations.map(row => `${row.name} / ${row.size} / ${row.quantity} pcs`).join("; ");

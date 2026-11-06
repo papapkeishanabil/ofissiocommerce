@@ -64,6 +64,7 @@ export function embroideryTechniqueLabel(technique: EmbroideryTechnique): string
 
 /** A single logo placement on the uniform. */
 export interface LogoPlacement {
+  sizingMode?: "customer";
   textBordir?: {
     mode: "same" | "individual";
     name: string;
@@ -89,6 +90,21 @@ export interface LogoPlacement {
   /** Surface normal [x,y,z] at click point — logo oriented to face this */
   surfaceNormal?: [number, number, number];
   notes?: string;
+}
+
+/** Order instructions are independent of a GLB or a surface coordinate. */
+export type EmbroideryPlacement = LogoPlacement | (
+  Omit<LogoPlacement, "widthCm" | "heightCm" | "sizingMode"> & {
+    sizingMode: "ofissio";
+    widthCm: null;
+    heightCm: null;
+  }
+);
+
+export function embroiderySizeLabel(placement: { sizingMode?: string; widthCm: number | null; heightCm: number | null }) {
+  return placement.sizingMode === "ofissio"
+    ? "Diserahkan kepada Ofissio — menunggu persetujuan"
+    : `${placement.widthCm} × ${placement.heightCm} cm`;
 }
 
 /** Camera presets the customer can switch between. */
