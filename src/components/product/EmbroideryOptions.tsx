@@ -11,6 +11,7 @@ import type { OfissioProduct } from "@/features/products/product.types";
 import { EMBROIDERY_ZONES, embroiderySizeLabel, zoneLabel, type EmbroideryPlacement, type EmbroideryZone } from "@/types/uniform-3d";
 import { onConfigurationLogin, readConfigurationLogin, type EmbroideryLoginDraft } from "@/features/auth/configuration-continuation";
 import styles from "./EmbroideryOptions.module.css";
+import { EmbroideryLogoThumbnail } from "./EmbroideryLogoThumbnail";
 
 interface Props {
   product: OfissioProduct;
@@ -82,7 +83,7 @@ export function EmbroideryOptions({product, pricing, sizes, value, onChange, onP
     if (textDirty) {setError("Terapkan tulisan atau daftar nama terlebih dahulu.");return;}
     if (draft.kind === "logo" && !draft.logo) {setError("Unggah atau pilih logo untuk posisi ini.");return;}
     if (draft.kind === "text" && !draft.text) {setError("Isi dan terapkan tulisan bordir terlebih dahulu.");return;}
-    const common = {zone, logoFileId: draft.kind === "text" ? `text-${zone}` : draft.logo!.fileId, logoFileName: draft.kind === "text" ? "Bordir nama" : draft.logo!.fileName, textBordir: draft.kind === "text" ? draft.text : undefined, rotation: 0, technique: "embroidery" as const, notes: draft.notes.trim() || undefined};
+    const common = {zone, logoFileId: draft.kind === "text" ? `text-${zone}` : draft.logo!.fileId, logoFileName: draft.kind === "text" ? "Bordir nama" : draft.logo!.fileName, logoPreviewUrl: draft.kind === "logo" ? draft.logo?.previewUrl : undefined, textBordir: draft.kind === "text" ? draft.text : undefined, rotation: 0, technique: "embroidery" as const, notes: draft.notes.trim() || undefined};
     const placement: EmbroideryPlacement = draft.sizing === "ofissio"
       ? {...common, sizingMode: "ofissio", widthCm: null, heightCm: null}
       : {...common, sizingMode: "customer", widthCm: Number(draft.width), heightCm: Number(draft.height)};
@@ -122,7 +123,24 @@ export function EmbroideryOptions({product, pricing, sizes, value, onChange, onP
         <div className={styles.actions}><button type="button" onClick={save} disabled={uploading}>{uploading ? "Menyimpan file…" : `Simpan bordir ${zoneLabel(zone).toLowerCase()}`}</button><button type="button" onClick={cancel} disabled={uploading}>Batal</button></div>
       </section>}
       {pending && <p role="status" className={styles.notice}>Simpan pengaturan posisi ini atau pilih Batal sebelum melanjutkan.</p>}
-      {value.length > 0 && <section className={styles.saved} aria-label="Ringkasan bordir tersimpan"><h3>Ringkasan bordir</h3>{value.map(item => <article key={item.zone}><div><strong>✓ {zoneLabel(item.zone)}</strong><p>{embroideryTextSummary(item)}</p><p>{embroiderySizeLabel(item)}</p>{item.notes && <p>Catatan: {item.notes}</p>}</div><div className={styles.rowActions}><button type="button" disabled={pending} onClick={() => select(item.zone)}>Edit</button><button type="button" disabled={pending} aria-label={`Hapus bordir ${zoneLabel(item.zone)}`} onClick={() => {onChange(value.filter(row => row.zone !== item.zone));if(zone === item.zone)cancel();}}><Trash2 size={16} aria-hidden="true"/></button></div></article>)}</section>}
+      {value.length > 0 && <section className={styles.saved} aria-label="Ringkasan bordir tersimpan">
+        <h3>Ringkasan bordir</h3>
+        {value.map(item => <article key={item.zone} aria-label={`Bordir ${zoneLabel(item.zone)}`}>
+          <div className={styles.savedContent}>
+            {!item.textBordir && <EmbroideryLogoThumbnail key={`${item.logoFileId}:${item.logoPreviewUrl ?? ""}`} fileId={item.logoFileId} fileName={item.logoFileName} previewUrl={item.logoPreviewUrl} position={zoneLabel(item.zone)} />}
+            <div className={styles.savedDetails}>
+              <strong>✓ {zoneLabel(item.zone)}</strong>
+              <p>{embroideryTextSummary(item)}</p>
+              <p>{embroiderySizeLabel(item)}</p>
+              {item.notes && <p>Catatan: {item.notes}</p>}
+            </div>
+          </div>
+          <div className={styles.rowActions}>
+            <button type="button" disabled={pending} onClick={() => select(item.zone)}>Edit</button>
+            <button type="button" disabled={pending} aria-label={`Hapus bordir ${zoneLabel(item.zone)}`} onClick={() => {onChange(value.filter(row => row.zone !== item.zone));if(zone === item.zone)cancel();}}><Trash2 size={16} aria-hidden="true"/></button>
+          </div>
+        </article>)}
+      </section>}
     </div>
   </section>;
 }
