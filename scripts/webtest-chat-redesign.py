@@ -58,14 +58,14 @@ with sync_playwright() as p:
   page.screenshot(path=str(out/f'implemented-{label}.png'),full_page=True)
   assert not page.evaluate('document.documentElement.scrollWidth > innerWidth'),label
   page.get_by_role('button',name='Aktifkan suara',exact=True).click();expect(page.get_by_role('button',name='Suara aktif',exact=True)).to_have_attribute('aria-pressed','true')
-  assert page.evaluate('window.__tones')==2
-  page.get_by_role('button',name='Tes suara',exact=True).click();assert page.evaluate('window.__tones')==4
+  assert page.evaluate('window.__tones')==3
+  page.get_by_role('button',name='Tes suara',exact=True).click();assert page.evaluate('window.__tones')==6
   page.get_by_role('button',name='Aktifkan notifikasi',exact=True).last.click();expect(page.get_by_role('button',name='Notifikasi aktif',exact=True).last).to_be_visible();assert state['saves']>0
   state['notices']=[{'id':'chat-event-new','type':'system_warning','status':'unread','entityType':'ofistant_chat_event','metadata':{'source':'ofistant_live_chat','conversationId':waiting,'adminUrl':'/admin/chats?conversation='+waiting},'createdAt':'2026-11-06T07:35:00Z'}]
   # Trigger existing visibility refresh instead of waiting for a 15-second timer.
   page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
-  page.wait_for_function('window.__tones === 6')
-  page.evaluate("document.dispatchEvent(new Event('visibilitychange'))");page.wait_for_timeout(300);assert page.evaluate('window.__tones')==6
+  page.wait_for_function('window.__tones === 9')
+  page.evaluate("document.dispatchEvent(new Event('visibilitychange'))");page.wait_for_timeout(300);assert page.evaluate('window.__tones')==9
   page.get_by_role('button',name='Suara aktif',exact=True).click();expect(page.get_by_role('button',name='Aktifkan suara',exact=True)).to_have_attribute('aria-pressed','false')
   page.get_by_label('Balasan Anda',exact=True).fill('Balasan pengujian tersimpan')
   page.get_by_role('button',name='Kirim balasan',exact=True).click();expect(page.get_by_text('Koneksi uji terputus. Coba lagi.',exact=False)).to_be_visible();expect(page.get_by_label('Balasan Anda',exact=True)).to_have_value('Balasan pengujian tersimpan')

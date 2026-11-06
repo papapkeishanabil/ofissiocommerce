@@ -25,15 +25,16 @@ export async function setChatSound(on: boolean) {
 export function playChatSound() {
   if (!enabled || !context || context.state !== "running") return;
   const now = context.currentTime;
-  [660, 880].forEach((frequency, index) => {
+  // Original three-note chime with a soft, bell-like envelope (Apple-inspired).
+  [880, 1174.66, 1567.98].forEach((frequency, index) => {
     const tone = context!.createOscillator();
     const gain = context!.createGain();
     tone.type = "sine"; tone.frequency.value = frequency;
-    const start = now + index * 0.16;
+    const start = now + index * 0.115;
     gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(0.12, start + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.24);
+    gain.gain.linearRampToValueAtTime(0.09, start + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.48);
     tone.connect(gain); gain.connect(context!.destination);
-    tone.start(start); tone.stop(start + 0.25);
+    tone.start(start); tone.stop(start + 0.5);
   });
 }
