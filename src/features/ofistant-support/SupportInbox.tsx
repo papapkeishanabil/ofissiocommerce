@@ -13,27 +13,35 @@ export function SupportInbox({ actorId }: { actorId: string }) {
   const [selected, setSelected] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionInvalid, setSessionInvalid] = useState(false);
   const chat = useSupportChat(selected, actorId, true);
   const [draft, setDraft] = useState("");
   const log = useRef<HTMLDivElement>(null);
   const last = chat.messages.at(-1)?.id;
   const owns = chat.conversation?.staffId === actorId;
   useEffect(() => {
+    if (sessionInvalid) { setLoading(false); return; }
     let stopped = false;
+    let invalidSession = false;
     let timer: ReturnType<typeof setTimeout>;
     setLoading(true); setItems([]);
     async function poll() {
       try {
         const response = await fetch(`/api/admin/chats?status=${status}&offset=${offset}`, { cache: "no-store", signal: AbortSignal.timeout(15000) });
         const body = await response.json();
+        if (response.status === 401 || response.status === 403) {
+          invalidSession = true;
+          if (!stopped) { setSessionInvalid(true); setItems([]); setSelected(""); setDraft(""); setError(null); }
+          return;
+        }
         if (!response.ok) throw new Error(body.message || "Antrean belum dapat dimuat.");
         if (!stopped) { setItems(body.result.conversations); setError(null); }
       } catch (err) { if (!stopped) setError((err as Error).message); }
-      finally { if (!stopped) { setLoading(false); timer = setTimeout(poll, 10000); } }
+      finally { if (!stopped) { setLoading(false); if (!invalidSession) timer = setTimeout(poll, 10000); } }
     }
     void poll();
     return () => { stopped = true; clearTimeout(timer); };
-  }, [status, offset, chat.conversation?.status]);
+  }, [status, offset, chat.conversation?.status, sessionInvalid]);
   useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [last]);
   return <main className={styles.workspace}>
     <header><h1>Chat Customer</h1><p>Terima percakapan dari Ofistant dan bantu customer langsung di chat.</p></header>
@@ -42,7 +50,8 @@ export function SupportInbox({ actorId }: { actorId: string }) {
         <div className={styles.filters}>{Object.entries(labels).map(([value, label]) => <button key={value} type="button" aria-pressed={status === value} onClick={() => { setStatus(value as SupportConversation["status"]); setOffset(0); }}>{label}</button>)}</div>
         {error && <p role="alert" className={styles.notice}>{error} Sistem akan mencoba lagi otomatis.</p>}
         {loading && <p className={styles.notice} role="status">Memuat antrean...</p>}
-        {!loading && !error && items.length === 0 && <p className={styles.notice}>Belum ada percakapan {labels[status].toLowerCase()}.</p>}
+        {sessionInvalid && <div role="alert" className={styles.notice}><p>Sesi admin sudah berakhir atau berganti akun. Masuk kembali sebagai staf untuk melihat chat.</p><p>Jika sedang menguji akun customer, gunakan Incognito atau profil browser terpisah.</p><a href="/login?mode=admin&next=%2Fadmin%2Fchats" className={styles.loginLink}>Masuk kembali sebagai admin</a></div>}
+        {!loading && !sessionInvalid && !error && items.length === 0 && <p className={styles.notice}>Belum ada percakapan {labels[status].toLowerCase()}.</p>}
         {items.map((item) => <button type="button" key={item.id} aria-current={selected === item.id ? "true" : undefined} className={styles.queueItem} onClick={() => { setSelected(item.id); setDraft(""); }}>
           <strong>{item.customerName}</strong><span>{item.staffName ? `Ditangani ${item.staffName}` : "Menunggu staf"}</span>
           <time dateTime={item.updatedAt}>{new Date(item.updatedAt).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}</time>

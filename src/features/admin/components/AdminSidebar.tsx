@@ -73,7 +73,7 @@ const NAV_GROUPS = [
 
 export function AdminSidebar({ user }: { user: InternalAdminUser }) {
   const pathname = usePathname();
-  const { summary } = useAdminNotifications();
+  const { summary, chatWaiting } = useAdminNotifications();
   return (
     <aside className="relative z-30 shrink-0 border-b border-white/10 bg-gradient-to-br from-[#0b2861] to-[#061a45] text-white shadow-[0_18px_45px_rgba(7,26,58,0.16)] lg:sticky lg:top-2 lg:flex lg:h-[calc(100vh-1rem)] lg:max-h-[calc(100vh-1rem)] lg:w-[212px] lg:self-start lg:flex-col lg:rounded-2xl lg:border-0">
       <div className="relative flex shrink-0 items-center justify-between gap-3 px-4 py-4 lg:block lg:px-4 lg:py-5">
@@ -137,6 +137,7 @@ export function AdminSidebar({ user }: { user: InternalAdminUser }) {
                 <Icon className="h-4 w-4" aria-hidden="true" />
               </span>
               <span>{item.label}</span>
+              {item.href === "/admin/chats" && !!chatWaiting && <span className="ml-auto min-w-6 rounded-full bg-red-600 px-2 py-0.5 text-center text-[11px] font-bold text-white" aria-label={`${chatWaiting >= 50 ? "50 atau lebih" : chatWaiting} customer menunggu`}>{chatWaiting >= 50 ? "50+" : chatWaiting}</span>}
               {item.href === "/admin/orders" && summary.ordersUnread > 0 ? (
                 <span className="ml-auto min-w-6 rounded-full bg-red-600 px-2 py-0.5 text-center text-[11px] font-bold text-white">
                   {summary.ordersUnread > 99 ? "99+" : summary.ordersUnread}

@@ -12,6 +12,17 @@ melalui permission `admin:chat:manage`. Hanya staf yang mengambil percakapan
 dapat membalas atau menyelesaikannya. Staf perlu memantau inbox ini; fitur ini
 tidak mengirim email, WhatsApp, ataupun notifikasi perangkat.
 
+Pada semua halaman admin, indikator **Chat masuk** di header dan badge menu
+**Chat Customer** menampilkan jumlah antrean menunggu, diperbarui setiap 10 detik
+saat tab aktif. Klik indikator untuk membuka antrean. Jumlah 50 atau lebih
+ditampilkan sebagai `50+`; indikator hilang setelah antrean diambil/diselesaikan.
+
+Sesi customer dan admin menggunakan cookie login yang sama dalam satu profil
+browser. Untuk menguji dua akun sekaligus, gunakan Incognito/profil browser
+terpisah untuk customer dan login admin di jendela biasa. Ketika API menolak sesi,
+inbox menghapus data lama, menghentikan polling antrean, dan menawarkan tombol
+**Masuk kembali sebagai admin**; sesi customer tidak pernah diberi akses staf.
+
 Customer atau staf dapat mengakhiri chat. AI kembali tersedia setelah chat
 selesai; customer juga dapat membuka kembali chat tim. Riwayat tidak dihapus.
 Polling pesan setiap 3,5 detik, antrean setiap 10 detik. Tidak perlu layanan
