@@ -60,7 +60,7 @@ const nextConfig: NextConfig = {
     ? (process.env.OFISSIO_DEV_DIST_DIR ?? ".next-dev")
     : (process.env.OFISSIO_BUILD_DIST_DIR ?? ".next"),
   reactStrictMode: true,
-  outputFileTracingIncludes: {"/api/admin/products/catalog": ["./src/features/catalog-export/worker.py", "./src/features/catalog-export/catalog-print.css", "./public/fonts/inter-latin-var.woff2", "./public/brand/ofissio.png", "./public/about-us/store-interior-selected.png"]},
+  outputFileTracingIncludes: {"/api/admin/products/catalog": ["./src/features/catalog-export/worker.py", "./src/features/catalog-export/catalog-print.css", "./src/features/catalog-export/catalog-continuations.css", "./src/features/catalog-export/catalog-continuations.js", "./public/fonts/inter-latin-var.woff2", "./public/brand/ofissio.png", "./public/about-us/store-interior-selected.png"]},
   experimental: {
     // GLB/video uploads allow a 50 MB file; multipart boundaries add a small amount
     // of overhead before the Route Handler receives the body.

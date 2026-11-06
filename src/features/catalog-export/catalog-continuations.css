@@ -1,0 +1,25 @@
+.continuation-compact .description{font-size:10.5px!important;line-height:1.6!important}
+.continuation-compact .layout{grid-template-columns:var(--continuation-copy-width,130mm) 1fr;column-gap:9mm}
+.continuation-compact .description p{margin-bottom:1.5mm}
+.continuation-compact .description .bullet{margin-bottom:1mm}
+.continuation-compact .description h3{font-size:11px;margin-top:2mm}
+.continuation-compact .reading-note,.continuation-tight .reading-note{display:none}
+.continuation-tight .description{font-size:11px;line-height:1.6}
+.text-only .copy-label{background:#122162;color:#fff;padding:3mm 4mm;border-radius:2mm;min-height:12mm;font-size:15px;margin-bottom:5mm}
+.text-only .copy-label small{color:#f2cf85;font-size:9px}
+.text-only .description{display:grid;grid-template-columns:1fr 1fr;gap:12mm;align-items:start;column-count:auto;font-size:11.5px;line-height:1.65;overflow:hidden}
+.text-only .description p{margin:0 0 2.5mm}
+.text-only .description h3{font-size:12.5px;line-height:1.45;margin:4mm 0 1.5mm;color:#122162}
+.text-only .text-column>h3:first-child{margin-top:0}
+.text-only .text-column{min-width:0}
+.continuation-dense .description{font-size:11px;line-height:1.6}
+.continuation-dense .description p{margin-bottom:1.5mm}
+.continuation-dense .description h3{font-size:12px;margin-top:2.5mm;margin-bottom:1mm}
+.text-only.continuation-dense .spec-strip{display:none}
+.text-only .spec-strip{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:6mm;flex:none;margin-top:5mm;padding:3mm 4mm;background:#e1e7f0;border-radius:2mm;font-size:9px;line-height:1.5;color:#233565}
+.spec-strip small{display:block;font-size:7px;color:#65758e;margin-bottom:1mm;text-transform:uppercase;letter-spacing:.8px}
+.text-only .reading-note{display:none}
+.text-only.continuation-native .copy-label{min-height:0;height:auto;padding:0;background:none;color:#122162;font-size:12px;margin-bottom:4mm}
+.text-only.continuation-native .description{display:block;column-count:2;column-gap:14mm;column-fill:balance;font-size:11px;line-height:1.65}
+.text-only.continuation-native .description p{margin:0 0 2.5mm;break-inside:auto}
+.text-only.continuation-native .description h3{font-size:11px;line-height:1.6;margin:3mm 0 1mm;break-after:avoid}

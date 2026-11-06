@@ -120,7 +120,7 @@ def main():
             count=len(batch);kind='single large' if count==1 else 'large' if count<=2 else 'medium' if count<=4 else ''
             right='<div class="right-heading"><h2>'+('Pilihan warna & lengan' if options['includeVariants'] and len(p['variants'])>1 else 'Detail produk')+'</h2><span class="counter">'+str(len(p['variants']) if options['includeVariants'] else 1)+' pilihan</span></div><div class="variant-grid '+kind+'">'+''.join(card(v) for v in batch)+'</div>'
         elif extra:right='<div class="right-heading"><h2>Foto tambahan produk</h2></div><div class="photo-showcase"><img src="'+img(extra)+'" alt="Foto tambahan '+esc(p['name'])+'"></div>'
-        return '<section class="page product-page'+(' continuation' if part>1 else '')+(' text-only' if text_only else '')+'" id="p'+str(n)+'">'+mast()+'<div class="layout"><section class="primary">'+left+'</section>'+('<section class="right">'+right+'</section>' if right else '')+'</div>'+footer(n,p['category'])+'</section>'
+        return '<section class="page product-page'+(' continuation' if part>1 else '')+(' text-only' if text_only else '')+'" data-product-id="'+str(p['id'])+'" id="p'+str(n)+'">'+mast()+'<div class="layout"><section class="primary">'+left+'</section>'+('<section class="right">'+right+'</section>' if right else '')+'</div>'+footer(n,p['category'])+'</section>'
     def document(body):return '<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ofissio — Katalog Produk</title><style>'+css+'</style>'+body+'</html>'
     groups={}
     for p in products:groups.setdefault(p['category'],[]).append(p)
@@ -183,14 +183,24 @@ def main():
         cover='<section class="page catalog-cover">'+mast()+'<div class="cover-heading"><div><small>OFISSIO / SIGNATURE COLLECTION</small><h1>KATALOG<br>SERAGAM KERJA</h1></div><p><b>Selamat datang di Ofissio.</b><br>Pilihan seragam yang mencerminkan karakter dan profesionalisme tim Anda.</p></div><img class="cover-photo" src="'+(root/'about-us/store-interior-selected.png').as_uri()+'" alt="Showroom Ofissio"><div class="cover-footer"><b>OFISSIO</b><span>KOLEKSI SERAGAM KERJA</span></div></section>'
         toc_html='<section class="page toc">'+mast()+'<div class="toc-layout"><div><h1>Seragam untuk<br>setiap peran.</h1><p>Selamat datang di Ofissio.<br>Pilihan seragam yang mencerminkan karakter dan profesionalisme tim Anda.</p><small>Klik kategori untuk menuju halaman yang dituju.<br>Deskripsi lengkap berlanjut bila diperlukan. SKU varian mengikuti ukuran yang disebutkan. Warna digital dapat berbeda dari kain asli.</small></div><nav>'+''.join(f'<a class="toc-link" href="#p{page}"><span>{esc(cat)}<small>{count} model</small></span><b>{page:02}</b></a>' for cat,count,page in toc)+'</nav></div>'+footer(2,'Daftar isi')+'</section>'
         html=document(cover+toc_html+''.join(pages));html_path=work/'catalog.html';html_path.write_text(html,encoding='utf-8')
-        tab.goto(html_path.as_uri());tab.wait_for_function('Array.from(document.images).every(i=>i.complete&&i.naturalWidth>0)',timeout=120000);tab.evaluate('document.fonts.ready');tab.emulate_media(media='print')
-        issues=tab.locator('.description,.primary,.right,.variant').evaluate_all('(els)=>els.filter(e=>e.scrollHeight>e.clientHeight+1||e.scrollWidth>e.clientWidth+1).length')
+        tab.goto(html_path.as_uri());tab.wait_for_function('Array.from(document.images).every(i=>i.complete&&i.naturalWidth>0)',timeout=120000);tab.evaluate('document.fonts.ready')
+        # Initial pagination is measured using the original photo layout, then
+        # the approved continuation rules reflow and verify complete products.
+        tab.add_style_tag(content=Path(__file__).with_name('catalog-continuations.css').read_text(encoding='utf-8'))
+        layout=tab.evaluate(Path(__file__).with_name('catalog-continuations.js').read_text(encoding='utf-8'),products)
+        ranges={entry['id']:entry for entry in layout['ranges']}
+        for entry in audit:entry.update({key:ranges[entry['id']][key] for key in ['firstPage','lastPage']})
+        toc=[(category,len(items),ranges[items[0]['id']]['firstPage']) for category,items in groups.items()]
+        n=layout['totalPages']+1
+        html=tab.content();html_path.write_text(html,encoding='utf-8')
+        tab.emulate_media(media='print')
+        issues=tab.locator('.description,.primary,.right,.variant,.text-column').evaluate_all('(els)=>els.filter(e=>e.scrollHeight>e.clientHeight+2||e.scrollWidth>e.clientWidth+2).length')
         if issues:raise ValueError('Catalogue layout overflow')
         if options['format']=='pdf':tab.pdf(path=str(work/'catalog.pdf'),print_background=True,prefer_css_page_size=True)
         browser.close()
     if options['format']=='pdf':
         pdf=pymupdf.open(work/'catalog.pdf')
-        if len(pdf)!=len(pages)+2:raise ValueError('Unexpected PDF pagination')
+        if len(pdf)!=layout['totalPages']:raise ValueError('Unexpected PDF pagination')
         table=pdf[1]
         for cat,_,page in toc:
             hits=table.search_for(cat,clip=pymupdf.Rect(table.rect.width/2,70,table.rect.width,530))
@@ -217,7 +227,7 @@ def main():
             return 'data:'+mime+';base64,'+base64.b64encode(path.read_bytes()).decode()
         html=re.sub(r'file:///[^"\)\s]+',inline,html)
         (work/'preview.html').write_text(html,encoding='utf-8')
-    result={'pages':n-1,'products':len(products),'warnings':sorted(set(warnings)),'audit':audit,'categories':[{'name':cat,'page':page} for cat,_,page in toc]}
+    result={'pages':n-1,'products':len(products),'warnings':sorted(set(warnings)),'audit':audit,'categories':[{'name':cat,'page':page} for cat,_,page in toc],'continuations':layout}
     (work/'result.json').write_text(json.dumps(result,ensure_ascii=False),encoding='utf-8')
     print(json.dumps({'ok':True,'pages':n-1,'products':len(products),'warnings':sorted(set(warnings))}))
 
