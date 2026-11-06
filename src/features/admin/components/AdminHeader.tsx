@@ -3,6 +3,7 @@ import { AdminNotificationBell } from "@/features/admin-notifications/components
 import { AdminPushToggle } from "@/features/admin-notifications/components/AdminPushToggle";
 import { AdminLogoutButton } from "./AdminLogoutButton";
 import { AdminHeaderProductNavigation } from "./AdminHeaderProductNavigation";
+import { AdminChatNotice } from "@/features/ofistant-support/AdminChatNotice";
 
 export function AdminHeader({ user }: { user: InternalAdminUser }) {
   return (
@@ -18,6 +19,7 @@ export function AdminHeader({ user }: { user: InternalAdminUser }) {
             Staging ready
           </div>
           <AdminPushToggle />
+          <AdminChatNotice />
           <AdminNotificationBell />
           <AdminLogoutButton />
           <div className="flex min-h-9 items-center gap-2 rounded-lg bg-slate-100 px-1.5 pr-2.5 text-xs">

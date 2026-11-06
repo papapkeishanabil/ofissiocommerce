@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import type { InternalRole } from "@/lib/security/security.types";
+import { ADMIN_ROLE_PERMISSIONS } from "@/features/admin/admin.config";
 import type {
   AdminNotification,
   AdminNotificationSummary,
@@ -19,6 +20,8 @@ import type {
 type NotificationAction = "read" | "acknowledge" | "resolve";
 
 interface AdminNotificationContextValue {
+  chatWaiting: number | null;
+  chatSessionInvalid: boolean;
   summary: AdminNotificationSummary;
   loading: boolean;
   refresh: () => Promise<void>;
@@ -52,6 +55,9 @@ export function AdminNotificationProvider({
 }) {
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(true);
+  const [chatWaiting, setChatWaiting] = useState<number | null>(null);
+  const [chatSessionInvalid, setChatSessionInvalid] = useState(false);
+  const canManageChat = ADMIN_ROLE_PERMISSIONS[role].includes("admin:chat:manage");
 
   const request = useCallback(
     (path: string, init: RequestInit = {}) =>
@@ -66,6 +72,30 @@ export function AdminNotificationProvider({
       }),
     [role, userId],
   );
+
+  useEffect(() => {
+    if (!canManageChat) return;
+    let disposed = false;
+    let invalidSession = false;
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      try {
+        if (document.visibilityState === "visible") {
+          const response = await request("/api/admin/chats?status=waiting", { signal: AbortSignal.timeout(12000) });
+          if (disposed) return;
+          if (response.status === 401 || response.status === 403) {
+            invalidSession = true; setChatWaiting(null); setChatSessionInvalid(true); return;
+          }
+          if (!response.ok) { setChatWaiting(null); return; }
+          const body = await response.json();
+          if (!disposed) { setChatWaiting(body.result.conversations.length); setChatSessionInvalid(false); }
+        }
+      } catch { if (!disposed) setChatWaiting(null); }
+      finally { if (!disposed && !invalidSession) timer = setTimeout(poll, 10000); }
+    }
+    void poll();
+    return () => { disposed = true; clearTimeout(timer); };
+  }, [canManageChat, request]);
 
   const refresh = useCallback(async () => {
     try {
@@ -130,8 +160,8 @@ export function AdminNotificationProvider({
   );
 
   const value = useMemo(
-    () => ({ summary, loading, refresh, mutate, request }),
-    [summary, loading, refresh, mutate, request],
+    () => ({ summary, loading, refresh, mutate, request, chatWaiting, chatSessionInvalid }),
+    [summary, loading, refresh, mutate, request, chatWaiting, chatSessionInvalid],
   );
   return (
     <AdminNotificationContext.Provider value={value}>

@@ -1,6 +1,9 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupportConversation, SupportMessage, SupportResult } from "./support.types";
+class ChatRequestError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
 
 export async function chatRequest(url: string, payload?: Record<string, unknown>): Promise<SupportResult> {
   const response = await fetch(url, {
@@ -8,7 +11,7 @@ export async function chatRequest(url: string, payload?: Record<string, unknown>
     ...(payload ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) } : {}),
   });
   const body = await response.json();
-  if (!response.ok) throw new Error(body.message || "Chat belum dapat dimuat. Coba lagi.");
+  if (!response.ok) throw new ChatRequestError(response.status === 401 ? "Sesi sudah berakhir atau berganti akun. Silakan masuk kembali." : body.message || "Chat belum dapat dimuat. Coba lagi.", response.status);
   return body.result;
 }
 
@@ -42,7 +45,7 @@ export function useSupportChat(conversationId: string, owner: string | null, sta
         accept(result, key); more = result.more;
       }
     } catch (error) {
-      if (currentKey.current === key && version.current === requestVersion) setState((old) => ({ ...old, error: (error as Error).message }));
+      if (currentKey.current === key && version.current === requestVersion) setState((old) => ({ ...old, ...(error instanceof ChatRequestError && [401,403].includes(error.status) ? { conversation: null, messages: [], ready: false } : {}), error: (error as Error).message }));
     }
   }, [accept, conversationId, endpoint, key, owner]);
   useEffect(() => {
@@ -67,7 +70,7 @@ export function useSupportChat(conversationId: string, owner: string | null, sta
       accept(result, key); retry.current = null;
       return true;
     } catch (error) {
-      if (currentKey.current === key) setState((old) => ({ ...old, error: (error as Error).message }));
+      if (currentKey.current === key) setState((old) => ({ ...old, ...(error instanceof ChatRequestError && [401,403].includes(error.status) ? { conversation: null, messages: [], ready: false } : {}), error: (error as Error).message }));
       return false;
     } finally {
       if (currentKey.current === key) { mutation.current = false; setBusyKey(null); }
