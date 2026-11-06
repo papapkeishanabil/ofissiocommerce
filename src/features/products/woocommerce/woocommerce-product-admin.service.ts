@@ -29,7 +29,7 @@ import {
   normalizeQuantityPricing,
   sortQuantityPricingTiers,
 } from "../quantity-pricing";
-import { WOO_PROCESS_ROUTES } from "./woocommerce-product-management.types";
+import { WOO_EMBROIDERY_ZONES, WOO_PROCESS_ROUTES } from "./woocommerce-product-management.types";
 import {
   defaultModelOrientationY,
   normalizeModelOrientationY,
@@ -114,7 +114,7 @@ export async function getAdminWooCommerceProduct(
     tiers: getMetaValue(meta, "quantity_pricing_tiers"),
     moq: getMetaNumber(meta, "moq", 0),
   }).quantityPricing;
-  const supportsEmbroidery = getMetaBoolean(meta, "supports_embroidery", false);
+  const supportsEmbroidery = true;
   const storedOptions = readVariantOptions(getMetaValue(meta, VARIANT_OPTIONS_META));
   const legacyOptions = (product.attributes ?? []).filter(a => a.variation && a.options?.length).map(a => ({ name: a.name, values: a.options! }));
   const variantOptions = storedOptions.length ? storedOptions : legacyOptions;
@@ -411,11 +411,11 @@ function buildWritePayload(
     ["model3d_hue", payload.model3dHue ?? 0],
     ["model3d_temperature", payload.model3dTemperature ?? 0],
     ["model3d_rotation_y", payload.model3dRotationY ?? defaultModelOrientationY(payload.sku)],
-    ["supports_embroidery", toWooMetaBoolean(payload.supportsEmbroidery)],
+    ["supports_embroidery", toWooMetaBoolean(true)],
     ["supports_screen_print", toWooMetaBoolean(payload.supportsScreenPrinting)],
     ["supports_screen_printing", toWooMetaBoolean(payload.supportsScreenPrinting)],
     ["supports_dtf", toWooMetaBoolean(payload.supportsDtf)],
-    ["embroidery_zones", JSON.stringify(unique(payload.embroideryZones))],
+    ["embroidery_zones", JSON.stringify(unique(payload.embroideryZones.length ? payload.embroideryZones : [...WOO_EMBROIDERY_ZONES]))],
     ["available_colors", JSON.stringify(unique(payload.colors))],
     ["available_sizes", JSON.stringify(unique(payload.sizes))],
     ["material", payload.materials[0] ?? ""],

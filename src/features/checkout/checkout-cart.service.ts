@@ -10,7 +10,8 @@ import { randomUUID } from "node:crypto";
 import { productServerService } from "@/features/products/product.server-service";
 import { storageService } from "@/features/storage/storage.service";
 import type { SizeMatrix } from "@/types/industry";
-import type { LogoPlacement } from "@/types/uniform-3d";
+import type { EmbroideryPlacement } from "@/types/uniform-3d";
+import { embroideryRequestIssue, productEmbroideryZones } from "@/features/products/embroidery-request";
 import { calculateQuantityTierPrice } from "@/features/products/quantity-pricing";
 import {
   calculateEmbroideryPricing,
@@ -56,9 +57,6 @@ async function validateAndPriceItem(
 
   const validation = productServerService.validateProductForCart(product);
   if (!validation.ok) throw new Error(validation.reason);
-  if (hasEmbroideryRequest(input) && (!product.supports_embroidery || !productServerService.validateProduct3DModel(product).ok)) {
-    throw createApiError("VALIDATION_ERROR", "Fitur bordir belum tersedia untuk produk ini.", 400);
-  }
   const variantIssue = colorVariantIssue(product, input.selectedColor);
   if (variantIssue) throw createApiError("VALIDATION_ERROR", variantIssue, 400);
   const selectedVariant = product.productKind === "variable" ? matchingProductVariant(product, input.selectedOptions ?? {}, Object.entries(input.sizeMatrix).find(([, q]) => q > 0)?.[0]) : undefined;
@@ -101,7 +99,7 @@ async function validateAndPriceItem(
   // Batas dimensi per zona (mis. punggung maks 30 cm) — zona tanpa definisi
   // dilewati oleh validatePlacementDimensions demi backward-compat.
   const dimensionIssues = embroideryPlacements.flatMap((placement) =>
-    validatePlacementDimensions(
+    placement.sizingMode === "ofissio" ? [] : validatePlacementDimensions(
       {
         zoneId: placement.zone,
         widthCm: placement.widthCm,
@@ -114,10 +112,12 @@ async function validateAndPriceItem(
   if (firstDimensionIssue) {
     throw createApiError("VALIDATION_ERROR", firstDimensionIssue, 400);
   }
+  const requestIssue = embroideryRequestIssue(embroideryPlacements, product, embroideryPricingSnapshot);
+  if (requestIssue) throw createApiError("VALIDATION_ERROR", requestIssue, 400);
   const embroideryPrice = calculateEmbroideryPricing({
     totalQty,
     selectedZones: embroideryPlacements.map((placement) => placement.zone),
-    productSupportedZones: product.embroidery_zones,
+    productSupportedZones: productEmbroideryZones(product),
     globalEmbroideryPricing: embroideryPricingSnapshot,
   });
 
@@ -162,10 +162,10 @@ async function validateAndPriceItem(
 
 async function resolveEmbroideryLogoFiles(
   companyId: string,
-  placements: LogoPlacement[],
+  placements: EmbroideryPlacement[],
 ) {
   let companyLogos: Awaited<ReturnType<typeof storageService.getFilesByCompany>> | null = null;
-  const resolved: LogoPlacement[] = [];
+  const resolved: EmbroideryPlacement[] = [];
 
   for (const placement of placements) {
     if (placement.textBordir) {
@@ -199,11 +199,11 @@ async function resolveEmbroideryLogoFiles(
     if (!file) {
       throw createApiError(
         "VALIDATION_ERROR",
-        "Logo bordir pada keranjang belum selesai tersimpan. Buka konfigurasi 3D, upload ulang logo, lalu simpan setelah proses upload selesai.",
+        "Logo bordir pada keranjang belum selesai tersimpan. Buka pengaturan bordir, upload ulang logo, lalu simpan setelah proses upload selesai.",
         400,
       );
     }
-    if (file.status === "deleted" || file.status === "rejected") {
+    if (!["uploaded", "validated", "used"].includes(file.status)) {
       throw createApiError(
         "VALIDATION_ERROR",
         "Logo bordir pada keranjang sudah tidak dapat digunakan.",
@@ -222,6 +222,7 @@ async function resolveEmbroideryLogoFiles(
       ...placement,
       logoFileId: file.id,
       logoFileName: file.originalFilename,
+      logoPreviewUrl: undefined,
     });
   }
 

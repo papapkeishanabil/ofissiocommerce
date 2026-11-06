@@ -30,7 +30,8 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { formatIDR } from "@/types/product";
 import type { AuthSession } from "@/types/account";
-import { embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
+import { embroiderySizeLabel, embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
+import { embroideryTextSummary } from "@/lib/embroidery-names";
 
 interface QuotationConfirmationProps {
   quotation: QuotationRequestRecord;
@@ -543,11 +544,11 @@ export function QuotationConfirmation({
                           <div className="min-w-0">
                             <p className="font-bold text-ink">{zoneLabel(placement.zone)}</p>
                             <p className="mt-0.5 truncate text-xs font-semibold text-ink-muted" title={placement.logoFileName}>
-                              {placement.logoFileName}
+                              {embroideryTextSummary(placement)}
                             </p>
                           </div>
                           <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-800 ring-1 ring-line">
-                            {placement.widthCm}×{placement.heightCm} cm
+                            {embroiderySizeLabel(placement)}
                           </span>
                         </div>
                         <p className="mt-1.5 text-xs leading-5 text-ink-muted">

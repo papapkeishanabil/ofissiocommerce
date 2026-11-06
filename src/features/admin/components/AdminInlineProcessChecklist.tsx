@@ -29,6 +29,7 @@ export function AdminInlineProcessChecklist({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [approvalNotes, setApprovalNotes] = useState("");
   const orderedTasks = [...tasks].sort((left, right) => left.sortOrder - right.sortOrder);
   const activeTask = orderedTasks.find((task) => task.status !== "completed") ?? null;
   const completedCount = orderedTasks.filter((task) => task.status === "completed").length;
@@ -36,6 +37,7 @@ export function AdminInlineProcessChecklist({
 
   function completeTask(task: ProcessOrderTask) {
     setMessage(null);
+    if (task.taskKey === "embroidery_approval" && !approvalNotes.trim()) {setMessage("Isi ukuran final per posisi dan referensi persetujuan mockup customer.");return;}
     startTransition(async () => {
       const response = await fetch(
         `/api/admin/process-orders/${encodeURIComponent(processOrder.id)}/tasks/${encodeURIComponent(task.id)}/complete`,
@@ -46,7 +48,7 @@ export function AdminInlineProcessChecklist({
             "x-ofissio-internal-role": "super_admin",
             "x-ofissio-internal-user-id": "internal-dev",
           },
-          body: JSON.stringify({}),
+          body: JSON.stringify(task.taskKey === "embroidery_approval" ? {notes:approvalNotes.trim()} : {}),
         },
       );
       const result = (await response.json().catch(() => ({}))) as {
@@ -138,6 +140,8 @@ export function AdminInlineProcessChecklist({
                   <p className={cn("font-bold", completed ? "text-ink-muted line-through" : "text-ink")}>
                     {task.taskName}
                   </p>
+                  {task.taskKey === "embroidery_approval" && current && <label className="mt-3 block text-xs font-semibold text-ink">Ukuran final dan persetujuan customer<textarea className="mt-2 block min-h-24 w-full rounded-lg border border-line bg-white p-3 text-sm" rows={4} maxLength={1000} value={approvalNotes} onChange={event => setApprovalNotes(event.target.value)} disabled={!canUpdate || isPending} placeholder="Dada kiri: 8 × 5 cm. Punggung: 25 × 6 cm. Mockup: referensi file/link. Disetujui oleh … melalui … pada …"/></label>}
+                  {task.taskKey === "embroidery_approval" && completed && task.notes && <p className="mt-2 whitespace-pre-wrap break-words text-xs text-ink-muted">{task.notes}</p>}
                   <p className="mt-0.5 text-xs text-ink-muted">
                     {completed
                       ? "Selesai"

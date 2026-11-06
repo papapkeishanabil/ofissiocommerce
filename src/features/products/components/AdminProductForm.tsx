@@ -885,14 +885,15 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         <div className="mt-4"><Toggle label="Selalu dapat dipesan" description="Customer tidak melihat status out of stock; warning replenishment hanya untuk admin." checked={form.alwaysOrderable} onChange={(value) => set("alwaysOrderable", value)} /></div>
       </FormSection>
 
-      <FormSection icon={Shirt} title="Customization" description="Aktifkan teknik yang didukung dan tentukan zona bordir pada model 3D.">
+      <FormSection icon={Shirt} title="Customization" description="Semua produk Ofissio dapat dibordir, dengan atau tanpa model 3D. Tentukan posisi bordir yang tersedia.">
         <div className="grid gap-3 md:grid-cols-3">
-          <Toggle label="Bordir" checked={form.supportsEmbroidery} onChange={(value) => set("supportsEmbroidery", value)} />
+          <p className="rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm font-semibold">Bordir tersedia pada semua produk.</p>
           <Toggle label="Sablon" checked={form.supportsScreenPrinting} onChange={(value) => set("supportsScreenPrinting", value)} />
           <Toggle label="DTF" checked={form.supportsDtf} onChange={(value) => set("supportsDtf", value)} />
         </div>
         <div className="mt-5">
-          <CheckboxGroup label="Zona bordir" options={WOO_EMBROIDERY_ZONES.map((value) => ({ value, label: ZONE_LABELS[value] ?? value }))} selected={form.embroideryZones} onChange={(values) => set("embroideryZones", values)} disabled={!form.supportsEmbroidery} />
+          <CheckboxGroup label="Zona bordir" options={WOO_EMBROIDERY_ZONES.map((value) => ({ value, label: ZONE_LABELS[value] ?? value }))} selected={form.embroideryZones} onChange={(values) => set("embroideryZones", values)} />
+          <p className="mt-2 text-xs text-ink-muted">Jika belum diatur, posisi standar mengikuti master harga bordir. Pilih posisi tertentu untuk membatasi posisi yang tersedia pada produk.</p>
         </div>
         <div className="mt-5 flex flex-col gap-3 rounded-lg border border-brand-200 bg-brand-50 p-4 text-sm text-ink sm:flex-row sm:items-center sm:justify-between">
           <p className="leading-6"><strong>Harga bordir mengikuti master harga bordir global.</strong> Form produk hanya menentukan teknik dan zona yang didukung.</p>
@@ -1147,10 +1148,10 @@ function initialForm(product?: AdminWooCommerceProductDetail, routeMoqDefaults?:
     alwaysOrderable: product?.ofissioMeta.alwaysOrderable ?? true,
     replenishmentPolicy: product?.ofissioMeta.replenishmentPolicy === "block_order_future" ? "block_order_future" : "internal_warning_only",
     processRoute: WOO_PROCESS_ROUTES.includes(product?.ofissioMeta.processRoute as never) ? product!.ofissioMeta.processRoute as AdminWooProductInput["processRoute"] : "fulfillment",
-    supportsEmbroidery: product?.ofissioMeta.supportsEmbroidery ?? true,
+    supportsEmbroidery: true,
     supportsScreenPrinting: product?.ofissioMeta.supportsScreenPrinting ?? false,
     supportsDtf: product?.ofissioMeta.supportsDtf ?? false,
-    embroideryZones: (product?.ofissioMeta.embroideryZones ?? []).map((zone) => ["back", "middle_back"].includes(zone) ? "center_back" : zone).filter((zone) => WOO_EMBROIDERY_ZONES.includes(zone as never)),
+    embroideryZones: (product?.ofissioMeta.embroideryZones.length ? product.ofissioMeta.embroideryZones : [...WOO_EMBROIDERY_ZONES]).map((zone) => ["back", "middle_back"].includes(zone) ? "center_back" : zone).filter((zone) => WOO_EMBROIDERY_ZONES.includes(zone as never)),
     quantityPricingEnabled: product?.ofissioMeta.quantityPricingEnabled ?? true,
     quantityPricingMode: "fixed_unit_price",
     quantityBasis: "total_order_qty",

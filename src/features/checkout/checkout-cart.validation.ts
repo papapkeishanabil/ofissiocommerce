@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { selectedOptionsSchema } from "@/features/products/product-variants";
 
-import { logoPlacementSchema } from "@/schemas/uniform-3d";
+import { embroideryPlacementSchema } from "@/schemas/uniform-3d";
 import { validateNameAllocations } from "@/lib/embroidery-names";
 
 const quantitySchema = z.coerce.number().int().min(0).max(100_000);
@@ -35,7 +35,7 @@ export const syncCheckoutCartSchema = z.object({
         selectedOptions: selectedOptionsSchema.optional(),
         sizeMatrix: checkoutSizeMatrixSchema,
         customization: z.string().trim().max(500).nullable().default(null),
-        embroideryPlacements: z.array(logoPlacementSchema).max(6).default([]),
+        embroideryPlacements: z.array(embroideryPlacementSchema).max(6).default([]),
       }).superRefine((item, ctx) => {
         const issue = validateNameAllocations(item.embroideryPlacements, item.sizeMatrix);
         if (issue) ctx.addIssue({ code: "custom", message: issue, path: ["embroideryPlacements"] });

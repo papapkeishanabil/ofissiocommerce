@@ -8,12 +8,13 @@ import type { CompanyLogoAsset } from "@/features/company-assets/company-assets.
 import type { AuthSession } from "@/types/account";
 import {
   embroideryTechniqueLabel,
-  type LogoPlacement,
+  type EmbroideryPlacement,
+  embroiderySizeLabel,
   zoneLabel,
 } from "@/types/uniform-3d";
 
 interface OrderLogoThumbnailsProps {
-  placements: LogoPlacement[];
+  placements: EmbroideryPlacement[];
 }
 
 type PreviewState = Record<string, string | null>;
@@ -145,8 +146,7 @@ export function OrderLogoThumbnails({ placements }: OrderLogoThumbnailsProps) {
                   {placement.textBordir ? embroideryTextSummary(placement) : placement.logoFileName || "Logo bordir"}
                 </p>
                 <p className="mt-1 text-[11px] text-ink-muted">
-                  {embroideryTechniqueLabel(placement.technique)}, {placement.widthCm} ×{" "}
-                  {placement.heightCm} cm
+                  {embroideryTechniqueLabel(placement.technique)}, {embroiderySizeLabel(placement)}
                 </p>
               </div>
             </li>

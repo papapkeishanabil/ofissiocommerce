@@ -1,6 +1,6 @@
 // src/types/cart.ts
 import type { SizeMatrix } from "./industry";
-import type { Uniform3DConfig } from "./uniform-3d";
+import type { EmbroideryPlacement, Uniform3DConfig } from "./uniform-3d";
 import type {
   QuantityPricing,
   QuantityPricingBasis,
@@ -70,7 +70,7 @@ export interface CartLineItem {
   customization: string | null;
   /** full 3D embroidery config — present when customer used the 3D tab */
   uniform3DConfig?: Uniform3DConfig | null;
-  embroideryPlacements?: Uniform3DConfig["placements"];
+  embroideryPlacements?: EmbroideryPlacement[];
 }
 
 export function emptySizeMatrix(): SizeMatrix {

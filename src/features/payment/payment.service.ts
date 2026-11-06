@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { getValidatedCheckoutCart } from "@/features/checkout/checkout-cart.service";
+import { hasUnpricedEmbroidery } from "@/features/products/embroidery-confirmation";
 import {
   syncOrderToWooCommerce,
   syncPaymentStatusToWooCommerce,
@@ -98,6 +99,9 @@ export async function createPaymentFromCart(input: {
     input.companyId,
     input.userId,
   );
+  if (hasUnpricedEmbroidery(cart.items)) {
+    throw createApiError("VALIDATION_ERROR", "Harga bordir perlu dikonfirmasi Ofissio. Ajukan penawaran sebelum melanjutkan pembayaran.", 400);
+  }
 
   const shippingRate = input.shippingRateId
     ? shippingService.getRateById(input.shippingRateId)

@@ -1014,6 +1014,7 @@ async function getLogoPreviews(quotation: QuotationRequestRecord): Promise<Admin
   const uniqueIds = new Set<string>();
   for (const item of quotation.items) {
     for (const placement of item.embroideryPlacements) {
+      if (placement.textBordir) continue;
       uniqueIds.add(placement.logoFileId);
     }
   }

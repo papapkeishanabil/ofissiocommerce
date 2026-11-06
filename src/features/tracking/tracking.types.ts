@@ -1,6 +1,6 @@
 import type { SizeMatrix } from "@/types/industry";
 import type { ShippingRate } from "@/features/shipping/shipping.types";
-import type { LogoPlacement, Uniform3DConfig } from "@/types/uniform-3d";
+import type { EmbroideryPlacement, Uniform3DConfig } from "@/types/uniform-3d";
 
 export type TrackingFulfillmentType =
   | "READY_STOCK"
@@ -67,7 +67,7 @@ export interface OrderItemProgress {
   fulfillmentType: TrackingFulfillmentType;
   currentStageId: string;
   stages: OrderTimelineStage[];
-  embroideryPlacements: LogoPlacement[];
+  embroideryPlacements: EmbroideryPlacement[];
   model3dId?: string | null;
   model3dUrl?: string | null;
   logoFilename?: string | null;

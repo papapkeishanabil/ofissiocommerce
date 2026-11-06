@@ -1,4 +1,5 @@
 import "server-only";
+import { requiresEmbroideryConfirmation } from "@/features/products/embroidery-confirmation";
 
 import { randomUUID } from "node:crypto";
 
@@ -21,6 +22,7 @@ import type {
   ProcessOrderRoute,
   ProcessOrderStatus,
   ProcessOrderTask,
+  ProcessTaskTemplate,
 } from "@/features/process-orders/process-order.types";
 import {
   calculateProcessProgress,
@@ -101,8 +103,9 @@ export async function createProcessOrderFromOrder(input: {
     updatedAt: now,
     completedAt: null,
   };
-  const tasks = buildDefaultTasks(processOrder, now, processStatus);
+  const tasks = buildDefaultTasks(processOrder, now, processStatus, requiresEmbroideryConfirmation(input.order.items));
   const items = buildProcessOrderItems(input.order, processOrder, now);
+  processOrder.currentStage = getCurrentStageFromTasks(tasks);
 
   processOrder.progress = calculateProcessProgress({
     route: processOrder.processRoute,
@@ -275,6 +278,7 @@ export async function updateProcessOrderStatus(input: {
   const detail = await getRequiredProcessOrderDetail(input.processOrderId);
   const current = detail.processOrder;
   const completedAt = input.status === "completed" ? new Date().toISOString() : current.completedAt;
+  if (input.status === "completed") assertEmbroideryApproved(detail);
   const patch: ProcessOrderPatch & { progress: number; completedAt: string | null } = {
     processStatus: input.status,
     progress: input.status === "completed" ? 100 : current.progress,
@@ -307,6 +311,7 @@ export async function updateProcessOrderStage(input: {
 }) {
   const detail = await getRequiredProcessOrderDetail(input.processOrderId);
   const current = detail.processOrder;
+  assertEmbroideryStageAllowed(detail, input.currentStage);
   const updated = await repository.updateProcessOrder({
     processOrderId: current.id,
     companyId: current.companyId,
@@ -337,6 +342,8 @@ export async function updateProcessOrder(input: {
 }) {
   const detail = await getRequiredProcessOrderDetail(input.processOrderId);
   const current = detail.processOrder;
+  if (input.patch.processStatus === "completed") assertEmbroideryApproved(detail);
+  if (input.patch.currentStage) assertEmbroideryStageAllowed(detail, input.patch.currentStage);
   if (
     input.patch.processStatus === "completed" &&
     detail.tasks.some((task) => task.status !== "completed")
@@ -404,6 +411,11 @@ export async function completeProcessTask(input: {
   if (!task) throw createApiError("NOT_FOUND", "Tugas Perintah Kerja tidak ditemukan.", 404);
   if (task.status === "completed") {
     return detail;
+  }
+  const approval = detail.tasks.find(candidate => candidate.taskKey === "embroidery_approval");
+  if (approval && task.sortOrder > approval.sortOrder) assertEmbroideryApproved(detail);
+  if (task.taskKey === "embroidery_approval" && !input.notes?.trim()) {
+    throw createApiError("VALIDATION_ERROR", "Catat ukuran final per posisi dan referensi persetujuan mockup dari customer sebelum menyelesaikan konfirmasi bordir.", 400);
   }
   await repository.updateTaskStatus({
     processOrderId: current.id,
@@ -568,12 +580,31 @@ async function getRequiredProcessOrderDetail(processOrderId: string) {
   return detail;
 }
 
+function assertEmbroideryStageAllowed(detail: ProcessOrderDetail, stage: string) {
+  const approval = detail.tasks.find(task => task.taskKey === "embroidery_approval");
+  const target = detail.tasks.find(task => task.stage === stage);
+  if (stage === "completed" || (approval && target && target.sortOrder > approval.sortOrder)) assertEmbroideryApproved(detail);
+}
+
+function assertEmbroideryApproved(detail: ProcessOrderDetail) {
+  const approval = detail.tasks.find(task => task.taskKey === "embroidery_approval");
+  if ((approval || requiresEmbroideryConfirmation(detail.items.map(item => ({model3dId:item.model3dId, embroideryPlacements:item.customization.placements})))) && approval?.status !== "completed") {
+    throw createApiError("VALIDATION_ERROR", "Konfirmasi ukuran dan mockup bordir dengan customer sebelum melanjutkan produksi.", 409);
+  }
+}
+
 function buildDefaultTasks(
   processOrder: ProcessOrder,
   now: string,
   processStatus: ProcessOrderStatus,
+  needsEmbroideryApproval = false,
 ): ProcessOrderTask[] {
-  return DEFAULT_PROCESS_TASK_TEMPLATES[processOrder.processRoute].map((task, index) => ({
+  const templates: ProcessTaskTemplate[] = [...DEFAULT_PROCESS_TASK_TEMPLATES[processOrder.processRoute]];
+  if (needsEmbroideryApproval) {
+    const index = templates.findIndex(task => task.taskKey === "embroidery_or_print" || task.taskKey === "design_approval");
+    templates.splice(index >= 0 ? index : 0, 0, {taskKey: "embroidery_approval", taskName: "Konfirmasi ukuran dan mockup bordir dengan customer", stage: "artwork_approval", customerLabel: "Ukuran dan penempatan bordir menunggu persetujuan"});
+  }
+  return templates.map((task, index) => ({
     id: `ptask_${randomUUID()}`,
     processOrderId: processOrder.id,
     taskKey: task.taskKey,

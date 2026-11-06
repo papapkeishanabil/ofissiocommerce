@@ -1,4 +1,5 @@
 import type { Order, Quotation } from "@/types/order";
+import type { LogoPlacement } from "@/types/uniform-3d";
 import { listOrders, listQuotations } from "@/lib/commerce/order-service";
 import { readJSON, writeJSON } from "@/lib/mock/storage";
 import { productService } from "@/features/products/product.service";
@@ -613,13 +614,14 @@ function mapCheckoutOrderItemToTracking(input: {
 }): OrderItemProgress {
   const product = productService.getProductById(input.item.productId);
   const itemStages = input.productionTimeline.map((stage) => ({ ...stage }));
+  const modelPlacements = input.item.embroideryPlacements.filter((placement): placement is LogoPlacement => placement.sizingMode !== "ofissio");
   const uniform3DConfig =
-    input.item.embroideryPlacements.length > 0
+    input.item.model3dId && modelPlacements.length > 0 && modelPlacements.length === input.item.embroideryPlacements.length
       ? {
           productId: input.item.productId,
           model3dId: input.item.model3dId,
           color: input.item.selectedColor,
-          placements: input.item.embroideryPlacements,
+          placements: modelPlacements,
           snapshots: { front: SNAPSHOT_URL },
           activeCamera: "front" as const,
           updatedAt: new Date().toISOString(),

@@ -64,6 +64,9 @@ import { ProductColorPicker } from "./ProductColorPicker";
 import styles from "./ProductDetailTheme.module.css";
 import orderStyles from "./ProductOrderFields.module.css";
 import { StudioShell } from "@/components/configurator/StudioShell";
+import { EmbroideryOptions } from "./EmbroideryOptions";
+import { productEmbroideryZones } from "@/features/products/embroidery-request";
+import type { EmbroideryPlacement } from "@/types/uniform-3d";
 
 // Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
 // when the customer actually opens the 3D tab on a supported product.
@@ -129,13 +132,18 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
   const [uniform3DConfig, setUniform3DConfig] =
     useState<import("@/types/uniform-3d").Uniform3DConfig | null>(null);
   const [show3D, setShow3D] = useState(false);
+  const [embroideryPlacements, setEmbroideryPlacements] = useState<EmbroideryPlacement[]>([]);
+  const [embroideryPending, setEmbroideryPending] = useState(false);
+  const [openEmbroidery, setOpenEmbroidery] = useState(false);
+  const activeEmbroidery = uniform3DConfig?.placements ?? embroideryPlacements;
   const [editingLineId, setEditingLineId] = useState<string | undefined>();
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const line = useCartStore.getState().items.find(item => item.id === params.get("line") && item.productId === product.id);
-    if (line) { setEditingLineId(line.id); setSizes(line.sizes); setColor(line.color); setSelectedSleeve(line.selectedSleeve || sleeves[0] || ""); if (line.selectedOptions) setSelectedOptions(line.selectedOptions); setUniform3DConfig(line.uniform3DConfig || null); }
-    if (params.get("studio") === "1" && product.supports_embroidery && validateProduct3DModel(product).ok) {
-      setShow3D(true);
+    if (line) { setEditingLineId(line.id); setSizes(line.sizes); setColor(line.color); setSelectedSleeve(line.selectedSleeve || sleeves[0] || ""); if (line.selectedOptions) setSelectedOptions(line.selectedOptions); setUniform3DConfig(line.uniform3DConfig || null); setEmbroideryPlacements(line.embroideryPlacements ?? []); setCustomization(line.customization ?? ""); }
+    if (params.get("studio") === "1") {
+      if (validateProduct3DModel(product).ok) setShow3D(true);
+      else setOpenEmbroidery(true);
     }
   }, [product, sleeves]);
   const [showFloatingPreviewModal, setShowFloatingPreviewModal] = useState(false);
@@ -269,11 +277,11 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
   const embroideryPrice = useMemo(
     () => calculateEmbroideryPricing({
       totalQty,
-      selectedZones: uniform3DConfig?.placements.map((placement) => placement.zone) ?? [],
-      productSupportedZones: product.embroidery_zones,
+      selectedZones: activeEmbroidery.map((placement) => placement.zone),
+      productSupportedZones: productEmbroideryZones(product),
       globalEmbroideryPricing,
     }),
-    [globalEmbroideryPricing, product.embroidery_zones, totalQty, uniform3DConfig?.placements],
+    [globalEmbroideryPricing, product, totalQty, activeEmbroidery],
   );
   const estimatedPrice = quantityPrice.subtotal + embroideryPrice.total;
   const entryTier = useMemo(() => {
@@ -298,7 +306,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
   // Satu helper MOQ bersama dengan cart-store/checkout: MOQ produk + batas
   // keras bordir (8 pcs default) bila line ini meminta bordir.
   const lineHasEmbroidery = hasEmbroideryRequest({
-    uniform3DPlacements: uniform3DConfig?.placements,
+    embroideryPlacements: activeEmbroidery,
     customization,
   });
   const lineMoqIssue = resolveLineMoqIssue({
@@ -326,7 +334,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
     product: { ...galleryProduct, mainImage: galleryImages[0]?.src ?? product.mainImage },
     color,
     totalQty,
-    embroideryCount: uniform3DConfig?.placements.length ?? 0,
+    embroideryCount: activeEmbroidery.length,
     snapshotUrl,
   };
 
@@ -341,7 +349,8 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
   function addProductToCart(
     configOverride: import("@/types/uniform-3d").Uniform3DConfig | null,
   ) {
-    if (purchasingUnavailable || (pricingUnavailable && configOverride?.placements.length)) {
+    if (embroideryPending) { setError("Simpan pengaturan bordir atau pilih Batal sebelum menambahkan ke keranjang."); return false; }
+    if (purchasingUnavailable || (pricingUnavailable && (configOverride?.placements.length || embroideryPlacements.length))) {
       setError("Informasi pemesanan belum tersedia. Muat ulang halaman untuk mencoba lagi.");
       return false;
     }
@@ -354,6 +363,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
       sizes,
       customization: customization.trim() || null,
       uniform3DConfig: configOverride,
+      embroideryPlacements: configOverride?.placements ?? embroideryPlacements,
       globalEmbroideryPricing,
       moqSettings,
     });
@@ -591,7 +601,8 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
 
             {/* Customization: 3D configurator for supported products,
                 plain-text notes for the rest. */}
-            {has3DSupport && product.supports_embroidery ? (
+            {!has3DSupport && <EmbroideryOptions key={`${product.id}-${editingLineId ?? "new"}-${openEmbroidery}`} product={product} pricing={globalEmbroideryPricing} sizes={sizes} value={embroideryPlacements} onChange={placements => {setUniform3DConfig(null);setEmbroideryPlacements(placements);}} onPendingChange={setEmbroideryPending} initialOpen={openEmbroidery}/>}
+            {has3DSupport ? (
               <div className="mt-3 space-y-3">
                 <button
                   type="button"
@@ -648,7 +659,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
                     </span>
                     <button
                       type="button"
-                      onClick={() => setUniform3DConfig(null)}
+                      onClick={() => {setUniform3DConfig(null);setEmbroideryPlacements([]);}}
                       className="ml-auto text-[10px] font-semibold text-red-600 hover:underline"
                     >
                       Hapus
@@ -723,7 +734,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
                   size="lg"
                   className="w-full"
                   onClick={handleAdd}
-                  disabled={lineMoqIssue != null || totalQty === 0}
+                  disabled={lineMoqIssue != null || totalQty === 0 || embroideryPending}
                 >
                   {lineMoqIssue == null ? (
                     <>
@@ -789,7 +800,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
         }}
       />
 
-        {show3D && has3DSupport && product.supports_embroidery && (
+        {show3D && has3DSupport && (
         <StudioShell product={product} onClose={() => setShow3D(false)}>              <Uniform3DConfigurator
                 orderUnavailableReason={pricingUnavailable || purchasingUnavailable ? "Informasi pemesanan belum dapat dimuat. Kembali ke produk dan pilih Coba lagi sebelum menambahkan ke keranjang." : undefined}
                 sizes={sizes}
