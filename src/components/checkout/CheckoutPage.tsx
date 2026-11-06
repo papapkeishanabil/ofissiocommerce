@@ -575,15 +575,15 @@ function SummaryItems({ items }: { items: CartLineItem[] }) {
           hasEmbroidery: hasCartCustomization(item),
         });
         return (
-          <li key={item.id} className="flex items-start gap-3 py-4 first:pt-0">
+          <li key={item.id} className="grid grid-cols-[4rem_minmax(0,1fr)] items-start gap-3 py-4 first:pt-0 sm:grid-cols-[4rem_minmax(0,1fr)_auto]">
             <ProductThumb src={item.image} alt={item.productName} className="h-16 w-16 shrink-0" />
             <div className="min-w-0 flex-1 text-sm">
               <p className="font-semibold">{item.productName}</p>
-              <EmbroiderySummary placements={item.embroideryPlacements} sizes={item.sizes} />
               <p className="mt-1 text-xs text-ink-muted">{[item.color !== "Default" ? item.color : "", item.selectedSleeve, ...Object.entries(item.selectedOptions ?? {}).filter(([name]) => !/^(warna|color)$/i.test(name)).map(([name, value]) => `${name}: ${value}`), ...Object.entries(item.sizes).filter(([,q])=>q>0).map(([s,q])=>`${s === "OS" ? "Jumlah" : s} ${q} pcs`)].filter(Boolean).join(", ")}</p>
               <p className="mt-1 text-xs font-semibold text-ink-muted">{processingInfo.label}: {processingInfo.value}</p>
             </div>
-            <div className="text-right text-sm"><p className="font-semibold tabular-nums">{formatIDR(item.finalEstimatedTotal ?? item.estimatedPrice)}</p><p className="mt-1 text-xs text-ink-muted">{item.totalQty} pcs</p></div>
+            <div className="col-start-2 text-sm sm:col-start-3 sm:row-start-1 sm:text-right"><p className="font-semibold tabular-nums">{formatIDR(item.finalEstimatedTotal ?? item.estimatedPrice)}</p><p className="mt-1 text-xs text-ink-muted">{item.totalQty} pcs</p></div>
+            <div className="col-span-full"><EmbroiderySummary placements={item.embroideryPlacements ?? item.uniform3DConfig?.placements} sizes={item.sizes} /></div>
           </li>
         );
       })}

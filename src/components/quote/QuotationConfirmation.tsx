@@ -32,6 +32,7 @@ import { formatIDR } from "@/types/product";
 import type { AuthSession } from "@/types/account";
 import { embroiderySizeLabel, embroideryTechniqueLabel, zoneLabel } from "@/types/uniform-3d";
 import { embroideryTextSummary } from "@/lib/embroidery-names";
+import { EmbroideryLogoThumbnail } from "@/components/configurator/EmbroideryLogoThumbnail";
 
 interface QuotationConfirmationProps {
   quotation: QuotationRequestRecord;
@@ -540,23 +541,20 @@ export function QuotationConfirmation({
                         key={`${placement.zone}-${placement.logoFileId}`}
                         className="py-3 first:pt-0 last:pb-0"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
+                        <div className="flex min-w-0 items-start gap-3">
+                          {!placement.textBordir && <EmbroideryLogoThumbnail fileId={placement.logoFileId} fileName={placement.logoFileName} position={zoneLabel(placement.zone)} previewUrl={placement.logoPreviewUrl} />}
+                          <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                             <p className="font-bold text-ink">{zoneLabel(placement.zone)}</p>
-                            <p className="mt-0.5 truncate text-xs font-semibold text-ink-muted" title={placement.logoFileName}>
+                            <p className="mt-0.5 text-xs font-semibold text-ink-muted">
                               {embroideryTextSummary(placement)}
                             </p>
+                            <p className="mt-1 text-xs font-bold text-brand-800">{embroiderySizeLabel(placement)}</p>
+                            <p className="mt-1.5 text-xs leading-5 text-ink-muted">
+                              {embroideryTechniqueLabel(placement.technique)}, Rotasi {placement.rotation}°
+                            </p>
+                            {placement.notes ? <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-ink-muted">Catatan: {placement.notes}</p> : null}
                           </div>
-                          <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-800 ring-1 ring-line">
-                            {embroiderySizeLabel(placement)}
-                          </span>
                         </div>
-                        <p className="mt-1.5 text-xs leading-5 text-ink-muted">
-                          {embroideryTechniqueLabel(placement.technique)}, Rotasi {placement.rotation}°
-                        </p>
-                        {placement.notes ? (
-                          <p className="mt-1 text-xs leading-5 text-ink-muted">Catatan: {placement.notes}</p>
-                        ) : null}
                       </li>
                     ))}
                   </ul>

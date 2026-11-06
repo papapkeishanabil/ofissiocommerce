@@ -11,7 +11,7 @@ import type { OfissioProduct } from "@/features/products/product.types";
 import { EMBROIDERY_ZONES, embroiderySizeLabel, zoneLabel, type EmbroideryPlacement, type EmbroideryZone } from "@/types/uniform-3d";
 import { onConfigurationLogin, readConfigurationLogin, type EmbroideryLoginDraft } from "@/features/auth/configuration-continuation";
 import styles from "./EmbroideryOptions.module.css";
-import { EmbroideryLogoThumbnail } from "./EmbroideryLogoThumbnail";
+import { EmbroideryLogoThumbnail } from "@/components/configurator/EmbroideryLogoThumbnail";
 
 interface Props {
   product: OfissioProduct;

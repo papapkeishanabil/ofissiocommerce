@@ -35,7 +35,7 @@ export function CartPreviewLine({ item }: { item: CartLineItem }) {
       <Link className="inline-flex min-h-9 items-center gap-2 md:border-l md:border-line md:pl-6" href={`/product/${item.productSlug}?studio=1&line=${encodeURIComponent(item.id)}`}><Box className="h-4 w-4" />{item.embroideryPlacements?.length ? "Edit Bordir" : "Tambah Bordir"}</Link>
     </div>
     {editing && <div className="border-t border-line p-4"><SizeQuantityMatrix availableSizes={item.availableSizes} productId={item.productId} color={item.color} selectedSleeve={item.selectedSleeve} selectedOptions={item.selectedOptions} value={item.sizes} onChange={sizes=>update(item.id,sizes)} moq={item.moq??1} /></div>}
-    <div className="px-4"><EmbroiderySummary placements={item.embroideryPlacements} sizes={item.sizes} /></div>
+    <div className="px-4"><EmbroiderySummary placements={item.embroideryPlacements ?? item.uniform3DConfig?.placements} sizes={item.sizes} /></div>
     {(item.missingEmbroideryPricingZones?.length??0)>0 && <p className="px-4 pb-3 text-xs text-ochre-700">Harga bordir perlu dikonfirmasi admin.</p>}
   </article>;
 }

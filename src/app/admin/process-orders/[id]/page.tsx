@@ -18,6 +18,7 @@ import { formatAdminDate } from "@/features/admin/admin.utils";
 import { getDocumentsByEntity } from "@/features/documents/document.service";
 import { processOrderStatusLabel } from "@/features/process-orders/process-order.config";
 import { summarizeSizeMatrix } from "@/features/tracking/tracking-utils";
+import { getAdminOrderArtworkPreviews } from "@/features/admin/admin-order-workbench.service";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -37,6 +38,8 @@ export default async function AdminProcessOrderDetailPage({ params, searchParams
   ]);
   if (!detail) notFound();
   const { processOrder, sourceOrder, items, tasks, events } = detail;
+  const artworkPreviews = sourceOrder ? await getAdminOrderArtworkPreviews(sourceOrder) : [];
+  const previewUrls = Object.fromEntries(artworkPreviews.filter(preview => preview.signedUrl).map(preview => [preview.fileId, preview.signedUrl!]));
   const canUpdate = canUpdateProcessOrder(actor);
   const embroideryWorkOrder = documents.find(
     (document) => document.status === "generated" && !document.deletedAt,
@@ -182,7 +185,7 @@ export default async function AdminProcessOrderDetailPage({ params, searchParams
                   <Info label="placements" value={`${item.customization.placements.length} titik`} />
                   <Info label="instruksi custom" value={item.customization.text ?? "Tidak ada instruksi tambahan"} />
                 </dl>
-                <EmbroiderySummary placements={item.customization.placements} sizes={item.sizeMatrix} />
+                <EmbroiderySummary placements={item.customization.placements} sizes={item.sizeMatrix} previewUrls={previewUrls} />
               </article>
             ))}
           </div>
