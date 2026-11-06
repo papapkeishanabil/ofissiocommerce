@@ -30,6 +30,7 @@ import type {
 } from "@/features/shipments/shipment.types";
 
 export type AdminPermission =
+  | "admin:chat:manage"
   | "admin:access"
   | "admin:view"
   | "admin:quotation:convert"

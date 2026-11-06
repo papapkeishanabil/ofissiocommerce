@@ -3,6 +3,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Headset, History, RotateCcw, X } from "lucide-react";
 
+import { useSupportChat } from "@/features/ofistant-support/use-support-chat";
+import { SupportMessageView } from "@/features/ofistant-support/SupportMessageView";
+import { useUIStore } from "@/stores/ui-store";
 import { useAuth } from "@/hooks/use-auth";
 import { useOfistantHistoryStore } from "@/stores/ofistant-history-store";
 import { useOfistantStore } from "@/stores/ofistant-store";
@@ -27,6 +30,8 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const historyNotice = useOfistantStore((s) => s.historyNotice);
   const conversationId = useOfistantStore((s) => s.conversationId);
   const [showHistory, setShowHistory] = useState(false);
+  const support = useSupportChat(conversationId, authHydrated && historyOwner === accountKey ? accountKey : null);
+  const [loginNotice, setLoginNotice] = useState(false);
   const accountReady = authHydrated && historyOwner === accountKey;
   const historyVisible = showHistory && !!session && accountReady;
   const messages = useOfistantStore((s) => s.messages);
@@ -63,7 +68,10 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const lastMessageId = messages.at(-1)?.id;
   useLayoutEffect(() => { const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight; }, [lastMessageId, typing, pendingAction, showHistory]);
 
-  function handleSend(text: string) { sendUserTurn(text); }
+  function handleSend(text: string) {
+    if (support.active) return support.act("send", text);
+    sendUserTurn(text);
+  }
   function handleQuickReply(text: string) { sendUserTurn(text, { viaQuickReply: true }); }
   async function handleConfirm() {
     const action = confirmPendingAction();
@@ -77,7 +85,21 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
     dismissPendingAction();
     useOfistantStore.setState((s) => ({ messages: [...s.messages, { id: `assistant-cancel-${Date.now()}`, role: "assistant" as const, text: "Baik, saya batalkan. Beri tahu saya jika ada yang ingin disesuaikan.", ts: Date.now() }] }));
   }
-  function handleHumanHandoff() { sendUserTurn("Saya butuh bantuan tim Ofissio"); }
+  async function handleHumanHandoff() {
+    if (!session) { setLoginNotice(true); useUIStore.getState().openAuth({ kind: "none" }, "login"); return; }
+    if (await support.act("start")) {
+      useOfistantStore.setState((state) => ({ generation: state.generation + 1, typing: false, quickReplies: [], pendingAction: null, historyNotice: null }));
+    }
+  }
+  const timeline = [
+    ...messages.map((message) => ({ kind: "ai" as const, message })),
+    ...support.messages.filter((message) => !message.context).map((message) => ({ kind: "support" as const, message })),
+  ].sort((a, b) => a.message.ts - b.message.ts);
+  const supportLastId = support.messages.at(-1)?.id;
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [supportLastId]);
 
   const lastPendingMsgId = pendingAction?.messageId ?? null;
 
@@ -88,12 +110,12 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
           <OfistantMark variant="rev" className={styles.headerLogo} />
           <div>
             <h2 className={styles.name}>Ofistant</h2>
-            <p className={styles.subtitle}>Asisten belanja AI</p>
+            <p className={styles.subtitle}>{support.active ? support.conversation?.status === "waiting" ? "Menunggu tim Ofissio" : `${support.conversation?.staffName} · Tim Ofissio` : "Asisten belanja AI"}</p>
           </div>
         </div>
         <div className={styles.headerActions}>
-          {session && <button type="button" onClick={toggleHistory} disabled={!accountReady || typing} aria-label="Riwayat percakapan" aria-expanded={showHistory} className={styles.headerButton}><History size={20} aria-hidden="true" /></button>}
-          <button type="button" onClick={newConversation} disabled={!hydrated || typing || !accountReady || history.loading || messages.length <= 1} aria-label="Mulai percakapan baru" title="Mulai percakapan baru" className={styles.headerButton}>
+          {session && <button type="button" onClick={toggleHistory} disabled={!accountReady || typing || support.busy} aria-label="Riwayat percakapan" aria-expanded={showHistory} className={styles.headerButton}><History size={20} aria-hidden="true" /></button>}
+          <button type="button" onClick={newConversation} disabled={!hydrated || typing || support.busy || support.active || !accountReady || history.loading || messages.length <= 1} aria-label="Mulai percakapan baru" title="Mulai percakapan baru" className={styles.headerButton}>
             <RotateCcw size={20} aria-hidden="true" />
           </button>
           {onClose && <button type="button" onClick={onClose} aria-label="Tutup Ofistant" className={styles.headerButton}>
@@ -114,14 +136,14 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
         <div className={styles.conversation}>
           {!accountReady && <p role="status">Memuat percakapan...</p>}
           {accountReady && history.before !== null && <button type="button" className={styles.historyButton} disabled={history.loading || typing} onClick={() => void history.open(conversationId, true)}>Lihat pesan sebelumnya</button>}
-          {accountReady && messages.map((m) => (
-            <ChatMessageView key={m.id} message={m} isPendingConfirm={!!pendingAction && lastPendingMsgId === m.id && !!m.requiresConfirm} onConfirm={handleConfirm} onCancel={handleCancel} busy={busy} onProductNavigate={() => { if (window.matchMedia("(max-width: 79.999rem)").matches) onClose?.(); }} />
+          {accountReady && timeline.map((item) => item.kind === "support" ? <SupportMessageView key={`support-${item.message.id}`} message={item.message} /> : (
+            <ChatMessageView key={item.message.id} message={item.message} isPendingConfirm={!support.active && !!pendingAction && lastPendingMsgId === item.message.id && !!item.message.requiresConfirm} onConfirm={handleConfirm} onCancel={handleCancel} busy={busy} onProductNavigate={() => { if (window.matchMedia("(max-width: 79.999rem)").matches) onClose?.(); }} />
           ))}
           {accountReady && typing && <div className={styles.message}>
             <span className={styles.avatar} aria-hidden="true"><OfistantMark variant="rev" /></span>
             <div className={styles.bubble}><TypingIndicator /></div>
           </div>}
-          {accountReady && !typing && quickReplies.length > 0 && !pendingAction && (
+          {accountReady && support.ready && !support.active && !typing && quickReplies.length > 0 && !pendingAction && (
             <QuickReplies options={quickReplies} onPick={handleQuickReply} />
           )}
         </div>
@@ -129,13 +151,21 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
 
       {!historyVisible && <div className={styles.composerArea}>
         {historyNotice && accountReady && <p className={styles.historyHint} role="status">{historyNotice}</p>}
-        <ChatComposer onSubmit={handleSend} disabled={typing || !accountReady || history.loading} />
+        {support.active && <div className={styles.supportStatus} role="status">
+          <strong>{support.conversation?.status === "waiting" ? "Menunggu tim Ofissio" : `Terhubung dengan ${support.conversation?.staffName}`}</strong>
+          <p>{support.conversation?.status === "waiting" ? "Anda boleh menambahkan pesan. Balasan staf akan muncul di panel ini saat permintaan ditangani." : "Pesan Anda dibalas langsung oleh staf Ofissio. AI tidak membalas selama sesi ini."}</p>
+          <button type="button" className={styles.historyButton} disabled={support.busy} onClick={() => void support.act("close")}>Akhiri chat tim dan kembali ke AI</button>
+        </div>}
+        {support.error && <div role="alert" className={styles.historyHint}>{support.error} <button type="button" className={styles.historyButton} onClick={() => void support.refresh()}>Coba lagi</button></div>}
+        {loginNotice && !session && <p className={styles.historyHint}>Masuk terlebih dahulu agar percakapan dengan tim tersimpan di akun Anda.</p>}
+        <ChatComposer key={accountKey ?? "guest"} onSubmit={handleSend} disabled={typing || support.busy || !support.ready || !accountReady || history.loading} />
         <div className={styles.footer}>
-          <button type="button" onClick={handleHumanHandoff} disabled={typing || !accountReady || history.loading} className={styles.handoff}>
+          {!support.active && <button type="button" onClick={() => void handleHumanHandoff()} disabled={typing || support.busy || !support.ready || !accountReady || history.loading} className={styles.handoff}>
             <Headset size={15} aria-hidden="true" /> Hubungi tim Ofissio
-          </button>
-          <span className={styles.signature}>Ofistant AI</span>
+          </button>}
+          <span className={styles.signature}>{support.active ? "Chat tim Ofissio" : "Ofistant AI"}</span>
         </div>
+        {!support.active && <p className={styles.historyHint}>Saat menghubungi tim, riwayat percakapan ini ikut diteruskan kepada staf.</p>}
       </div>}
     </section>
   );

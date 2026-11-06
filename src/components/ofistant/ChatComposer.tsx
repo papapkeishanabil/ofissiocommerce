@@ -23,12 +23,13 @@ export interface ChatComposerHandle {
 
 interface ChatComposerProps {
   disabled?: boolean;
-  onSubmit: (text: string) => void;
+  onSubmit: (text: string) => void | Promise<boolean | void>;
 }
 
 export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   function ChatComposer({ disabled, onSubmit }, ref) {
     const [value, setValue] = useState("");
+    const [sending, setSending] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const inputId = useId();
 
@@ -48,12 +49,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       [],
     );
 
-    function handle(e: FormEvent) {
+    async function handle(e: FormEvent) {
       e.preventDefault();
       const t = value.trim();
-      if (!t || disabled) return;
-      onSubmit(t);
-      setValue("");
+      if (!t || disabled || sending) return;
+      setSending(true);
+      try { if (await onSubmit(t) !== false) setValue(""); }
+      finally { setSending(false); }
     }
 
     return (
@@ -69,14 +71,14 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Tulis pertanyaan Anda…"
-            disabled={disabled}
+            disabled={disabled || sending}
             maxLength={300}
             className={styles.input}
           />
 
           <button
             type="submit"
-            disabled={disabled || !value.trim()}
+            disabled={disabled || sending || !value.trim()}
             aria-label="Kirim pesan"
             className={styles.send}
           >

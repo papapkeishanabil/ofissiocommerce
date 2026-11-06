@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { respondWithShippingRates } from "@/lib/ofistant/ofistant-shipping.service";
+import { supportCommand } from "@/features/ofistant-support/support.service";
 import { saveChatTurn } from "@/features/ofistant-history/history.chat";
 import { historyTurnSchema } from "@/features/ofistant-history/history.schema";
 import { respondWithPublishedKnowledge } from "@/lib/ofistant/ofistant-knowledge.service";
@@ -139,6 +140,7 @@ async function respondToChat(req: Request) {
       });
     }
     if (intent.intent === "ASK_HUMAN") {
+      if (process.env.OFISTANT_SUPPORT_ENABLED === "true") return NextResponse.json({ ok: true, result: { message: "Tekan tombol Hubungi tim Ofissio di bawah chat untuk melanjutkan percakapan ini dengan staf. Riwayat percakapan ini akan diteruskan agar Anda tidak perlu mengulang pertanyaan." } });
       if (!session || !companyId) {
         return NextResponse.json({
           ok: true,
@@ -301,6 +303,12 @@ export async function POST(req: Request) {
     if (!historyTurnSchema.safeParse(input).success)
       return NextResponse.json({ ok: false, message: "Identitas percakapan tidak valid." }, { status: 400 });
   }
+  if (session && input?.conversationId && process.env.OFISTANT_SUPPORT_ENABLED === "true") {
+    try {
+      const support = await supportCommand({ userId: session.userId, companyId: session.companyId, name: session.name || "Customer", staff: false }, "read", { conversationId: input.conversationId });
+      if (support.conversation && support.conversation.status !== "closed") return NextResponse.json({ ok: false, code: "SUPPORT_ACTIVE", message: "Percakapan sedang ditangani tim Ofissio. Kirim pesan melalui chat tim." }, { status: 409 });
+    } catch (error) { return safeErrorResponse(error); }
+  }
   const response = await respondToChat(req);
   response.headers.set("Cache-Control", "private, no-store");
   if (!response.ok) return response;
@@ -312,7 +320,8 @@ export async function POST(req: Request) {
     try {
       await saveChatTurn(session, input, body.result);
       body.historySaved = true;
-    } catch {
+    } catch (error) {
+      if (error && typeof error === "object" && "status" in error && error.status === 409) return NextResponse.json({ ok: false, code: "SUPPORT_ACTIVE", message: "Percakapan sedang diteruskan ke tim Ofissio." }, { status: 409 });
       body.historySaved = false;
     }
   }
