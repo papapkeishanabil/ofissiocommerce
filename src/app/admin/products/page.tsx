@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, Box, ExternalLink, FileBox, FileSearch, Pencil, Plus, RotateCcw, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Download, Boxes, Box, ExternalLink, FileBox, FileSearch, Pencil, Plus, RotateCcw, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
 
 import { requireInternalAdminServer } from "@/features/admin/admin.service";
 import { AdminBadge } from "@/features/admin/components/AdminBadge";
@@ -76,7 +76,7 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
           eyebrow="Product readiness"
           title="Produk WooCommerce"
           description="Lihat semua produk dari WooCommerce, termasuk produk yang belum tampil di Ofissio, beserta field yang masih harus dilengkapi."
-          actions={<div className="flex flex-wrap gap-2">
+          actions={<div className="flex flex-wrap gap-2"><Link href="/admin/products/catalog" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"><Download className="h-4 w-4" aria-hidden="true" />Export Katalog</Link>
             <Link href="/admin/products/readiness" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">
               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
               Bulk Product Readiness
