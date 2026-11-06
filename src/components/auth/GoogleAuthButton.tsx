@@ -15,6 +15,7 @@ export function GoogleAuthButton({ quotationId }: { quotationId?: string }) {
       const next = quotationId ? `/quotes/${quotationId}`
         : intent.kind === "checkout" ? "/checkout"
         : intent.kind === "request_quote" ? intent.returnTo ?? "/quote"
+        : intent.kind === "save_configuration" ? intent.returnTo ?? window.location.pathname + window.location.search
         : params.get("next") ?? "/dashboard";
       const response = await fetch(`/api/auth/google?${new URLSearchParams({ next })}`, { cache: "no-store" });
       const payload = await response.json();

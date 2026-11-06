@@ -5,11 +5,12 @@
 "use client";
 
 import { create } from "zustand";
+import { rememberConfigurationLogin } from "@/features/auth/configuration-continuation";
 
 export type AuthIntent =
   | { kind: "checkout" }
   | { kind: "request_quote"; returnTo?: string }
-  | { kind: "save_configuration" }
+  | { kind: "save_configuration"; returnTo?: string }
   | { kind: "repeat_order" }
   | { kind: "none" };
 
@@ -30,8 +31,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   cartDrawerOpen: false,
   authIntent: { kind: "none" },
   authMode: "login",
-  openAuth: (intent = { kind: "none" }, mode = "login") =>
-    set({ authModalOpen: true, authIntent: intent, authMode: mode }),
+  openAuth: (intent = { kind: "none" }, mode = "login") => {
+    const productLogin=typeof window!=="undefined" && window.location.pathname.startsWith("/product/") && intent.kind==="none";
+    const nextIntent:AuthIntent=productLogin ? {kind:"save_configuration"} : {...intent};
+    if(nextIntent.kind==="save_configuration") nextIntent.returnTo=rememberConfigurationLogin() ?? nextIntent.returnTo;
+    set({ authModalOpen: true, authIntent: nextIntent, authMode: mode });
+  },
   closeAuth: () =>
     set({ authModalOpen: false, authIntent: { kind: "none" } }),
   setCartDrawerOpen: (cartDrawerOpen) => set({ cartDrawerOpen }),

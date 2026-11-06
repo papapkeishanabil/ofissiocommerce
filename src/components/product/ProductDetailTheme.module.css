@@ -29,6 +29,7 @@
 .page { background:#eef2fb; padding-bottom:32px; }
 .description,.purchase,.gallery { border:1px solid #dbe3f1; border-radius:16px; background:#fff; box-shadow:0 3px 12px #14276608; }
 .purchase { padding:22px; --color-surface-muted:#ffffff; }
+.purchaseColumn { min-width:0; align-self:start; overflow-anchor:none; }
 .purchase h1 { text-wrap:balance; }
 .price { margin-top:18px; border:1px solid #e0e7f4; border-radius:12px; background:#ffffff; padding:14px; }
 .price p:first-child { font-weight:600; letter-spacing:.06em; }

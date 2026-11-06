@@ -162,14 +162,11 @@ export function LogoUploadPanel({
         <div className={styles.upload}>
           <LogIn aria-hidden="true" />
           <strong>Masuk dulu untuk mengunggah logo</strong>
-          <span className={styles.help}>
-            Logo tersimpan aman di akun perusahaan Anda dan bisa dipakai ulang
-            untuk pesanan berikutnya.
-          </span>
+          <span className={styles.help}>Masuk untuk menyimpan logo. Pilihan posisi bordir Anda tetap tersimpan.</span>
           <button
             type="button"
             onClick={() => openAuth({ kind: "save_configuration" }, "login")}
-            className="mt-2 inline-flex min-h-10 items-center justify-center rounded-xl bg-[var(--studio-ink)] px-4 text-sm font-bold text-white transition-colors hover:bg-[#071c3a]"
+            className={styles.loginButton}
           >
             Masuk / Daftar
           </button>

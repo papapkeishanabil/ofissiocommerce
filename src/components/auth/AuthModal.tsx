@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
 import { quotationIdFromNextPath } from "@/features/auth/auth-navigation";
+import { restoreConfigurationLoginScroll } from "@/features/auth/configuration-continuation";
 import { cn } from "@/lib/utils";
 
 import { Modal } from "@/components/ui/Modal";
@@ -55,6 +56,9 @@ export function AuthModal() {
     }
     setWasAuthed(!!session);
   }, [session, open, wasAuthed, consumeIntent, closeAuth, router]);
+  useEffect(() => {
+    if(session && !open) return restoreConfigurationLoginScroll();
+  }, [session, open]);
 
   const isLogin = mode === "login";
   const headline = isLogin
@@ -62,7 +66,7 @@ export function AuthModal() {
       ? "Masuk untuk membuka quotation Anda"
       : "Masuk untuk melanjutkan"
     : "Daftar akun perusahaan Anda";
-  const subhead = isLogin
+  const subhead = authIntent.kind === "save_configuration" ? "Setelah masuk, Anda dapat melanjutkan pengaturan bordir di halaman ini." : isLogin
     ? quotationId
       ? "Gunakan email penerima penawaran agar akun terhubung ke quotation."
       : "Lanjutkan checkout atau request quotation Anda."

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Check, Scissors, Trash2 } from "lucide-react";
 import { LogoUploadPanel } from "@/components/configurator/LogoUploadPanel";
 import { NameEmbroideryEditor } from "@/components/configurator/NameEmbroideryEditor";
@@ -8,7 +8,8 @@ import { embroideryTextSummary, validateNameAllocations } from "@/lib/embroidery
 import { embroideryRequestIssue, productEmbroideryZones } from "@/features/products/embroidery-request";
 import { normalizeEmbroideryZoneId, type EmbroideryPricing } from "@/features/products/embroidery-pricing";
 import type { OfissioProduct } from "@/features/products/product.types";
-import { embroiderySizeLabel, zoneLabel, type EmbroideryPlacement, type EmbroideryZone, type LogoPlacement } from "@/types/uniform-3d";
+import { EMBROIDERY_ZONES, embroiderySizeLabel, zoneLabel, type EmbroideryPlacement, type EmbroideryZone } from "@/types/uniform-3d";
+import { onConfigurationLogin, readConfigurationLogin, type EmbroideryLoginDraft } from "@/features/auth/configuration-continuation";
 import styles from "./EmbroideryOptions.module.css";
 
 interface Props {
@@ -21,15 +22,7 @@ interface Props {
   initialOpen?: boolean;
 }
 
-interface Draft {
-  kind: "logo" | "text";
-  logo?: { fileId: string; fileName: string; previewUrl?: string };
-  text?: LogoPlacement["textBordir"];
-  sizing: "ofissio" | "customer";
-  width: string;
-  height: string;
-  notes: string;
-}
+type Draft = EmbroideryLoginDraft;
 
 function draftFor(placement?: EmbroideryPlacement): Draft {
   return {kind: placement?.textBordir ? "text" : "logo", logo: placement && !placement.textBordir ? {fileId: placement.logoFileId, fileName: placement.logoFileName, previewUrl: placement.logoPreviewUrl} : undefined, text: placement?.textBordir, sizing: placement?.sizingMode === "ofissio" || !placement ? "ofissio" : "customer", width: String(placement?.widthCm ?? ""), height: String(placement?.heightCm ?? ""), notes: placement?.notes ?? ""};
@@ -44,15 +37,44 @@ export function EmbroideryOptions({product, pricing, sizes, value, onChange, onP
   const [textDirty, setTextDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const panelRef=useRef<HTMLElement>(null);
+  const editorRef=useRef<HTMLElement>(null);
+  const editorHeadingRef=useRef<HTMLHeadingElement>(null);
   const pending = dirty || textDirty || uploading;
   useEffect(() => { onPendingChange(pending); }, [pending, onPendingChange]);
-  const zones = productEmbroideryZones(product);
+  const zones = EMBROIDERY_ZONES.filter(item => productEmbroideryZones(product).includes(item));
   const bounds = pricing.zones.find(item => item.zoneId === normalizeEmbroideryZoneId(zone));
   const reusable = [...new Map(value.filter(item => !item.textBordir).map(item => [item.logoFileId, item])).values()];
+  useEffect(() => {
+    const saved=readConfigurationLogin()?.embroidery;
+    if(!saved || saved.productId!==product.id) return;
+    setOpen(saved.open);setZone(saved.zone);setDraft(saved.draft);setDirty(saved.dirty);setTextDirty(saved.textDirty);
+  }, [product.id]);
+  useEffect(() => onConfigurationLogin(state => {
+    state.embroidery={productId:product.id,open,zone,draft,dirty,textDirty};
+  }), [product.id,open,zone,draft,dirty,textDirty]);
+
+  function reveal(target:"panel"|"editor") {
+    requestAnimationFrame(() => {
+      if(target==="editor") editorHeadingRef.current?.focus({preventScroll:true});
+      const panel=panelRef.current;const editor=editorRef.current;
+      if(!panel) return;
+      const scroller=panel.closest<HTMLElement>("[data-workspace-scroll]");
+      const viewportTop=(scroller?.getBoundingClientRect().top ?? 0)+16;
+      const viewportBottom=scroller?.getBoundingClientRect().bottom ?? window.innerHeight;
+      const panelTop=panel.getBoundingClientRect().top;
+      const editorTop=editor?.getBoundingClientRect().top;
+      // Keep the position buttons visible as the editor expands below them.
+      if(panelTop<viewportTop || panelTop>viewportBottom-180 || (target==="editor" && editorTop!=null && editorTop>viewportBottom-320)) {
+        panel.scrollIntoView({block:"start",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth"});
+      }
+    });
+  }
 
   function change(next: Partial<Draft>) { setDraft(previous => ({...previous, ...next})); setDirty(true); setError(""); }
   function select(next: EmbroideryZone) {
     setZone(next);setDraft(draftFor(value.find(item => item.zone === next)));setDirty(false);setTextDirty(false);setError("");
+    reveal("editor");
   }
   function cancel() { setZone(null);setDirty(false);setTextDirty(false);setError(""); }
   function save() {
@@ -66,18 +88,18 @@ export function EmbroideryOptions({product, pricing, sizes, value, onChange, onP
       : {...common, sizingMode: "customer", widthCm: Number(draft.width), heightCm: Number(draft.height)};
     const issue = embroideryRequestIssue([placement], product, pricing) ?? validateNameAllocations([placement], sizes);
     if (issue) {setError(issue);return;}
-    onChange([...value.filter(item => item.zone !== zone), placement]);cancel();
+    onChange([...value.filter(item => item.zone !== zone), placement]);cancel();reveal("panel");
   }
 
-  return <section className={styles.panel} aria-label="Pilihan bordir produk">
-    <button type="button" className={styles.toggle} aria-expanded={open} aria-controls={`${id}-body`} onClick={() => setOpen(previous => !previous)}><Scissors size={18} aria-hidden="true"/><span>Tambahkan bordir <small>{value.length ? `${value.length} posisi tersimpan` : "Opsional"}</small></span></button>
+  return <section ref={panelRef} className={styles.panel} aria-label="Pilihan bordir produk">
+    <button type="button" className={styles.toggle} aria-expanded={open} aria-controls={`${id}-body`} onClick={() => {setOpen(previous => !previous);if(!open)reveal("panel");}}><Scissors size={18} aria-hidden="true"/><span>Tambahkan bordir <small>{value.length ? `${value.length} posisi tersimpan` : "Opsional"}</small></span></button>
     <div id={`${id}-body`} className={styles.body} hidden={!open}>
       <p>Pilih posisi, lalu unggah logo atau isi tulisan untuk setiap posisi. File dapat berbeda atau digunakan kembali.</p>
       <div className={styles.positions} aria-label="Pilih posisi bordir">
         {zones.map(item => <button key={item} type="button" aria-pressed={zone === item} disabled={pending} onClick={() => select(item)}>{value.some(saved => saved.zone === item) && <Check size={14} aria-hidden="true"/>}{zoneLabel(item)}</button>)}
       </div>
-      {zone && <section className={styles.editor} aria-label={`Pengaturan ${zoneLabel(zone)}`}>
-        <h3>{zoneLabel(zone)}</h3>
+      {zone && <section ref={editorRef} data-configuration-editor className={styles.editor} aria-label={`Pengaturan ${zoneLabel(zone)}`}>
+        <h3 ref={editorHeadingRef} tabIndex={-1}>{zoneLabel(zone)}</h3>
         <fieldset className={styles.choices} disabled={uploading}><legend>Isi bordir</legend>
           <label><input type="radio" name={`${id}-kind`} checked={draft.kind === "logo"} onChange={() => {change({kind:"logo"});setTextDirty(false);}}/>Logo</label>
           <label><input type="radio" name={`${id}-kind`} checked={draft.kind === "text"} onChange={() => change({kind:"text"})}/>Tulisan / nama</label>

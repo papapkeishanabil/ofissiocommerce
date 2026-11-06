@@ -4,7 +4,7 @@
 .body { padding:16px; display:grid; gap:14px; font-size:13px; line-height:1.6; }
 .body[hidden] { display:none; }
 .body p { overflow-wrap:anywhere; }
-.positions { display:flex; flex-wrap:wrap; gap:8px; }
+.positions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .positions button { display:flex; align-items:center; gap:5px; min-height:44px; border:1px solid #cbd7ec; border-radius:9px; padding:8px 11px; font-weight:600; background:white; }
 .positions button[aria-pressed=true] { background:#eaf0ff; border-color:#142766; box-shadow:0 0 0 1px #142766; }
 .editor { display:grid; gap:14px; padding:14px; border:1px solid #d8e1f0; border-radius:12px; background:#f8faff; min-width:0; }
@@ -29,3 +29,6 @@
 .error { color:#b42318; font-weight:600; }
 .panel button:disabled { opacity:.5; cursor:not-allowed; }
 .panel button:focus-visible,.panel input:focus-visible,.panel textarea:focus-visible,.panel select:focus-visible,.panel summary:focus-visible { outline:2px solid #b88421; outline-offset:3px; }
+.panel,.editor { scroll-margin-block-start:76px; }
+.editor h3:focus { outline:none; }
+@media(max-width:480px) { .positions { grid-template-columns:repeat(2,minmax(0,1fr)); } }

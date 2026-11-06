@@ -67,6 +67,7 @@ import { StudioShell } from "@/components/configurator/StudioShell";
 import { EmbroideryOptions } from "./EmbroideryOptions";
 import { productEmbroideryZones } from "@/features/products/embroidery-request";
 import type { EmbroideryPlacement } from "@/types/uniform-3d";
+import { onConfigurationLogin, readConfigurationLogin } from "@/features/auth/configuration-continuation";
 
 // Lazy-load the 3D configurator (R3F + three.js bundle) so it only ships
 // when the customer actually opens the 3D tab on a supported product.
@@ -147,6 +148,15 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
     }
   }, [product, sleeves]);
   const [showFloatingPreviewModal, setShowFloatingPreviewModal] = useState(false);
+  useEffect(() => {
+    const saved=readConfigurationLogin()?.product;
+    if(!saved || saved.productId!==product.id) return;
+    setColor(saved.color);setSizes({...emptySizeMatrix(),...saved.sizes});setSelectedOptions(saved.selectedOptions);setSelectedSleeve(saved.selectedSleeve);setCustomization(saved.customization);
+    setEmbroideryPlacements(saved.placements);setUniform3DConfig(saved.config ? {...saved.config,snapshots:saved.config.snapshots ?? {}} : null);setEditingLineId(saved.editingLineId);setOpenEmbroidery(true);
+  }, [product.id]);
+  useEffect(() => onConfigurationLogin(state => {
+    state.product={productId:product.id,color,sizes,selectedOptions,selectedSleeve,customization,placements:activeEmbroidery,config:uniform3DConfig,editingLineId};
+  }), [product.id,color,sizes,selectedOptions,selectedSleeve,customization,activeEmbroidery,uniform3DConfig,editingLineId]);
 
   const heroRef = useRef<HTMLDivElement>(null);
   const desktopPreviewButtonRef = useRef<HTMLButtonElement>(null);
@@ -463,8 +473,8 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
           </section>
         </div>
 
-        {/* Right: configurator (sticky) */}
-        <div className="order-2 space-y-4 xl:order-none xl:sticky xl:top-5">
+        {/* Keep expanding order forms in the normal flow so their top stays in place. */}
+        <div className={`${styles.purchaseColumn} order-2 space-y-4 xl:order-none`}>
           <div className={`${styles.purchase} storefront-product-panel`}>
             {/* Title block */}
             <div className="flex items-start justify-between gap-4">
