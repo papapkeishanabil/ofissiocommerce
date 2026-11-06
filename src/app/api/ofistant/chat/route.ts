@@ -1,7 +1,7 @@
 // src/app/api/ofistant/chat/route.ts
-// Ofistant chat endpoint (HYBRID). Runs the Gemini LLM brain when configured;
-// otherwise (or on LLM failure) it transparently falls back to the existing
-// rule engine server-side, fed with real catalog data.
+// Ofistant chat endpoint: semantic routing selects published knowledge, while
+// the rule engine handles application actions and authoritative live data.
+// Unresolved requests ask for clarification instead of generating business facts.
 //
 // The route is ANONYMOUS-ACCESSIBLE for public catalog help. Customer-private
 // questions are resolved only from a trusted session; companyId from the
@@ -14,6 +14,7 @@ import { respondWithShippingRates } from "@/lib/ofistant/ofistant-shipping.servi
 import { supportCommand } from "@/features/ofistant-support/support.service";
 import { saveChatTurn } from "@/features/ofistant-history/history.chat";
 import { historyTurnSchema } from "@/features/ofistant-history/history.schema";
+import { respondWithPublishedKnowledge } from "@/lib/ofistant/ofistant-knowledge.service";
 import { z } from "zod";
 
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
@@ -33,8 +34,6 @@ import {
 import { emptyContext, type OfistantContext } from "@/lib/ofistant/ofistant.types";
 import {
   chatMessagePayloadSchema,
-  generateOfistantReply,
-  isOfistantLlmConfigured,
   ofistantContextPayloadSchema,
 } from "@/lib/ofistant/ofistant-llm.service";
 import { detectIntent } from "@/lib/ofistant/ofistant.intent";
@@ -84,7 +83,14 @@ async function respondToChat(req: Request) {
       companyName: session?.companyName ?? body.context.companyName ?? null,
     } as OfistantContext;
 
-    // ---- Rule engine first (source of truth for factual answers) -------
+    // Interpret policy questions before broad HELP / purchase keyword rules.
+    // The model selects published evidence; the server returns official text.
+    const knowledge = await respondWithPublishedKnowledge({ message: body.message, history: body.history ?? [] });
+    if (knowledge.route === "reply") {
+      return NextResponse.json({ ok: true, source: knowledge.source, result: knowledge.result });
+    }
+
+    // ---- System/rule paths remain authoritative for live transactional data -------
     const taxonomy = withCatalogSearchVocabulary(
       await getPublicCatalogTaxonomy(),
     );
@@ -261,25 +267,17 @@ async function respondToChat(req: Request) {
       }
     }
 
-    // ---- LLM only when rules fell through to the generic fallback -----
-    // (the natural-conversation turns the rules can't parse) and the LLM
-    // is configured. Factual queries keep the accurate rule result.
-    if (isFallbackOfistantResponse(ruleResult) && isOfistantLlmConfigured()) {
-      const llm = await generateOfistantReply({
-        message: body.message,
-        context: ctx,
-        cart: body.cart,
-        history: body.history ?? [],
-        companyId,
+    // A mistaken application classification must not open a second, free-form
+    // factual answer path. Unsupported operations remain a clarification.
+    if (isFallbackOfistantResponse(ruleResult)) {
+      return NextResponse.json({
+        ok: true,
+        source: "knowledge-clarification",
+        result: {
+          message: "Saya belum dapat memastikan maksud permintaan Anda. Boleh jelaskan hal yang ingin ditanyakan atau tindakan yang ingin dilakukan?",
+          quickReplies: ["Lihat katalog", "Bantuan tim Ofissio"],
+        },
       });
-      if (llm.ok) {
-        return NextResponse.json({
-          ok: true,
-          result: llm.response,
-          source: llm.source,
-        });
-      }
-      // LLM failed: return the rule fallback (still a valid answer).
     }
 
     return NextResponse.json({ ok: true, result: ruleResult, source: "rules" });
