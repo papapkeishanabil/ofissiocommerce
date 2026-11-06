@@ -75,3 +75,5 @@
 .historyItem[aria-current=true],.historyItem:hover,.historyButton:hover { background:#eef2fa; border-color:#7d8eb4; }
 .historyItem:focus-visible,.historyButton:focus-visible { outline:2px solid #e8a92a; outline-offset:2px; }
 .historyItem:disabled,.historyButton:disabled { opacity:.6; cursor:wait; }
+.supportEvent { margin:4px 0; padding:10px 12px; text-align:center; font-size:12px; line-height:1.6; color:#526384; background:#f5f7fb; border-radius:8px; } .supportSender { font-size:11px; font-weight:650; color:#526384; } .supportMessage .bubble { white-space:pre-wrap; } .supportStatus { padding:10px 12px; margin-bottom:10px; background:#fff5dc; border-radius:8px; color:#122162; font-size:12px; line-height:1.5; } .supportStatus p { margin:4px 0; } .supportStatus button { padding:6px 0; text-decoration:underline; } .supportMessage + .avatar, .avatar:has(svg:not([class])) { color:white; }
+.staffAvatar { color:#fff; }

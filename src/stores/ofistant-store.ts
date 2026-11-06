@@ -177,6 +177,11 @@ export const useOfistantStore = create<OfistantState>((set, get) => ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: trimmed, context: ctx, cart, history, ...(state.historyOwner ? { conversationId, turnId } : {}) }),
         });
+        if (resp.status === 409) {
+          if (get().generation !== generation) return;
+          set({ typing: false, messages: get().messages.filter((m) => m.id !== userMsg.id), historyNotice: "Tim Ofissio sedang menangani percakapan ini. Silakan kirim ulang pesan setelah status chat diperbarui." });
+          return;
+        }
         if (!resp.ok) throw new Error(`http ${resp.status}`);
         const payload = (await resp.json()) as {
           ok?: boolean;

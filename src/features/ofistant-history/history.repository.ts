@@ -31,6 +31,7 @@ export async function historyCommand(
     });
     const body = await response.json().catch(() => null);
     if (!response.ok) {
+      if (body?.message === "SUPPORT_ACTIVE") throw createApiError("BAD_REQUEST", "Percakapan sedang diteruskan ke tim Ofissio.", 409);
       if (body?.message === "HISTORY_NOT_FOUND") throw missing();
       throw createApiError("PROVIDER_UNAVAILABLE", "Riwayat percakapan belum dapat disimpan atau dimuat.", 503);
     }

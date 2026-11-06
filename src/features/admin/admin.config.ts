@@ -3,6 +3,7 @@ import type { InternalRole } from "@/lib/security/security.types";
 import type { AdminPermission } from "./admin.types";
 
 export const ADMIN_NAV_ITEMS = [
+  { href: "/admin/chats", label: "Chat Customer", permission: "admin:chat:manage" },
   { href: "/admin", label: "Dashboard", permission: "admin:view" },
   { href: "/admin/help", label: "Panduan", permission: "admin:view" },
   { href: "/admin/products", label: "Produk", permission: "admin:catalog:view" },
@@ -33,6 +34,7 @@ export const ADMIN_NAV_ITEMS = [
 
 export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
   super_admin: [
+    "admin:chat:manage",
     "admin:access",
     "admin:view",
     "admin:quotation:convert",
@@ -79,6 +81,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:knowledge:publish",
   ],
   sales_admin: [
+    "admin:chat:manage",
     "admin:access", "admin:view", "admin:quotation:view", "admin:quotation:update",
     "admin:quotation:convert", "admin:order:view", "admin:order:update",
     "admin:payment:view", "admin:payment:create", "admin:invoice:view",
@@ -94,6 +97,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<InternalRole, AdminPermission[]> = {
     "admin:settings:view", "admin:settings:update",
   ],
   sales: [
+    "admin:chat:manage",
     "admin:view",
     "admin:quotation:view",
     "admin:quotation:update",

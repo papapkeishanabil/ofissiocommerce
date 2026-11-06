@@ -46,6 +46,7 @@ const ICONS = {
   "/admin/ofistant-knowledge": BookOpen,
   "/admin/settings/tax": Percent,
   "/admin/settings/shipping": Truck,
+  "/admin/chats": MessagesSquare,
   "/admin/requests": MessagesSquare,
   "/admin/quotations": ListChecks,
   "/admin/orders": PackageCheck,
@@ -65,7 +66,7 @@ const ICONS = {
 
 const NAV_GROUPS = [
   { label: "Overview", hrefs: ["/admin", "/admin/help", "/admin/products", "/admin/pricing/embroidery", "/admin/settings/moq", "/admin/settings/size-charts", "/admin/promotions", "/admin/site-content", "/admin/settings/tax", "/admin/settings/shipping"] },
-  { label: "Sales & order", hrefs: ["/admin/requests", "/admin/quotations", "/admin/orders", "/admin/invoices", "/admin/customers"] },
+  { label: "Sales & order", hrefs: ["/admin/chats", "/admin/requests", "/admin/quotations", "/admin/orders", "/admin/invoices", "/admin/customers"] },
   { label: "Production", hrefs: ["/admin/process-orders", "/admin/shipments", "/admin/tracking", "/admin/uploads"] },
   { label: "Master & system", hrefs: ["/admin/catalog", "/admin/ofistant-knowledge", "/admin/users", "/admin/notifications", "/admin/settings/email", "/admin/integrations/ginee", "/admin/audit"] },
 ] as const;
