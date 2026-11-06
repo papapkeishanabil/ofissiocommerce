@@ -38,6 +38,14 @@ async function main() {
   assert(!isNotificationVisibleToScope(assigned.notification, { role: "sales", userId: "other" }));
   assert.equal((await manager.summary({ role: "sales", userId: "owner" })).latestChatNotifications.length, 2);
   assert.equal((await manager.summary({ role: "support", userId: "staff" })).latestChatNotifications.length, 0);
+  for (let i = 0; i < 60; i++) await manager.create(chatNotificationInput({ ...conversation, status: "active", staffId: "owner" }, `bulk-${i}`, false));
+  rows[0].status = "read";
+  const summary = await manager.summary({ role: "sales", userId: "owner" });
+  assert.equal(summary.chatUnread, 61, "Count includes assigned active messages beyond preview limit");
+  assert.equal(summary.chatUnreadByConversation?.[conversation.id], 61);
+  assert.equal(summary.latestChatNotifications.length, 50);
+  assert(summary.latestChatNotifications.every((item) => item.status === "unread"));
+  assert.equal((await manager.summary({ role: "sales", userId: "other" })).chatUnread, 0);
   console.log("PASS: chat recipients, privacy, deep links, concurrent retry deduplication, summary visibility");
 }
 void main();

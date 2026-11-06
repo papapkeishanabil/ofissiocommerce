@@ -59,9 +59,12 @@ export const supabaseAdminNotificationRepository: AdminNotificationRepository = 
     const client = getSupabaseAdminClient();
     if (!client) return [];
     return safeNotificationRead(async () => {
-      const rows = await client.select("admin_notifications", {
-        order: "created_at.desc",
-      });
+      const rows: Record<string, unknown>[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const page = await client.select("admin_notifications", { order: "created_at.desc,id.asc", limit: 1000, offset });
+        rows.push(...page);
+        if (page.length < 1000) break;
+      }
       return rows.map(rowToAdminNotification);
     }, []);
   },

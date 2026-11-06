@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { BellRing, Check, Clock3, ExternalLink } from "lucide-react";
+import { BellRing, Check, Clock3, ExternalLink, Headset, X } from "lucide-react";
+import { useState } from "react";
 
 import type { AdminNotification } from "../admin-notification.types";
 import {
@@ -14,7 +15,10 @@ import { useAdminNotifications } from "./AdminNotificationProvider";
 export function AdminStickyNotifications() {
   const { summary, mutate } = useAdminNotifications();
   const notifications = summary.latestNotifications.slice(0, 3);
-  if (notifications.length === 0) return null;
+  const [dismissedChat, setDismissedChat] = useState<string | null>(null);
+  const latestChat = summary.latestChatNotifications?.find((item) => item.status === "unread");
+  const chat = latestChat?.id !== dismissedChat ? latestChat : undefined;
+  if (notifications.length === 0 && !chat) return null;
   const more = Math.max(0, summary.popupUnread - notifications.length);
 
   return (
@@ -23,6 +27,10 @@ export function AdminStickyNotifications() {
       aria-live="polite"
       className="fixed inset-x-3 bottom-3 z-50 max-h-[70vh] space-y-2 overflow-y-auto md:inset-x-auto md:bottom-5 md:right-5 md:w-[390px]"
     >
+      {chat && <article className="rounded-xl border border-[#d4deef] bg-white p-4 shadow-lg" aria-label="Chat customer baru">
+        <div className="flex items-start gap-3"><Headset className="mt-1 h-6 w-6 shrink-0 text-[#122162]" aria-hidden="true" /><div className="min-w-0 flex-1"><h2 className="text-sm font-bold text-[#122162]">Chat customer baru</h2><p className="mt-1 text-xs leading-relaxed text-[#526384]">{summary.chatUnread ?? 1} notifikasi chat belum dibaca. Buka percakapan untuk membantu customer.</p></div><button type="button" aria-label="Tutup popup chat" onClick={() => setDismissedChat(chat.id)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#526384] hover:bg-slate-100"><X size={18} /></button></div>
+        <Link href={String(chat.metadata.adminUrl ?? "/admin/chats")} className="mt-3 flex min-h-11 items-center justify-center rounded-lg bg-[#e8a92a] px-4 text-sm font-semibold text-[#122162] focus-visible:outline-2 focus-visible:outline-offset-2">Buka percakapan</Link>
+      </article>}
       {notifications.map((notification) => (
         <NotificationCard
           key={notification.id}

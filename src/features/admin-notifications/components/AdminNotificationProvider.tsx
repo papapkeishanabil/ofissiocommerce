@@ -62,6 +62,7 @@ export function AdminNotificationProvider({
   const canManageChat = ADMIN_ROLE_PERMISSIONS[role].includes("admin:chat:manage");
   const seenChats = useRef<Set<string> | null>(null);
   const chatOwner = useRef(userId);
+  const chatStartedAt = useRef(Date.now());
 
   const request = useCallback(
     (path: string, init: RequestInit = {}) =>
@@ -110,11 +111,15 @@ export function AdminNotificationProvider({
       if (!response.ok) return;
       const payload = (await response.json()) as Partial<AdminNotificationSummary>;
       const chatNotices = payload.latestChatNotifications ?? [];
-      if (chatOwner.current !== userId) { seenChats.current = null; chatOwner.current = userId; }
-      const newChat = seenChats.current !== null && chatNotices.some((item) => !seenChats.current!.has(item.id) && item.status === "unread");
-      seenChats.current = new Set(chatNotices.map((item) => item.id));
+      if (chatOwner.current !== userId) { seenChats.current = null; chatOwner.current = userId; chatStartedAt.current = Date.now(); }
+      const newChat = seenChats.current !== null && chatNotices.some((item) => !seenChats.current!.has(item.id) && item.status === "unread" && Date.parse(item.createdAt) >= chatStartedAt.current);
+      seenChats.current ??= new Set();
+      chatNotices.forEach((item) => seenChats.current!.add(item.id));
+      if (seenChats.current.size > 1000) seenChats.current = new Set(Array.from(seenChats.current).slice(-500));
       if (canManageChat && newChat && document.visibilityState === "visible" && document.hasFocus()) playChatSound();
       setSummary({
+        chatUnread: Number(payload.chatUnread ?? chatNotices.filter((item) => item.status === "unread").length),
+        chatUnreadByConversation: payload.chatUnreadByConversation ?? {},
         latestChatNotifications: chatNotices,
         totalUnread: Number(payload.totalUnread ?? 0),
         ordersUnread: Number(payload.ordersUnread ?? 0),
@@ -149,9 +154,11 @@ export function AdminNotificationProvider({
       if (document.visibilityState === "visible") void refresh();
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", onVisibilityChange);
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", onVisibilityChange);
     };
   }, [refresh]);
 

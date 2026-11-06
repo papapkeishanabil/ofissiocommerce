@@ -26,6 +26,7 @@ export interface DatabaseHealth {
 }
 
 export interface SupabaseQueryOptions {
+  offset?: number;
   select?: string;
   filters?: Record<string, string | number | boolean | null>;
   order?: string;

@@ -79,7 +79,7 @@ export function SupportInbox({ actorId, initialConversationId = "" }: { actorId:
     else setNewMessages(true);
   }, [last]);
   useEffect(() => {
-    if (!chat.ready || !selected || document.hidden || newMessages) return;
+    if (!chat.ready || !selected || document.hidden || !document.hasFocus() || newMessages) return;
     for (const item of summary.latestChatNotifications ?? []) {
       if (item.status === "unread" && item.metadata.conversationId === selected && !marked.current.has(item.id)) {
         marked.current.add(item.id);
@@ -109,9 +109,9 @@ export function SupportInbox({ actorId, initialConversationId = "" }: { actorId:
           {sessionInvalid && <div role="alert" className={styles.notice}><p>Sesi admin sudah berakhir atau berganti akun. Masuk kembali sebagai staf untuk melihat chat.</p><p>Jika sedang menguji akun customer, gunakan Incognito atau profil browser terpisah.</p><a href="/login?mode=admin&next=%2Fadmin%2Fchats" className={styles.loginLink}>Masuk kembali sebagai admin</a></div>}
           {!loading && !sessionInvalid && !error && filtered.length === 0 && <div className={styles.queueEmpty}><Headset size={28} aria-hidden="true" /><strong>{query ? "Nama belum ditemukan" : `Belum ada chat ${labels[status].toLowerCase()}`}</strong><p>{query ? "Cari nama lain pada halaman ini." : status === "closed" ? "Percakapan yang diselesaikan akan tetap tersimpan di sini." : "Percakapan akan muncul saat customer menghubungi tim Ofissio."}</p></div>}
           {filtered.map((item) => {
-            const hasUnread = unread.some((notice) => notice.metadata.conversationId === item.id);
+            const unreadCount = summary.chatUnreadByConversation?.[item.id] ?? unread.filter((notice) => notice.metadata.conversationId === item.id).length;
             return <button type="button" key={item.id} aria-current={selected === item.id ? "true" : undefined} className={styles.queueItem} onClick={() => choose(item.id)}>
-              <span className={styles.avatar} aria-hidden="true">{initials(item.customerName)}</span><span className={styles.queueText}><strong>{item.customerName}</strong><span>{item.status === "closed" ? "Percakapan selesai" : item.staffId === actorId ? "Anda menangani" : item.staffName ? `Ditangani ${item.staffName}` : "Menunggu staf"}</span><time dateTime={item.updatedAt}>{new Date(item.updatedAt).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</time>{hasUnread && <span className={styles.unread}>Pesan baru</span>}</span>
+              <span className={styles.avatar} aria-hidden="true">{initials(item.customerName)}</span><span className={styles.queueText}><strong>{item.customerName}</strong><span>{item.status === "closed" ? "Percakapan selesai" : item.staffId === actorId ? "Anda menangani" : item.staffName ? `Ditangani ${item.staffName}` : "Menunggu staf"}</span><time dateTime={item.updatedAt}>{new Date(item.updatedAt).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</time>{unreadCount > 0 && <span className={styles.unread}>{unreadCount} belum dibaca</span>}</span>
             </button>;
           })}
         </div>

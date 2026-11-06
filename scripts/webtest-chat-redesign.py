@@ -1,14 +1,15 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 import json,sys,time
+from datetime import datetime, timezone
 base=sys.argv[1] if len(sys.argv)>1 else 'http://127.0.0.1:8054'
 out=Path('.artifacts/chat-redesign');out.mkdir(parents=True,exist_ok=True)
 cid='11111111-1111-4111-8111-111111111111';waiting='22222222-2222-4222-8222-222222222222';closed='33333333-3333-4333-8333-333333333333'
-js='''window.__tones=0; window.__pushSaves=0;
+js='''window.__popups=[]; window.__tones=0; window.__pushSaves=0;
 class FakeAudio {state='running';currentTime=0;destination={};async resume(){} createOscillator(){return {type:'sine',frequency:{value:0},connect(){},start(){window.__tones++},stop(){}}} createGain(){return {gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){}}}}
 window.AudioContext=FakeAudio;
 let subscribed=false; const sub={endpoint:'https://push.test/device',toJSON(){return {endpoint:this.endpoint,keys:{p256dh:'test',auth:'test'}}},async unsubscribe(){subscribed=false;return true}};
-const registration={pushManager:{async getSubscription(){return subscribed?sub:null},async subscribe(){subscribed=true;return sub}}};
+const registration={async showNotification(title,options){window.__popups.push({title,options})},pushManager:{async getSubscription(){return subscribed?sub:null},async subscribe(){subscribed=true;return sub}}};
 Object.defineProperty(window,'PushManager',{value:function(){},configurable:true});
 Object.defineProperty(window,'Notification',{value:{permission:'default',async requestPermission(){this.permission='granted';return 'granted'}},configurable:true});
 Object.defineProperty(navigator,'serviceWorker',{value:{register:async()=>registration,ready:Promise.resolve(registration)},configurable:true});'''
@@ -25,7 +26,7 @@ with sync_playwright() as p:
    from urllib.parse import urlparse,parse_qs
    url=urlparse(r.request.url);q=parse_qs(url.query);path=url.path;method=r.request.method
    if path.startswith('/api/admin/') and state['invalid']:r.fulfill(status=401,json={'message':'Sesi berakhir'});return
-   if path=='/api/admin/notifications/summary':r.fulfill(json={'totalUnread':len(state['notices']),'latestChatNotifications':state['notices'],'latestNotifications':[]});return
+   if path=='/api/admin/notifications/summary':r.fulfill(json={'chatUnread':sum(n['status']=='unread' for n in state['notices']),'chatUnreadByConversation':{waiting:sum(n['status']=='unread' for n in state['notices'])},'totalUnread':len(state['notices']),'latestChatNotifications':state['notices'],'latestNotifications':[]});return
    if path=='/api/admin/notifications/push-subscription':
     if method=='POST':state['saves']+=1
     if method=='DELETE':state['deletes']+=1
@@ -61,10 +62,17 @@ with sync_playwright() as p:
   assert page.evaluate('window.__tones')==3
   page.get_by_role('button',name='Tes suara',exact=True).click();assert page.evaluate('window.__tones')==6
   page.get_by_role('button',name='Aktifkan notifikasi',exact=True).last.click();expect(page.get_by_role('button',name='Notifikasi aktif',exact=True).last).to_be_visible();assert state['saves']>0
-  state['notices']=[{'id':'chat-event-new','type':'system_warning','status':'unread','entityType':'ofistant_chat_event','metadata':{'source':'ofistant_live_chat','conversationId':waiting,'adminUrl':'/admin/chats?conversation='+waiting},'createdAt':'2026-11-06T07:35:00Z'}]
+  page.get_by_role('button',name='Tes popup perangkat',exact=True).click();assert page.evaluate('window.__popups.length')==1
+  assert page.evaluate('window.__popups[0].options.silent') is False
+  state['notices']=[{'id':'chat-event-new','type':'system_warning','status':'unread','entityType':'ofistant_chat_event','metadata':{'source':'ofistant_live_chat','conversationId':waiting,'adminUrl':'/admin/chats?conversation='+waiting},'createdAt':datetime.now(timezone.utc).isoformat()}]
   # Trigger existing visibility refresh instead of waiting for a 15-second timer.
   page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
   page.wait_for_function('window.__tones === 9')
+  if label=='desktop':
+   expect(page.get_by_role('link',name='Chat Customer',exact=False).get_by_label('1 notifikasi chat belum dibaca')).to_be_visible()
+   expect(page.get_by_role('heading',name='Chat customer baru',exact=True)).to_be_visible()
+   page.get_by_role('button',name='Tutup popup chat').click()
+   expect(page.get_by_role('heading',name='Chat customer baru',exact=True)).to_have_count(0)
   page.evaluate("document.dispatchEvent(new Event('visibilitychange'))");page.wait_for_timeout(300);assert page.evaluate('window.__tones')==9
   page.get_by_role('button',name='Suara aktif',exact=True).click();expect(page.get_by_role('button',name='Aktifkan suara',exact=True)).to_have_attribute('aria-pressed','false')
   page.get_by_label('Balasan Anda',exact=True).fill('Balasan pengujian tersimpan')

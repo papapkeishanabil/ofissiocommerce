@@ -108,9 +108,18 @@ export function createAdminNotificationManager(
       const popupNotifications = rows
         .filter(isPopupNotification)
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      const unreadChats = rows.filter((item) => isLiveChatNotification(item) && item.status === "unread")
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      const chatUnreadByConversation: Record<string, number> = {};
+      for (const item of unreadChats) {
+        const id = String(item.metadata.conversationId ?? "");
+        if (id) chatUnreadByConversation[id] = (chatUnreadByConversation[id] ?? 0) + 1;
+      }
       return {
+        chatUnread: unreadChats.length,
+        chatUnreadByConversation,
         totalUnread: rows.filter((notification) => notification.status === "unread").length,
-        latestChatNotifications: rows.filter(isLiveChatNotification).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 20),
+        latestChatNotifications: unreadChats.slice(0, 50),
         ordersUnread: pendingOrders.length,
         quotationsUnread: pendingQuotations.length,
         requestsUnread: pendingRequests.length,

@@ -107,6 +107,13 @@ export function AdminPushToggle({ expanded = false }: { expanded?: boolean }) {
       {state === "working" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <BellRing className="h-3.5 w-3.5" />}
       {active ? "Notifikasi aktif" : state === "loading" ? "Memeriksa notifikasi..." : state === "working" ? "Menyimpan..." : state === "blocked" ? "Notifikasi diblokir" : state === "unsupported" ? "Panduan notifikasi HP" : state === "unconfigured" ? "Push belum siap" : state === "error" ? "Coba notifikasi lagi" : "Aktifkan notifikasi"}
     </button>
+    {expanded && active && <button type="button" className="min-h-10 rounded-lg px-2 text-xs font-semibold text-[#122162] underline" onClick={async () => {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification("Tes notifikasi Ofissio", { body: "Popup perangkat berfungsi. Suaranya mengikuti pengaturan Windows/HP.", tag: "ofissio-device-test", icon: "/brand/app-icon-192-v1.png", silent: false, data: { url: "/admin/chats" } });
+        setFeedback("Tes dikirim ke perangkat. Jika popup tidak terlihat, izinkan banner dan suara browser pada pengaturan notifikasi Windows/HP serta matikan Jangan Ganggu.");
+      } catch { setFeedback("Popup belum dapat ditampilkan. Periksa izin notifikasi browser dan perangkat."); }
+    }}>Tes popup perangkat</button>}
     {feedback && <span role="status" className="max-w-72 text-xs leading-relaxed text-[#526384]">{feedback}</span>}</span>
   );
 }
