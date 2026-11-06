@@ -76,7 +76,8 @@ with sync_playwright() as pw:
   denied.add('logo-a')
   page.goto(base+'/cart',wait_until='networkidle')
   group=page.get_by_role('group',name='Ringkasan bordir',exact=True).first
-  expect(group.get_by_text('Pratinjau tidak tersedia',exact=True)).to_be_visible()
+  left_row=group.locator('li').filter(has=page.get_by_text('Dada Kiri',exact=True))
+  expect(left_row.get_by_text('Pratinjau tidak tersedia',exact=True)).to_be_visible()
   expect(group.get_by_role('img',name=re.compile('^Logo Dada Kiri'))).to_have_count(0)
   image=group.get_by_role('img',name=re.compile('^Logo Dada Kanan'));image.scroll_into_view_if_needed();image.evaluate('img=>img.decode()')
   assert not library_requests,'Summary previews must never guess a file from its filename'
