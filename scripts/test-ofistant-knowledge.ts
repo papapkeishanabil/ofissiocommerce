@@ -93,10 +93,12 @@ async function apiTests() {
   let stored: OfistantKnowledgeArticle[] = [article];
   let modelCalls = 0;
   let providerFails = false;
+  let transientFailures = 0;
   globalThis.fetch = async (request, init) => {
     const url = new URL(typeof request === "string" ? request : request instanceof URL ? request.href : request.url);
     if (url.hostname === "generativelanguage.googleapis.com") {
       modelCalls++;
+      if (transientFailures > 0) { transientFailures--; return Response.json({ error: { message: "fixture transient outage" } }, { status: 503 }); }
       if (providerFails) return Response.json({ error: { message: "fixture unavailable" } }, { status: 503 });
       return Response.json({
         candidates: [{ content: { role: "model", parts: [{ text: JSON.stringify({ requests: [{ question: "fixture question", decision }] }) }] }, finishReason: "STOP" }],
@@ -157,8 +159,15 @@ async function apiTests() {
     assert.equal(injection.source, "knowledge-clarification");
     assert.equal(injection.result.action, undefined);
     assert.equal(modelCalls, callsBeforeInjection + 1, "unsupported requests must not reach free-form factual generation");
+    decision = selection;
+    transientFailures = 1;
+    const beforeRetry = modelCalls;
+    assert.equal((await turn(input.message)).source, "knowledge-base", "recover a transient provider failure");
+    assert.equal(modelCalls, beforeRetry + 2, "retry the failed request once");
     providerFails = true;
+    const beforeFailure = modelCalls;
     assert.equal((await turn(input.message)).source, "knowledge-unavailable");
+    assert.equal(modelCalls, beforeFailure + 2, "persistent failures must stop after one retry");
   } finally { globalThis.fetch = originalFetch; }
 }
 

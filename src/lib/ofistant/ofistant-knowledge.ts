@@ -110,17 +110,20 @@ export async function resolveKnowledgeReply(input: KnowledgeInput, dependencies:
   select: (input: KnowledgeInput, articles: OfistantKnowledgeArticle[]) => Promise<unknown>;
 }): Promise<KnowledgeResolution> {
   if (isDirectKnowledgeBypass(input.message)) return { route: "application" };
+  let stage: "articles" | "model" = "articles";
   try {
     const articles = (await dependencies.loadArticles()).filter((a) => a.status === "published" && a.answer.trim());
     // Do not silently discard older articles via slice(0, 40). Bound the payload
     // explicitly instead of returning an answer from an incomplete knowledge set.
     if (JSON.stringify(articles).length > 120_000) return knowledgeUnavailable(true);
     const conversation = { ...input, history: input.history.filter((m) => m.role !== "system").slice(-10) };
+    stage = "model";
     const decision = await dependencies.select(conversation, articles);
     return renderKnowledgeDecision(decision, articles, conversation.history);
-  } catch {
+  } catch (error) {
     // Neither raw provider errors nor customer text/secrets belong in logs.
-    console.warn("[ofistant-knowledge] Official knowledge could not be verified");
+    const timeout = error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name);
+    console.warn("[ofistant-knowledge] Official knowledge could not be verified", { stage, reason: timeout ? "timeout" : "request-failed" });
     return knowledgeUnavailable(true);
   }
 }

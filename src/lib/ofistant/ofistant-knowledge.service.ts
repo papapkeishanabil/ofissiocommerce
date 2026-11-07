@@ -49,7 +49,8 @@ export async function selectKnowledgeByMeaning(input: KnowledgeInput, articles: 
       publishedArticles: articles.map(({ id, title, category, question, answer, keywords }) => ({ id, title, category, question, answer, keywords })),
     }),
     temperature: 0,
-    maxRetries: 0,
+    // Retry transient provider errors once, within the existing total deadline.
+    maxRetries: 1,
     abortSignal: AbortSignal.timeout(15_000),
   });
   return combineKnowledgeAssessment(output);
