@@ -5,7 +5,7 @@ out=Path('.artifacts/chat-context');out.mkdir(parents=True,exist_ok=True)
 cid='11111111-1111-4111-8111-111111111111';rid='22222222-2222-4222-8222-222222222222'
 with sync_playwright() as p:
  browser=p.chromium.launch(headless=True); reports=[]
- for width in [1920,1366,390]:
+ for width in [2560,1920,1366,390]:
   context=browser.new_context(viewport={'width':width,'height':950})
   profile={'name':'Deny','email':'deny@example.test','whatsapp':'08123456789','notes':'PIC pengadaan seragam. Memerlukan sampel fisik sebelum order massal.'}
   conversation={'id':cid,'customerName':'Deny','status':'active','staffId':'staff-1','staffName':'Staf','updatedAt':'2026-11-07T08:00:00Z'}
@@ -40,6 +40,9 @@ with sync_playwright() as p:
   if width<=1500:page.get_by_role('button',name='Info customer',exact=True).click()
   panel=page.get_by_role('complementary',name='Informasi customer')
   expect(panel.get_by_text('OFS-001',exact=True)).to_be_visible()
+  if width>1500:
+   assert page.locator('[class*=customerMessage] [class*=bubble]').first.evaluate('(el)=>getComputedStyle(el).fontSize')=='14px'
+   assert panel.locator('[class*=notes] p').evaluate('(el)=>getComputedStyle(el).fontSize')=='14px'
   expect(panel.get_by_role('img',name='Kemeja Ofissio',exact=True)).to_be_visible()
   expect(panel.get_by_role('img',name='Gambar Produk tanpa gambar tidak tersedia',exact=True)).to_be_visible()
   if width>1500:assert panel.bounding_box()['width']>=460
