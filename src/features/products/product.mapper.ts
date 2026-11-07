@@ -1,3 +1,5 @@
+
+import { readProductSeo, publicPageSeo } from "@/features/seo/page-seo";
 import { PRODUCT_KIND_META, MODEL_CODE_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, readProductVariants } from "./product-variants";
 import { readSleeveSizeChartIds, SLEEVE_SIZE_CHART_META_KEY } from "../size-charts/sleeve-size-chart-settings";
 import {
@@ -175,6 +177,7 @@ export function mapWooCommerceProductToOfissioProduct(
 
   return applyProductColorSellingStatus({
     id: `wc-${raw.id}`,
+    seo: publicPageSeo(readProductSeo(meta)),
     source: "woocommerce",
     source_id: String(raw.id),
     totalSales: typeof raw.total_sales === "number" && Number.isSafeInteger(raw.total_sales) && raw.total_sales >= 0 ? raw.total_sales : undefined,

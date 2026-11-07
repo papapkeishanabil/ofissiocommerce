@@ -1,4 +1,5 @@
 export interface CatalogCategoryMetadata {
+  seo?: import("@/features/seo/page-seo").PageSeo;
   id: string;
   wooCategoryId: number;
   categorySlug: string;
@@ -9,6 +10,7 @@ export interface CatalogCategoryMetadata {
 }
 
 export interface CatalogCategory {
+  seo?: import("@/features/seo/page-seo").PageSeo;
   id: number;
   name: string;
   slug: string;

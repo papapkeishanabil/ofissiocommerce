@@ -1,4 +1,3 @@
-import { catalogMetadata } from "@/features/seo/storefront-metadata";
 import type { Metadata } from "next";
 
 import { ProductCatalog } from "@/components/catalog/ProductCatalog";
@@ -11,8 +10,24 @@ import { normalizeCatalogSearch } from "@/features/catalog-taxonomy/catalog-sear
 import { matchStorefrontCatalogProducts } from "@/features/catalog-taxonomy/catalog-broad-search";
 import { getPublicCatalogTaxonomy } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { productServerService } from "@/features/products/product.server-service";
+import { catalogMetadata } from "@/features/seo/storefront-metadata";
+import { listCatalogCategories } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
+import { automaticPageSeo, effectivePageSeo } from "@/features/seo/page-seo";
 
-export const metadata: Metadata = catalogMetadata;
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const search = await searchParams;
+  const slug = search.kategori ?? search.category;
+  if (!slug) return { ...catalogMetadata, keywords: null };
+  const categories = await listCatalogCategories().catch(() => []);
+  const category = categories.find(item => item.active && (item.slug === slug || item.name === slug));
+  if (!category) return { ...catalogMetadata, keywords: null };
+  const effective = effectivePageSeo(category.seo, automaticPageSeo(category.name, category.description));
+  // Category URLs are existing catalog filters: preserve their /catalog canonical.
+  return { ...catalogMetadata, keywords: null, title: { absolute: effective.title }, description: effective.description,
+    openGraph: { ...catalogMetadata.openGraph, ...effective }, twitter: { ...catalogMetadata.twitter, ...effective } };
+}
 
 interface PageProps {
   searchParams: Promise<{

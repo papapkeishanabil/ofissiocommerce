@@ -1,3 +1,5 @@
+
+import { effectivePageSeo } from "./page-seo";
 import type { Metadata } from "next";
 import type { OfissioProduct } from "@/features/products/product.types";
 import { productImages, productUrl } from "@/lib/seo";
@@ -55,11 +57,11 @@ export function productSearchDescription(product: OfissioProduct): string {
 
 export function productSearchMetadata(product: OfissioProduct): Metadata {
   const name = productSearchName(product);
-  const title = /\bofissio\b/i.test(name) ? name : `${name} | Ofissio`;
-  const description = productSearchDescription(product);
+  const { title, description } = effectivePageSeo(product.seo, { title: /\bofissio\b/i.test(name) ? name : `${name} | Ofissio`, description: productSearchDescription(product) });
   const url = productUrl(product.slug);
   const images = productImages(product);
   return {
+    keywords: null,
     title: { absolute: title }, description,
     alternates: { canonical: url },
     robots: product.source === "mock" ? { index: false, follow: false } : undefined,

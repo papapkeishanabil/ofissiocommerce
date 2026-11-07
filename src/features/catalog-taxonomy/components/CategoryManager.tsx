@@ -1,4 +1,7 @@
 "use client";
+import { SeoFields } from "@/features/seo/SeoFields";
+import { automaticPageSeo, type PageSeo } from "@/features/seo/page-seo";
+
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -9,6 +12,7 @@ import { Input } from "@/components/ui/Input";
 import type { CatalogCategory } from "../catalog-taxonomy.types";
 
 interface CategoryFormState {
+  seo?: PageSeo;
   name: string;
   slug: string;
   description: string;
@@ -38,6 +42,7 @@ export function CategoryManager({
   function edit(category: CatalogCategory) {
     setEditingId(category.id);
     setForm({
+      seo: category.seo,
       name: category.name,
       slug: category.slug,
       description: category.description,
@@ -57,6 +62,7 @@ export function CategoryManager({
     event.preventDefault();
     setMessage(null);
     const payload = {
+      seo: form.seo,
       name: form.name,
       ...(form.slug ? { slug: form.slug } : {}),
       description: form.description,
@@ -205,6 +211,7 @@ function CategoryForm(props: {
           </button>
         ) : null}
       </div>
+      <SeoFields value={props.form.seo} automatic={automaticPageSeo(props.form.name, props.form.description)} disabled={props.isPending} onChange={seo => props.onChange({ ...props.form, seo })} />
       <div className="mt-5 space-y-4">
         <Field label="Name" required>
           <Input

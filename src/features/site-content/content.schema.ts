@@ -1,3 +1,5 @@
+
+import { pageSeoSchema, type PageSeo } from "@/features/seo/page-seo";
 // src/features/site-content/content.schema.ts
 // The field-schema registry — the single source of truth for admin-editable
 // homepage content. Each section declares:
@@ -714,6 +716,7 @@ export interface IndustryInspirationAnnotation {
 }
 
 export interface IndustryInspirationData {
+  seo?: PageSeo;
   enabled: boolean;
   slug: string;
   /** Harus anggota INDUSTRIES — sama dengan enum industryFieldSchema. */
@@ -748,6 +751,7 @@ const industryInspirationAnnotationSchema = z.object({
 });
 
 export const industryInspirationSchema = z.object({
+  seo: pageSeoSchema.optional(),
   enabled: z.boolean().default(true),
   slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(80),
   industry: industryFieldSchema,

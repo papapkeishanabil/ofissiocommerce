@@ -1,3 +1,5 @@
+
+import { pageSeoSchema } from "@/features/seo/page-seo";
 import { z } from "zod";
 
 import {
@@ -43,6 +45,7 @@ const quantityPricingTierSchema = z.object({
 });
 
 export const adminWooProductPayloadSchema = z.object({
+  seo: pageSeoSchema.optional(),
   productKind: z.enum(["simple", "variable"]).optional(),
   modelCode: z.string().trim().max(80).regex(/^[A-Za-z0-9._-]*$/).optional(),
   name: z.string().trim().min(2).max(180),

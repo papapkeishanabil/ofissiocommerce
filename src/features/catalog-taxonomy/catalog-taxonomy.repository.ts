@@ -1,3 +1,5 @@
+
+import { pageSeoSchema } from "@/features/seo/page-seo";
 import "server-only";
 
 import { randomUUID } from "node:crypto";
@@ -112,6 +114,7 @@ const supabaseCatalogTaxonomyRepository: CatalogTaxonomyRepository = {
               category_slug: input.categorySlug,
               active: input.active,
               synonyms: input.synonyms,
+              seo: input.seo ?? {},
               updated_at: now,
             },
             { woo_category_id: input.wooCategoryId },
@@ -121,6 +124,7 @@ const supabaseCatalogTaxonomyRepository: CatalogTaxonomyRepository = {
         const rows = await client.insert("catalog_category_metadata", {
           id: `category-meta-${randomUUID()}`,
           woo_category_id: input.wooCategoryId,
+          seo: input.seo ?? {},
           category_slug: input.categorySlug,
           active: input.active,
           synonyms: input.synonyms,
@@ -131,7 +135,11 @@ const supabaseCatalogTaxonomyRepository: CatalogTaxonomyRepository = {
         if (!row) throw new Error("catalog_category_metadata_insert_empty");
         return rowToCategoryMetadata(row);
       },
-      () => mockCatalogTaxonomyRepository.saveCategoryMetadata(input),
+      () => {
+        // Never acknowledge an SEO edit that would disappear on process restart.
+        if (input.seo !== undefined) throw new Error("Jalankan migrasi catalog_category_metadata SEO sebelum menyimpan pengaturan SEO.");
+        return mockCatalogTaxonomyRepository.saveCategoryMetadata(input);
+      },
     );
   },
   async listIndustries() {
@@ -204,6 +212,7 @@ function rowToCategoryMetadata(
   return {
     id: String(row.id),
     wooCategoryId: Number(row.woo_category_id),
+    seo: pageSeoSchema.parse(row.seo ?? {}),
     categorySlug: String(row.category_slug ?? ""),
     active: row.active !== false,
     synonyms: stringArray(row.synonyms),

@@ -30,6 +30,7 @@ export interface AdminQuantityPricingTierInput {
 }
 
 export interface AdminWooProductInput {
+  seo?: import("@/features/seo/page-seo").PageSeo;
   productKind?: "simple" | "variable";
   modelCode?: string;
   name: string;

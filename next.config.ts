@@ -51,6 +51,8 @@ function isLoopbackHost(hostname: string) {
 }
 
 const nextConfig: NextConfig = {
+  // SEO settings must be present in the initial head, including normal browsers.
+  htmlLimitedBots: /.*/,
   // Dev-server cross-origin protection blocks assets served to LAN clients
   // (e.g. http://192.168.2.4:8000 from another PC) unless the origin is listed.
   allowedDevOrigins: ["192.168.2.4"],
