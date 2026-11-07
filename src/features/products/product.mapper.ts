@@ -8,6 +8,7 @@ import { COLOR_SIZE_ENABLED_META, readColorSizeVariants } from "./color-size-var
 import { PURCHASE_VARIANTS_META, type PurchaseVariant } from "./purchase-variants";
 import { SIZES } from "@/types/industry";
 import { sortProductSizes } from "@/lib/product-size-order";
+import { applyProductColorSellingStatus, readInactiveProductColors } from "./product-color-selling";
 import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "./color-variants";
 import {
   CAMERA_PRESETS,
@@ -172,7 +173,7 @@ export function mapWooCommerceProductToOfissioProduct(
       alt: image.alt?.trim() || stripHtml(raw.name).trim(),
     }));
 
-  return {
+  return applyProductColorSellingStatus({
     id: `wc-${raw.id}`,
     source: "woocommerce",
     source_id: String(raw.id),
@@ -278,7 +279,7 @@ export function mapWooCommerceProductToOfissioProduct(
     shippingHeightCm: getMetaNumber(meta, "ofissio_height_cm", Number(raw.dimensions?.height)),
     mainImage: images[0]?.src ?? null,
     images,
-  };
+  }, readInactiveProductColors(raw));
 }
 export function mapOfissioProductToCartItem(product: OfissioProduct) {
   const canAddEmbroidery = true;

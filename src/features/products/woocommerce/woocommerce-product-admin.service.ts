@@ -10,6 +10,7 @@ import { stockSize } from "../color-size-variants";
 import { PURCHASE_VARIANTS_META, type PurchaseVariant } from "../purchase-variants";
 import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, DEFAULT_COLOR_META, readColorVariants } from "../color-variants";
 import { withLiveColorVariants, listColorVariationRows } from "./color-variants.service";
+import { INACTIVE_PRODUCT_COLORS_META, readInactiveProductColors, sellingColorKey } from "../product-color-selling";
 
 import { getCommerceRuntimeConfig } from "@/features/commerce/commerce.config";
 import { normalizeIndustrySlug } from "@/features/catalog-taxonomy/catalog-taxonomy.defaults";
@@ -126,6 +127,7 @@ export async function getAdminWooCommerceProduct(
     : product.type === "variable" && legacyOptions.length ? mapLegacyProductVariants(await listColorVariationRows(product.id), legacyOptions) : [];
   return {
     ...summary,
+    inactiveColors: readInactiveProductColors(product),
     productKind: getMetaString(meta, PRODUCT_KIND_META) as "simple" | "variable" || undefined,
     modelCode: getMetaString(meta, MODEL_CODE_META),
     variantOptions,
@@ -257,9 +259,13 @@ export async function updateAdminWooCommerceProduct(input: {
       input.id,
       buildWritePayload(input.payload, current, managedAttributes),
     );
+    if (input.payload.inactiveColors !== undefined && JSON.stringify(readInactiveProductColors(updated).map(sellingColorKey).sort()) !== JSON.stringify(input.payload.inactiveColors.map(sellingColorKey).sort())) {
+      throw createApiError("PROVIDER_UNAVAILABLE", "Status penjualan warna belum tersimpan. Muat ulang produk dan coba simpan kembali.", 502);
+    }
     logProductAudit("product_updated", updated.id, input, {
       status: updated.status,
       sku: updated.sku,
+      ...(input.payload.inactiveColors !== undefined ? { inactiveColors: input.payload.inactiveColors } : {}),
     });
     logProductAudit("product_ofissio_fields_updated", updated.id, input);
     logProductAudit("product_meta_updated", updated.id, input);
@@ -434,6 +440,8 @@ function buildWritePayload(
       JSON.stringify(sortQuantityPricingTiers(payload.quantityPricingTiers)),
     ],
   ];
+
+  if (payload.inactiveColors !== undefined) entries.push([INACTIVE_PRODUCT_COLORS_META, JSON.stringify(payload.inactiveColors)]);
 
   if (payload.sizeChartId !== undefined) entries.push([SIZE_CHART_META_KEY, payload.sizeChartId]);
   if (payload.sleeveSizeChartIds !== undefined) entries.push([SLEEVE_SIZE_CHART_META_KEY, JSON.stringify(payload.sleeveSizeChartIds)]);

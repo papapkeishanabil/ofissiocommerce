@@ -1,5 +1,8 @@
 "use client";
 
+import { ColorSellingStatus } from "./ColorSellingStatus";
+import { sellingColorKey } from "../product-color-selling";
+
 import Link from "next/link";
 import type { SizeChartStandard } from "@/features/size-charts/size-chart.types";
 import { defaultSizeChart, selectableSizeCharts, NO_SIZE_CHART } from "@/features/size-charts/size-chart-selection";
@@ -298,7 +301,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
     setMessage(null);
     try {
       const targetId = workingProductId;
-      const submittedForm = { ...form, sleeveSizeChartIds: hasSleeveSizeVariants ? effectiveSleeveSizeChartIds : null };
+      const submittedForm = { ...form, inactiveColors: (form.inactiveColors ?? []).filter(color => selectedColors.some(selected => sellingColorKey(selected) === sellingColorKey(color))), sleeveSizeChartIds: hasSleeveSizeVariants ? effectiveSleeveSizeChartIds : null };
       const response = await fetch(
         targetId ? `/api/admin/products/woocommerce/${targetId}` : "/api/admin/products/woocommerce",
         {
@@ -740,6 +743,10 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
         </FormSection>
       </div>}
 
+      {previewColors.length > 0 && <FormSection icon={Shirt} title="Penjualan per warna" description="Atur warna yang dapat dipilih customer tanpa menghapus varian.">
+        <ColorSellingStatus colors={[...new Set(previewColors)]} inactiveColors={form.inactiveColors ?? []} disabled={busy} onChange={value => set("inactiveColors", value)} />
+      </FormSection>}
+
       <div id="quantity-pricing" className="scroll-mt-28">
         <FormSection
           icon={Calculator}
@@ -1133,6 +1140,7 @@ function initialForm(product?: AdminWooCommerceProductDetail, routeMoqDefaults?:
     categoryIds: product?.categories.map((item) => item.id) ?? [],
     industries: (product?.industries ?? []).map(taxonomySlug),
     imageUrls: product?.imageUrls ?? [],
+    inactiveColors: product?.inactiveColors ?? [],
     colors: findAttribute(attributes, ["color", "warna"]),
     sizes: product ? findAttribute(attributes, ["size", "ukuran"]) : ["OS"],
     materials: findAttribute(attributes, ["material", "bahan"]),

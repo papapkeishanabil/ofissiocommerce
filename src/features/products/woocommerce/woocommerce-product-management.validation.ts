@@ -15,6 +15,7 @@ import {
 } from "./woocommerce-product-management.types";
 import { validateQuantityPricing } from "../quantity-pricing";
 import { isWordPressMediaProxyUrl } from "./wordpress-media-proxy";
+import { sellingColorKey } from "../product-color-selling";
 
 const shortText = z.string().trim().max(180);
 const stringList = z.array(z.string().trim().min(1).max(100)).max(60);
@@ -59,6 +60,8 @@ export const adminWooProductPayloadSchema = z.object({
   industries: stringList.min(1),
   imageUrls: z.array(wooImageSource).max(20),
   colors: stringList.min(1, "Pilih minimal satu warna dari master."),
+  // Optional for old clients: omission must not reactivate a previously hidden color.
+  inactiveColors: stringList.optional(),
   sizes: stringList.min(1, "Pilih minimal satu ukuran dari master."),
   materials: stringList,
   gender: z.enum(WOO_GENDERS),
@@ -98,6 +101,10 @@ export const adminWooProductPayloadSchema = z.object({
     )
     .optional(),
 }).superRefine((value, context) => {
+  const inactiveKeys = (value.inactiveColors ?? []).map(sellingColorKey);
+  if (new Set(inactiveKeys).size !== inactiveKeys.length || inactiveKeys.some(key => !value.colors.some(color => sellingColorKey(color) === key))) {
+    context.addIssue({ code: "custom", path: ["inactiveColors"], message: "Warna nonaktif harus berasal dari pilihan warna produk dan tidak boleh berulang." });
+  }
   if (value.productKind === "variable" ? !value.modelCode : !value.sku) {
     context.addIssue({ code: "custom", path: [value.productKind === "variable" ? "modelCode" : "sku"], message: value.productKind === "variable" ? "Kode model utama wajib diisi." : "SKU produk wajib diisi." });
   }

@@ -3,6 +3,7 @@ import { uniformLiveOfferPrice, uniformLiveOfferAvailability, liveVariantAvailab
 import { PRODUCT_KIND_META, VARIANT_OPTIONS_META, GENERIC_VARIANTS_META, readVariantOptions, mapProductVariants } from "../product-variants";
 import { mapPurchaseVariants, PURCHASE_VARIANTS_META } from "../purchase-variants";
 import { COLOR_SIZE_ENABLED_META, COLOR_SIZE_ROWS_META, mapNativeColorSizeVariants } from "../color-size-variants";
+import { saleableColorVariationRows } from "../product-color-selling";
 
 import { createApiError } from "@/lib/security/safe-error-response";
 import {
@@ -35,18 +36,21 @@ export async function withLiveColorVariants(product: WooCommerceProduct, source:
   if (getMetaString(product.meta_data ?? [], PRODUCT_KIND_META) === "variable") {
     const options = readVariantOptions(getMetaValue(product.meta_data ?? [], VARIANT_OPTIONS_META));
     const rows = await listColorVariationRows(product.id, source);
+    const offeredRows = saleableColorVariationRows(product, rows);
     const variants = mapProductVariants(rows, options).map(row => ({ ...row, imageSrc: toProxiedWordPressMediaUrl(row.imageSrc, process.env.WORDPRESS_MEDIA_BASE_URL?.trim() ?? "") }));
-    return { ...product, liveVariantAvailability: liveVariantAvailability(rows), liveOfferPrice: uniformLiveOfferPrice(product, rows), liveOfferAvailability: uniformLiveOfferAvailability(product, rows), meta_data: [...(product.meta_data ?? []).filter(row => row.key !== GENERIC_VARIANTS_META), { key: GENERIC_VARIANTS_META, value: variants }] };
+    return { ...product, liveVariantAvailability: liveVariantAvailability(offeredRows), liveOfferPrice: uniformLiveOfferPrice(product, offeredRows), liveOfferAvailability: uniformLiveOfferAvailability(product, offeredRows), meta_data: [...(product.meta_data ?? []).filter(row => row.key !== GENERIC_VARIANTS_META), { key: GENERIC_VARIANTS_META, value: variants }] };
   }
   if (!getMetaBoolean(product.meta_data ?? [], COLOR_VARIANTS_ENABLED_META, false)) {
     if (product.type !== "variable") return { ...product, liveOfferPrice: uniformLiveOfferPrice(product), liveOfferAvailability: uniformLiveOfferAvailability(product) };
     const rows = await listColorVariationRows(product.id, source);
-    return { ...product, liveOfferPrice: uniformLiveOfferPrice(product, rows), liveOfferAvailability: uniformLiveOfferAvailability(product, rows), meta_data: [...(product.meta_data ?? []).filter(row => row.key !== PURCHASE_VARIANTS_META), { key: PURCHASE_VARIANTS_META, value: mapPurchaseVariants(rows) }] };
+    const offeredRows = saleableColorVariationRows(product, rows);
+    return { ...product, liveOfferPrice: uniformLiveOfferPrice(product, offeredRows), liveOfferAvailability: uniformLiveOfferAvailability(product, offeredRows), meta_data: [...(product.meta_data ?? []).filter(row => row.key !== PURCHASE_VARIANTS_META), { key: PURCHASE_VARIANTS_META, value: mapPurchaseVariants(rows) }] };
   }
   const rows = await listColorVariationRows(product.id, source);
+  const offeredRows = saleableColorVariationRows(product, rows);
   const order = readColorVariants(product).map((variant) => variant.id);
   const variants = mapNativeColorVariants(product, rows).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-  return { ...product, liveOfferPrice: uniformLiveOfferPrice(product, rows), liveOfferAvailability: uniformLiveOfferAvailability(product, rows), meta_data: [...(product.meta_data ?? []).filter((row) => row.key !== COLOR_VARIANTS_META && row.key !== COLOR_SIZE_ROWS_META), { key: COLOR_VARIANTS_META, value: JSON.stringify(variants) }, { key: COLOR_SIZE_ROWS_META, value: JSON.stringify(mapNativeColorSizeVariants(rows)) }] };
+  return { ...product, liveOfferPrice: uniformLiveOfferPrice(product, offeredRows), liveOfferAvailability: uniformLiveOfferAvailability(product, offeredRows), meta_data: [...(product.meta_data ?? []).filter((row) => row.key !== COLOR_VARIANTS_META && row.key !== COLOR_SIZE_ROWS_META), { key: COLOR_VARIANTS_META, value: JSON.stringify(variants) }, { key: COLOR_SIZE_ROWS_META, value: JSON.stringify(mapNativeColorSizeVariants(rows)) }] };
 }
 
 /** A failed multi-request save stays unready; retry reuses native rows instead of duplicating them. */

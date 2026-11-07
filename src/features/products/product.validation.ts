@@ -21,6 +21,7 @@ export function validateProduct3DModel(product: Pick<OfissioProduct, "model_3d" 
   return { ok: true };
 }
 export function validateProductForCatalog(product: OfissioProduct): ProductValidation {
+  if (product.inactiveColors?.length && !product.available_colors.length) return { ok: false, reason: "Seluruh warna produk sedang dinonaktifkan." };
   if (product.source === "woocommerce") {
     const readiness = getProductReadiness(product);
     return readiness.isVisibleInOfissio

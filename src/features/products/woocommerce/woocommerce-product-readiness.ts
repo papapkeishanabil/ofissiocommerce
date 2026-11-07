@@ -1,3 +1,4 @@
+import { isProductColorActive, readInactiveProductColors } from "../product-color-selling";
 import type { OfissioProduct } from "../product.types";
 import { BASE_PRICE_META, COLOR_VARIANTS_ENABLED_META, COLOR_VARIANTS_READY_META, colorKey, readColorVariants } from "../color-variants";
 import {
@@ -123,6 +124,12 @@ function getRawWooCommerceReadiness(
   const blockingIssues: ProductReadinessIssue[] = [];
   if (!getMetaBoolean(meta, "ofissio_stock_variants_ready", true)) blockingIssues.push(blocking("stock_variants", "SKU stok per ukuran belum selesai disiapkan", "Lengkapi SKU varian dan simpan ulang produk"));
   const warnings: ProductReadinessIssue[] = [];
+  const colorNames = getMetaStringArray(meta, "available_colors");
+  const colors = colorNames.length ? colorNames : product.attributes?.find(attribute => /^(pa_)?(warna|color)$/i.test(attribute.slug || attribute.name))?.options ?? [];
+  const inactiveColors = readInactiveProductColors(product);
+  if (inactiveColors.length && colors.length && colors.every(color => !isProductColorActive({ inactiveColors }, color))) {
+    blockingIssues.push(blocking("inactive_colors", "Seluruh warna produk sedang dinonaktifkan", "Aktifkan minimal satu warna pada Penjualan per warna"));
+  }
   const modelUrl = getMetaString(meta, "model_3d_url");
   const storageBucket = getMetaString(meta, "model_3d_storage_bucket");
   const storageKey = getMetaString(meta, "model_3d_storage_key");
@@ -240,6 +247,7 @@ function getRawWooCommerceReadiness(
 
 function getMappedProductReadiness(product: OfissioProduct): ProductReadiness {
   const blockingIssues: ProductReadinessIssue[] = [];
+  if (product.inactiveColors?.length && !product.available_colors.length) blockingIssues.push(blocking("inactive_colors", "Seluruh warna produk sedang dinonaktifkan", "Aktifkan minimal satu warna pada Penjualan per warna"));
   if (product.stockVariantsReady === false) blockingIssues.push(blocking("stock_variants", "SKU stok per ukuran belum selesai disiapkan", "Lengkapi SKU varian dan simpan ulang produk"));
   const warnings: ProductReadinessIssue[] = [];
   if (product.colorVariantsEnabled && (!product.colorVariantsReady || product.available_colors.some((color) => !product.colorVariants?.some((variant) => colorKey(variant.color) === colorKey(color))))) {

@@ -47,6 +47,7 @@ export interface AdminWooProductInput {
   industries: string[];
   imageUrls: string[];
   colors: string[];
+  inactiveColors?: string[];
   sizes: string[];
   materials: string[];
   gender: (typeof WOO_GENDERS)[number];

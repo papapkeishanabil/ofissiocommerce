@@ -3,6 +3,7 @@ import type { WooCommerceProduct, WooCommerceProductVariation } from "./woocomme
 import { getMetaBoolean, getMetaString, getMetaValue } from "./woocommerce/woocommerce-product-meta";
 import { toProxiedWordPressMediaUrl } from "./woocommerce/wordpress-media-proxy";
 import { normalizeModelColorAdjustment, type ModelColorAdjustment } from "@/types/model-color-adjustment";
+import { isProductColorActive } from "./product-color-selling";
 
 export const COLOR_VARIANTS_META = "ofissio_color_variants";
 export const COLOR_VARIANTS_ENABLED_META = "ofissio_color_variants_enabled";
@@ -115,6 +116,7 @@ export function colorVariantSnapshot(product: OfissioProduct, color: string) {
 }
 
 export function colorVariantIssue(product: OfissioProduct, color: string) {
+  if (!isProductColorActive(product, color)) return "Warna ini sedang dinonaktifkan. Silakan pilih warna lain.";
   if (!product.available_colors.some((item) => colorKey(item) === colorKey(color))) return "Warna produk tidak tersedia.";
   if (!product.colorVariantsEnabled) return null;
   if (!product.colorVariantsReady) return "Varian warna belum selesai disimpan. Silakan muat ulang produk atau hubungi tim Ofissio.";

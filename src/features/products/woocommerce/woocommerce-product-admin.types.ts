@@ -22,6 +22,7 @@ export interface AdminWooCommerceProduct {
 }
 
 export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
+  inactiveColors?: string[];
   productKind?: "simple" | "variable";
   modelCode?: string;
   variantOptions?: import("../product-variants").VariantOption[];

@@ -58,6 +58,8 @@ export interface OfissioProduct extends Product {
   colorVariantsEnabled?: boolean;
   colorVariantsReady?: boolean;
   defaultColor?: string;
+  /** Hidden from new purchases; retained separately from native inventory. */
+  inactiveColors?: string[];
   source: "mock" | "woocommerce"; source_id: string; short_description: string;
   /**
    * HTML deskripsi tersanitasi untuk render storefront (dangerouslySetInnerHTML
