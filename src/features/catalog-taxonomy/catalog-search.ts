@@ -145,6 +145,14 @@ export function getTaxonomyEntryLabel(
   return entries.find((entry) => entry.slug === slug)?.name;
 }
 
+// A generic shirt request must not inherit a single category merely because
+// that category happens to own the synonym "kemeja".
+export function isGeneralShirtSearch(search: CatalogSearchNormalization) {
+  const words = search.normalizedQuery.split(" ").filter(Boolean);
+  return words.includes("kemeja") && words.every(word =>
+    STOP_WORDS.has(word) || ["kemeja", "kerja", "lengan", "panjang", "pendek"].includes(word));
+}
+
 function matchesEntry(
   query: string,
   name: string,

@@ -2,6 +2,7 @@ import type { OfissioProduct } from "@/features/products/product.types";
 import { normalizeIndustrySlug, slugifyTaxonomy } from "./catalog-taxonomy.defaults";
 import type { CatalogSearchNormalization, PublicCatalogTaxonomy } from "./catalog-taxonomy.types";
 import { resolveProductReferences } from "./catalog-product-reference";
+import { isGeneralShirtSearch } from "./catalog-search";
 
 function attributeKey(value: string) {
   const slug = slugifyTaxonomy(value).replace(/^pa-/, "");
@@ -35,7 +36,9 @@ export function matchCatalogProducts(products: OfissioProduct[], query: string, 
       .toLowerCase();
     // Aliases are ordered by specificity. Match the same primary category as
     // Ofistant navigation instead of requiring overlapping broad categories.
-    const matchesCategory = normalization.categorySlugs.slice(0, 1).every((slug) => {
+    const matchesCategory = isGeneralShirtSearch(normalization)
+      ? /(?:^|-)kemeja(?:-|$)/.test(slugifyTaxonomy([product.name, product.category, ...(product.categorySlugs ?? [])].join(" ")))
+      : normalization.categorySlugs.slice(0, 1).every((slug) => {
       if (activeCategorySlugs.has(slug)) {
         return (
           product.categorySlugs?.includes(slug) ||
