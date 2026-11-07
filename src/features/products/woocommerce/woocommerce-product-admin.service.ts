@@ -1,5 +1,6 @@
 
 import { PRODUCT_SEO_META, readProductSeo } from "@/features/seo/page-seo";
+import { productSeoInputFromWoo } from "@/features/seo/product-automatic-seo";
 import "server-only";
 import { getSizeChartStandards } from "@/features/size-charts/size-chart.service";
 import { readSleeveSizeChartIds, SLEEVE_SIZE_CHART_META_KEY } from "@/features/size-charts/sleeve-size-chart-settings";
@@ -130,6 +131,7 @@ export async function getAdminWooCommerceProduct(
   return {
     ...summary,
     seo: readProductSeo(meta),
+    seoInput: productSeoInputFromWoo(product),
     inactiveColors: readInactiveProductColors(product),
     productKind: getMetaString(meta, PRODUCT_KIND_META) as "simple" | "variable" || undefined,
     modelCode: getMetaString(meta, MODEL_CODE_META),

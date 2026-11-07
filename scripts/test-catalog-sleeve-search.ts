@@ -6,6 +6,8 @@ import { matchCatalogProducts } from "../src/features/catalog-taxonomy/catalog-p
 
 const base = PRODUCT_MOCK_DATA[0];
 const category = normalizeCatalogSearch("kemeja").categorySlugs[0];
+assert.ok(base);
+assert.ok(category);
 const products = ["panjang", "pendek"].map(sleeve => ({
   ...base, id: sleeve, name: `Kemeja Kantor ${sleeve === "panjang" ? "AA" : "BB"}`, sku: sleeve,
   categorySlugs: [category],

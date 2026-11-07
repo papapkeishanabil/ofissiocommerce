@@ -22,6 +22,7 @@ export interface AdminWooCommerceProduct {
 }
 
 export interface AdminWooCommerceProductDetail extends AdminWooCommerceProduct {
+  seoInput?: import("@/features/seo/product-automatic-seo").ProductSeoInput;
   seo?: import("@/features/seo/page-seo").PageSeo;
   inactiveColors?: string[];
   productKind?: "simple" | "variable";

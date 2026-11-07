@@ -1,8 +1,6 @@
 "use client";
 import { SeoFields } from "@/features/seo/SeoFields";
-import { productSearchName, productSearchDescription } from "@/features/seo/product-metadata";
-import type { OfissioProduct } from "@/features/products/product.types";
-import { seoText } from "@/features/seo/page-seo";
+import { productAutomaticSeo, productSeoInputFromEditor } from "@/features/seo/product-automatic-seo";
 
 
 import { ColorSellingStatus } from "./ColorSellingStatus";
@@ -590,11 +588,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       className="space-y-5"
     >
       {message ? <StatusMessage {...message} /> : null}
-      <SeoFields value={form.seo} disabled={busy} onChange={seo => set("seo", seo)} automatic={(() => {
-        const draft = { name: form.name, slug: form.slug ?? "", short_description: seoText(form.shortDescription) || seoText(form.description).slice(0, 140), description: form.description, material: form.materials[0] ?? "", supports_embroidery: true } as OfissioProduct;
-        const name = productSearchName(draft);
-        return { title: /\bofissio\b/i.test(name) ? name : `${name} | Ofissio`, description: productSearchDescription(draft) };
-      })()} />
+      <SeoFields value={form.seo} disabled={busy} onChange={seo => set("seo", seo)} automatic={productAutomaticSeo(productSeoInputFromEditor(form, initial, product?.seoInput,
+        { options: genericOptions, variants: genericVariants, colors: variantsEnabled ? visibleVariants : [] },
+        { options: product?.variantOptions ?? [], variants: product?.productVariants ?? [], colors: product?.colorVariantsEnabled ? product.colorVariants ?? [] : [] }))} />
 
       <FormSection icon={Shirt} title="Jenis Produk" description="Pilih cara produk dijual agar pengisian SKU sesuai dengan stok Anda.">
         <fieldset disabled={busy} className="space-y-3">

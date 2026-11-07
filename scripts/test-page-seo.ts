@@ -4,7 +4,7 @@ import { woocommerceClient } from "../src/features/products/woocommerce/woocomme
 import { createAdminWooCommerceProduct, updateAdminWooCommerceProduct, getAdminWooCommerceProduct } from "../src/features/products/woocommerce/woocommerce-product-admin.service";
 import { adminWooProductPayloadSchema } from "../src/features/products/woocommerce/woocommerce-product-management.validation";
 import { mapWooCommerceProductToOfissioProduct } from "../src/features/products/product.mapper";
-import { productSearchMetadata } from "../src/features/seo/product-metadata";
+import { productSearchMetadata, productSearchDescription } from "../src/features/seo/product-metadata";
 import { createCatalogCategory, updateCatalogCategory, listCatalogCategories } from "../src/features/catalog-taxonomy/catalog-taxonomy.service";
 import { categoryCreateSchema } from "../src/features/catalog-taxonomy/catalog-taxonomy.validation";
 import { getSiteContent, updateSiteContent } from "../src/features/site-content/site-content.service";
@@ -57,10 +57,10 @@ async function main() {
     await updateAdminWooCommerceProduct({ id: 901, payload: preserved, actorId: "test" });
     assert.equal((await getAdminWooCommerceProduct(901)).seo?.title, seo.title, "old API clients preserve overrides");
     await updateAdminWooCommerceProduct({ id: 901, payload: { ...payload, seo: emptyPageSeo() }, actorId: "test" });
-    assert.equal(productSearchMetadata(mapWooCommerceProductToOfissioProduct(product)).description, payload.shortDescription);
+    assert.equal(productSearchMetadata(mapWooCommerceProductToOfissioProduct(product)).description, productSearchDescription(mapWooCommerceProductToOfissioProduct(product)));
     assert.equal(product.name, payload.name); assert.equal(product.slug, payload.slug); assert.equal(product.description, payload.description);
     await createAdminWooCommerceProduct({ payload: preserved, actorId: "test" });
-    assert.equal(productSearchMetadata(mapWooCommerceProductToOfissioProduct(product)).description, payload.shortDescription, "new pages without SEO use real source copy");
+    assert.equal(productSearchMetadata(mapWooCommerceProductToOfissioProduct(product)).description, productSearchDescription(mapWooCommerceProductToOfissioProduct(product)), "new pages without SEO use real source copy");
     assert.equal(readProductSeo([{ key: "_yoast_wpseo_title", value: "Judul lama manual" }]).title, "Judul lama manual");
     assert.equal(readProductSeo([{ key: "_yoast_wpseo_title", value: "lama" }, { key: PRODUCT_SEO_META, value: emptyPageSeo() }]).title, "");
     await createCatalogCategory({ payload: categoryCreateSchema.parse({ ...category, seo }), actorId: "test" });
