@@ -12,6 +12,6 @@ export interface ChatMaterial {
 }
 export interface ChatCustomerContext {
   profile: { name: string; email: string; whatsapp: string; notes: string };
-  orders: { id: string; number: string; status: string; date: string; total: number; products: string[] }[];
+  orders: { id: string; number: string; status: string; date: string; total: number; products: { name: string; image: string | null }[] }[];
   moreOrders: boolean;
 }

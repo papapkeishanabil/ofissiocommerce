@@ -1,11 +1,20 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Star, X, Pencil, Search, Send, Upload } from "lucide-react";
+import { Star, X, Pencil, Search, Send, Upload, Package } from "lucide-react";
 import { useAdminNotifications } from "@/features/admin-notifications/components/AdminNotificationProvider";
 import { formatIDR } from "@/types/product";
 import type { ChatCustomerContext, ChatMaterial } from "./support-context.types";
 import styles from "./SupportCustomerPanel.module.css";
 type Product = { id: string; title: string; price: number; image?: string; url: string };
+function OrderProduct({ name, image }: { name: string; image: string | null }) {
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  return <div className={styles.orderProduct}>
+    <div className={styles.orderThumbnail}>
+      {image && failedImage !== image ? <img src={image} alt={name} width={56} height={64} loading="lazy" onError={() => setFailedImage(image)} /> : <span role="img" aria-label={`Gambar ${name} tidak tersedia`}><Package size={22} aria-hidden="true" /></span>}
+    </div>
+    <p>{name}</p>
+  </div>;
+}
 export function SupportCustomerPanel({ conversationId, actorId, canSend, onSent, onClose }: { conversationId: string; actorId: string; canSend: boolean; onSent: () => void; onClose: () => void }) {
   const { request } = useAdminNotifications();
   const [context, setContext] = useState<ChatCustomerContext | null>(null);
@@ -71,7 +80,7 @@ export function SupportCustomerPanel({ conversationId, actorId, canSend, onSent,
         {tab === "orders" && context && <>
           <p>Pesanan akun customer ini, termasuk yang selesai atau dibatalkan.</p>
           {!loading && !context.orders.length && <p>Belum ada pesanan.</p>}
-          {context.orders.map(order => <article className={styles.card} key={order.id}><div className={styles.actions}><strong>{order.number}</strong><span>{order.status.replaceAll("_", " ")}</span></div><p>{new Date(order.date).toLocaleDateString("id-ID")}</p><p>{order.products.join(", ")}</p><strong>{formatIDR(order.total)}</strong><a href={`/admin/orders/${encodeURIComponent(order.id)}`} target="_blank" rel="noopener noreferrer">Detail pesanan ↗</a></article>)}
+          {context.orders.map(order => <article className={styles.card} key={order.id}><div className={styles.actions}><strong>{order.number}</strong><span>{order.status.replaceAll("_", " ")}</span></div><p>{new Date(order.date).toLocaleDateString("id-ID")}</p><div className={styles.orderProducts}>{order.products.map((product, index) => <OrderProduct key={index} {...product} />)}</div><strong>{formatIDR(order.total)}</strong><a href={`/admin/orders/${encodeURIComponent(order.id)}`} target="_blank" rel="noopener noreferrer">Detail pesanan ↗</a></article>)}
           <div className={styles.actions}><button disabled={offset === 0 || loading} onClick={() => setOffset(Math.max(0, offset - 20))}>Sebelumnya</button><button disabled={!context.moreOrders || loading} onClick={() => setOffset(offset + 20)}>Berikutnya</button></div>
         </>}
         {tab === "products" && <>{!loading && !products.length && <p>Produk tidak ditemukan.</p>}{products.map(product => <article className={styles.card} key={product.id}>{product.image && <img src={product.image} alt={product.title} loading="lazy" />}<strong>{product.title}</strong><p>Mulai {formatIDR(product.price)}</p><button className={styles.primary} disabled={!canSend || busy} onClick={() => void send("product", product.id)}><Send size={15} />Kirim ke chat</button></article>)}</>}

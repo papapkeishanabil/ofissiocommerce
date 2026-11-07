@@ -24,7 +24,7 @@ with sync_playwright() as p:
       messages.append({'id':data['messageId'],'sequence':len(messages)+1,'role':'staff','name':'Staf','text':card['title'],'ts':1794038400000,'context':False,'attachment':card})
      r.fulfill(json={'ok':True});return
     tab=q.get('tab',['orders'])[0]
-    result=[{'id':'p1','title':'Kemeja Ofissio','price':85000,'url':'/product/kemeja'}] if tab=='products' else [{'id':rid,'title':'Panduan bordir','kind':'pdf','category':'Panduan','active':True},{'id':'chart:verified','title':'Ukuran kemeja','kind':'chart','category':'Ukuran','active':True}] if tab=='materials' else {'profile':profile,'orders':[{'id':'o1','number':'OFS-001','status':'completed','date':'2026-11-07','total':85000,'products':['Kemeja Ofissio']}],'moreOrders':False}
+    result=[{'id':'p1','title':'Kemeja Ofissio','price':85000,'url':'/product/kemeja'}] if tab=='products' else [{'id':rid,'title':'Panduan bordir','kind':'pdf','category':'Panduan','active':True},{'id':'chart:verified','title':'Ukuran kemeja','kind':'chart','category':'Ukuran','active':True}] if tab=='materials' else {'profile':profile,'orders':[{'id':'o1','number':'OFS-001','status':'completed','date':'2026-11-07','total':85000,'products':[{'name':'Kemeja Ofissio','image':'/api/admin/chats/material?id=order-thumbnail'},{'name':'Produk tanpa gambar','image':None}]}],'moreOrders':False}
     r.fulfill(json={'result':result});return
    if path=='/api/admin/chats':
     if 'conversationId' in q:r.fulfill(json={'ok':True,'result':{'conversation':conversation,'messages':[m for m in messages if m['sequence']>int(q.get('after',['0'])[0])],'next':len(messages),'more':False}})
@@ -40,6 +40,8 @@ with sync_playwright() as p:
   if width==390:page.get_by_role('button',name='Info customer',exact=True).click()
   panel=page.get_by_role('complementary',name='Informasi customer')
   expect(panel.get_by_text('OFS-001',exact=True)).to_be_visible()
+  expect(panel.get_by_role('img',name='Kemeja Ofissio',exact=True)).to_be_visible()
+  expect(panel.get_by_role('img',name='Gambar Produk tanpa gambar tidak tersedia',exact=True)).to_be_visible()
   panel.get_by_role('button',name='Edit customer',exact=True).click()
   panel.get_by_label('Nama tampilan',exact=True).fill('Deny Suhartana')
   panel.get_by_label('WhatsApp',exact=True).fill('08123456789')

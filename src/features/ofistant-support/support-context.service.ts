@@ -46,7 +46,7 @@ export async function customerContext(id: string, offset = 0): Promise<ChatCusto
   return {
     profile: { name: String(contact?.name ?? owner.name), email: String(profile?.email ?? ""), whatsapp: String(contact?.whatsapp ?? profile?.whatsapp ?? ""), notes: String(contact?.notes ?? "") },
     moreOrders: orders.length > 20,
-    orders: orders.slice(0, 20).map(row => row.order_json as unknown as PaymentOrderRecord).filter(order => order?.userId === owner.userId && order.companyId === owner.companyId).map(order => ({ id: order.id, number: order.orderNumber || order.id, status: order.processStatus || order.status, date: order.createdAt, total: order.calculation.grandTotal, products: order.items.map(item => item.productName) })),
+    orders: orders.slice(0, 20).map(row => row.order_json as unknown as PaymentOrderRecord).filter(order => order?.userId === owner.userId && order.companyId === owner.companyId).map(order => ({ id: order.id, number: order.orderNumber || order.id, status: order.processStatus || order.status, date: order.createdAt, total: order.calculation.grandTotal, products: order.items.map(item => ({ name: item.productName, image: item.image || null })) })),
   };
 }
 export async function updateChatContact(id: string, profile: { name: string; whatsapp: string; notes: string }, actor: string) {
