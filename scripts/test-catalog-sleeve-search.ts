@@ -20,3 +20,11 @@ for (const sleeve of ["panjang", "pendek"]) {
 const query = "kemeja lengan panjang unicorn";
 assert.deepEqual(matchCatalogProducts(products, query, normalizeCatalogSearch(query), DEFAULT_PUBLIC_TAXONOMY), []);
 console.log("PASS: sleeve attributes find products without sleeve words in titles; opposite sleeves and unknown constraints remain excluded");
+const liveFormat = products.map(p => ({ ...p, attributes: p.attributes.map(a => ({ ...a, slug: "tipe-lengan", options: [p.id === "panjang" ? "long" : "short"] })) }));
+for (const sleeve of ["panjang", "pendek"]) {
+  const query = `ada kemeja lengan ${sleeve}?`;
+  assert.deepEqual(matchCatalogProducts(liveFormat, query, normalizeCatalogSearch(query), DEFAULT_PUBLIC_TAXONOMY).map(p => p.id), [sleeve]);
+}
+const conflict = "Kemeja Kantor AA lengan pendek";
+assert.ok(!matchCatalogProducts(liveFormat, conflict, normalizeCatalogSearch(conflict), DEFAULT_PUBLIC_TAXONOMY).some(p => p.id === "panjang"));
+console.log("PASS: production tipe-lengan long/short values match Indonesian requests, with attribute constraints preserved for named products");
