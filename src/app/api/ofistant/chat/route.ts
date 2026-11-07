@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { respondWithShippingRates } from "@/lib/ofistant/ofistant-shipping.service";
+import { shippingFollowUp } from "@/lib/ofistant/ofistant-shipping.schema";
 import { supportCommand } from "@/features/ofistant-support/support.service";
 import { saveChatTurn } from "@/features/ofistant-history/history.chat";
 import { historyTurnSchema } from "@/features/ofistant-history/history.schema";
@@ -83,6 +84,12 @@ async function respondToChat(req: Request) {
       companyName: session?.companyName ?? body.context.companyName ?? null,
     } as OfistantContext;
 
+    // Short answers to a pending shipping question already have a known task;
+    // do not let general semantic routing reinterpret a SKU, quantity or postcode.
+    if (ctx.pendingShippingRequest && (shippingFollowUp(body.message) || /^(?:coba lagi|cek ulang|ulangi(?: cek ongkir)?)[?.!\s]*$/i.test(body.message.trim()))) {
+      const shipping = await respondWithShippingRates({ message: body.message, history: body.history ?? [], context: ctx, identity: session ? { companyId: session.companyId, userId: session.userId } : null });
+      if (shipping) return NextResponse.json({ ok: true, source: "shipping-system", result: shipping });
+    }
     // Interpret policy questions before broad HELP / purchase keyword rules.
     // The model selects published evidence; the server returns official text.
     const knowledge = await respondWithPublishedKnowledge({ message: body.message, history: body.history ?? [] });

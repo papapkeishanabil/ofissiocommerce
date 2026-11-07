@@ -114,10 +114,10 @@ async function apiTests() {
     }
     return Response.json([]);
   };
-  async function turn(message: string, history: KnowledgeInput["history"] = []) {
+  async function turn(message: string, history: KnowledgeInput["history"] = [], context: Record<string, unknown> = {}) {
     const response = await POST(new Request("http://localhost/api/ofistant/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, history, context: { selectedProductSlug: "existing-product", companyId: "forged" }, cart: { itemCount: 0, totalQty: 0, totalEstimatedPrice: 0 } }),
+      body: JSON.stringify({ message, history, context: { selectedProductSlug: "existing-product", companyId: "forged", ...context }, cart: { itemCount: 0, totalQty: 0, totalEstimatedPrice: 0 } }),
     }));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("Cache-Control"), "private, no-store");
@@ -168,6 +168,10 @@ async function apiTests() {
     const beforeFailure = modelCalls;
     assert.equal((await turn(input.message)).source, "knowledge-unavailable");
     assert.equal(modelCalls, beforeFailure + 2, "persistent failures must stop after one retry");
+    const beforeShippingFollowup = modelCalls;
+    const shippingReply = await turn("5 pcs, 40623", [], { pendingShippingRequest: {productId: null, quantity: null, postalCode: null, stage: "collecting"} });
+    assert.equal(shippingReply.source, "shipping-system");
+    assert.equal(modelCalls, beforeShippingFollowup, "pending shipping details must not go through general AI routing");
   } finally { globalThis.fetch = originalFetch; }
 }
 
