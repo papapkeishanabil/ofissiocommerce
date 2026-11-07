@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { productServerService } from "@/features/products/product.server-service";
 import { validateProductForCatalog } from "@/features/products/product.validation";
-import { SITE_URL, productUrl } from "@/lib/seo";
+import { SITE_URL, productUrl, productImages } from "@/lib/seo";
 import { INSPIRATION_PAGES } from "@/features/site-content/industry-inspiration.routes";
 
 import { readPublishedPage } from "@/features/page-builder/page.repository";
@@ -17,5 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...products.filter(product => product.source === "woocommerce" && validateProductForCatalog(product).ok)
       .map(product => productUrl(product.slug))];
   // No fabricated lastModified dates and no account/filter URLs.
-  return [...new Set(urls)].map(url => ({ url }));
+  const imagesByUrl = new Map(products.filter(product => product.source === "woocommerce" && validateProductForCatalog(product).ok)
+    .map(product => [productUrl(product.slug), productImages(product)]));
+  return [...new Set(urls)].map(url => ({ url, ...(imagesByUrl.get(url)?.length ? { images: imagesByUrl.get(url) } : {}) }));
 }

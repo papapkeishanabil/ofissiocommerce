@@ -4,6 +4,7 @@ import { ArrowRight, MessageCircle, Phone, ShieldCheck, Sparkles } from "lucide-
 
 import { ReadyStockOrderSection } from "./ReadyStockOrderSection";
 import { HeroIntro } from "./HeroIntro";
+import { HomeCatalogProducts } from "./HomeCatalogProducts";
 import { HomeBackgroundVideo } from "./HomeBackgroundVideo";
 import { HomeSectionMarker } from "./HomeSectionMarker";
 import { corporatePhotoFor, IndustryScaleShowcase } from "./IndustryScaleShowcase";
@@ -271,6 +272,7 @@ export async function HomePage() {
 
       {/* 08 — TESTIMONI (hanya tampil setelah admin mempublikasikan ulasan
           pertama; nilai bawaan kosong agar tidak ada ulasan contoh palsu) */}
+      <HomeCatalogProducts />
       <TestimoniSection data={content.testimoni} sectionNumber={sectionNumber(8)} />
 
       {/* CTA penutup — kartu krem berisi jendela percakapan ringkas Ofistant

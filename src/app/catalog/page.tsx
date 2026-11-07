@@ -13,6 +13,8 @@ import { productServerService } from "@/features/products/product.server-service
 import { catalogMetadata } from "@/features/seo/storefront-metadata";
 import { listCatalogCategories } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { automaticPageSeo, effectivePageSeo } from "@/features/seo/page-seo";
+import { catalogCollectionSchema } from "@/features/seo/catalog-discovery";
+import { serializeJsonLd } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +74,10 @@ export default async function Page({ searchParams }: PageProps) {
     activeCategory ??
     searchTaxonomy.categories.find((item) => item.slug === normalizedCategory);
 
-  return (
+  const collection = !query && !search.industri && !rawKategori && !search.warna
+    ? catalogCollectionSchema(products) : null;
+  return (<>
+    {collection && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(collection) }} />}
     <ProductCatalog
       products={matchingProducts}
       searchQuery={query}
@@ -91,5 +96,5 @@ export default async function Page({ searchParams }: PageProps) {
         (item) => item.slug !== industry?.slug,
       )}
     />
-  );
+  </>);
 }
