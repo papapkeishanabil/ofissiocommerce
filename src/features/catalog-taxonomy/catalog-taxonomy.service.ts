@@ -1,4 +1,5 @@
 import "server-only";
+import { industryLabel } from "./industry-labels";
 
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
@@ -329,7 +330,7 @@ export async function getPublicCatalogTaxonomy(): Promise<PublicCatalogTaxonomy>
         }))
       : DEFAULT_PUBLIC_TAXONOMY.attributes;
 
-  return { categories, industries, attributes };
+  return { categories, industries: industries.map(industry => ({ ...industry, name: industryLabel(industry.slug, industry.name), synonyms: [...new Set([...industry.synonyms, industry.name])], })), attributes };
 }
 
 export async function getProductEditorTaxonomyOptions() {

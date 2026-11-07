@@ -8,6 +8,8 @@ import { productSearchMetadata } from "@/features/seo/product-metadata";
 
 import { productServerService } from "@/features/products/product.server-service";
 import { ProductDetail } from "@/components/product/ProductDetail";
+import { ProductTaxonomyContext } from "@/components/product/ProductTaxonomyContext";
+import { listIndustryMaster } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { getGlobalEmbroideryPricing } from "@/features/embroidery-pricing/global-embroidery-pricing.service";
 import { getMoqSettings } from "@/features/moq-settings/moq-settings.service";
 import { getSizeChartStandards } from "@/features/size-charts/size-chart.service";
@@ -41,10 +43,11 @@ export default async function Page({ params, searchParams }: PageProps) {
   const initialVariantSku = typeof query.variant === "string" ? query.variant : undefined;
   const product = await getProduct(slug);
   if (!product) notFound();
-  const [pricingState, moqState, sizeChartState] = await Promise.all([
+  const [pricingState, moqState, sizeChartState, industryLabels] = await Promise.all([
     readOptionalCommerceSetting(getGlobalEmbroideryPricing),
     readOptionalCommerceSetting(getMoqSettings),
     readOptionalCommerceSetting(getSizeChartStandards),
+    listIndustryMaster().catch(() => []),
   ]);
   // Standar ukuran otomatis mengikuti kategori produk; tanpa kecocokan atau
   // saat sumber data tidak tersedia, sizeChart dikosongkan supaya panduan
@@ -66,6 +69,7 @@ export default async function Page({ params, searchParams }: PageProps) {
     <>
     {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />}
     <ProductDetail
+      taxonomyContent={<ProductTaxonomyContext product={product} industries={industryLabels} />}
       key={`${product.id}:${initialVariantSku ?? ""}`}
       initialVariantSku={initialVariantSku}
       product={{ ...product, sizeChart: resolvedSizeChart?.rows ?? [] }}

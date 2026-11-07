@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { industryLabel } from "@/features/catalog-taxonomy/industry-labels";
 import { Download, Boxes, Box, ExternalLink, FileBox, FileSearch, Pencil, Plus, RotateCcw, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
 
 import { requireInternalAdminServer } from "@/features/admin/admin.service";
@@ -56,6 +57,7 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
         String(product.id),
         ...product.categories.map((item) => item.name),
         ...product.industries,
+        ...product.industries.map(value => industryLabel(value)),
       ].join(" ").toLocaleLowerCase("id-ID");
       const matchesQuery = !query || searchable.includes(query);
       const matchesWoo = wooStatus === "all" || product.status === wooStatus;
@@ -279,7 +281,7 @@ function ProductTableRow({ product }: { product: AdminWooCommerceProduct }) {
       <td className="max-w-44 text-ink-muted">
         {product.categories.map((item) => item.name).join(", ") || "-"}
       </td>
-      <td className="max-w-44 text-ink-muted">{product.industries.join(", ") || "-"}</td>
+      <td className="max-w-44 text-ink-muted">{product.industries.map(value => industryLabel(value)).join(", ") || "-"}</td>
       <td><ProductReadinessBadge readiness={product.readiness} /></td>
       <td><Product3DStatusBadge readiness={product.readiness} /></td>
       <td className="max-w-64">
@@ -317,7 +319,7 @@ function ProductMobileCard({ product }: { product: AdminWooCommerceProduct }) {
       <dl className="mt-4 grid gap-3 sm:grid-cols-3">
         <MobileInfo label="Harga" value={product.price > 0 ? formatRupiah(product.price) : "-"} />
         <MobileInfo label="Kategori" value={product.categories.map((item) => item.name).join(", ") || "-"} />
-        <MobileInfo label="Industri" value={product.industries.join(", ") || "-"} />
+        <MobileInfo label="Industri" value={product.industries.map(value => industryLabel(value)).join(", ") || "-"} />
       </dl>
       <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm">
         <p className="font-semibold text-ink">Yang belum lengkap</p>
