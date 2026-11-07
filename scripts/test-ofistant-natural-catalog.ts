@@ -18,7 +18,7 @@ const result: CatalogSearchResult = {normalization, resultCount: 2, products: [
 ], alternatives: {categories: [], industries: []}};
 function reply(r: CatalogSearchResult) { return respond({text: query, ctx: emptyContext(), cart: {itemCount: 0,totalQty: 0,totalEstimatedPrice: 0},catalogSearchResult:r}); }
 const answer = reply(result);
-assert.match(answer.message, /Ada, Pak\/Bu/);
+assert.match(answer.message, /Ada, Bapak\/Ibu/);
 assert.match(answer.message, /kemeja lengan panjang terlaris/);
 assert.match(answer.message, /filter/);
 assert.doesNotMatch(answer.message, /polos|pria|wanita/);

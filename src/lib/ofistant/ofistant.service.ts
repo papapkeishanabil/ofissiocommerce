@@ -76,6 +76,8 @@ export function applyResponse(
 }
 
 const FALLBACK_MESSAGE_PREFIXES = [
+  "Mohon maaf, saya ingin memastikan kebutuhan Anda",
+  "Mohon maaf, saya belum memahami permintaan Anda",
   "Maaf, saya belum yakin maksud Anda",
   "Maaf saya belum menangkap maksudnya",
 ];

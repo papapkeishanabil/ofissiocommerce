@@ -50,8 +50,8 @@ export function knowledgeUnavailable(temporary = false): KnowledgeResolution {
     route: "reply", source: "knowledge-unavailable",
     result: {
       message: temporary
-        ? "Maaf, saya belum dapat memeriksa informasi resmi saat ini. Silakan coba lagi atau hubungi tim Ofissio agar jawabannya dapat dipastikan."
-        : "Informasi resmi yang tersedia belum cukup untuk menjawab pertanyaan tersebut. Silakan hubungi tim Ofissio untuk memastikan jawabannya.",
+        ? "Mohon maaf, saat ini saya belum dapat memeriksa informasi resminya. Silakan coba kembali beberapa saat lagi, atau hubungi tim Ofissio agar kami dapat membantu memastikan jawabannya."
+        : "Mohon maaf, informasi yang tersedia belum cukup untuk memastikan jawabannya. Tim Ofissio dapat membantu memeriksanya lebih lanjut.",
       quickReplies: ["Bantuan tim Ofissio", "Lihat katalog"],
     },
   };
@@ -79,7 +79,7 @@ export function renderKnowledgeDecision(decision: unknown, articles: OfistantKno
   if (route === "clarify") return {
     route: "reply", source: "knowledge-clarification",
     result: {
-      message: "Boleh jelaskan lebih spesifik hal yang ingin Anda ketahui? Saya ingin memastikan informasi resmi yang saya berikan sesuai dengan kebutuhan Anda.",
+      message: "Boleh dijelaskan sedikit lebih lanjut mengenai hal yang ingin Anda ketahui? Saya ingin memastikan jawaban yang diberikan sesuai dengan kebutuhan Anda.",
       quickReplies: ["Bantuan tim Ofissio"],
     },
   };

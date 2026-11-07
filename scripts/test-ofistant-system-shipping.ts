@@ -26,7 +26,7 @@ async function main() {
   assert.equal(calls[0]?.items[0]?.quantity, 5); assert.equal(calls[0]?.destination.postalCode, "40623");
   context = emptyContext(); calls = [];
   let response = await turn("berapa ongkir TG-055?");
-  assert.match(response.message, /Berapa pcs/); assert.equal(calls.length, 0);
+  assert.match(response.message, /jumlah pcs/); assert.equal(calls.length, 0);
   assert.match(response.message, /kode pos tujuannya/);
   response = await turn("5 pcs, 40623"); assert.match(response.message, /estimasi ongkir/);
   assert.equal(calls.length, 1); assert.equal(response.products, undefined, "Do not repeat the same product card each turn");
@@ -56,11 +56,11 @@ async function main() {
   const missing = await respondWithShippingRates({ message: "cek ongkir TG 099 1 pcs 40623", context, history: [], identity: null }, deps);
   assert.match(missing!.message, /belum ditemukan/);
   const offline = await respondWithShippingRates({ message: "cek ongkir", context, history: [], identity: null }, { ...deps, products: async () => { throw new Error("catalog down"); } });
-  assert.match(offline!.message, /Katalog belum dapat diperiksa/);
+  assert.match(offline!.message, /katalog belum dapat diperiksa/i);
   const question = "say aingin tanya ongkir jaket TG-055 ke kelurahan cimekar, kecamatan cileunyi, kabupaten bandung 40623";
   for (const answer of ["1 pcs saja", "1 pcs aja", "cukup 1 pcs saja", "saya beli 1 pcs saja", "jumlahnya cuma 1 pcs saja", "1 saja"]) {
     context = emptyContext(); calls = [];
-    response = await turn(question); assert.match(response.message, /Berapa pcs/);
+    response = await turn(question); assert.match(response.message, /jumlah pcs/);
     response = await turn(answer); assert.match(response.message, /estimasi ongkir/);
     assert.equal(calls.length, 1); assert.equal(calls[0]?.items[0]?.quantity, 1);
     assert.equal(calls[0]?.destination.postalCode, "40623");

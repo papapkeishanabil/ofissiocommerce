@@ -5,6 +5,7 @@
 //
 // To add a new intent/rule: append a rule function to RULES below.
 
+import { OFISTANT_WELCOME } from "./ofistant-voice";
 import { productService } from "@/features/products/product.service";
 import { resolveProductReferences } from "@/features/catalog-taxonomy/catalog-product-reference";
 import { isGeneralShirtSearch } from "@/features/catalog-taxonomy/catalog-search";
@@ -50,7 +51,7 @@ type Rule = (input: RuleInput) => OfistantResponse | null;
 
 function address(ctx: OfistantContext): string {
   // Polite address; B2B sales tone.
-  return "Pak/Bu";
+  return "Bapak/Ibu";
 }
 
 function pickRecommendedForIndustry(industry: string, limit = 3) {
@@ -233,12 +234,12 @@ const greeting: Rule = ({ text, ctx, taxonomy }) => {
   if (ctx.journeyStage === "NEW_VISITOR") {
     return {
       message:
-        "Halo, selamat datang di Ofissio. Saya Ofistant, asisten pengadaan seragam perusahaan Anda. Seragam untuk industri apa yang sedang Anda cari?",
+        OFISTANT_WELCOME,
       quickReplies: ["Bengkel", "F&B", "Retail", "Corporate"],
     };
   }
   return {
-    message: "Halo kembali! Ada yang bisa saya bantu seputar pengadaan seragam?",
+    message: "Selamat datang kembali. Ada yang dapat saya bantu mengenai kebutuhan seragam Anda?",
     quickReplies: ["Lihat katalog", "Lihat keranjang", "Hubungi CS Ofissio"],
   };
 };
@@ -462,9 +463,9 @@ const searchCatalog: Rule = ({
   const bestSeller = catalogSearchResult?.products.some(product => (product.totalSales ?? 0) > 0);
   return {
     message: isEmpty
-      ? `Maaf, ${address(ctx)}, saya belum menemukan ${subject} yang sesuai di katalog. Coba lihat pilihan lain atau hubungi tim Ofissio agar kami bantu carikan.`
+      ? `Maaf, ${address(ctx)}, saya belum menemukan ${subject} yang sesuai di katalog. Silakan lihat pilihan lain, atau hubungi tim Ofissio agar kami dapat membantu mencarikannya.`
       : hasProducts
-        ? `Ada, ${address(ctx)}. ${bestSeller ? `Berikut ${subject} terlaris kami.` : `Berikut salah satu pilihan ${subject} kami.`} Untuk pilihan lainnya, klik "Lihat produk lain" dan gunakan filter sesuai kebutuhan Anda.`
+        ? `Ada, ${address(ctx)}. ${bestSeller ? `Berikut ${subject} terlaris kami.` : `Berikut salah satu pilihan ${subject} kami.`} Untuk pilihan lainnya, silakan pilih "Lihat produk lain" dan gunakan filter sesuai kebutuhan Anda.`
         : `Silakan lihat pilihan ${subject} di katalog, ${address(ctx)}. Gunakan filter untuk menyesuaikan pilihan dengan kebutuhan Anda.`,
     ...(hasProducts ? recommendations : {}),
     action: hasProducts ? undefined : {
@@ -812,13 +813,13 @@ const fallback: Rule = ({ text, ctx }) => {
   if (ctx.journeyStage === "NEW_VISITOR") {
     return {
       message:
-        "Maaf, saya belum yakin maksud Anda. Coba sebutkan industri (cth: “seragam untuk tambang”) atau klik salah satu pilihan di bawah.",
+        "Mohon maaf, saya ingin memastikan kebutuhan Anda. Boleh diinformasikan industrinya (cth: “seragam untuk tambang”) atau klik salah satu pilihan di bawah.",
       quickReplies: ["Bengkel", "F&B", "Corporate", "Hubungi CS Ofissio"],
     };
   }
   return {
     message:
-      "Maaf saya belum menangkap maksudnya. Saya bisa membantu menampilkan produk, membuka detail, menambah ke keranjang, atau checkout. Coba salah satu pilihan di bawah.",
+      "Mohon maaf, saya belum memahami permintaan Anda. Saya bisa membantu menampilkan produk, membuka detail, menambah ke keranjang, atau checkout. Silakan pilih salah satu pilihan di bawah agar saya dapat membantu lebih lanjut.",
     quickReplies: [
       "Lihat katalog",
       "Lihat keranjang",
