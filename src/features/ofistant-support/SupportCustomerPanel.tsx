@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Star, X, Pencil, Search, Send, Upload, Package } from "lucide-react";
+import { Star, X, Pencil, Search, Send, Upload, Package, FileText, Eye, ChevronRight } from "lucide-react";
 import { useAdminNotifications } from "@/features/admin-notifications/components/AdminNotificationProvider";
 import { formatIDR } from "@/types/product";
 import type { ChatCustomerContext, ChatMaterial } from "./support-context.types";
@@ -69,7 +69,7 @@ export function SupportCustomerPanel({ conversationId, actorId, canSend, onSent,
           <label>WhatsApp<input maxLength={40} value={profile.whatsapp} onChange={e => setProfile({ ...profile, whatsapp: e.target.value })} /></label>
           <label>Catatan internal<textarea maxLength={2000} value={profile.notes} onChange={e => setProfile({ ...profile, notes: e.target.value })} /></label>
           <p>Nama ini digunakan tim CS. Akun Google dan email login tetap sama.</p><div className={styles.actions}><button disabled={busy} className={styles.primary}>Simpan</button><button type="button" disabled={busy} onClick={() => { setProfile(context.profile); setEditing(false); }}>Batal</button></div>
-        </form> : <><div className={styles.actions}><strong>{context.profile.name}</strong><button aria-label="Edit customer" type="button" onClick={() => setEditing(true)}><Pencil size={16} />Edit</button></div><p>{context.profile.email || "Email belum tersedia"}</p><p>{context.profile.whatsapp || "WhatsApp belum diisi"}</p>{context.profile.notes && <p className={styles.notes}>Catatan CS: {context.profile.notes}</p>}</>}
+        </form> : <><div className={styles.profileIdentity}><span className={styles.profileAvatar} aria-hidden="true">{context.profile.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase()}</span><div className={styles.profileDetails}><div className={styles.actions}><strong>{context.profile.name}</strong><button aria-label="Edit customer" type="button" onClick={() => setEditing(true)}><Pencil size={16} />Edit</button></div><p>{context.profile.email || "Email belum tersedia"}</p><p>{context.profile.whatsapp || "WhatsApp belum diisi"}</p></div></div>{context.profile.notes && <p className={styles.notes}>Catatan CS: {context.profile.notes}</p>}</>}
       </section>}
       <nav className={styles.tabs} aria-label="Data customer">{[["orders", "Order"], ["products", "Produk"], ["materials", "Pusat Informasi"]].map(([id, title]) => <button type="button" key={id} aria-pressed={tab === id} onClick={() => chooseTab(id!)}>{title}</button>)}</nav>
       <div className={styles.content}>
@@ -80,14 +80,27 @@ export function SupportCustomerPanel({ conversationId, actorId, canSend, onSent,
         {tab === "orders" && context && <>
           <p>Pesanan akun customer ini, termasuk yang selesai atau dibatalkan.</p>
           {!loading && !context.orders.length && <p>Belum ada pesanan.</p>}
-          {context.orders.map(order => <article className={styles.card} key={order.id}><div className={styles.actions}><strong>{order.number}</strong><span>{order.status.replaceAll("_", " ")}</span></div><p>{new Date(order.date).toLocaleDateString("id-ID")}</p><div className={styles.orderProducts}>{order.products.map((product, index) => <OrderProduct key={index} {...product} />)}</div><strong>{formatIDR(order.total)}</strong><a href={`/admin/orders/${encodeURIComponent(order.id)}`} target="_blank" rel="noopener noreferrer">Detail pesanan ↗</a></article>)}
+          {context.orders.map(order => <article className={styles.orderRow} key={order.id}>
+            <div className={styles.actions}><strong>{order.number}</strong><span className={styles.orderStatus}>{order.status.replaceAll("_", " ")}</span></div>
+            <div className={styles.orderProducts}>{order.products.map((product, index) => <OrderProduct key={index} {...product} />)}</div>
+            <p className={styles.orderDate}>{new Date(order.date).toLocaleDateString("id-ID")}</p>
+            <div className={styles.orderFooter}><strong>{formatIDR(order.total)}</strong><a href={`/admin/orders/${encodeURIComponent(order.id)}`} target="_blank" rel="noopener noreferrer">Detail pesanan <ChevronRight size={14} /></a></div>
+          </article>)}
           <div className={styles.actions}><button disabled={offset === 0 || loading} onClick={() => setOffset(Math.max(0, offset - 20))}>Sebelumnya</button><button disabled={!context.moreOrders || loading} onClick={() => setOffset(offset + 20)}>Berikutnya</button></div>
         </>}
-        {tab === "products" && <>{!loading && !products.length && <p>Produk tidak ditemukan.</p>}{products.map(product => <article className={styles.card} key={product.id}>{product.image && <img src={product.image} alt={product.title} loading="lazy" />}<strong>{product.title}</strong><p>Mulai {formatIDR(product.price)}</p><button className={styles.primary} disabled={!canSend || busy} onClick={() => void send("product", product.id)}><Send size={15} />Kirim ke chat</button></article>)}</>}
+        {tab === "products" && <>{!loading && !products.length && <p>Produk tidak ditemukan.</p>}<div className={styles.productGrid}>{products.map(product => <article className={styles.card} key={product.id}>{product.image && <img src={product.image} alt={product.title} loading="lazy" />}<strong>{product.title}</strong><p>Mulai {formatIDR(product.price)}</p><button className={styles.primary} disabled={!canSend || busy} onClick={() => void send("product", product.id)}><Send size={15} />Kirim ke chat</button></article>)}</div></>}
         {tab === "materials" && <>
           <div className={styles.categories}>{["Semua", "Favorit", "Ukuran", "Panduan", "Dokumen"].map(item => <button key={item} type="button" aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>)}</div>
           {!loading && !visibleMaterials.length && <p>Belum ada materi yang sesuai. Standar ukuran muncul setelah diverifikasi.</p>}
-          {visibleMaterials.map(item => <article className={styles.card} key={item.id}><div className={styles.actions}><strong>{item.title}</strong><button type="button" aria-label={`Favorit ${item.title}`} aria-pressed={favorites.includes(item.id)} onClick={() => favorite(item.id)}><Star size={17} fill={favorites.includes(item.id) ? "#e8a92a" : "none"} /></button></div><p>{item.category} · {item.kind === "chart" ? "Ukuran terverifikasi" : item.kind.toUpperCase()}</p>{item.kind !== "pdf" && <img loading="lazy" src={`/api/admin/chats/material?id=${encodeURIComponent(item.id)}`} alt={item.title} />}<div className={styles.actions}><button type="button" onClick={() => setPreview(item)}>Pratinjau</button><button className={styles.primary} disabled={!canSend || busy} onClick={() => void send("material", item.id)}>Kirim ke chat</button></div></article>)}
+          {visibleMaterials.map(item => <article className={styles.materialRow} key={item.id}>
+            <div className={styles.materialIcon}>{item.kind === "pdf" ? <FileText size={22} aria-hidden="true" /> : <img loading="lazy" src={`/api/admin/chats/material?id=${encodeURIComponent(item.id)}`} alt="" />}</div>
+            <div className={styles.materialDetails}><strong>{item.title}</strong><p>{item.category} · {item.kind === "chart" ? "Ukuran terverifikasi" : item.kind.toUpperCase()}</p></div>
+            <div className={styles.materialActions}>
+              <button type="button" aria-label={`Favorit ${item.title}`} aria-pressed={favorites.includes(item.id)} onClick={() => favorite(item.id)}><Star size={17} fill={favorites.includes(item.id) ? "#e8a92a" : "none"} /></button>
+              <button type="button" title="Pratinjau" aria-label={`Pratinjau ${item.title}`} onClick={() => setPreview(item)}><Eye size={17} /></button>
+              <button type="button" title="Kirim ke chat" aria-label={`Kirim ${item.title} ke chat`} className={styles.primary} disabled={!canSend || busy} onClick={() => void send("material", item.id)}><Send size={17} /></button>
+            </div>
+          </article>)}
           <button type="button" onClick={() => setUpload(!upload)}><Upload size={16} />Kelola materi</button>
           {upload && <form className={styles.card} onSubmit={async event => { event.preventDefault(); const form = event.currentTarget; if (await mutation(new FormData(form))) { form.reset(); setRevision(n => n + 1); setNotice("Materi tersedia untuk seluruh CS."); } }}><p>Unggah materi customer (akses pengelola konten).</p><label>Judul<input name="title" required maxLength={120} /></label><label>Kategori<select name="category"><option>Panduan</option><option>Ukuran</option><option>Dokumen</option></select></label><label>File PNG, JPG, WebP, PDF · maksimal 10 MB<input name="file" type="file" required accept="image/png,image/jpeg,image/webp,application/pdf" /></label><button disabled={busy} className={styles.primary}>Unggah dan terbitkan</button><p>Untuk mengganti materi, unggah versi baru lalu arsipkan versi lama. Kiriman lama tetap dapat dibuka.</p>{materials.filter(m => !m.id.startsWith("chart:")).map(m => <div className={styles.actions} key={m.id}><span>{m.title}</span><button disabled={busy} type="button" onClick={async () => { if (await mutation({ action: "archive", resourceId: m.id })) setRevision(n => n + 1); }}>Arsipkan</button></div>)}</form>}
         </>}

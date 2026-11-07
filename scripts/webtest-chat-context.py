@@ -5,7 +5,7 @@ out=Path('.artifacts/chat-context');out.mkdir(parents=True,exist_ok=True)
 cid='11111111-1111-4111-8111-111111111111';rid='22222222-2222-4222-8222-222222222222'
 with sync_playwright() as p:
  browser=p.chromium.launch(headless=True); reports=[]
- for width in [1440,390]:
+ for width in [1920,1366,390]:
   context=browser.new_context(viewport={'width':width,'height':950})
   profile={'name':'Deny','email':'deny@example.test','whatsapp':'','notes':''}
   conversation={'id':cid,'customerName':'Deny','status':'active','staffId':'staff-1','staffName':'Staf','updatedAt':'2026-11-07T08:00:00Z'}
@@ -37,11 +37,13 @@ with sync_playwright() as p:
   context.route('**/api/**',route);page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   page.goto('http://127.0.0.1:8054/notice-demo?conversation='+cid,wait_until='networkidle')
   expect(page.get_by_role('heading',name='Deny',exact=True)).to_be_visible(timeout=60000)
-  if width==390:page.get_by_role('button',name='Info customer',exact=True).click()
+  if width<=1500:page.get_by_role('button',name='Info customer',exact=True).click()
   panel=page.get_by_role('complementary',name='Informasi customer')
   expect(panel.get_by_text('OFS-001',exact=True)).to_be_visible()
   expect(panel.get_by_role('img',name='Kemeja Ofissio',exact=True)).to_be_visible()
   expect(panel.get_by_role('img',name='Gambar Produk tanpa gambar tidak tersedia',exact=True)).to_be_visible()
+  if width>1500:assert round(panel.bounding_box()['width'])==460
+  page.screenshot(path=str(out/f'orders-{width}.png'),full_page=True)
   panel.get_by_role('button',name='Edit customer',exact=True).click()
   panel.get_by_label('Nama tampilan',exact=True).fill('Deny Suhartana')
   panel.get_by_label('WhatsApp',exact=True).fill('08123456789')
@@ -56,14 +58,14 @@ with sync_playwright() as p:
   panel.get_by_role('button',name='Favorit Panduan bordir',exact=True).click()
   panel.get_by_role('button',name='Favorit',exact=True).click()
   expect(panel.get_by_text('Ukuran kemeja',exact=True)).to_have_count(0)
-  panel.get_by_role('button',name='Pratinjau',exact=True).click()
+  panel.get_by_role('button',name='Pratinjau Panduan bordir',exact=True).click()
   expect(page.get_by_role('dialog')).to_be_visible()
   page.get_by_role('dialog').get_by_role('button',name='Kirim ke chat',exact=True).click()
   expect(page.get_by_role('dialog')).not_to_be_visible();assert len(sent)==2
   assert sent[0]['messageId']!=sent[1]['messageId']
   assert not page.evaluate('document.documentElement.scrollWidth>innerWidth'),width
   page.screenshot(path=str(out/f'context-{width}.png'),full_page=True)
-  if width==390:panel.get_by_role('button',name='Tutup informasi customer').click()
+  if width<=1500:panel.get_by_role('button',name='Tutup informasi customer').click()
   expect(page.get_by_role('link',name='Lihat produk',exact=True)).to_be_visible()
   expect(page.get_by_role('link',name='Buka / unduh',exact=True)).to_be_visible()
   assert not errors,errors
