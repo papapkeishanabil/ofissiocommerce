@@ -9,8 +9,9 @@ Staf membuka **Admin → Chat Customer** (`/admin/chats`), memilih antrean,
 kemudian **Ambil percakapan**. Balasan tampil dengan nama staf di panel customer
 yang sama. Akses diberikan kepada `super_admin`, `sales_admin`, dan `sales`
 melalui permission `admin:chat:manage`. Hanya staf yang mengambil percakapan
-dapat membalas atau menyelesaikannya. Staf perlu memantau inbox ini; fitur ini
-tidak mengirim email, WhatsApp, ataupun notifikasi perangkat.
+dapat membalas atau menyelesaikannya. Inbox mendukung pencarian nama pada halaman
+antrean saat ini, draft balasan per percakapan, dan chat layar penuh di HP.
+Percakapan selesai tetap tersimpan pada tab **Selesai**.
 
 Pada semua halaman admin, indikator **Chat masuk** di header dan badge menu
 **Chat Customer** menampilkan jumlah antrean menunggu, diperbarui setiap 10 detik
@@ -75,3 +76,33 @@ percakapan tersebut. Jangan drop tabel untuk rollback UI.
 
 Status aktivasi produksi dicatat terpisah pada artifact deployment. Lolos tes
 lokal tidak berarti migration atau fitur telah aktif di live.
+
+## Notifikasi perangkat dan suara
+
+Tekan **Aktifkan notifikasi** pada halaman Chat Customer dan izinkan notifikasi
+browser. Aktifkan pada setiap PC/HP. Tekan **Notifikasi aktif** untuk menonaktifkan
+notifikasi pada perangkat tersebut. Jika diblokir, ubah izin situs pada pengaturan
+browser. Pada iPhone/iPad, tambahkan Ofissio ke Layar Utama, buka dari ikon aplikasi,
+kemudian aktifkan notifikasi.
+
+Permintaan bantuan atau pesan customer baru membuat notifikasi admin dan Web Push.
+Chat menunggu dikirim ke role yang berhak menangani chat; chat aktif hanya ke staf
+penanggung jawab. Klik notifikasi untuk membuka percakapan terkait. Isi pesan dan
+nama customer tidak dicantumkan pada notifikasi perangkat. Email/WhatsApp tidak
+dikirim oleh fitur chat ini.
+
+**Aktifkan suara** mengizinkan bunyi saat halaman admin sedang digunakan. Tekan
+**Suara aktif** untuk membisukan, atau **Tes suara** untuk contoh. Setelah reload,
+interaksi tombol diperlukan lagi sesuai kebijakan audio browser. Suara notifikasi
+di latar belakang mengikuti pengaturan OS, mode senyap/Jangan Ganggu, dan browser.
+Push membutuhkan koneksi dan izin perangkat; pengiriman bukan jaminan perangkat
+akan berbunyi. Data chat tetap tersimpan bila pengiriman push gagal.
+
+Notifikasi memakai tabel admin dan VAPID yang sudah ada. ID event tersimpan menjadi
+kunci deduplikasi sehingga retry tidak mengirim ulang. Reopen memiliki event baru.
+Tidak ada migration, penghapusan, atau reset riwayat pada rilis desain inbox ini.
+Pengiriman dijalankan sesudah respons dengan Next `after`; kegagalan dicatat pada
+log server, bukan outbox dengan retry otomatis.
+
+Uji tambahan: `scripts/test-ofistant-chat-push.ts`, `scripts/test-ofistant-chat-dispatch.ts`,
+dan `scripts/webtest-chat-redesign.py` (fixture terisolasi; tidak mengirim ke staf asli).

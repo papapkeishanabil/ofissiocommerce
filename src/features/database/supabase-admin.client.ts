@@ -45,6 +45,7 @@ function buildQuery(options: SupabaseQueryOptions = {}) {
   params.set("select", options.select ?? "*");
   if (options.order) params.set("order", options.order);
   if (options.limit !== undefined) params.set("limit", String(options.limit));
+  if (options.offset !== undefined) params.set("offset", String(options.offset));
   for (const [key, value] of Object.entries(options.filters ?? {})) {
     if (value === null) {
       params.set(key, "is.null");

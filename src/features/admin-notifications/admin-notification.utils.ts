@@ -5,11 +5,13 @@ import type {
   AdminNotificationType,
 } from "./admin-notification.types";
 import { formatCustomerRequestNumber } from "@/features/quotation/quotation.utils";
+import { isLiveChatNotification, canReceiveChatNotification } from "@/features/ofistant-support/support-notification";
 
 export function isNotificationVisibleToScope(
   notification: AdminNotification,
   scope: AdminNotificationScope,
 ) {
+  if (isLiveChatNotification(notification)) return canReceiveChatNotification(notification, scope);
   if (scope.role === "super_admin") return true;
   const roleMatches =
     notification.recipientRole === null || notification.recipientRole === scope.role;
