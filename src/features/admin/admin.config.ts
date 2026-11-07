@@ -19,6 +19,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/quotations", label: "Quotations", permission: "admin:quotation:view" },
   { href: "/admin/orders", label: "Pesanan Customer", permission: "admin:order:view" },
   { href: "/admin/invoices", label: "Invoices", permission: "admin:invoice:view" },
+  { href: "/admin/reports", label: "Laporan Penjualan", permission: "admin:order:view" },
   { href: "/admin/notifications", label: "Notifikasi", permission: "admin:notification:view" },
   { href: "/admin/settings/email", label: "Email", permission: "admin:email:view" },
   { href: "/admin/process-orders", label: "Perintah Kerja", permission: "admin:process-order:view" },

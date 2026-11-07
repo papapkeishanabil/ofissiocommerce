@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isFullyPaidOrder } from "@/features/products/paid-product-sales";
 import {
   ArrowRight,
   BellRing,
@@ -55,7 +56,7 @@ export default async function AdminOrdersPage() {
         </div>
         <dl className="grid border-t border-line bg-slate-50/80 sm:grid-cols-3">
           <OrderMetric
-            label="Lunas, perlu diproses"
+            label="Pembayaran diterima, perlu diproses"
             value={readyToProcess.length}
             tone="success"
           />
@@ -214,7 +215,7 @@ function DesktopOrderRow({ order }: { order: AdminOrderRow }) {
             tone={paid ? "success" : adminStatusTone(order.paymentStatus)}
             className={paid ? "bg-emerald-100 px-2.5 py-1 text-emerald-800 ring-emerald-200" : undefined}
           >
-            {paid ? "PAID" : paymentStatusLabel(order.paymentStatus)}
+            {paid ? (isFullyPaidOrder({ status: order.orderStatus as "payment_received", paymentTerms: order.paymentTerms }) ? "Lunas" : "DP diterima, belum lunas") : paymentStatusLabel(order.paymentStatus)}
           </AdminBadge>
           <p className="font-bold tabular-nums text-ink">{formatRupiah(order.total)}</p>
           {order.needsProcessing ? (
@@ -307,7 +308,7 @@ function MobileOrderCard({ order }: { order: AdminOrderRow }) {
               <p className="mt-0.5 truncate text-sm text-ink-muted">{order.companyName}</p>
             </div>
             <AdminBadge tone={paid ? "success" : adminStatusTone(order.paymentStatus)}>
-              {paid ? "PAID" : paymentStatusLabel(order.paymentStatus)}
+              {paid ? (isFullyPaidOrder({ status: order.orderStatus as "payment_received", paymentTerms: order.paymentTerms }) ? "Lunas" : "DP diterima, belum lunas") : paymentStatusLabel(order.paymentStatus)}
             </AdminBadge>
           </div>
           <p className="mt-3 text-lg font-extrabold tabular-nums text-ink">

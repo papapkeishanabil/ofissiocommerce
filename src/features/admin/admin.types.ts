@@ -172,6 +172,7 @@ export interface AdminQuotationDetail {
   }
 
 export interface AdminOrderRow {
+  paymentTerms?: PaymentOrderRecord["paymentTerms"];
   id: string;
   orderNumber: string;
   companyId: string;

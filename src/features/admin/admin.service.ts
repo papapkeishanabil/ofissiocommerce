@@ -1131,6 +1131,7 @@ function mapOrderRow(
   const isPaymentNew = notifications.paymentPaid?.status === "unread";
   const isNew = notifications.orderCreated?.status === "unread";
   return {
+    paymentTerms: routed.paymentTerms,
     id: routed.id,
     orderNumber: tracking?.orderNumber ?? routed.orderNumber ?? routed.id,
     companyId: routed.companyId,

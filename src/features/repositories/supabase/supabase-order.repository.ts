@@ -37,10 +37,18 @@ export const supabaseOrderRepository: OrderRepository = {
   async listAll() {
     const client = getSupabaseAdminClient();
     if (!client) return [];
-    const rows = await client.select("orders", {
-      order: "created_at.desc",
-    });
-    return rows.map(rowToOrder).filter(Boolean) as PaymentOrderRecord[];
+    const orders: PaymentOrderRecord[] = [];
+    // Stay below PostgREST's row cap; do not silently rank only the first page.
+    let offset = 0;
+    while (true) {
+      const rows = await client.select("orders", {
+        order: "created_at.desc,id.desc", limit: 500, offset,
+      });
+      if (!rows.length) break;
+      orders.push(...rows.map(rowToOrder).filter(Boolean) as PaymentOrderRecord[]);
+      offset += rows.length;
+    }
+    return orders;
   },
 
   async updateOrderAfterPayment(input) {

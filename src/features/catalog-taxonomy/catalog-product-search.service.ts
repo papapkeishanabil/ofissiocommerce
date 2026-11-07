@@ -1,4 +1,5 @@
 import "server-only";
+import { getPaidProductSales } from "@/features/products/paid-product-sales.service";
 import { getVerifiedOfistantProducts } from "@/lib/ofistant/ofistant-catalog.service";
 
 import { productServerService } from "@/features/products/product.server-service";
@@ -17,15 +18,18 @@ export async function searchCatalogProducts(
   query: string,
   options: { requireVerified?: boolean } = {},
 ): Promise<CatalogSearchResult> {
-  const [products, publicTaxonomy, globalPricingState] = await Promise.all([
+  const [products, publicTaxonomy, globalPricingState, paidSales] = await Promise.all([
     options.requireVerified ? getVerifiedOfistantProducts() : productServerService.getPublishedProducts(),
     getPublicCatalogTaxonomy(),
     getGlobalEmbroideryPricing(),
+    getPaidProductSales(),
   ]);
   const searchTaxonomy = withCatalogSearchVocabulary(publicTaxonomy);
   if (options.requireVerified) assertVerifiedEmbroideryState(globalPricingState);
   const normalization = normalizeCatalogSearch(query, searchTaxonomy);
+  const salesByProduct = new Map(paidSales.map(row => [row.productId, row.qty]));
   const merged = matchCatalogProducts(products, query, normalization, publicTaxonomy)
+    .map(product => ({ ...product, totalSales: salesByProduct.get(product.id) ?? 0 }))
     .sort((a, b) => (b.totalSales ?? -1) - (a.totalSales ?? -1));
 
   return {
