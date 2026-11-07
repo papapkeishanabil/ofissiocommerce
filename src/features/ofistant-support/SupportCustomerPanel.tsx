@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Star, X, Pencil, Search, Send, Upload, Package, FileText, Eye, ChevronRight } from "lucide-react";
+import { Star, X, Pencil, Search, Send, Package, FileText, Eye, ChevronRight, Mail, Phone, StickyNote, Plus } from "lucide-react";
 import { useAdminNotifications } from "@/features/admin-notifications/components/AdminNotificationProvider";
 import { formatIDR } from "@/types/product";
 import type { ChatCustomerContext, ChatMaterial } from "./support-context.types";
@@ -61,15 +61,15 @@ export function SupportCustomerPanel({ conversationId, actorId, canSend, onSent,
   function chooseTab(value: string) { setTab(value); setQuery(""); setError(""); setNotice(""); }
   const visibleMaterials = materials.filter(m => `${m.title} ${m.category}`.toLocaleLowerCase("id-ID").includes(query.toLocaleLowerCase("id-ID")) && (category === "Semua" || category === "Favorit" ? category !== "Favorit" || favorites.includes(m.id) : category === m.category));
   return <aside className={styles.panel} aria-label="Informasi customer">
-    <header className={styles.heading}><h2>Informasi customer</h2><button type="button" aria-label="Tutup informasi customer" onClick={onClose}><X size={18} /></button></header>
+    <header className={styles.heading}><h2>Profil Customer</h2><button type="button" aria-label="Tutup informasi customer" onClick={onClose}><X size={18} /></button></header>
     <div className={styles.scroll}>
       {context && <section className={styles.profile}>
         {editing ? <form onSubmit={async event => { event.preventDefault(); if (await mutation({ action: "profile", profile })) { setEditing(false); setContext(old => old ? { ...old, profile } : old); setNotice("Informasi customer disimpan."); onSent(); } }}>
           <label>Nama tampilan<input required maxLength={160} value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} /></label>
           <label>WhatsApp<input maxLength={40} value={profile.whatsapp} onChange={e => setProfile({ ...profile, whatsapp: e.target.value })} /></label>
-          <label>Catatan internal<textarea maxLength={2000} value={profile.notes} onChange={e => setProfile({ ...profile, notes: e.target.value })} /></label>
+          <label htmlFor="customer-internal-notes">Catatan internal</label><textarea id="customer-internal-notes" aria-label="Catatan internal" maxLength={2000} value={profile.notes} onChange={e => setProfile({ ...profile, notes: e.target.value })} />
           <p>Nama ini digunakan tim CS. Akun Google dan email login tetap sama.</p><div className={styles.actions}><button disabled={busy} className={styles.primary}>Simpan</button><button type="button" disabled={busy} onClick={() => { setProfile(context.profile); setEditing(false); }}>Batal</button></div>
-        </form> : <><div className={styles.profileIdentity}><span className={styles.profileAvatar} aria-hidden="true">{context.profile.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase()}</span><div className={styles.profileDetails}><div className={styles.actions}><strong>{context.profile.name}</strong><button aria-label="Edit customer" type="button" onClick={() => setEditing(true)}><Pencil size={16} />Edit</button></div><p>{context.profile.email || "Email belum tersedia"}</p><p>{context.profile.whatsapp || "WhatsApp belum diisi"}</p></div></div>{context.profile.notes && <p className={styles.notes}>Catatan CS: {context.profile.notes}</p>}</>}
+        </form> : <><div className={styles.profileIdentity}><span className={styles.profileAvatar} aria-hidden="true">{context.profile.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase()}</span><div className={styles.profileDetails}><div className={styles.actions}><strong>{context.profile.name}</strong><button aria-label="Edit customer" type="button" onClick={() => setEditing(true)}><Pencil size={20} /></button></div><p className={styles.email}><Mail size={16} aria-hidden="true" />{context.profile.email || "Email belum tersedia"}</p></div></div><div className={styles.contactLine}><span><Phone size={17} aria-hidden="true" />WhatsApp</span><strong>{context.profile.whatsapp || "Belum diisi"}</strong></div><div className={styles.notes}><strong><StickyNote size={16} aria-hidden="true" />Catatan internal</strong><p>{context.profile.notes || "Belum ada catatan. Klik edit untuk menambahkan."}</p></div></>}
       </section>}
       <nav className={styles.tabs} aria-label="Data customer">{[["orders", "Order"], ["products", "Produk"], ["materials", "Pusat Informasi"]].map(([id, title]) => <button type="button" key={id} aria-pressed={tab === id} onClick={() => chooseTab(id!)}>{title}</button>)}</nav>
       <div className={styles.content}>
@@ -101,7 +101,7 @@ export function SupportCustomerPanel({ conversationId, actorId, canSend, onSent,
               <button type="button" title="Kirim ke chat" aria-label={`Kirim ${item.title} ke chat`} className={styles.primary} disabled={!canSend || busy} onClick={() => void send("material", item.id)}><Send size={17} /></button>
             </div>
           </article>)}
-          <button type="button" onClick={() => setUpload(!upload)}><Upload size={16} />Kelola materi</button>
+          <button type="button" className={styles.manageMaterials} onClick={() => setUpload(!upload)}><Plus size={19} />Kelola materi</button>
           {upload && <form className={styles.card} onSubmit={async event => { event.preventDefault(); const form = event.currentTarget; if (await mutation(new FormData(form))) { form.reset(); setRevision(n => n + 1); setNotice("Materi tersedia untuk seluruh CS."); } }}><p>Unggah materi customer (akses pengelola konten).</p><label>Judul<input name="title" required maxLength={120} /></label><label>Kategori<select name="category"><option>Panduan</option><option>Ukuran</option><option>Dokumen</option></select></label><label>File PNG, JPG, WebP, PDF · maksimal 10 MB<input name="file" type="file" required accept="image/png,image/jpeg,image/webp,application/pdf" /></label><button disabled={busy} className={styles.primary}>Unggah dan terbitkan</button><p>Untuk mengganti materi, unggah versi baru lalu arsipkan versi lama. Kiriman lama tetap dapat dibuka.</p>{materials.filter(m => !m.id.startsWith("chart:")).map(m => <div className={styles.actions} key={m.id}><span>{m.title}</span><button disabled={busy} type="button" onClick={async () => { if (await mutation({ action: "archive", resourceId: m.id })) setRevision(n => n + 1); }}>Arsipkan</button></div>)}</form>}
         </>}
         {tab !== "orders" && !canSend && <p>Ambil percakapan untuk mengirim produk atau materi.</p>}

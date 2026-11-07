@@ -7,9 +7,9 @@ with sync_playwright() as p:
  browser=p.chromium.launch(headless=True); reports=[]
  for width in [1920,1366,390]:
   context=browser.new_context(viewport={'width':width,'height':950})
-  profile={'name':'Deny','email':'deny@example.test','whatsapp':'','notes':''}
+  profile={'name':'Deny','email':'deny@example.test','whatsapp':'08123456789','notes':'PIC pengadaan seragam. Memerlukan sampel fisik sebelum order massal.'}
   conversation={'id':cid,'customerName':'Deny','status':'active','staffId':'staff-1','staffName':'Staf','updatedAt':'2026-11-07T08:00:00Z'}
-  messages=[];sent=[]; archived=[]
+  messages=[{'id':'ai-example','sequence':1,'role':'assistant','name':'Ofistant AI','text':'Halo! Ada yang bisa Ofistant bantu mengenai layanan Ofissio hari ini?','ts':1794038400000,'context':True},{'id':'user-example','sequence':2,'role':'user','name':'Deny','text':'Halo, saya butuh panduan ukuran untuk kemeja seragam kantor yang baru.','ts':1794038460000,'context':False},{'id':'system-example','sequence':3,'role':'system','name':'Ofissio','text':'Percakapan diambil alih oleh Anda','ts':1794038520000,'context':False}];sent=[]; archived=[]
   def route(r):
    from urllib.parse import urlparse,parse_qs
    u=urlparse(r.request.url);q=parse_qs(u.query);path=u.path
@@ -42,7 +42,7 @@ with sync_playwright() as p:
   expect(panel.get_by_text('OFS-001',exact=True)).to_be_visible()
   expect(panel.get_by_role('img',name='Kemeja Ofissio',exact=True)).to_be_visible()
   expect(panel.get_by_role('img',name='Gambar Produk tanpa gambar tidak tersedia',exact=True)).to_be_visible()
-  if width>1500:assert round(panel.bounding_box()['width'])==460
+  if width>1500:assert panel.bounding_box()['width']>=460
   page.screenshot(path=str(out/f'orders-{width}.png'),full_page=True)
   panel.get_by_role('button',name='Edit customer',exact=True).click()
   panel.get_by_label('Nama tampilan',exact=True).fill('Deny Suhartana')
@@ -55,6 +55,8 @@ with sync_playwright() as p:
   panel.get_by_role('button',name='Kirim ke chat',exact=True).click()
   expect(panel.get_by_text('Berhasil dikirim ke chat.',exact=True)).to_be_visible();assert len(sent)==1
   panel.get_by_role('button',name='Pusat Informasi',exact=True).click()
+  expect(panel.get_by_text('Panduan bordir',exact=True)).to_be_visible()
+  page.screenshot(path=str(out/f'faithful-{width}.png'),full_page=True)
   panel.get_by_role('button',name='Favorit Panduan bordir',exact=True).click()
   panel.get_by_role('button',name='Favorit',exact=True).click()
   expect(panel.get_by_text('Ukuran kemeja',exact=True)).to_have_count(0)

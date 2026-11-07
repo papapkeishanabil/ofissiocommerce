@@ -100,10 +100,10 @@ export function SupportInbox({ actorId, initialConversationId = "" }: { actorId:
   }
 
   return <section className={styles.workspace} aria-labelledby="chat-title">
-    <header className={styles.pageHeader}><div><h1 id="chat-title">Chat Customer</h1><p>Bantu customer langsung melalui panel Ofistant.</p></div><ChatNotificationControls /></header>
+    <header className={styles.pageHeader}><div><a href="/admin" className={styles.exitWorkspace} aria-label="Kembali ke dashboard" title="Kembali ke dashboard"><ArrowLeft size={18} /></a><h1 id="chat-title">Chat Customer</h1><p>Dukungan Ofistant</p></div><ChatNotificationControls /></header>
     <div className={`${styles.layout} ${selected ? styles.hasSelection : ""} ${selected ? styles.withContext : ""}`}>
       <section className={styles.queue} aria-label="Antrean chat customer">
-        <div className={styles.queueHeading}><h2>Percakapan</h2><label className={styles.search}><Search size={18} aria-hidden="true" /><span className={styles.srOnly}>Cari nama customer pada halaman ini</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nama customer..." /></label>
+        <div className={styles.queueHeading}><h2 className={styles.srOnly}>Percakapan</h2><label className={styles.search}><Search size={18} aria-hidden="true" /><span className={styles.srOnly}>Cari nama customer pada halaman ini</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nama..." /></label>
           <div className={styles.filters} aria-label="Status percakapan">{Object.entries(labels).map(([value, label]) => <button key={value} type="button" aria-pressed={status === value} onClick={() => { setStatus(value as SupportConversation["status"]); setOffset(0); }}>{label}</button>)}</div>
         </div>
         <div className={styles.queueList}>
@@ -134,16 +134,17 @@ export function SupportInbox({ actorId, initialConversationId = "" }: { actorId:
             {!chat.ready && <p role="status">Memuat percakapan...</p>}
             {chat.messages.map((message, index) => <Fragment key={message.id}>
               {(index === 0 || dateLabel(chat.messages[index - 1]!.ts) !== dateLabel(message.ts)) && <div className={styles.date}>{dateLabel(message.ts)}</div>}
-              {message.role === "system" ? <p className={styles.event}>{message.text}</p> : <div className={`${styles.message} ${message.role === "staff" ? styles.staffMessage : ""} ${message.role === "assistant" ? styles.aiMessage : ""}`}>
+              {message.role === "system" ? <p className={styles.event}>{message.text}</p> : <div className={`${styles.message} ${message.role === "user" ? styles.customerMessage : message.role === "staff" ? styles.staffMessage : ""} ${message.role === "assistant" ? styles.aiMessage : ""}`}>
                 <span className={styles.sender}>{message.role === "assistant" && <Bot size={14} />}{message.role === "assistant" ? "Ofistant AI" : message.role === "staff" ? `${message.name} · Tim Ofissio` : message.name}</span><div className={styles.bubble}>{message.attachment && message.role === "staff" ? <ChatAttachmentView card={message.attachment} conversationId={selected} staff /> : message.text}</div><time dateTime={new Date(message.ts).toISOString()}>{timeLabel(message.ts)}</time>
               </div>}
             </Fragment>)}
           </div>
           {newMessages && <button type="button" className={styles.newMessages} onClick={() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; nearBottom.current = true; setNewMessages(false); }}><ArrowDown size={16} />Lihat pesan terbaru</button>}
           <form className={styles.composer} onSubmit={(event) => { event.preventDefault(); void send(); }}>
-            <label htmlFor="staff-reply">Balasan Anda</label>
-            <textarea id="staff-reply" maxLength={2000} rows={3} value={draft} onChange={(event) => setDrafts((old) => ({ ...old, [selected]: event.target.value }))} onKeyDown={(event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send(); } }} disabled={!owns || !chat.active || chat.busy || !chat.ready} placeholder={chat.conversation?.status === "waiting" ? "Ambil percakapan terlebih dahulu" : "Tulis balasan Anda..."} />
-            <div className={styles.composerFooter}><p>{chat.conversation?.status === "closed" ? "Percakapan selesai. Riwayat tetap tersimpan." : owns ? "Enter untuk baris baru · Ctrl/⌘+Enter untuk kirim" : "Ambil chat yang menunggu untuk mulai membalas."}</p><button className={styles.primary} type="submit" disabled={!canSend}>{chat.busy ? "Memproses..." : "Kirim balasan"}<Send size={17} /></button></div>
+            <label htmlFor="staff-reply">Balas ke {chat.conversation?.customerName || "customer"}</label><div className={styles.composeBox}>
+            <textarea id="staff-reply" maxLength={2000} rows={2} value={draft} onChange={(event) => setDrafts((old) => ({ ...old, [selected]: event.target.value }))} onKeyDown={(event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send(); } }} disabled={!owns || !chat.active || chat.busy || !chat.ready} placeholder={chat.conversation?.status === "waiting" ? "Ambil percakapan terlebih dahulu" : "Ketik pesan Anda di sini..."} />
+            <div className={styles.composerFooter}><span className={styles.shortcut}>Ctrl+Enter <span>kirim</span></span><button className={styles.primary} type="submit" disabled={!canSend}>{chat.busy ? "Memproses..." : "Kirim"}<Send size={17} /></button></div></div>
+            {(!owns || !chat.active) && <p className={styles.composerHint}>{chat.conversation?.status === "closed" ? "Percakapan selesai. Riwayat tetap tersimpan." : "Ambil chat yang menunggu untuk mulai membalas."}</p>}
           </form>
         </>}
       </section>
