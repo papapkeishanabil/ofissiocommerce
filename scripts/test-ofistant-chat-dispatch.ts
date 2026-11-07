@@ -35,7 +35,7 @@ async function main() {
       if (url.searchParams.has("id")) {
         assert.equal(url.searchParams.get("role"), "eq.user");
         assert.equal(url.searchParams.get("is_context"), "eq.false");
-        result = [{ id: url.searchParams.get("id")!.slice(3) }];
+        result = [{ id: url.searchParams.get("id")!.slice(3), body: "Halo, apakah ukuran XL tersedia?" }];
       } else if (url.searchParams.get("body")?.includes("dibuka kembali")) result = reopened ? [{ id: "reopen-1", sequence: 5 }] : [];
       else result = [{ id: "start-1", sequence: 1 }];
     } else if (table === "admin_notifications") {
@@ -64,7 +64,9 @@ async function main() {
     assert.equal(deliveries.length, 5, "Reopen is a new handoff event");
     await notifyCustomerChat("send", "message-2", { ...result, conversation: { ...conversation, status: "closed" } });
     assert.equal(deliveries.length, 5);
-    assert(deliveries.every((item) => !item.payload.includes("PRIVATE NAME")));
+    const messagePush = JSON.parse(deliveries[2]!.payload);
+    assert.equal(messagePush.title, "Pesan dari PRIVATE NAME");
+    assert.equal(messagePush.body, "Halo, apakah ukuran XL tersedia?");
     assert(deliveries.every((item) => JSON.parse(item.payload).url === `/admin/chats?conversation=${conversation.id}`));
     console.log("PASS: persisted event -> notification -> Web Push, waiting/assigned routing, retry/reopen, privacy; zero real deliveries");
   } finally { globalThis.fetch = originalFetch; webpush.sendNotification = originalSend; }

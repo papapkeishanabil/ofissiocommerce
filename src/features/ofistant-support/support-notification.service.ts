@@ -9,11 +9,13 @@ export async function notifyCustomerChat(action: string, messageId: string | und
   const conversation = result.conversation;
   const client = getSupabaseAdminClient();
   if (!client || !conversation || conversation.status === "closed") return;
+  let messageBody: string | undefined;
   let eventId: string | undefined;
   if (action === "send" && messageId) {
     const rows = await client.select("ofistant_support_messages", {
-      select: "id", filters: { conversation_id: conversation.id, id: messageId, role: "user", is_context: false }, limit: 1,
+      select: "id,body", filters: { conversation_id: conversation.id, id: messageId, role: "user", is_context: false }, limit: 1,
     });
+    messageBody = typeof rows[0]?.body === "string" ? rows[0].body : undefined;
     eventId = rows[0] ? String(rows[0].id) : undefined;
   } else if (action === "start" && conversation.status === "waiting") {
     const events = await Promise.all([
@@ -25,5 +27,5 @@ export async function notifyCustomerChat(action: string, messageId: string | und
     const latest = events.flat().sort((a, b) => Number(b.sequence) - Number(a.sequence))[0];
     eventId = latest ? String(latest.id) : undefined;
   }
-  if (eventId) await createAdminNotification(chatNotificationInput(conversation, eventId, action === "start"));
+  if (eventId) await createAdminNotification(chatNotificationInput(conversation, eventId, action === "start", messageBody));
 }
