@@ -136,7 +136,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
         <div className={styles.conversation}>
           {!accountReady && <p role="status">Memuat percakapan...</p>}
           {accountReady && history.before !== null && <button type="button" className={styles.historyButton} disabled={history.loading || typing} onClick={() => void history.open(conversationId, true)}>Lihat pesan sebelumnya</button>}
-          {accountReady && timeline.map((item) => item.kind === "support" ? <SupportMessageView key={`support-${item.message.id}`} message={item.message} /> : (
+          {accountReady && timeline.map((item) => item.kind === "support" ? <SupportMessageView key={`support-${item.message.id}`} message={item.message} conversationId={conversationId} /> : (
             <ChatMessageView key={item.message.id} message={item.message} isPendingConfirm={!support.active && !!pendingAction && lastPendingMsgId === item.message.id && !!item.message.requiresConfirm} onConfirm={handleConfirm} onCancel={handleCancel} busy={busy} onProductNavigate={() => { if (window.matchMedia("(max-width: 79.999rem)").matches) onClose?.(); }} />
           ))}
           {accountReady && typing && <div className={styles.message}>

@@ -71,3 +71,8 @@
 
 .mobileControls { display:none; }
 @media(max-width:800px) { .workspace:has(.hasSelection) .pageHeader { display:none; } .mobileControls { display:block; padding:8px 12px; border-bottom:1px solid var(--line); flex-shrink:0; } .mobileControls button { min-height:40px; padding:6px 9px; font-size:11px; } }
+
+.withContext {grid-template-columns:250px minmax(0,1fr) 340px}
+.contextPanel{min-height:0;min-width:0;overflow:hidden}.workspace .infoButton{display:none}
+@media(max-width:1250px){.withContext{grid-template-columns:260px minmax(0,1fr)}.contextPanel{display:none}.contextOpen{display:block;position:fixed;inset:0 0 0 auto;width:min(440px,100vw);z-index:80;box-shadow:-20px 0 80px #12216233}.workspace .infoButton{display:inline-flex}}
+@media(max-width:800px){.withContext{grid-template-columns:1fr}.contextOpen{width:100vw}.chatHeader{flex-wrap:wrap}}

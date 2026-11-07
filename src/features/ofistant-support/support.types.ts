@@ -7,6 +7,7 @@ export interface SupportConversation {
   updatedAt: string;
 }
 export interface SupportMessage {
+  attachment?: import("./support-context.types").ChatAttachment | null;
   id: string;
   sequence: number;
   role: "user" | "assistant" | "staff" | "system";
