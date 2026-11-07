@@ -301,7 +301,8 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
     setMessage(null);
     try {
       const targetId = workingProductId;
-      const submittedForm = { ...form, inactiveColors: (form.inactiveColors ?? []).filter(color => selectedColors.some(selected => sellingColorKey(selected) === sellingColorKey(color))), sleeveSizeChartIds: hasSleeveSizeVariants ? effectiveSleeveSizeChartIds : null };
+      const sellingColors = form.productKind === "variable" ? genericOptions.find(option => isColorOption(option.name))?.values ?? (form.colors.length ? form.colors : ["Default"]) : form.colors;
+      const submittedForm = { ...form, inactiveColors: (form.inactiveColors ?? []).filter(color => sellingColors.some(selected => sellingColorKey(selected) === sellingColorKey(color))), sleeveSizeChartIds: hasSleeveSizeVariants ? effectiveSleeveSizeChartIds : null };
       const response = await fetch(
         targetId ? `/api/admin/products/woocommerce/${targetId}` : "/api/admin/products/woocommerce",
         {
