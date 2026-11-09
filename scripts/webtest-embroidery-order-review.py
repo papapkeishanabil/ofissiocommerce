@@ -64,7 +64,7 @@ with sync_playwright() as pw:
     expect(page.get_by_role('button',name='Lanjut ke checkout',exact=True)).to_be_visible()
     button=page.get_by_role('button',name='Minta penawaran resmi',exact=True)
    note='n'*999+'!';page.locator('#quote-notes').fill(note)
-   button.click();expect(page.get_by_role('alert')).to_contain_text('Fixture: permintaan tercatat')
+   button.click();expect(page.get_by_role('alert').filter(has_text='Fixture: permintaan tercatat')).to_be_visible()
    payload=payloads[-1];assert payload['customerNotes']==note
    assert payload['requirementType']=='standard_customization'
    item=payload['items'][0];assert item['sizeMatrix']['S']==4 and item['sizeMatrix']['M']==4
