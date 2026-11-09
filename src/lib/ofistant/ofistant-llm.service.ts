@@ -19,6 +19,7 @@
 // `is…Configured()` + `{ok:true,…}|{ok:false,reason}`. Never throws.
 
 import "server-only";
+import { OFISTANT_VOICE } from "./ofistant-voice";
 import { shippingConversationSchema } from "./ofistant-shipping.schema";
 
 import {
@@ -321,7 +322,7 @@ function buildSystemPrompt(
     `- Untuk kebijakan/SOP/FAQ, gunakan hanya bagian KNOWLEDGE BASE RESMI. Jika tidak tercantum, katakan informasinya belum tersedia lalu tawarkan bantuan tim Ofissio.`,
     ``,
     `GAYA:`,
-    `- Balas dalam Bahasa Indonesia, singkat, sopan, dan ramah. Sapa "Pak/Bu" bila pantas.`,
+    OFISTANT_VOICE,
     `- Gunakan teks polos. Bila merinci daftar (mis. tarif per posisi atau rincian biaya), pecah jadi baris pendek berawalan "- ". JANGAN gunakan asterisk (*), bold, heading, atau markdown lain.`,
     `- Singkat: 2-3 kalimat untuk jawaban biasa; daftar baris maksimal 5 poin.`,
     `- Format harga umum dalam Rupiah, cth: ${formatIDRCompact(45000)}.`,

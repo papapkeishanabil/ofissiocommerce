@@ -5,8 +5,10 @@
 //
 // To add a new intent/rule: append a rule function to RULES below.
 
+import { OFISTANT_WELCOME } from "./ofistant-voice";
 import { productService } from "@/features/products/product.service";
 import { resolveProductReferences } from "@/features/catalog-taxonomy/catalog-product-reference";
+import { isGeneralShirtSearch } from "@/features/catalog-taxonomy/catalog-search";
 import { getOfistantOrderStatusText } from "@/features/tracking/tracking.service";
 import { moqSizeSpread } from "@/types/cart";
 import { SIZES } from "@/types/industry";
@@ -49,7 +51,7 @@ type Rule = (input: RuleInput) => OfistantResponse | null;
 
 function address(ctx: OfistantContext): string {
   // Polite address; B2B sales tone.
-  return "Pak/Bu";
+  return "Bapak/Ibu";
 }
 
 function pickRecommendedForIndustry(industry: string, limit = 3) {
@@ -232,12 +234,12 @@ const greeting: Rule = ({ text, ctx, taxonomy }) => {
   if (ctx.journeyStage === "NEW_VISITOR") {
     return {
       message:
-        "Halo, selamat datang di Ofissio. Saya Ofistant, asisten pengadaan seragam perusahaan Anda. Seragam untuk industri apa yang sedang Anda cari?",
+        OFISTANT_WELCOME,
       quickReplies: ["Bengkel", "F&B", "Retail", "Corporate"],
     };
   }
   return {
-    message: "Halo kembali! Ada yang bisa saya bantu seputar pengadaan seragam?",
+    message: "Selamat datang kembali. Ada yang dapat saya bantu mengenai kebutuhan seragam Anda?",
     quickReplies: ["Lihat katalog", "Lihat keranjang", "Hubungi CS Ofissio"],
   };
 };
@@ -398,7 +400,7 @@ function catalogRecommendations(result: CatalogSearchResult | null) {
   }));
   const params = new URLSearchParams();
   if (result) {
-    if (result.normalization.categorySlugs[0]) params.set("kategori", result.normalization.categorySlugs[0]);
+    if (result.normalization.categorySlugs[0] && !isGeneralShirtSearch(result.normalization)) params.set("kategori", result.normalization.categorySlugs[0]);
     if (result.normalization.industrySlugs[0]) params.set("industri", result.normalization.industrySlugs[0]);
     params.set("q", result.normalization.originalQuery);
   }
@@ -455,10 +457,16 @@ const searchCatalog: Rule = ({
   const isEmpty = catalogSearchResult?.resultCount === 0;
   const recommendations = catalogRecommendations(catalogSearchResult);
   const hasProducts = recommendations.products.length > 0;
+  const search = catalogSearchResult?.normalization ?? detected.catalogSearch;
+  const sleeve = search?.attributeHints.find(hint => hint.attributeSlug === "lengan" && ["panjang", "pendek"].includes(hint.termSlug));
+  const subject = `${search && isGeneralShirtSearch(search) ? "kemeja" : detected.category.toLocaleLowerCase("id-ID")}${sleeve ? ` lengan ${sleeve.termSlug}` : ""}${industryText}`;
+  const bestSeller = catalogSearchResult?.products.some(product => (product.totalSales ?? 0) > 0);
   return {
     message: isEmpty
-      ? `Belum ditemukan ${detected.category.toLocaleLowerCase("id-ID")}${industryText} yang sesuai dengan pencarian Anda. Coba ubah pilihan atau lihat produk lainnya.`
-      : `Baik, ${address(ctx)}. Berikut pilihan ${detected.category.toLocaleLowerCase("id-ID")}${industryText} yang bisa Anda pertimbangkan.`,
+      ? `Maaf, ${address(ctx)}, saya belum menemukan ${subject} yang sesuai di katalog. Silakan lihat pilihan lain, atau hubungi tim Ofissio agar kami dapat membantu mencarikannya.`
+      : hasProducts
+        ? `Ada, ${address(ctx)}. ${bestSeller ? `Berikut ${subject} terlaris kami.` : `Berikut salah satu pilihan ${subject} kami.`} Untuk pilihan lainnya, silakan pilih "Lihat produk lain" dan gunakan filter sesuai kebutuhan Anda.`
+        : `Silakan lihat pilihan ${subject} di katalog, ${address(ctx)}. Gunakan filter untuk menyesuaikan pilihan dengan kebutuhan Anda.`,
     ...(hasProducts ? recommendations : {}),
     action: hasProducts ? undefined : {
       type: "SHOW_PRODUCTS",
@@ -805,13 +813,13 @@ const fallback: Rule = ({ text, ctx }) => {
   if (ctx.journeyStage === "NEW_VISITOR") {
     return {
       message:
-        "Maaf, saya belum yakin maksud Anda. Coba sebutkan industri (cth: “seragam untuk tambang”) atau klik salah satu pilihan di bawah.",
+        "Mohon maaf, saya ingin memastikan kebutuhan Anda. Boleh diinformasikan industrinya (cth: “seragam untuk tambang”) atau klik salah satu pilihan di bawah.",
       quickReplies: ["Bengkel", "F&B", "Corporate", "Hubungi CS Ofissio"],
     };
   }
   return {
     message:
-      "Maaf saya belum menangkap maksudnya. Saya bisa membantu menampilkan produk, membuka detail, menambah ke keranjang, atau checkout. Coba salah satu pilihan di bawah.",
+      "Mohon maaf, saya belum memahami permintaan Anda. Saya bisa membantu menampilkan produk, membuka detail, menambah ke keranjang, atau checkout. Silakan pilih salah satu pilihan di bawah agar saya dapat membantu lebih lanjut.",
     quickReplies: [
       "Lihat katalog",
       "Lihat keranjang",

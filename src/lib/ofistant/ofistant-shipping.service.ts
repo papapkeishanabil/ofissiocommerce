@@ -32,7 +32,7 @@ export async function respondWithShippingRates(input: Input, deps: Dependencies 
   const draft: ShippingConversation = pending ? { ...pending, stage: "collecting" } : { productId: null, quantity: null, postalCode: null, stage: "collecting" };
   let products: OfissioProduct[];
   try { products = await deps.products(); }
-  catch { return { message: "Katalog belum dapat diperiksa saat ini. Saya belum bisa menghitung ongkir. Silakan coba lagi.", contextPatch: { pendingShippingRequest: { ...draft, stage: "unavailable" } } }; }
+  catch { return { message: "Mohon maaf, katalog belum dapat diperiksa saat ini. Saya belum bisa menghitung ongkir. Silakan coba lagi.", contextPatch: { pendingShippingRequest: { ...draft, stage: "unavailable" } } }; }
 
   // Use only customer inputs from the latest shipping discussion. Never use
   // assistant text as proof of an address, quantity, tariff, or product price.
@@ -62,16 +62,17 @@ export async function respondWithShippingRates(input: Input, deps: Dependencies 
   const product = products.find((p) => p.id === draft.productId);
   if (!product) draft.productId = null;
   const contextPatch = { pendingShippingRequest: draft };
+  const missing = [!product && "kode atau nama produk", !draft.quantity && "jumlah pcs", !draft.postalCode && "kode pos tujuan"].filter((value): value is string => Boolean(value));
+  const missingText = missing.length > 1 ? `${missing.slice(0, -1).join(", ")} dan ${missing.at(-1)}` : missing[0];
   if (!product) return {
-    message: ambiguous ? "Saya menemukan beberapa produk. Sebutkan satu kode produk yang ingin dihitung beserta jumlah pcs-nya terlebih dahulu."
-      : unknownCode ? "Kode produk tersebut belum ditemukan di katalog. Boleh periksa kembali kodenya agar ongkir dihitung untuk produk yang benar?"
-      : "Saya bantu cek ongkir. Produk apa yang ingin dikirim? Cukup sebutkan kodenya, misalnya TG-055 atau KK-011.",
+    message: `${ambiguous ? "Saya menemukan beberapa produk. Mohon pilih satu produk yang ingin diperiksa ongkirnya." : unknownCode ? "Kode produk tersebut belum ditemukan di katalog. Mohon periksa kembali kode produknya." : "Dengan senang hati saya bantu cek ongkir, Bapak/Ibu."} Mohon informasinya mengenai ${missingText}${missing.length > 1 ? " sekaligus" : ""}.${missing.length === 3 ? " Contoh: KK-011, 5 pcs, kode pos 40623." : ""}`,
     contextPatch,
   };
   const card = { id: product.id, slug: product.slug, name: product.name, image: product.mainImage ?? null, material: product.material, priceFrom: product.priceFrom };
-  const replyBase = { products: [card], moreProductsHref: `/catalog?q=${encodeURIComponent(product.name)}`, contextPatch: { ...contextPatch, selectedProductId: product.id, selectedProductSlug: product.slug } };
-  if (!draft.quantity) return { ...replyBase, message: `Produk yang dimaksud adalah ${product.name}. Berapa pcs yang ingin dikirim?` };
-  if (!draft.postalCode) return { ...replyBase, message: `Saya cek ongkir untuk ${draft.quantity} pcs ${product.name}. Berapa kode pos tujuan pengirimannya?` };
+  const replyBase = { ...(pending?.productId !== product.id ? { products: [card], moreProductsHref: `/catalog?q=${encodeURIComponent(product.name)}` } : {}), contextPatch: { ...contextPatch, selectedProductId: product.id, selectedProductSlug: product.slug } };
+  if (!draft.quantity && !draft.postalCode) return { ...replyBase, message: `Saya bantu cek ongkir untuk ${product.name}. Boleh diinformasikan jumlah pcs yang ingin dibeli dan kode pos tujuannya sekaligus? Misalnya: 5 pcs, 40623.` };
+  if (!draft.quantity) return { ...replyBase, message: `Produk yang dimaksud adalah ${product.name}. Boleh diinformasikan jumlah pcs yang ingin dikirim?` };
+  if (!draft.postalCode) return { ...replyBase, message: `Saya cek ongkir untuk ${draft.quantity} pcs ${product.name}. Boleh diinformasikan kode pos tujuan pengirimannya?` };
 
   try {
     const weight = product.shippingWeightGram;
@@ -102,6 +103,6 @@ export async function respondWithShippingRates(input: Input, deps: Dependencies 
       contextPatch: { ...replyBase.contextPatch, pendingShippingRequest: { ...draft, stage: "quoted" } },
     };
   } catch {
-    return { ...replyBase, message: `Saya sudah mengenali ${draft.quantity} pcs ${product.name} dan tujuan kode pos ${draft.postalCode}, tetapi tarif kurir belum berhasil diperoleh. Silakan coba lagi; saya belum dapat memastikan nominal ongkirnya.`, quickReplies: ["Coba lagi", "Hubungi CS Ofissio"], contextPatch: { ...replyBase.contextPatch, pendingShippingRequest: { ...draft, stage: "unavailable" } } };
+    return { ...replyBase, message: `Saya sudah mengenali ${draft.quantity} pcs ${product.name} dan tujuan kode pos ${draft.postalCode}, namun saat ini tarif kurir belum berhasil diperoleh. Mohon coba kembali beberapa saat lagi, atau hubungi tim Ofissio untuk dibantu.`, quickReplies: ["Coba lagi", "Hubungi CS Ofissio"], contextPatch: { ...replyBase.contextPatch, pendingShippingRequest: { ...draft, stage: "unavailable" } } };
   }
 }

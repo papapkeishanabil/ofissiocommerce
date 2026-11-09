@@ -1,4 +1,5 @@
 import "server-only";
+import { industryLabel } from "./industry-labels";
 
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createApiError } from "@/lib/security/safe-error-response";
@@ -46,6 +47,7 @@ export async function listCatalogCategories(): Promise<CatalogCategory[]> {
         productCount: category.count ?? 0,
         active: local.active,
         synonyms: local.synonyms,
+        seo: local.seo,
         source: "woocommerce" as const,
       };
     })
@@ -67,6 +69,7 @@ export async function createCatalogCategory(input: {
     categorySlug: category.slug,
     active: input.payload.active,
     synonyms: input.payload.synonyms,
+    seo: input.payload.seo,
   });
   logAuditEvent({
     request: input.request,
@@ -85,6 +88,7 @@ export async function createCatalogCategory(input: {
     productCount: category.count ?? 0,
     active: metadata.active,
     synonyms: metadata.synonyms,
+    seo: metadata.seo,
     source: "woocommerce" as const,
   };
 }
@@ -119,6 +123,7 @@ export async function updateCatalogCategory(input: {
     categorySlug: category.slug,
     active: input.payload.active ?? current?.active ?? true,
     synonyms: input.payload.synonyms ?? current?.synonyms ?? [],
+    seo: input.payload.seo ?? current?.seo,
   });
   logAuditEvent({
     request: input.request,
@@ -137,6 +142,7 @@ export async function updateCatalogCategory(input: {
     productCount: category.count ?? 0,
     active: metadata.active,
     synonyms: metadata.synonyms,
+    seo: metadata.seo,
     source: "woocommerce" as const,
   };
 }
@@ -324,7 +330,7 @@ export async function getPublicCatalogTaxonomy(): Promise<PublicCatalogTaxonomy>
         }))
       : DEFAULT_PUBLIC_TAXONOMY.attributes;
 
-  return { categories, industries, attributes };
+  return { categories, industries: industries.map(industry => ({ ...industry, name: industryLabel(industry.slug, industry.name), synonyms: [...new Set([...industry.synonyms, industry.name])], })), attributes };
 }
 
 export async function getProductEditorTaxonomyOptions() {

@@ -22,6 +22,8 @@ import { CATALOG_COLOR_FAMILIES, matchesCatalogColor } from "./catalog-colors";
 import { matchesCatalogTextQuery } from "@/features/catalog-taxonomy/catalog-broad-search";
 
 interface ProductCatalogProps {
+  heading?: string;
+  intro?: string;
   products: OfissioProduct[];
   /** industry filter (from query string) */
   industry?: string;
@@ -70,6 +72,8 @@ function categoryPreviewProducts(items: OfissioProduct[], gender?: string) {
 }
 
 export function ProductCatalog({
+  heading,
+  intro,
   products,
   industry,
   category,
@@ -243,19 +247,19 @@ export function ProductCatalog({
   return (
     <div className="catalog-page">
       <div className="catalog-semantic-heading"><Breadcrumbs items={crumbs} /></div>
-      <header className="catalog-search-intro mb-5 mt-3 max-w-3xl"><h1 className="text-2xl font-bold leading-tight">Katalog Seragam Kerja</h1><p className="mt-2 text-sm leading-relaxed text-ink-muted">Pilih kemeja kerja, seragam kantor, dan seragam lapangan untuk kebutuhan tim Anda. Produk ready stock dapat dilengkapi bordir logo.</p><p className="mt-2 text-sm leading-relaxed text-ink-muted">Butuh bantuan memilih bahan dan ukuran? Baca <Link href="/panduan/memilih-kemeja-seragam-kerja" className="underline underline-offset-4">panduan memilih kemeja seragam kerja</Link>.</p></header>
+      <header className="catalog-search-intro mb-5 mt-3 max-w-3xl"><h1 className="text-2xl font-bold leading-tight">{heading ?? 'Kemeja Kerja dan Seragam Kerja'}</h1><p className="mt-2 text-sm leading-relaxed text-ink-muted">{intro ?? 'Pilih kemeja kerja, seragam kantor, dan seragam lapangan untuk kebutuhan tim Anda. Produk ready stock dapat dilengkapi bordir logo.'}</p><p className="mt-2 text-sm leading-relaxed text-ink-muted">Butuh bantuan memilih bahan dan ukuran? Baca <Link href="/panduan/memilih-kemeja-seragam-kerja" className="underline underline-offset-4">panduan memilih kemeja seragam kerja</Link>.</p></header>
       {categoryGroups.length > 0 && <nav className="catalog-categories" aria-label="Kategori produk">
-        <Link className={"catalog-category-all" + (!category ? " is-active" : "")} href={categoryHref()} aria-current={!category ? "page" : undefined}><span className="catalog-category-visual"><LayoutGrid size={26}/></span><span className="catalog-category-copy"><b>Semua Produk</b><small>{products.length} produk</small></span><ArrowRight size={16}/></Link>
+        <a className={"catalog-category-all" + (!category ? " is-active" : "")} href={categoryHref()} aria-current={!category ? "page" : undefined}><span className="catalog-category-visual"><LayoutGrid size={26}/></span><span className="catalog-category-copy"><b>Semua Produk</b><small>{products.length} produk</small></span><ArrowRight size={16}/></a>
         {categoryGroups.map(group => {
           const previews = categoryPreviewProducts(group.items, selected.Gender);
-          return <Link key={group.slug} className={"catalog-category" + (category === group.slug ? " is-active" : "")} href={categoryHref(group.slug)} aria-current={category === group.slug ? "page" : undefined}>
+          return <a key={group.slug} className={"catalog-category" + (category === group.slug ? " is-active" : "")} href={categoryHref(group.slug)} aria-current={category === group.slug ? "page" : undefined}>
           <span className={"catalog-category-visual" + (previews.length > 1 ? " catalog-category-pair" : "")}>
             {previews.length ? previews.map(product => <span className="catalog-category-thumbnail" key={product.id}>
               <Image src={product.mainImage!} alt={`${group.label}: ${product.gender === "men" ? "pria" : product.gender === "women" ? "wanita" : "unisex"}`} fill sizes={previews.length > 1 ? "40px" : "56px"} className="catalog-category-image" />
             </span>) : <ProductImagePlaceholder name={group.label} category={group.label} accentColor="#10245a" className="h-12 w-10" />}
           </span>
           <span className="catalog-category-copy"><b>{group.label}</b><small>{group.items.length} produk</small></span><ArrowRight size={15}/>
-        </Link>;})}
+        </a>;})}
       </nav>}
       <div className="catalog-workspace">
       <CatalogFilterBar industry={industry} category={category} color={color} industries={presentIndustries} colors={presentColors} total={products.length} facets={facets} selected={selected} onFacetChange={(key,value) => setSelected(previous => ({...previous,[key]:value}))} onReset={() => { setSelected({}); setQuery(""); }}/>

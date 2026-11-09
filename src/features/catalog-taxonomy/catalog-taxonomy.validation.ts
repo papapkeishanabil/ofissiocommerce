@@ -1,3 +1,5 @@
+
+import { pageSeoSchema } from "@/features/seo/page-seo";
 import { z } from "zod";
 
 const slugSchema = z
@@ -13,6 +15,7 @@ const synonymsSchema = z
   .transform((items) => [...new Set(items.map((item) => item.toLowerCase()))]);
 
 export const categoryCreateSchema = z.object({
+  seo: pageSeoSchema.optional(),
   name: z.string().trim().min(2).max(120),
   slug: slugSchema.optional(),
   description: z.string().trim().max(1000).default(""),
@@ -22,6 +25,7 @@ export const categoryCreateSchema = z.object({
 
 export const categoryPatchSchema = z
   .object({
+    seo: pageSeoSchema.optional(),
     name: z.string().trim().min(2).max(120).optional(),
     slug: slugSchema.optional(),
     description: z.string().trim().max(1000).optional(),

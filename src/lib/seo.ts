@@ -1,6 +1,7 @@
 import type { OfissioProduct } from "@/features/products/product.types";
 import { structuredOfferPrice } from "@/features/products/product-schema-offer";
 import { variantProductGroup } from "./product-variant-schema";
+import { productAutomaticSeo } from "@/features/seo/product-automatic-seo";
 
 export const SITE_URL = "https://ofissio.com";
 export const productUrl = (slug: string) => `${SITE_URL}/product/${encodeURIComponent(slug)}`;
@@ -26,7 +27,10 @@ export function productStructuredData(product: OfissioProduct) {
   const sizes = [...new Set((product.available_sizes ?? []).map(value => value.trim()).filter(Boolean))];
   const colors = [...new Set((product.available_colors ?? []).map(value => value.trim()).filter(value => value && value.toLowerCase() !== "default"))];
   const suggestedGender = product.gender === "men" ? "male" : product.gender === "women" ? "female" : product.gender === "unisex" ? "unisex" : undefined;
-  const sleeve = product.sleeve_type === "long" ? "Lengan panjang" : product.sleeve_type === "short" ? "Lengan pendek" : undefined;
+  // Mixed-sleeve parent defaults must not become a single-sleeve schema claim.
+  const sleeveEvidence=product.seoInput ? productAutomaticSeo(product.seoInput).evidence.sleeve
+    : product.sleeve_type === "long" ? "panjang" : product.sleeve_type === "short" ? "pendek" : undefined;
+  const sleeve=sleeveEvidence ? `Lengan ${sleeveEvidence}` : undefined;
   const additionalProperties = [
     ...(sleeve ? [{ "@type": "PropertyValue", name: "Tipe lengan", value: sleeve }] : []),
     ...(colors.length > 1 ? [{ "@type": "PropertyValue", name: "Pilihan warna", value: colors.join(", ") }] : []),

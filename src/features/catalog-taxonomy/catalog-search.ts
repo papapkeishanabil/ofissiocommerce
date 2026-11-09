@@ -5,14 +5,6 @@ import type {
 } from "./catalog-taxonomy.types";
 
 const STOP_WORDS = new Set([
-  "sau",
-  "say",
-  "aingin",
-  "rekomendasi",
-  "rekomendasikan",
-  "terbaik",
-  "terlaris",
-
   "ada",
   "adakah",
   "aja",
@@ -31,6 +23,7 @@ const STOP_WORDS = new Set([
   "dong",
   "gimana",
   "ingin",
+  "aingin",
   "ini",
   "itu",
   "kah",
@@ -42,12 +35,18 @@ const STOP_WORDS = new Set([
   "nyari",
   "pengen",
   "produk",
+  "rekomendasi",
+  "rekomendasikan",
   "saja",
   "saya",
   "saua",
+  "sau",
+  "say",
   "sedang",
   "seragam",
   "tampilkan",
+  "terbaik",
+  "terlaris",
   "tolong",
   "tunjukkan",
   "untuk",
@@ -105,6 +104,11 @@ export function normalizeCatalogSearch(
     ...matchedAliases(normalizedQuery, taxonomy.categories),
     ...matchedAliases(normalizedQuery, taxonomy.industries),
     ...attributeHints.map((hint) => hint.termSlug.replace(/-/g, " ")),
+    // Attribute labels describe the selected value; they are not extra title
+    // keywords. Only consume a label when its value was actually recognized.
+    ...taxonomy.attributes.filter((attribute) => attributeHints.some((hint) => hint.attributeSlug === attribute.slug))
+      .flatMap((attribute) => [normalizePhrase(attribute.name), normalizePhrase(attribute.slug)])
+      .filter((label) => includesPhrase(normalizedQuery, label)),
   ]);
   const searchTerms = normalizedQuery
     .split(" ")
@@ -139,6 +143,14 @@ export function getTaxonomyEntryLabel(
   const entries =
     type === "category" ? taxonomy.categories : taxonomy.industries;
   return entries.find((entry) => entry.slug === slug)?.name;
+}
+
+// A generic shirt request must not inherit a single category merely because
+// that category happens to own the synonym "kemeja".
+export function isGeneralShirtSearch(search: CatalogSearchNormalization) {
+  const words = search.normalizedQuery.split(" ").filter(Boolean);
+  return words.includes("kemeja") && words.every(word =>
+    STOP_WORDS.has(word) || ["kemeja", "kerja", "lengan", "panjang", "pendek"].includes(word));
 }
 
 function matchesEntry(

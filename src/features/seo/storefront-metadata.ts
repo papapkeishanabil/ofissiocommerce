@@ -9,7 +9,7 @@ const brandImages = [{
 function storefrontMetadata(title: string, description: string, path: string): Metadata {
   const url = new URL(path, SITE_URL).href;
   return {
-    title: { absolute: title }, description,
+    title: { absolute: title }, description, keywords: null,
     alternates: { canonical: url },
     openGraph: { type: "website", siteName: "Ofissio", locale: "id_ID", url, title, description, images: brandImages },
     twitter: { card: "summary", title, description, images: brandImages },
@@ -17,13 +17,13 @@ function storefrontMetadata(title: string, description: string, path: string): M
 }
 
 export const homeMetadata = storefrontMetadata(
-  "Seragam Kerja Ready Stock & Bordir Logo | Ofissio",
-  "Temukan seragam kerja ready stock untuk perusahaan di Ofissio. Pilih kemeja kantor, seragam lapangan, dan rompi kerja dengan layanan bordir logo.",
+  "Toko Kemeja Kerja & Seragam Kerja | OFISSIO",
+  "Cari kemeja kerja dan seragam kerja? Jelajahi model kantor, lapangan, dan safety di OFISSIO. Lihat foto, bahan, ukuran, harga, serta pilihan bordir logo.",
   "/",
 );
 
 export const catalogMetadata = storefrontMetadata(
-  "Katalog Seragam Kerja Ready Stock | Ofissio",
-  "Pilih kemeja kerja, seragam kantor, dan seragam lapangan di katalog Ofissio. Temukan produk ready stock untuk kebutuhan tim dengan layanan bordir logo.",
+  "Katalog Kemeja Kerja, Lapangan & Safety | OFISSIO",
+  "Bandingkan kemeja kerja, kemeja lapangan, dan kemeja safety di katalog OFISSIO. Lihat foto produk, bahan, pilihan ukuran, harga, dan detail setiap model.",
   "/catalog",
 );

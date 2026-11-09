@@ -11,6 +11,7 @@
 "use client";
 
 import { create } from "zustand";
+import { OFISTANT_WELCOME } from "@/lib/ofistant/ofistant-voice";
 
 import {
   applyResponse,
@@ -78,7 +79,7 @@ function genMsgId(role: ChatMessage["role"]): string {
 }
 
 const WELCOME_TEXT =
-  "Halo, selamat datang di Ofissio. Saya Ofistant, asisten pengadaan seragam perusahaan Anda. Seragam untuk industri apa yang sedang Anda cari?";
+  OFISTANT_WELCOME;
 
 export const useOfistantStore = create<OfistantState>((set, get) => ({
   messages: [],

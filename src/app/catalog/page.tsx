@@ -1,5 +1,6 @@
-import { catalogMetadata } from "@/features/seo/storefront-metadata";
 import type { Metadata } from "next";
+import { cache } from "react";
+import { catalogCategoryLandings, findCategoryLanding, singleCategoryInput } from "@/features/seo/catalog-category-landing";
 
 import { ProductCatalog } from "@/components/catalog/ProductCatalog";
 import {
@@ -11,8 +12,30 @@ import { normalizeCatalogSearch } from "@/features/catalog-taxonomy/catalog-sear
 import { matchStorefrontCatalogProducts } from "@/features/catalog-taxonomy/catalog-broad-search";
 import { getPublicCatalogTaxonomy } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
 import { productServerService } from "@/features/products/product.server-service";
+import { catalogMetadata } from "@/features/seo/storefront-metadata";
+import { listCatalogCategories } from "@/features/catalog-taxonomy/catalog-taxonomy.service";
+import { automaticPageSeo, effectivePageSeo } from "@/features/seo/page-seo";
+import { catalogCollectionSchema } from "@/features/seo/catalog-discovery";
+import { serializeJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = catalogMetadata;
+export const dynamic = "force-dynamic";
+const readCategories=cache(()=>listCatalogCategories().catch(()=>[]));
+const readProducts=cache(()=>productServerService.getPublishedProducts());
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const search = await searchParams;
+  const slug = search.kategori ?? search.category;
+  if (!slug) return { ...catalogMetadata, keywords: null };
+  const categories = await readCategories();
+  const category = categories.find(item => item.active && (item.slug === slug || item.name === slug));
+  if (!category) return { ...catalogMetadata, keywords: null };
+  const landing=singleCategoryInput(search) ? findCategoryLanding(catalogCategoryLandings(categories,await readProducts()),slug) : undefined;
+  const effective = effectivePageSeo(category.seo, automaticPageSeo(category.name, category.description||landing?.intro||""));
+  const url=landing?.url;
+  return { ...catalogMetadata, keywords: null, title: { absolute: effective.title }, description: effective.description,
+    ...(url?{alternates:{canonical:url}}:{}),
+    openGraph: { ...catalogMetadata.openGraph, ...effective,...(url?{url}:{}) }, twitter: { ...catalogMetadata.twitter, ...effective } };
+}
 
 interface PageProps {
   searchParams: Promise<{
@@ -27,9 +50,10 @@ interface PageProps {
 
 export default async function Page({ searchParams }: PageProps) {
   const search = await searchParams;
-  const [products, taxonomy] = await Promise.all([
-    productServerService.getPublishedProducts(),
+  const [products, taxonomy, categories] = await Promise.all([
+    readProducts(),
     getPublicCatalogTaxonomy(),
+    readCategories(),
   ]);
   const searchTaxonomy = withCatalogSearchVocabulary(taxonomy);
   const query = search.q?.trim().slice(0, 800);
@@ -57,8 +81,14 @@ export default async function Page({ searchParams }: PageProps) {
     activeCategory ??
     searchTaxonomy.categories.find((item) => item.slug === normalizedCategory);
 
-  return (
+  const landing=findCategoryLanding(catalogCategoryLandings(categories,products),singleCategoryInput(search));
+  const collection = landing ? catalogCollectionSchema(landing.products,{name:landing.heading,url:landing.url})
+    : !query && !search.industri && !rawKategori && !search.warna ? catalogCollectionSchema(products) : null;
+  return (<>
+    {collection && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(collection) }} />}
     <ProductCatalog
+      heading={landing?.heading}
+      intro={landing?.intro}
       products={matchingProducts}
       searchQuery={query}
       industry={industry?.slug}
@@ -76,5 +106,5 @@ export default async function Page({ searchParams }: PageProps) {
         (item) => item.slug !== industry?.slug,
       )}
     />
-  );
+  </>);
 }

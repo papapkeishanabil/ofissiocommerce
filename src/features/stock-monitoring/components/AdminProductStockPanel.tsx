@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { AlertTriangle, Boxes } from "lucide-react";
 
 import { AdminBadge } from "@/features/admin/components/AdminBadge";
@@ -14,6 +17,15 @@ export function AdminProductStockPanel({
   matrix: WooSizeStockMatrix;
   canRequest: boolean;
 }) {
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const query = search.trim().toLocaleLowerCase("id-ID");
+  const filtered = matrix.rows.filter(row => (!status || row.status === status) &&
+    (!query || `${row.stockSku} ${row.sizeLabel ?? ""}`.toLocaleLowerCase("id-ID").includes(query)));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / 10));
+  const currentPage = Math.min(page, pageCount);
+  const rows = filtered.slice((currentPage - 1) * 10, currentPage * 10);
   return (
     <AdminSectionCard
       icon={Boxes}
@@ -41,6 +53,19 @@ export function AdminProductStockPanel({
         </p>
       ) : (
         <>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="min-w-0 flex-1 text-xs font-semibold text-ink-muted">
+              <span className="mb-1 block">Cari SKU atau ukuran</span>
+              <input type="search" value={search} onChange={event => { setSearch(event.target.value);setPage(1); }} placeholder="Contoh: ARMY atau XL" className="min-h-11 w-full rounded-lg border border-line px-3 text-sm focus-visible:outline-2 focus-visible:outline-brand-600" />
+            </label>
+            <label className="text-xs font-semibold text-ink-muted">
+              <span className="mb-1 block">Status stok</span>
+              <select aria-label="Status stok" value={status} onChange={event => { setStatus(event.target.value);setPage(1); }} className="min-h-11 max-w-full rounded-lg border border-line bg-white px-3 text-sm focus-visible:outline-2 focus-visible:outline-brand-600">
+                <option value="">Semua status</option><option value="safe">Aman</option><option value="low">Menipis</option><option value="production_needed">Perlu produksi</option><option value="not_synced">Tidak tersinkron</option>
+              </select>
+            </label>
+          </div>
+          <p role="status" className="text-xs text-ink-muted">{filtered.length ? `${(currentPage - 1) * 10 + 1}–${Math.min(currentPage * 10, filtered.length)} dari ${filtered.length} SKU` : "Tidak ada SKU yang sesuai pencarian atau filter."} · Total {matrix.rows.length} SKU</p>
           <div className="hidden overflow-x-auto rounded-xl border border-line md:block">
             <table className="min-w-[58rem] w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.1em] text-ink-muted">
@@ -52,7 +77,7 @@ export function AdminProductStockPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {matrix.rows.map((row) => (
+                {rows.map((row) => (
                   <tr key={`${row.wooCommerceVariationId ?? "parent"}-${row.stockSku}`} className="align-top">
                     <td className="px-3 py-3 font-extrabold text-brand-800">{row.stockSku || "—"}</td>
                     <td className="px-3 py-3 font-semibold">{row.sizeLabel ?? "—"}</td>
@@ -78,7 +103,7 @@ export function AdminProductStockPanel({
           </div>
 
           <div className="grid gap-3 md:hidden">
-            {matrix.rows.map((row) => (
+            {rows.map((row) => (
               <article key={`${row.wooCommerceVariationId ?? "parent"}-${row.stockSku}`} className="rounded-xl border border-line bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div><p className="font-extrabold text-brand-800">{row.stockSku}</p><p className="text-sm text-ink-muted">Ukuran {row.sizeLabel ?? "—"}</p></div>
@@ -94,6 +119,13 @@ export function AdminProductStockPanel({
               </article>
             ))}
           </div>
+          <nav aria-label="Halaman stok SKU" className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+            <span className="text-xs text-ink-muted">Halaman {currentPage} dari {pageCount} · Maksimal 10 SKU per halaman</span>
+            <div className="flex gap-2">
+              <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="min-h-11 rounded-lg border border-line px-3 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-brand-600">Sebelumnya</button>
+              <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)} className="min-h-11 rounded-lg border border-line px-3 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-brand-600">Berikutnya</button>
+            </div>
+          </nav>
         </>
       )}
       <p className="text-xs font-semibold text-ink-subtle">
@@ -108,4 +140,4 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function quantity(value: number | null) { return value == null ? "—" : `${value} pcs`; }
-function formatCheckedAt(value: string) { return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
+function formatCheckedAt(value: string) { return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(value)); }

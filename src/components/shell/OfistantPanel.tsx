@@ -32,6 +32,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
   const [showHistory, setShowHistory] = useState(false);
   const support = useSupportChat(conversationId, authHydrated && historyOwner === accountKey ? accountKey : null);
   const [loginNotice, setLoginNotice] = useState(false);
+  const [retryingSupport, setRetryingSupport] = useState(false);
   const accountReady = authHydrated && historyOwner === accountKey;
   const historyVisible = showHistory && !!session && accountReady;
   const messages = useOfistantStore((s) => s.messages);
@@ -136,7 +137,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
         <div className={styles.conversation}>
           {!accountReady && <p role="status">Memuat percakapan...</p>}
           {accountReady && history.before !== null && <button type="button" className={styles.historyButton} disabled={history.loading || typing} onClick={() => void history.open(conversationId, true)}>Lihat pesan sebelumnya</button>}
-          {accountReady && timeline.map((item) => item.kind === "support" ? <SupportMessageView key={`support-${item.message.id}`} message={item.message} /> : (
+          {accountReady && timeline.map((item) => item.kind === "support" ? <SupportMessageView key={`support-${item.message.id}`} message={item.message} conversationId={conversationId} /> : (
             <ChatMessageView key={item.message.id} message={item.message} isPendingConfirm={!support.active && !!pendingAction && lastPendingMsgId === item.message.id && !!item.message.requiresConfirm} onConfirm={handleConfirm} onCancel={handleCancel} busy={busy} onProductNavigate={() => { if (window.matchMedia("(max-width: 79.999rem)").matches) onClose?.(); }} />
           ))}
           {accountReady && typing && <div className={styles.message}>
@@ -156,7 +157,7 @@ export function OfistantPanel({ onClose }: OfistantPanelProps) {
           <p>{support.conversation?.status === "waiting" ? "Anda boleh menambahkan pesan. Balasan staf akan muncul di panel ini saat permintaan ditangani." : "Pesan Anda dibalas langsung oleh staf Ofissio. AI tidak membalas selama sesi ini."}</p>
           <button type="button" className={styles.historyButton} disabled={support.busy} onClick={() => void support.act("close")}>Akhiri chat tim dan kembali ke AI</button>
         </div>}
-        {support.error && <div role="alert" className={styles.historyHint}>{support.error} <button type="button" className={styles.historyButton} onClick={() => void support.refresh()}>Coba lagi</button></div>}
+        {(support.error || retryingSupport) && <div role="alert" className={styles.historyHint}>{retryingSupport ? "Memeriksa sesi dan menyambungkan kembali..." : support.error} <button type="button" disabled={retryingSupport || support.refreshing || support.busy} className={styles.historyButton} onClick={async () => { setRetryingSupport(true); try { await support.refresh(); } finally { setRetryingSupport(false); } }}>{retryingSupport ? "Menghubungkan..." : "Coba lagi"}</button>{support.authRequired && <button type="button" className={styles.historyButton} onClick={() => { window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`); }}>Masuk kembali</button>}</div>}
         {loginNotice && !session && <p className={styles.historyHint}>Masuk terlebih dahulu agar percakapan dengan tim tersimpan di akun Anda.</p>}
         <ChatComposer key={accountKey ?? "guest"} onSubmit={handleSend} disabled={typing || support.busy || !support.ready || !accountReady || history.loading} />
         <div className={styles.footer}>

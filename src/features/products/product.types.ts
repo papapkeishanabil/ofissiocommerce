@@ -37,6 +37,8 @@ export interface ProductImageReference {
 
 /** Canonical product contract. UI-compatible fields remain from Product. */
 export interface OfissioProduct extends Product {
+  seoInput?: import("@/features/seo/product-automatic-seo").ProductSeoInput;
+  seo?: Pick<import("@/features/seo/page-seo").PageSeo, "title" | "description">;
   /** Units sold recorded by WooCommerce; undefined means unavailable. */
   totalSales?: number;
   /** Uniform live native price, checked against storefront pricing before schema output. */

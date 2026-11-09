@@ -51,6 +51,8 @@ function isLoopbackHost(hostname: string) {
 }
 
 const nextConfig: NextConfig = {
+  // SEO settings must be present in the initial head, including normal browsers.
+  htmlLimitedBots: /.*/,
   // Dev-server cross-origin protection blocks assets served to LAN clients
   // (e.g. http://192.168.2.4:8000 from another PC) unless the origin is listed.
   allowedDevOrigins: ["192.168.2.4"],
@@ -79,6 +81,11 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // Verified WordPress legacy aliases; preserve canonical product URLs.
+      { source: "/product/kemeja-kantor-kk-012", destination: "/product/kemeja-kerja-kk-012", statusCode: 301 },
+      { source: "/product/kemeja-kantor-kk-014", destination: "/product/kemeja-kerja-kk-014", statusCode: 301 },
+      { source: "/product/kemeja-kantor-kk-015", destination: "/product/kemeja-kerja-kk-015", statusCode: 301 },
+      { source: "/product/kemeja-kerja-putih-kk-013", destination: "/product/kemeja-kerja-kk-013", statusCode: 301 },
       {
         source: "/product/kemeja-kerja-teknisi-kt-001",
         destination: "/product/kemeja-kerja-kt-001",

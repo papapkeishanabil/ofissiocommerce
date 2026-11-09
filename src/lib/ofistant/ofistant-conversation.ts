@@ -10,42 +10,14 @@ export const conversationKindSchema = z.enum([
 export type ConversationKind = z.infer<typeof conversationKindSchema>;
 
 const replies: Record<ConversationKind, readonly string[]> = {
-  greeting: [
-    "Halo! Ada yang ingin Anda tanyakan?",
-    "Halo, saya Ofistant. Silakan, saya siap membantu.",
-  ],
-  thanks: [
-    "Sama-sama! Senang bisa membantu.",
-    "Dengan senang hati. Kalau ada pertanyaan lagi, silakan.",
-  ],
-  sky_trip: [
-    "Kalau maksudnya terbang, bisa mulai dari bandara 😊. Saya sendiri fokus membantu urusan seragam.",
-    "Kalau perjalanan imajinasi, kita sudah berangkat sejak pertanyaan tadi 😄.",
-    "Untuk perjalanan sejauh itu, saya temani lewat chat saja 😄.",
-  ],
-  sky_ladder: [
-    "Sepertinya tangganya harus panjang sekali 😄. Kita cukup membayangkannya saja, ya.",
-    "Kalau di dunia imajinasi, tangganya mungkin belum selesai digambar 😄.",
-    "Tangga khayalannya boleh panjang, obrolan kita tetap di sini saja 😄.",
-  ],
-  invitation: [
-    "Saya temani lewat chat saja 😄.",
-    "Saya ikut meramaikan obrolannya dari sini saja 😄.",
-    "Saya kebagian jadi teman ngobrol dari sini 😄.",
-  ],
-  banter: [
-    "Hehe, saya tangkap candaannya 😄.",
-    "Obrolannya jadi lebih santai 😄.",
-    "Hehe, ada-ada saja 😄.",
-  ],
-  off_topic: [
-    "Untuk hal itu, saya belum bisa memberi jawaban yang dapat diandalkan. Saya fokus membantu kebutuhan seragam Ofissio.",
-    "Topik itu di luar bidang bantuan saya. Saya tidak ingin memberi jawaban yang keliru.",
-  ],
-  serious: [
-    "Baik, saya tanggapi dengan serius. Bisa ceritakan lebih jelas hal yang ingin Anda tanyakan?",
-    "Saya mengerti. Silakan jelaskan kebutuhan Anda supaya saya bisa mengarahkan dengan tepat.",
-  ],
+  greeting: ["Selamat datang. Dengan senang hati saya membantu. Ada yang ingin Anda tanyakan?", "Halo, saya Ofistant. Silakan sampaikan kebutuhan Anda, saya siap membantu."],
+  thanks: ["Sama-sama. Senang dapat membantu Anda.", "Dengan senang hati. Silakan hubungi kami kembali jika ada yang ingin ditanyakan."],
+  sky_trip: ["Untuk perjalanan imajinasi seperti itu, saya dapat menemani lewat percakapan ini saja.", "Menarik untuk dibayangkan. Saya menemani Anda melalui percakapan ini, ya."],
+  sky_ladder: ["Jika dalam cerita imajinasi, tentu bisa dibayangkan. Untuk keselamatan, cukup menjadi cerita saja, ya.", "Kita jadikan bagian dari cerita imajinasi saja, ya. Saya tetap menemani melalui percakapan ini."],
+  invitation: ["Terima kasih sudah mengajak. Saya menemani melalui percakapan ini saja, ya.", "Dengan senang hati saya menemani Anda berbincang di sini."],
+  banter: ["Terima kasih sudah mencairkan suasana. Senang dapat berbincang dengan Anda.", "Saya memahami candaannya. Senang dapat menemani percakapan Anda."],
+  off_topic: ["Mohon maaf, topik tersebut berada di luar bidang bantuan saya. Saya dapat membantu informasi seputar produk dan layanan Ofissio.", "Mohon maaf, saya belum dapat memastikan jawaban untuk topik tersebut. Jika ada kebutuhan terkait Ofissio, dengan senang hati saya membantu."],
+  serious: ["Baik, saya memahami. Silakan sampaikan hal yang ingin Anda tanyakan, saya akan menanggapinya dengan sungguh-sungguh.", "Tentu, saya siap membantu. Boleh dijelaskan lebih lanjut mengenai kebutuhan Anda?"],
   distress: [
     "Saya ikut prihatin Anda sedang mengalami hal yang berat. Apakah Anda sedang berada di tempat yang aman? Jika ada bahaya langsung, segera hubungi orang terdekat atau layanan darurat setempat.",
     "Keselamatan Anda lebih penting saat ini. Coba hubungi orang yang Anda percaya agar Anda tidak menghadapinya sendirian. Jika ada bahaya langsung, mintalah bantuan darurat setempat.",

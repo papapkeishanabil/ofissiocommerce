@@ -1,4 +1,8 @@
 "use client";
+import { SeoFields } from "@/features/seo/SeoFields";
+import { industryLabel } from "@/features/catalog-taxonomy/industry-labels";
+import { productAutomaticSeo, productSeoInputFromEditor } from "@/features/seo/product-automatic-seo";
+
 
 import { ColorSellingStatus } from "./ColorSellingStatus";
 import { sellingColorKey } from "../product-color-selling";
@@ -585,6 +589,9 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       className="space-y-5"
     >
       {message ? <StatusMessage {...message} /> : null}
+      <SeoFields value={form.seo} disabled={busy} onChange={seo => set("seo", seo)} automatic={productAutomaticSeo(productSeoInputFromEditor(form, initial, product?.seoInput,
+        { options: genericOptions, variants: genericVariants, colors: variantsEnabled ? visibleVariants : [] },
+        { options: product?.variantOptions ?? [], variants: product?.productVariants ?? [], colors: product?.colorVariantsEnabled ? product.colorVariants ?? [] : [] }))} />
 
       <FormSection icon={Shirt} title="Jenis Produk" description="Pilih cara produk dijual agar pengisian SKU sesuai dengan stok Anda.">
         <fieldset disabled={busy} className="space-y-3">
@@ -828,7 +835,7 @@ export function AdminProductForm({ mode, product, options, productImageMaxMb = 1
       <FormSection icon={Settings2} title="Katalog dan atribut" description="Kategori dan industri menentukan filter katalog serta rekomendasi Ofistant.">
         <div className="grid gap-5 xl:grid-cols-2">
           <CheckboxGroup label="Kategori" required options={options.categories.filter((item) => item.active).map((item) => ({ value: String(item.id), label: item.name }))} selected={form.categoryIds.map(String)} onChange={(values) => set("categoryIds", values.map(Number))} />
-          <CheckboxGroup label="Industri" required options={options.industries.filter((item) => item.active).map((item) => ({ value: item.slug, label: item.name }))} selected={form.industries} onChange={(values) => set("industries", values)} />
+          <CheckboxGroup label="Industri" required options={options.industries.filter((item) => item.active).map((item) => ({ value: item.slug, label: industryLabel(item.slug,item.name) }))} selected={form.industries} onChange={(values) => set("industries", values)} />
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {!(form.productKind === "variable" && genericOptions.some(o => isColorOption(o.name))) && <MasterMultiSelectField
@@ -1127,6 +1134,7 @@ function initialForm(product?: AdminWooCommerceProductDetail, routeMoqDefaults?:
   return {
     productKind: product ? product.productKind : "simple",
     modelCode: product?.modelCode || product?.sku || "",
+    seo: product?.seo,
     name: product?.name ?? "",
     slug: product?.slug ?? "",
     sku: product?.sku ?? "",

@@ -4,6 +4,7 @@ import { IndustryInspirationPage } from "@/components/industry-inspiration/Indus
 import { findInspirationPage } from "@/features/site-content/industry-inspiration.routes";
 import { resolveInspirationPage } from "@/features/site-content/industry-inspiration.content";
 import { getPublicSiteContent } from "@/features/site-content/site-content.service";
+import { industryPageMetadata } from "@/features/seo/industry-metadata";
 
 export const dynamic = "force-dynamic";
 type Props = {
@@ -16,8 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!page) notFound();
   const content = await getPublicSiteContent();
   const data = resolveInspirationPage(page, content.industri);
-  return { title: `Inspirasi Seragam ${page.label}`, description: data.lede,
-    alternates: { canonical: `https://ofissio.com/inspirasi/${page.slug}` } };
+  return industryPageMetadata(data);
 }
 
 export default async function InspirationPage({ params, searchParams }: Props) {

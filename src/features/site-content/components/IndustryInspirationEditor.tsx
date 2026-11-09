@@ -1,4 +1,7 @@
 "use client";
+import { SeoFields } from "@/features/seo/SeoFields";
+import { industryAutomaticSeo } from "@/features/seo/industry-metadata";
+
 
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -284,6 +287,7 @@ export function IndustryInspirationEditor({
 
   return (
     <Field label={label} hint={help}>
+      <SeoFields value={value.seo} automatic={industryAutomaticSeo(value)} onChange={seo => patchValue({ seo })} />
       <InspirationPhotoFrameEditor value={value} onChange={patchValue} />
       <div className="overflow-hidden rounded-2xl border border-line bg-slate-50/70">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-3 sm:px-5">

@@ -71,3 +71,38 @@
 
 .mobileControls { display:none; }
 @media(max-width:800px) { .workspace:has(.hasSelection) .pageHeader { display:none; } .mobileControls { display:block; padding:8px 12px; border-bottom:1px solid var(--line); flex-shrink:0; } .mobileControls button { min-height:40px; padding:6px 9px; font-size:11px; } }
+
+.withContext {grid-template-columns:240px minmax(0,1fr) 460px}
+.contextPanel{min-height:0;min-width:0;overflow:hidden}.workspace .infoButton{display:none}
+@media(max-width:1500px){.withContext{grid-template-columns:260px minmax(0,1fr)}.contextPanel{display:none}.contextOpen{display:block;position:fixed;inset:0 0 0 auto;width:min(460px,100vw);z-index:80;box-shadow:-20px 0 80px #12216233}.workspace .infoButton{display:inline-flex}}
+@media(max-width:800px){.withContext{grid-template-columns:1fr}.contextOpen{width:100vw}.chatHeader{flex-wrap:wrap}}
+
+/* Compact Workspace: selected design 03. */
+.workspace h1{font-size:20px;letter-spacing:-.03em}
+.pageHeader{padding:10px 16px;margin-bottom:0;gap:12px;background:white;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0}
+.pageHeader>div:first-child{display:flex;align-items:center;gap:14px}.pageHeader p{margin:0;font-size:12px}
+.layout{border-radius:0 0 12px 12px;height:calc(100dvh - 192px);grid-template-columns:240px minmax(0,1fr)}
+.withContext{grid-template-columns:240px minmax(0,1fr) 460px}
+.queueHeading{padding:12px}.queueHeading h2{font-size:13px}.search{margin:10px 0}.filters{border-radius:8px}
+.workspace .queueItem{padding:14px 12px;gap:10px;align-items:flex-start}.queueItem .avatar{width:30px;height:30px;font-size:11px}.queueText{gap:4px}.queueText strong{font-size:13px}.queueText .unread{align-self:flex-start;background:#fff3d5;border-radius:5px;padding:2px 6px}
+.chatHeader{padding:12px 18px}.log{padding:20px;gap:18px;background:#f8f9fb}.bubble{padding:12px 14px;line-height:1.6}.staffMessage .bubble{background:#eef2fb;color:#122162;border-color:#d4deef}.aiMessage .bubble{background:white;border-color:#d4deef}.sender{font-size:11px;letter-spacing:.015em}.workspace .event{background:#eef2fb;border:1px solid #e3e9f4;border-radius:8px;padding:7px 12px}
+.composer{padding:12px 16px}.composer label{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}.composer textarea{min-height:74px}.composerFooter{margin-top:8px}
+@media(max-width:1500px){.withContext{grid-template-columns:240px minmax(0,1fr)}.pageHeader>div:first-child{display:block}.pageHeader p{margin-top:3px}}
+@media(max-width:800px){.layout,.withContext{grid-template-columns:1fr}.pageHeader{padding:12px}.pageHeader>div:first-child{display:block}.log{padding:16px}.composer{padding:12px}.composer textarea{font-size:16px}}
+
+/* Match the selected full-screen preview, including its pane proportions. */
+.workspace{position:relative;height:calc(100dvh - 160px);min-height:600px;background:#f8f9fb;display:flex;flex-direction:column;font-family:var(--font-admin),Onest,Arial,sans-serif;--chat-font:0.875rem}
+.pageHeader{flex-shrink:0;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:12px 24px;min-height:76px;flex-wrap:nowrap}.pageHeader>div:first-child{display:flex;align-items:center;gap:20px}.workspace h1{font-size:1.375rem;white-space:nowrap}.pageHeader p{border-left:1px solid var(--line);padding-left:24px;font-size:var(--chat-font);white-space:nowrap}.exitWorkspace{display:flex;align-items:center;justify-content:center;width:28px;min-height:44px;color:#526384}
+.layout{flex:1;min-height:0;height:auto;border:0;border-radius:0;grid-template-columns:19% minmax(0,1fr)}.withContext{grid-template-columns:19% minmax(0,1fr) 35.7%}
+.queueHeading{padding:18px}.search{margin:0 0 18px;padding:0 14px;border-radius:12px}.search input{height:54px;font-size:var(--chat-font)}.filters{padding:4px;background:#f8f9fb}.filters button{font-size:0.8125rem;min-height:46px}
+.workspace .queueItem{padding:18px;gap:12px}.queueItem .avatar{width:36px;height:36px;font-size:13px}.queueText{gap:8px}.queueText strong{font-size:var(--chat-font)}.queueText>span{font-size:14px}.queueText time{font-size:12px}.queueItem[aria-current=true]{box-shadow:inset 3px 0 #122162}.chatHeader{padding:18px 28px;min-height:94px}.chatHeader .avatar{width:56px;height:56px;font-size:20px}.identity h2{font-size:1.125rem}.identity p{font-size:16px}.chatHeader button{font-size:16px;min-height:52px;padding:12px 20px}
+.log{padding:28px;gap:28px}.date{text-transform:uppercase;font-size:12px;font-weight:650;letter-spacing:.04em}.message{max-width:86%;gap:10px}.sender{text-transform:uppercase;font-size:0.75rem;font-weight:700}.sender svg{box-sizing:content-box;padding:8px;border-radius:50%;background:#e7eaf0}.bubble{padding:20px;font-size:var(--chat-font);border-radius:0 24px 24px;box-shadow:0 2px 3px #12216208}.message time{font-size:12px}.customerMessage{align-self:flex-end;align-items:flex-end}.customerMessage .bubble{background:#122162;color:white;border-color:#122162;border-radius:24px 0 24px 24px}.staffMessage .bubble{border-radius:24px 0 24px 24px}.workspace .event{font-size:14px;padding:10px 18px}.composer{padding:20px 24px 24px}.composer label{font-size:14px;margin-bottom:14px}.composeBox{position:relative}.composer textarea{min-height:98px;padding:18px 18px 58px;font-size:var(--chat-font);resize:vertical;border-radius:16px}.composerFooter{position:absolute;bottom:4px;right:6px;margin:0;gap:18px}.composerFooter button{min-height:54px;padding:12px 22px;font-size:18px;border-radius:12px}.shortcut{font-size:12px;color:var(--muted);font-weight:700}.shortcut span{font-weight:400}.composerHint{margin-top:8px!important}.workspace .newMessages{bottom:190px}
+@media(max-width:1500px){.withContext{grid-template-columns:230px minmax(0,1fr)}.pageHeader>div:first-child{display:flex}.pageHeader p{margin:0}.chatHeader{padding:14px 20px}.chatHeader .avatar{width:44px;height:44px;font-size:16px}.identity p{font-size:13px}.log{padding:20px}.bubble{padding:16px}}
+@media(max-width:800px){.workspace .pageHeader{padding:10px 12px;flex-wrap:wrap}.pageHeader>div:first-child{gap:10px}.pageHeader p{display:none}.layout,.withContext{grid-template-columns:1fr}.chatHeader{padding:12px;min-height:74px}.chatHeader button{min-height:44px;padding:8px;font-size:12px}.identity h2{font-size:17px}.chatHeader .avatar{width:38px;height:38px}.log{padding:16px;gap:20px}.message{max-width:92%}.bubble{font-size:16px;padding:14px}.composer{padding:12px}.composer textarea{font-size:16px}.composerFooter button{min-height:44px;font-size:15px}.shortcut{display:none}}
+
+/* Keep the admin navigation visible around the chat workspace. */
+.workspace .pageHeader{flex-wrap:wrap;gap:12px}.exitWorkspace{display:none}.workspace{border:1px solid var(--line);border-radius:12px}.pageHeader{border-radius:12px 12px 0 0}.layout{border-radius:0 0 12px 12px}
+
+/* Typography stays consistent across desktop monitor sizes. */
+.workspace .identity p{font-size:.8125rem}.workspace .chatHeader button{font-size:.875rem}.workspace .composerFooter button{font-size:.875rem}.workspace .composer label{font-size:.75rem}.workspace .bubble{line-height:1.65;padding:14px 16px}.workspace .sender{font-size:.75rem}
+@media(max-width:800px){.workspace .composer textarea,.workspace .search input{font-size:16px}}

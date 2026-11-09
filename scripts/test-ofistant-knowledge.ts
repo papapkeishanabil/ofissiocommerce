@@ -93,10 +93,12 @@ async function apiTests() {
   let stored: OfistantKnowledgeArticle[] = [article];
   let modelCalls = 0;
   let providerFails = false;
+  let transientFailures = 0;
   globalThis.fetch = async (request, init) => {
     const url = new URL(typeof request === "string" ? request : request instanceof URL ? request.href : request.url);
     if (url.hostname === "generativelanguage.googleapis.com") {
       modelCalls++;
+      if (transientFailures > 0) { transientFailures--; return Response.json({ error: { message: "fixture transient outage" } }, { status: 503 }); }
       if (providerFails) return Response.json({ error: { message: "fixture unavailable" } }, { status: 503 });
       return Response.json({
         candidates: [{ content: { role: "model", parts: [{ text: JSON.stringify({ requests: [{ question: "fixture question", decision }] }) }] }, finishReason: "STOP" }],
@@ -112,10 +114,10 @@ async function apiTests() {
     }
     return Response.json([]);
   };
-  async function turn(message: string, history: KnowledgeInput["history"] = []) {
+  async function turn(message: string, history: KnowledgeInput["history"] = [], context: Record<string, unknown> = {}) {
     const response = await POST(new Request("http://localhost/api/ofistant/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, history, context: { selectedProductSlug: "existing-product", companyId: "forged" }, cart: { itemCount: 0, totalQty: 0, totalEstimatedPrice: 0 } }),
+      body: JSON.stringify({ message, history, context: { selectedProductSlug: "existing-product", companyId: "forged", ...context }, cart: { itemCount: 0, totalQty: 0, totalEstimatedPrice: 0 } }),
     }));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("Cache-Control"), "private, no-store");
@@ -157,8 +159,19 @@ async function apiTests() {
     assert.equal(injection.source, "knowledge-clarification");
     assert.equal(injection.result.action, undefined);
     assert.equal(modelCalls, callsBeforeInjection + 1, "unsupported requests must not reach free-form factual generation");
+    decision = selection;
+    transientFailures = 1;
+    const beforeRetry = modelCalls;
+    assert.equal((await turn(input.message)).source, "knowledge-base", "recover a transient provider failure");
+    assert.equal(modelCalls, beforeRetry + 2, "retry the failed request once");
     providerFails = true;
+    const beforeFailure = modelCalls;
     assert.equal((await turn(input.message)).source, "knowledge-unavailable");
+    assert.equal(modelCalls, beforeFailure + 2, "persistent failures must stop after one retry");
+    const beforeShippingFollowup = modelCalls;
+    const shippingReply = await turn("5 pcs, 40623", [], { pendingShippingRequest: {productId: null, quantity: null, postalCode: null, stage: "collecting"} });
+    assert.equal(shippingReply.source, "shipping-system");
+    assert.equal(modelCalls, beforeShippingFollowup, "pending shipping details must not go through general AI routing");
   } finally { globalThis.fetch = originalFetch; }
 }
 

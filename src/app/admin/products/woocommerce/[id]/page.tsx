@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { ADMIN_ROLE_PERMISSIONS } from "@/features/admin/admin.config";
 import { DeleteProductButton } from "@/features/products/components/DeleteProductButton";
 import { StockVariantEditor } from "@/features/products/components/StockVariantEditor";
+import { AdminProductWorkspace } from "@/features/products/components/AdminProductWorkspace";
 
 import {
   canRequestStockReplenishment,
@@ -73,14 +74,17 @@ export default async function AdminWooProductDetailPage({ params, searchParams }
             Produk berhasil dibuat, tetapi {uploadWarning === "image" ? "foto gagal diupload" : "GLB gagal diupload"}. Silakan retry dari halaman ini.
           </div>
         ) : null}
-        {stockMatrix ? (
+        <AdminProductWorkspace
+          key={product.id}
+          stockCount={stockMatrix?.rows.length}
+          stock={stockMatrix ? (
           <AdminProductStockPanel
             matrix={stockMatrix}
             canRequest={canRequestStockReplenishment(actor)}
           />
-        ) : null}
-        {ADMIN_ROLE_PERMISSIONS[actor.role].includes("admin:catalog:update") && <StockVariantEditor productId={product.id} />}
-        <AdminProductForm
+          ) : undefined}
+          mapping={ADMIN_ROLE_PERMISSIONS[actor.role].includes("admin:catalog:update") ? <StockVariantEditor productId={product.id} /> : undefined}
+          information={<AdminProductForm
           mode="edit"
           product={product}
           options={options}
@@ -88,6 +92,7 @@ export default async function AdminWooProductDetailPage({ params, searchParams }
           routeMoqDefaults={(await getMoqSettings()).settings}
           productImageMaxMb={getWordPressMediaRuntimeConfig().maxUploadMb}
           glbMaxMb={getStorageRuntimeConfig().maxUploadMb.glb}
+          />}
         />
       </div>
     );

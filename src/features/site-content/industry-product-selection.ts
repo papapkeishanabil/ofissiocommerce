@@ -31,6 +31,11 @@ const ROLE_CHOICES: Partial<Record<Industry, RoleChoice[]>> = {
 };
 
 const SELECTION_INTROS: Partial<Record<Industry, string>> = {
+  Bengkel: "Bandingkan kemeja bengkel dan baju bengkel untuk teknisi, mekanik, serta tim pelayanan. Pilih model berdasarkan ruang gerak, bahan, panjang lengan, dan kebutuhan saku yang tercantum pada detail produk. Sesuaikan kebutuhan perlindungan dengan aturan area kerja Anda.",
+  Corporate: "Bandingkan kemeja kerja untuk staf kantor, pelayanan, dan operasional perusahaan. Sesuaikan bahan, potongan, pilihan lengan, dan tabel ukuran setiap model dengan tugas tim serta identitas perusahaan.",
+  Konstruksi: "Bandingkan kemeja konstruksi dan seragam proyek untuk administrasi, pengawas, serta koordinasi lapangan. Periksa spesifikasi produk dan persyaratan lokasi kerja sebelum menentukan kebutuhan seragam safety atau perlindungan khusus.",
+  Manufaktur: "Bandingkan baju kerja untuk administrasi, produksi, dan koordinasi gudang. Pertimbangkan potongan, panjang lengan, serta ketentuan area produksi; pastikan spesifikasi setiap produk sesuai kebutuhan tugas tim.",
+  Pertambangan: "Bandingkan kemeja tambang dan pilihan seragam untuk tim pertambangan, dari kantor hingga koordinasi lapangan. Kebutuhan reflektor, perlindungan khusus, dan sertifikasi harus diperiksa pada spesifikasi produk serta ketentuan lokasi kerja.",
   Kesehatan: "Bandingkan contoh seragam untuk pelayanan dan administrasi apotek atau klinik. Pilih bahan, panjang lengan, dan warna sesuai kebutuhan setiap peran.",
   Bangunan: "Bedakan kebutuhan tim penjualan, kasir, administrasi, serta koordinasi gudang dan pengantaran. Mulai dari contoh berikut, lalu sesuaikan dengan aktivitas tim Anda.",
   Perhotelan: "Mulai dari kebutuhan resepsionis, administrasi, pelayanan tamu, dan koordinasi operasional hotel. Bandingkan bahan, panjang lengan, serta pilihan warna untuk menyatukan identitas tim Anda.",

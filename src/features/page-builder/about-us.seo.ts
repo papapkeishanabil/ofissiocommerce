@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/seo";
 import type { PageDocument } from "./page.schema";
+import { ofissioOrganization } from "@/features/seo/organization-schema";
 
 export const ABOUT_US_URL = `${SITE_URL}/tentang-kami`;
 export const ABOUT_US_TITLE = "Tentang Ofissio | Seragam Kerja Ready Stock & Bordir Logo";
@@ -32,7 +33,7 @@ export function aboutUsStructuredData(document: PageDocument) {
   return {
     "@context": "https://schema.org",
     "@graph": [
-      { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: "Ofissio", url: SITE_URL },
+      ofissioOrganization(),
       {
         "@type": "AboutPage", "@id": `${ABOUT_US_URL}#webpage`, url: ABOUT_US_URL,
         name: (metadata.title as { absolute: string }).absolute,

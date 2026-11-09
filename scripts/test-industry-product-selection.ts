@@ -37,6 +37,6 @@ assert.equal(hotel.filter((item) => item.product.gender === "women").length, 1, 
 assert.equal(retail.filter((item) => item.product.gender === "women").length, 1);
 assert.match(industrySelectionIntro("Perhotelan")!, /resepsionis/);
 assert.match(industrySelectionIntro("Retail")!, /stok toko/);
-assert.equal(industrySelectionIntro("Bengkel"), undefined);
+assert.match(industrySelectionIntro("Bengkel")!, /kemeja bengkel dan baju bengkel/);
 assert.ok(!selectIndustryExamples([snMono, km], "Perhotelan").some((item) => item.product.slug === frm.slug));
 console.log("PASS: role selection, live industry membership, draft exclusion, gender edits, model diversity, new products, mixed sleeves and unchanged other industries");

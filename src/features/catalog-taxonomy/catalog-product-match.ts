@@ -2,14 +2,27 @@ import type { OfissioProduct } from "@/features/products/product.types";
 import { normalizeIndustrySlug, slugifyTaxonomy } from "./catalog-taxonomy.defaults";
 import type { CatalogSearchNormalization, PublicCatalogTaxonomy } from "./catalog-taxonomy.types";
 import { resolveProductReferences } from "./catalog-product-reference";
+import { isGeneralShirtSearch } from "./catalog-search";
+
+function attributeKey(value: string) {
+  const slug = slugifyTaxonomy(value).replace(/^pa-/, "");
+  return ["lengan", "tipe-lengan", "panjang-lengan", "jenis-lengan", "sleeve", "sleeve-type"].includes(slug) ? "lengan" : slug;
+}
+function attributeTerm(attribute: string, value: string) {
+  const slug = slugifyTaxonomy(value);
+  if (attribute !== "lengan") return slug;
+  if (["long", "long-sleeve", "lengan-panjang", "panjang"].includes(slug)) return "panjang";
+  if (["short", "short-sleeve", "lengan-pendek", "pendek"].includes(slug)) return "pendek";
+  return slug;
+}
 
 export function matchCatalogProducts(products: OfissioProduct[], query: string, normalization: CatalogSearchNormalization, publicTaxonomy: PublicCatalogTaxonomy) {
   const activeCategorySlugs = new Set(
     publicTaxonomy.categories.map((category) => category.slug),
   );
   const matchesAttributes = (product: OfissioProduct) => normalization.attributeHints.every((hint) =>
-    (product.attributes ?? []).some((attribute) => attribute.slug === hint.attributeSlug &&
-      attribute.options.some((option) => slugifyTaxonomy(option) === hint.termSlug)));
+    (product.attributes ?? []).some((attribute) => attributeKey(attribute.slug) === attributeKey(hint.attributeSlug) &&
+      attribute.options.some((option) => attributeTerm(attributeKey(hint.attributeSlug), option) === attributeTerm(attributeKey(hint.attributeSlug), hint.termSlug))));
 
   const filtered = products.filter((product) => {
     const haystack = [
@@ -23,7 +36,9 @@ export function matchCatalogProducts(products: OfissioProduct[], query: string, 
       .toLowerCase();
     // Aliases are ordered by specificity. Match the same primary category as
     // Ofistant navigation instead of requiring overlapping broad categories.
-    const matchesCategory = normalization.categorySlugs.slice(0, 1).every((slug) => {
+    const matchesCategory = isGeneralShirtSearch(normalization)
+      ? /(?:^|-)kemeja(?:-|$)/.test(slugifyTaxonomy([product.name, product.category, ...(product.categorySlugs ?? [])].join(" ")))
+      : normalization.categorySlugs.slice(0, 1).every((slug) => {
       if (activeCategorySlugs.has(slug)) {
         return (
           product.categorySlugs?.includes(slug) ||
@@ -41,21 +56,10 @@ export function matchCatalogProducts(products: OfissioProduct[], query: string, 
             (industry) => normalizeIndustrySlug(industry) === slug,
           ),
       );
-    const matchesAttributes =
-      normalization.attributeHints.length === 0 ||
-      normalization.attributeHints.every((hint) =>
-        (product.attributes ?? []).some(
-          (attribute) =>
-            attribute.slug === hint.attributeSlug &&
-            attribute.options.some(
-              (option) => slugifyTaxonomy(option) === hint.termSlug,
-            ),
-        ),
-      );
     const matchesTerms = normalization.searchTerms.every((term) =>
       haystack.includes(term),
     );
-    return matchesCategory && matchesIndustry && matchesAttributes && matchesTerms;
+    return matchesCategory && matchesIndustry && matchesAttributes(product) && matchesTerms;
   });
 
   // Guarantee: a product whose name the query cites verbatim (exact match, or
@@ -67,7 +71,7 @@ export function matchCatalogProducts(products: OfissioProduct[], query: string, 
   // only specific (>=8 chars, >=2 tokens) names, so short names like "Kemeja"
   // never over-match unrelated queries.
   const queryLower = query.trim().toLowerCase();
-  const nameMatched = products.filter((product) => {
+  const nameMatched = products.filter(matchesAttributes).filter((product) => {
     const name = product.name.trim().toLowerCase();
     if (name.length < 8) return false;
     if (name.split(/\s+/).filter(Boolean).length < 2) return false;

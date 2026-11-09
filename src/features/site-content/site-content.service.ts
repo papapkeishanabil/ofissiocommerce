@@ -100,6 +100,11 @@ function assemblePublicSiteContent(rows: Record<string, unknown>): PublicSiteCon
   for (const entry of SECTION_REGISTRY) {
     assembled[entry.key] = resolveEffectiveData(entry.key, rows[entry.key]);
   }
+  // This object is also sent to client components. Targets stay admin-only.
+  const publicContent = assembled as unknown as PublicSiteContent;
+  for (const page of [publicContent.industri.inspiration, ...(publicContent.industri.inspirationPages ?? [])]) {
+    if (page.seo) page.seo = { ...page.seo, primaryKeyword: "", relatedKeywords: [] };
+  }
   return assembled as unknown as PublicSiteContent;
 }
 

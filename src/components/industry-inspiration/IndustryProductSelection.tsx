@@ -6,7 +6,10 @@ import { formatIDR } from "@/types/product";
 import type { Industry } from "@/types/industry";
 import { INSPIRATION_ROUTES } from "@/features/site-content/industry-inspiration.routes";
 import { productCardDescription } from "@/lib/product-card-description";
+import { industrySearchHeading } from "@/features/site-content/industry-search-heading";
 import { hasIndustryRoleSelection, industryExampleDetails, industrySelectionIntro, selectIndustryExamples } from "@/features/site-content/industry-product-selection";
+import { industryCollectionSchema } from "@/features/seo/industry-collection-schema";
+import { serializeJsonLd } from "@/lib/seo";
 
 function productImage(product: OfissioProduct) {
   if (product.mainImage) return product.mainImage;
@@ -23,18 +26,21 @@ export function IndustryProductSelection({ products, industry = "Bengkel", secti
   const visibleProducts = selectIndustryExamples(products.filter((product) => productImage(product)), industry);
   const label = INSPIRATION_ROUTES[industry].label;
   const catalogHref = `/catalog?industri=${encodeURIComponent(industry)}`;
+  const intro = industrySelectionIntro(industry) ?? `Mulai dari kebutuhan tim Anda, lalu bandingkan model dalam pilihan ${label}. Lihat detail setiap produk untuk memastikan bahan, ukuran, dan ketentuan pemesanannya.`;
+  const structuredData = industryCollectionSchema(industry, visibleProducts.map(({ product }) => product), intro);
 
   return (
     <section id={sectionId} className="scroll-mt-20 bg-[#f8f4ec] px-5 py-16 sm:px-8 lg:px-12 lg:py-24">
+      {structuredData ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} /> : null}
       <div className="mx-auto max-w-[1440px]">
         <div className="mx-auto max-w-3xl text-center">
           <Compass className="mx-auto h-10 w-10 text-ochre-600" strokeWidth={1.45} aria-hidden="true" />
           <p className="mt-5 text-xs font-extrabold uppercase tracking-[0.18em] text-ochre-700">Dari inspirasi ke pilihan produk</p>
           <h2 className="mt-4 text-4xl font-extrabold leading-[1.02] tracking-[-0.04em] text-brand-950 sm:text-5xl lg:text-6xl">
-            Temukan seragam untuk ritme kerja tim Anda.
+            {industrySearchHeading(industry, visibleProducts.map(({ product }) => product))}
           </h2>
           <p className="mx-auto mt-5 max-w-[58ch] text-base leading-relaxed text-ink-muted sm:text-lg">
-            {industrySelectionIntro(industry) ?? `Mulai dari kebutuhan tim Anda, lalu bandingkan model dalam pilihan ${label}. Lihat detail setiap produk untuk memastikan bahan, ukuran, dan ketentuan pemesanannya.`}
+            {intro}
           </p>
           {roleSelection ? <p className="mx-auto mt-3 max-w-[65ch] text-sm leading-relaxed text-ink-muted">Contoh di bawah membantu Anda mulai membandingkan. Temukan model dan seri warna lainnya melalui seluruh produk {label}.</p> : null}
         </div>

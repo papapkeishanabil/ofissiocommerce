@@ -13,7 +13,7 @@ import { linkedProductVariant, linkedVariantSelection, linkedVariantSizes } from
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { formatIDR } from "@/types/product";
 import type { OfissioProduct } from "@/features/products/product.types";
@@ -87,6 +87,7 @@ const Uniform3DConfigurator = dynamic(
 );
 
 interface ProductDetailProps {
+  taxonomyContent?: ReactNode;
   sleeveSizeCharts?: SleeveSizeCharts;
   initialVariantSku?: string;
   pricingUnavailable?: boolean;
@@ -100,7 +101,7 @@ interface ProductDetailProps {
 
 
 
-export function ProductDetail({ product, initialVariantSku, globalEmbroideryPricing, moqSettings, sizeChartStandardName, sleeveSizeCharts, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
+export function ProductDetail({ product, initialVariantSku, globalEmbroideryPricing, moqSettings, sizeChartStandardName, sleeveSizeCharts, taxonomyContent, pricingUnavailable = false, purchasingUnavailable = false }: ProductDetailProps) {
   const router = useRouter();
   const generic = product.productKind === "variable";
   const linkedSelection = linkedVariantSelection(product, initialVariantSku);
@@ -471,6 +472,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
               ))}
             </dl>
           </section>
+          {taxonomyContent}
         </div>
 
         {/* Keep expanding order forms in the normal flow so their top stays in place. */}

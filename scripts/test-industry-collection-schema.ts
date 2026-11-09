@@ -1,0 +1,17 @@
+import assert from "node:assert/strict";
+import { industryCollectionSchema } from "../src/features/seo/industry-collection-schema";
+import { serializeJsonLd } from "../src/lib/seo";
+import type { OfissioProduct } from "../src/features/products/product.types";
+const fixture = (slug: string, changes = {}) => ({ slug, name: slug, source: "woocommerce", status: "published", ...changes }) as OfissioProduct;
+const shown = fixture("kt-001");
+const schema = industryCollectionSchema("Bengkel", [shown, shown, fixture("draft", { status: "draft" }), fixture("mock", { source: "mock" })], "Pengantar yang tampil.")!;
+assert.equal(schema.mainEntity.numberOfItems, 1);
+assert.equal(schema.mainEntity.itemListElement[0]?.url, "https://ofissio.com/product/kt-001");
+assert.equal(schema.url, "https://ofissio.com/inspirasi/bengkel-teknisi");
+assert.equal(schema.description, "Pengantar yang tampil.");
+assert.equal(industryCollectionSchema("Konstruksi", [], "Kosong"), null);
+const unsafe = industryCollectionSchema("Pertambangan", [fixture("published", { name: "</script><script>alert(1)</script>" })], "A & B")!;
+assert.ok(!serializeJsonLd(unsafe).includes("</script>"));
+assert.deepEqual(JSON.parse(serializeJsonLd(unsafe)), unsafe);
+assert.ok(!("offers" in schema) && !("aggregateRating" in schema), "Collection must not invent offers or reviews");
+console.log("PASS: displayed cards only, published native records, duplicate exclusion, canonical industry URL, empty collections and safe serialization");
