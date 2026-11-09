@@ -16,6 +16,7 @@ import { EmbroideryLogoThumbnail } from "@/components/configurator/EmbroideryLog
 interface Props {
   product: OfissioProduct;
   pricing: EmbroideryPricing;
+  embroideryMoq: number;
   sizes: Record<string, number>;
   value: EmbroideryPlacement[];
   onChange: (placements: EmbroideryPlacement[]) => void;
@@ -29,7 +30,7 @@ function draftFor(placement?: EmbroideryPlacement): Draft {
   return {kind: placement?.textBordir ? "text" : "logo", logo: placement && !placement.textBordir ? {fileId: placement.logoFileId, fileName: placement.logoFileName, previewUrl: placement.logoPreviewUrl} : undefined, text: placement?.textBordir, sizing: placement?.sizingMode === "ofissio" || !placement ? "ofissio" : "customer", width: String(placement?.widthCm ?? ""), height: String(placement?.heightCm ?? ""), notes: placement?.notes ?? ""};
 }
 
-export function EmbroideryOptions({product, pricing, sizes, value, onChange, onPendingChange, initialOpen = false}: Props) {
+export function EmbroideryOptions({product, pricing, embroideryMoq, sizes, value, onChange, onPendingChange, initialOpen = false}: Props) {
   const id = useId();
   const [open, setOpen] = useState(initialOpen || value.length > 0);
   const [zone, setZone] = useState<EmbroideryZone | null>(null);
@@ -93,7 +94,14 @@ export function EmbroideryOptions({product, pricing, sizes, value, onChange, onP
   }
 
   return <section ref={panelRef} className={styles.panel} aria-label="Pilihan bordir produk">
-    <button type="button" className={styles.toggle} aria-expanded={open} aria-controls={`${id}-body`} onClick={() => {setOpen(previous => !previous);if(!open)reveal("panel");}}><Scissors size={18} aria-hidden="true"/><span>Tambahkan bordir <small>{value.length ? `${value.length} posisi tersimpan` : "Opsional"}</small></span></button>
+    <button type="button" className={styles.toggle} aria-expanded={open} aria-controls={`${id}-body`} aria-describedby={`${id}-minimum`} onClick={() => {setOpen(previous => !previous);if(!open)reveal("panel");}}>
+      <Scissors size={18} aria-hidden="true"/>
+      <span className={styles.toggleCopy}>
+        <span>Tambahkan bordir <small>{value.length ? `${value.length} posisi tersimpan` : "Opsional"}</small></span>
+        <span className={styles.minimum}>Min. {embroideryMoq} pcs</span>
+      </span>
+    </button>
+    <p id={`${id}-minimum`} className={styles.minimumNote}>Untuk model dan warna yang sama. Ukuran boleh berbeda.</p>
     <div id={`${id}-body`} className={styles.body} hidden={!open}>
       <p>Pilih posisi, lalu unggah logo atau isi tulisan untuk setiap posisi. File dapat berbeda atau digunakan kembali.</p>
       <div className={styles.positions} aria-label="Pilih posisi bordir">

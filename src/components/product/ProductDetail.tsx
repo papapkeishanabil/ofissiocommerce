@@ -613,7 +613,7 @@ export function ProductDetail({ product, initialVariantSku, globalEmbroideryPric
 
             {/* Customization: 3D configurator for supported products,
                 plain-text notes for the rest. */}
-            {!has3DSupport && <EmbroideryOptions key={`${product.id}-${editingLineId ?? "new"}-${openEmbroidery}`} product={product} pricing={globalEmbroideryPricing} sizes={sizes} value={embroideryPlacements} onChange={placements => {setUniform3DConfig(null);setEmbroideryPlacements(placements);}} onPendingChange={setEmbroideryPending} initialOpen={openEmbroidery}/>}
+            {!has3DSupport && <EmbroideryOptions key={`${product.id}-${editingLineId ?? "new"}-${openEmbroidery}`} product={product} pricing={globalEmbroideryPricing} embroideryMoq={embroideryMoq} sizes={sizes} value={embroideryPlacements} onChange={placements => {setUniform3DConfig(null);setEmbroideryPlacements(placements);}} onPendingChange={setEmbroideryPending} initialOpen={openEmbroidery}/>}
             {has3DSupport ? (
               <div className="mt-3 space-y-3">
                 <button
