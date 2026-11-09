@@ -116,7 +116,7 @@ export const quotationRequestBodySchema = z
     productionBrief: productionBriefSchema
       .nullable()
       .optional(),
-    customerNotes: z.string().trim().max(500).nullable().optional(),
+    customerNotes: z.string().trim().max(1000).nullable().optional(),
     shippingDestination: z.string().trim().max(240).nullable().optional(),
     picName: z.string().trim().min(1).max(120).nullable().optional(),
     picEmail: emailAddressSchema.nullable().optional(),

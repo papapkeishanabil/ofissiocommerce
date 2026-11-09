@@ -17,6 +17,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { useUIStore } from "@/stores/ui-store";
 import { formatIDR } from "@/types/product";
 import { hasCartCustomization, type CartLineItem } from "@/types/cart";
+import { cartEmbroideryPlacements, needsEmbroideryOrderConfirmation } from "@/features/products/embroidery-order-review";
 import type { Address } from "@/types/account";
 import type { ShippingRate } from "@/features/shipping/shipping.types";
 import { resolveOrderProcessingInfo } from "@/features/products/order-processing";
@@ -90,9 +91,7 @@ export function CheckoutPage() {
   const hasMadeToOrder = items.some(
     (item) => item.fulfillmentType === "MADE_TO_ORDER",
   );
-  const requiresEmbroideryConsultation = items.some(
-    hasCartCustomization,
-  );
+  const requiresEmbroideryConsultation = needsEmbroideryOrderConfirmation(items);
 
   // Step 1: require auth. If not authed, open modal once on mount.
   useEffect(() => {
@@ -200,7 +199,7 @@ export function CheckoutPage() {
       selectedOptions: item.selectedOptions,
           sizeMatrix: item.sizes,
           customization: item.customization,
-          embroideryPlacements: item.embroideryPlacements ?? [],
+            embroideryPlacements: cartEmbroideryPlacements(item),
         })),
       }),
     });
@@ -448,7 +447,7 @@ export function CheckoutPage() {
           <PromotionBox lines={toPromotionLines(items)} subtotal={clientSubtotal} />
           <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3"><span className="text-sm font-bold">Total pesanan</span><div className="text-right"><strong className="text-xl tabular-nums">{formatIDR(total)}</strong><p className="text-xs text-ink-muted">{selectedShippingRate?"Termasuk pengiriman":"Menunggu pengiriman"}</p></div></div>
           {checkoutMessage && <p role="alert" className="mt-3 text-xs text-amber-800">{checkoutMessage}</p>}
-          {requiresEmbroideryConsultation && <p className="mt-2 text-xs text-ink-muted">Biaya dan jadwal bordir perlu dikonfirmasi sebelum pembayaran.</p>}
+          {requiresEmbroideryConsultation && <p className="mt-2 text-xs text-ink-muted">Detail atau biaya bordir memerlukan konfirmasi Ofissio sebelum pembayaran.</p>}
           <button className="mt-3 text-xs font-semibold underline" onClick={handleRequestQuote}>Request Quotation</button>
         </section>
       </div>}
@@ -457,7 +456,7 @@ export function CheckoutPage() {
         if (requiresEmbroideryConsultation) { handleRequestQuote(); return; }
         if (!selectedShippingRate) { void handleCheckShipping(); return; }
         handlePayment();
-      }}>{companyNeedsSave?"Simpan profil perusahaan dahulu":submitting?"Memproses...":shippingLoading?"Menghitung ongkir...":!selectedAddress||addressDirty?"Simpan penerima":requiresEmbroideryConsultation?"Minta Estimasi Bordir":!selectedShippingRate?"Pilih pengiriman":"Lanjut Pembayaran"}</Button></div></>}
+      }}>{companyNeedsSave?"Simpan profil perusahaan dahulu":submitting?"Memproses...":shippingLoading?"Menghitung ongkir...":!selectedAddress||addressDirty?"Simpan penerima":requiresEmbroideryConsultation?"Tinjau Pesanan Bordir":!selectedShippingRate?"Pilih pengiriman":"Lanjut Pembayaran"}</Button></div></>}
     >
       <section className="mb-4 rounded-lg border border-line bg-surface p-4 sm:p-6" aria-labelledby="checkout-customer-heading">
         <h2 id="checkout-customer-heading" className="text-base font-bold">Informasi customer</h2>

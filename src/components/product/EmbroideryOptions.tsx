@@ -96,12 +96,9 @@ export function EmbroideryOptions({product, pricing, embroideryMoq, sizes, value
   return <section ref={panelRef} className={styles.panel} aria-label="Pilihan bordir produk">
     <button type="button" className={styles.toggle} aria-expanded={open} aria-controls={`${id}-body`} aria-describedby={`${id}-minimum`} onClick={() => {setOpen(previous => !previous);if(!open)reveal("panel");}}>
       <Scissors size={18} aria-hidden="true"/>
-      <span className={styles.toggleCopy}>
-        <span>Tambahkan bordir <small>{value.length ? `${value.length} posisi tersimpan` : "Opsional"}</small></span>
-        <span className={styles.minimum}>Min. {embroideryMoq} pcs</span>
-      </span>
+      <span>Tambahkan bordir <small>{value.length ? `${value.length} posisi tersimpan` : "Opsional"}</small></span>
     </button>
-    <p id={`${id}-minimum`} className={styles.minimumNote}>Untuk model dan warna yang sama. Ukuran boleh berbeda.</p>
+    <p id={`${id}-minimum`} className={styles.minimumNote}><strong>Minimal bordir {embroideryMoq} pcs</strong> untuk model dan warna yang sama. Ukuran boleh berbeda.</p>
     <div id={`${id}-body`} className={styles.body} hidden={!open}>
       <p>Pilih posisi, lalu unggah logo atau isi tulisan untuk setiap posisi. File dapat berbeda atau digunakan kembali.</p>
       <div className={styles.positions} aria-label="Pilih posisi bordir">

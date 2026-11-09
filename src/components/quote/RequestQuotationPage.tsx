@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useCartHydrated, useCartItems } from "@/hooks/use-cart";
@@ -9,8 +10,10 @@ import { useCartStore } from "@/stores/cart-store";
 import { useUIStore } from "@/stores/ui-store";
 import type { QuotationRequestRecord } from "@/features/quotation/quotation.types";
 import type { AuthSession } from "@/types/account";
-import { formatIDR } from "@/types/product";
 import { hasCartCustomization } from "@/types/cart";
+import { cartEmbroideryPlacements, needsEmbroideryOrderConfirmation } from "@/features/products/embroidery-order-review";
+import { CartSummary } from "@/components/cart/CartSummary";
+import { QuotationReviewItem } from "./QuotationReviewItem";
 import {
   ArrowLeft,
   CalendarDays,
@@ -25,7 +28,6 @@ import {
 
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
-import { ProductThumb } from "@/components/ui/ProductThumb";
 import type {
   ProductionRequestBrief,
   QuotationRequirementType,
@@ -40,6 +42,7 @@ const EMPTY_PRODUCTION_BRIEF: ProductionRequestBrief = {
 };
 
 export function RequestQuotationPage() {
+  const router = useRouter();
   const { session, hydrated: authHydrated, isAuthenticated } = useAuth();
   const cartHydrated = useCartHydrated();
   const items = useCartItems();
@@ -56,14 +59,12 @@ export function RequestQuotationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
-  const subtotal = useMemo(
-    () => items.reduce((a, it) => a + (it.finalEstimatedTotal ?? it.estimatedPrice), 0),
-    [items],
-  );
   const cartHasCustomization = useMemo(
     () => items.some(hasCartCustomization),
     [items],
   );
+  const needsConfirmation = needsEmbroideryOrderConfirmation(items);
+  const resolvedRequirementType = cartHasCustomization ? "standard_customization" : requirementType;
 
   useEffect(() => {
     if (cartHasCustomization && requirementType === "standard_product") {
@@ -126,7 +127,7 @@ export function RequestQuotationPage() {
   async function handleSubmit() {
     if (!session || submitting) return;
     if (
-      requirementType === "custom_production" &&
+      resolvedRequirementType === "custom_production" &&
       productionBrief.designDescription.trim().length < 10
     ) {
       setSubmitMessage(
@@ -150,14 +151,14 @@ export function RequestQuotationPage() {
             selectedColor: item.color,
             sizeMatrix: item.sizes,
             selectedSleeve: item.selectedSleeve,
-      selectedOptions: item.selectedOptions,
+            selectedOptions: item.selectedOptions,
             customization: item.customization,
-            embroideryPlacements: item.embroideryPlacements ?? [],
+            embroideryPlacements: cartEmbroideryPlacements(item),
           })),
           customerNotes: notes.trim() || null,
-          requirementType,
+          requirementType: resolvedRequirementType,
           productionBrief:
-            requirementType === "custom_production"
+            resolvedRequirementType === "custom_production"
               ? cleanProductionBrief(productionBrief)
               : null,
           picName: session.company.picName || session.user.fullName,
@@ -180,7 +181,7 @@ export function RequestQuotationPage() {
         JSON.stringify(notification),
       );
       clearCart();
-      window.location.assign(`/quotes/${result.quotation.id}?new=1`);
+      router.push(`/quotes/${result.quotation.id}?new=1`);
     } catch (error) {
       setSubmitMessage(
         error instanceof Error
@@ -193,32 +194,32 @@ export function RequestQuotationPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 lg:px-8 lg:py-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
       <section className="animate-fade-in-up relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 px-6 py-6 shadow-glow-brand lg:px-8">
         <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-ochre-500/20 blur-3xl" />
         <div className="relative">
           <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-white lg:text-[1.75rem]">
             {cartHasCustomization
-              ? "Ajukan jadwal pengerjaan & penawaran bordir"
+              ? "Tinjau Pesanan Bordir"
               : "Ajukan quotation dari keranjang"}
           </h1>
           <p className="mt-1.5 max-w-2xl text-sm text-brand-100">
             {cartHasCustomization
-              ? "Admin Ofissio akan meninjau logo dan quantity, berkonsultasi dengan supervisor bordir, lalu mengirim estimasi tanggal selesai, jadwal pengiriman, dan konfirmasi biaya."
+              ? "Periksa jumlah per ukuran, logo, posisi, dan catatan bordir Anda. Tim Ofissio akan mengatur jadwal pengerjaan dan menginformasikannya kepada Anda."
               : "Tim Ofissio akan meninjau kebutuhan Anda dan mengirim penawaran harga resmi. Tentukan apakah kebutuhan Anda berupa produk standar atau produksi khusus."}
           </p>
         </div>
       </section>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
         <div className="space-y-4">
-          <RequirementTypeSelector
+          {!cartHasCustomization && <RequirementTypeSelector
             value={requirementType}
             cartHasCustomization={cartHasCustomization}
             onChange={setRequirementType}
-          />
+          />}
 
-          {requirementType === "custom_production" ? (
+          {resolvedRequirementType === "custom_production" ? (
             <ProductionBriefFields
               value={productionBrief}
               onChange={setProductionBrief}
@@ -227,52 +228,10 @@ export function RequestQuotationPage() {
 
           <section className="animate-fade-in-up rounded-2xl border border-line bg-surface p-5 shadow-soft-sm">
             <SectionTitle>Item yang diajukan</SectionTitle>
-            <ul className="mt-3 divide-y divide-line">
-              {items.map((it) => (
-                <li
-                  key={it.id}
-                  className="flex items-start justify-between gap-4 py-4 transition-colors hover:bg-surface-muted/40"
-                >
-                  <div className="flex min-w-0 items-start gap-4">
-                    <ProductThumb
-                      src={it.image}
-                      alt={it.productName}
-                      className="h-16 w-16 sm:h-20 sm:w-20"
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-ink">
-                        {it.productName}
-                      </p>
-                      <p className="mt-1 text-[11px] text-ink-muted">
-                        {it.color}, {it.totalQty} pcs
-                        {it.customization ? `, ${it.customization}` : ""}
-                      </p>
-                      {(it.embroideryLines?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Bordir {formatIDR(it.embroideryTotal)}, {it.embroideryLines.map((line) => line.label.replace("Bordir ", "")).join(", ")}</p> : null}
-                      {(it.missingEmbroideryPricingZones?.length ?? 0) > 0 ? <p className="mt-1 text-[10px] font-semibold text-amber-800">Harga bordir perlu dikonfirmasi admin.</p> : null}
-                    </div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-sm font-extrabold text-ink">
-                      {formatIDR(it.finalEstimatedTotal ?? it.estimatedPrice)}
-                    </p>
-                    {it.quantityTierApplied && it.quantityTierLabel ? (
-                      <p className="text-[10px] font-semibold text-brand-700">Tier harga: {it.quantityTierLabel}</p>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
+            <ul className="mt-4 min-w-0 divide-y divide-line">
+              {items.map(item => <QuotationReviewItem key={item.id} item={item} />)}
             </ul>
-            <div className="mt-3 flex items-end justify-between border-t border-line pt-3">
-              <span className="text-[11px] text-ink-muted">Estimasi subtotal</span>
-              <div className="text-right leading-none">
-                <p className="text-lg font-extrabold tracking-tight text-ink-strong">
-                  {formatIDR(subtotal)}
-                </p>
-                <p className="mt-1 text-[11px] text-ink-muted">
-                  Harga final ditentukan tim Ofissio.
-                </p>
-              </div>
-            </div>
+            <p className="mt-4 border-t border-line pt-3 text-xs leading-5 text-ink-muted">Rincian promo, estimasi pajak, dan total pesanan ditampilkan pada Ringkasan Pesanan.</p>
           </section>
 
           <section className="animate-fade-in-up rounded-2xl border border-line bg-surface p-5 shadow-soft-sm">
@@ -287,7 +246,7 @@ export function RequestQuotationPage() {
                 rows={4}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                maxLength={500}
+                maxLength={1000}
                 placeholder="Contoh: alamat proyek, PIC tambahan, atau instruksi komunikasi."
                 className="mt-2 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink shadow-soft-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
@@ -295,48 +254,27 @@ export function RequestQuotationPage() {
           </section>
         </div>
 
-        <aside className="lg:sticky lg:top-20 lg:self-start">
-          <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-soft-sm">
-            <div className="flex items-center gap-2.5 border-b border-line bg-gradient-to-r from-brand-50 to-transparent px-5 py-3.5">
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-700 text-white">
-                <FileText className="h-4 w-4" />
-              </span>
-              <h2 className="text-sm font-bold text-ink">Konfirmasi</h2>
-            </div>
-            <div className="p-5">
-              <p className="text-xs leading-relaxed text-ink-muted">
-                {cartHasCustomization
-                  ? "Setelah permintaan dikirim, Admin Ofissio akan meminta estimasi pengerjaan kepada supervisor bordir. Anda belum melakukan pembayaran pada tahap ini."
-                  : "Setelah dikirim, tim Ofissio akan meninjau permintaan dan mengirim penawaran resmi kepada Anda."}
-              </p>
-              <div className="mt-4 rounded-xl bg-surface-muted p-3 text-xs text-ink-muted">
-                <p className="font-bold text-ink">Rute yang diajukan</p>
-                <p className="mt-1">{requirementSummary(requirementType)}</p>
-              </div>
-              <Button
-                className="mt-4 w-full"
-                onClick={() => void handleSubmit()}
-                disabled={submitting}
-                aria-busy={submitting}
-              >
-                <Send className="h-4 w-4" />
-                {submitting
-                  ? "Mengirim permintaan..."
-                  : cartHasCustomization
-                    ? "Kirim Permintaan Jadwal & Penawaran"
-                    : "Kirim Request Quotation"}
-              </Button>
-              {submitMessage && (
-                <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-800">
-                  {submitMessage}
-                </p>
-              )}
-              <ButtonLink href="/cart" variant="ghost" className="mt-2 w-full">
-                <ArrowLeft className="h-4 w-4" />
-                Kembali ke keranjang
-              </ButtonLink>
-            </div>
-          </div>
+        <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start">
+          <CartSummary />
+          <section className="rounded-2xl border border-line bg-surface p-5 shadow-soft-sm" aria-labelledby="quote-next-step">
+            <h2 id="quote-next-step" className="text-base font-bold text-ink">Langkah berikutnya</h2>
+            <p className="mt-3 text-sm leading-6 text-ink-muted">
+              {cartHasCustomization
+                ? needsConfirmation
+                  ? "Detail atau biaya bordir masih perlu dikonfirmasi Ofissio. Tim kami akan mengirim rincian untuk Anda setujui sebelum pembayaran."
+                  : "Rincian bordir sudah lengkap. Lanjutkan ke checkout untuk memilih pengiriman. Harga dan stok akan diperiksa kembali; desain tetap diperiksa sebelum produksi."
+                : "Tim Ofissio akan meninjau permintaan dan mengirim penawaran resmi kepada Anda."}
+            </p>
+            {cartHasCustomization && !needsConfirmation ? <>
+              <Button className="mt-4 w-full" onClick={() => router.push("/checkout")}>Lanjut ke checkout</Button>
+              <Button className="mt-2 w-full" variant="outline" disabled={submitting} aria-busy={submitting} onClick={() => void handleSubmit()}>{submitting ? "Mengirim..." : "Minta penawaran resmi"}</Button>
+            </> : <Button className="mt-4 w-full" onClick={() => void handleSubmit()} disabled={submitting} aria-busy={submitting}>
+              <Send className="h-4 w-4" />
+              {submitting ? "Mengirim permintaan..." : cartHasCustomization ? "Kirim untuk konfirmasi" : "Kirim Request Quotation"}
+            </Button>}
+            {submitMessage && <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{submitMessage}</p>}
+            <ButtonLink href="/cart" variant="ghost" className="mt-2 w-full"><ArrowLeft className="h-4 w-4" />Kembali ke keranjang</ButtonLink>
+          </section>
         </aside>
       </div>
     </div>
@@ -583,17 +521,6 @@ function ProductionTextInput({
       />
     </div>
   );
-}
-
-function requirementSummary(type: QuotationRequirementType) {
-  switch (type) {
-    case "standard_product":
-      return "Ready Stock (STK): picking, packing, dan pengiriman produk standar.";
-    case "standard_customization":
-      return "Customization: produk standar diproses bordir/sablon/custom ringan sebelum QC dan packing.";
-    case "custom_production":
-      return "Production / SPK: review brief, approval desain, material, cutting, sewing, finishing, dan QC.";
-  }
 }
 
 function cleanProductionBrief(

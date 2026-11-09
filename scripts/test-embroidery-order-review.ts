@@ -1,0 +1,26 @@
+import assert from "node:assert/strict";
+import { cartEmbroideryPlacements, needsEmbroideryOrderConfirmation } from "../src/features/products/embroidery-order-review";
+import { requiresEmbroideryConfirmation } from "../src/features/products/embroidery-confirmation";
+import { quotationRequestBodySchema } from "../src/features/quotation/quotation.validation";
+import type { EmbroideryPlacement } from "../src/types/uniform-3d";
+
+const manual: EmbroideryPlacement = { zone:"left_chest", logoFileId:"logo-1", logoFileName:"logo.png", sizingMode:"customer", widthCm:8, heightCm:5, rotation:0, technique:"embroidery", notes:"Jangan melewati saku." };
+const recommended: EmbroideryPlacement = { ...manual, sizingMode:"ofissio", widthCm:null, heightCm:null };
+assert.equal(needsEmbroideryOrderConfirmation([]),false);
+assert.equal(needsEmbroideryOrderConfirmation([{}]),false);
+assert.equal(needsEmbroideryOrderConfirmation([{embroideryPlacements:[manual],embroideryTotal:80000}]),false,"No 3D alone does not require commercial quotation");
+assert.equal(requiresEmbroideryConfirmation([{embroideryPlacements:[manual],model3dId:""}]),true,"Artwork approval remains required before production");
+assert.equal(needsEmbroideryOrderConfirmation([{embroideryPlacements:[recommended]}]),true);
+assert.equal(needsEmbroideryOrderConfirmation([{embroideryPlacements:[manual],missingEmbroideryPricingZones:["left_chest"]}]),true);
+assert.equal(needsEmbroideryOrderConfirmation([{embroideryPlacements:[manual],transactionMode:"REQUEST_QUOTATION"}]),true);
+assert.equal(needsEmbroideryOrderConfirmation([{customization:"Instruksi tanpa spesifikasi bordir"}]),true);
+assert.equal(needsEmbroideryOrderConfirmation([{selectedEmbroideryZones:["left_chest"]}]),true);
+const legacy={uniform3DConfig:{placements:[manual]}};
+assert.deepEqual(cartEmbroideryPlacements(legacy),[manual]);
+assert.equal(needsEmbroideryOrderConfirmation([legacy]),false);
+assert.deepEqual(cartEmbroideryPlacements({...legacy,embroideryPlacements:[]}),[],"Explicit removal takes priority over old config");
+assert.equal(needsEmbroideryOrderConfirmation([{embroideryPlacements:[manual]},{embroideryPlacements:[recommended]}]),true);
+const payload={items:[{productId:"fixture",selectedColor:"Khaki",sizeMatrix:{XS:0,S:4,M:4,L:0,XL:0,"2XL":0,"3XL":0,"4XL":0,"5XL":0},embroideryPlacements:[recommended]}],requirementType:"standard_customization",customerNotes:"a".repeat(1000)};
+assert(quotationRequestBodySchema.safeParse(payload).success);
+assert(!quotationRequestBodySchema.safeParse({...payload,customerNotes:"a".repeat(1001)}).success);
+console.log("PASS: review routing for standard/manual/recommended/unknown price/mixed/legacy carts; production approval unchanged; 1000-character note boundary.");

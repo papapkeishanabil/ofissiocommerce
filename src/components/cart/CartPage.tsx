@@ -83,7 +83,7 @@ export function CartPage() {
       </div><aside className={styles.orderSummary} aria-label="Ringkasan dan promo"><CartSummary showActions /></aside></div>
       <footer className={styles.checkoutBar}>
         <div><p className="text-xl font-bold tabular-nums">{formatIDR(Math.round(estimatedTotal))} <span className="text-xs">/ {totalQty} pcs</span></p><p className="text-[11px] text-ink-muted">{items.length} produk di keranjang, termasuk estimasi PPN</p></div>
-        <div className="flex flex-wrap gap-2"><ButtonLink href="/catalog" variant="outline">Lanjutkan Belanja</ButtonLink><Button onClick={continueOrder}>{items.some(hasCartCustomization)?"Ajukan Penawaran Bordir":"Lanjut ke Checkout"}<ArrowRight className="h-4 w-4" /></Button></div>
+        <div className="flex flex-wrap gap-2"><ButtonLink href="/catalog" variant="outline">Lanjutkan Belanja</ButtonLink><Button onClick={continueOrder}>{items.some(hasCartCustomization)?"Tinjau Pesanan Bordir":"Lanjut ke Checkout"}<ArrowRight className="h-4 w-4" /></Button></div>
       </footer>
       </>}
     </div></AccountLayout>

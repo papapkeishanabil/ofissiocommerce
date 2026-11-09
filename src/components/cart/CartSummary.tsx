@@ -106,7 +106,7 @@ export function CartSummary({ showActions = false }: CartSummaryProps) {
         {showActions && (
           <div className="mt-4 space-y-2">
             <Button className="w-full" onClick={handleCheckout}>
-              {requiresEmbroideryConsultation ? "Ajukan Jadwal & Penawaran Bordir" : "Lanjut ke Checkout"}
+              {requiresEmbroideryConsultation ? "Tinjau Pesanan Bordir" : "Lanjut ke Checkout"}
               <ArrowRight className="h-4 w-4" />
             </Button>
             {!requiresEmbroideryConsultation ? (
@@ -117,7 +117,7 @@ export function CartSummary({ showActions = false }: CartSummaryProps) {
             ) : null}
             {requiresEmbroideryConsultation ? (
               <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-[11px] leading-4 text-amber-800">
-                Tim Ofissio akan mengonfirmasi biaya bordir, tanggal selesai, dan perkiraan barang tiba sebelum pembayaran.
+                Periksa logo, posisi, ukuran, dan biaya bordir sebelum melanjutkan pesanan.
               </p>
             ) : null}
             <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-ink-muted">
@@ -125,7 +125,7 @@ export function CartSummary({ showActions = false }: CartSummaryProps) {
               {requiresEmbroideryConsultation
                 ? isAuthenticated
                   ? "Akun customer terverifikasi. Permintaan siap diajukan."
-                  : "Permintaan jadwal dan penawaran memerlukan akun customer."
+                  : "Masuk untuk meninjau dan melanjutkan pesanan bordir."
                 : "Checkout & quotation butuh login. Anda akan diminta masuk bila belum."}
             </p>
           </div>
