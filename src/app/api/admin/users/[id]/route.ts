@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireInternalAdmin } from "@/features/admin/admin.service";
-import { updateManagedInternalUser } from "@/features/admin-users/admin-user.service";
+import { deleteManagedInternalUser, updateManagedInternalUser } from "@/features/admin-users/admin-user.service";
 import {
   internalUserIdSchema,
   updateInternalUserSchema,
+  deleteInternalUserSchema,
 } from "@/features/admin-users/admin-user.validation";
 import { logAuditEvent } from "@/lib/security/audit-log";
 import { createRateLimitKey, rateLimitOrThrow } from "@/lib/security/rate-limit";
@@ -19,11 +20,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     rateLimitOrThrow({ key: createRateLimitKey(request, "admin.users.update"), limit: 20, windowMs: 60_000 });
     const actor = requireInternalAdmin(request, "admin:user:update");
     const { id } = validateInput(internalUserIdSchema, await context.params);
-    if (id === actor.id) {
-      return NextResponse.json({ ok: false, message: "Status akun yang sedang digunakan tidak dapat diubah sendiri." }, { status: 409 });
-    }
     const payload = validateInput(updateInternalUserSchema, await request.json());
-    const user = await updateManagedInternalUser({ id, ...payload });
+    const user = await updateManagedInternalUser({ id, actorId: actor.id, ...payload });
     logAuditEvent({
       request,
       actorId: actor.id,
@@ -31,10 +29,24 @@ export async function PATCH(request: Request, context: RouteContext) {
       action: "internal_user_updated",
       entityType: "internal_user",
       entityId: user.id,
-      metadata: { role: user.role, status: user.status },
+      metadata: { role: user.role, status: user.status, nameChanged: payload.name !== undefined },
     });
     return NextResponse.json({ ok: true, user });
   } catch (error) {
     return safeErrorResponse(error, "User Ofissio belum dapat diperbarui.", 403);
+  }
+}
+
+export async function DELETE(request: Request, context: RouteContext) {
+  try {
+    rateLimitOrThrow({ key: createRateLimitKey(request, "admin.users.delete"), limit: 10, windowMs: 60_000 });
+    const actor = requireInternalAdmin(request, "admin:user:update");
+    const { id } = validateInput(internalUserIdSchema, await context.params);
+    const payload = validateInput(deleteInternalUserSchema, await request.json());
+    const user = await deleteManagedInternalUser({ id, actorId: actor.id, ...payload });
+    logAuditEvent({ request, actorId: actor.id, actorType: "internal", action: "internal_user_deleted", entityType: "internal_user", entityId: user.id, metadata: { role: user.role } });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return safeErrorResponse(error, "User Ofissio belum dapat dihapus.", 403);
   }
 }

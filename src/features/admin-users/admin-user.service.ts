@@ -11,6 +11,7 @@ import type {
   ManagedInternalRole,
   ManagedInternalUser,
 } from "./admin-user.types";
+import { MANAGED_ROLE_OPTIONS } from "./admin-user.types";
 
 type ProfileRow = Record<string, unknown>;
 
@@ -69,6 +70,8 @@ export async function createManagedInternalUser(input: {
 
 export async function updateManagedInternalUser(input: {
   id: string;
+  actorId: string;
+  name?: string;
   role?: ManagedInternalRole;
   status?: Exclude<InternalUserStatus, "invited">;
 }) {
@@ -78,14 +81,80 @@ export async function updateManagedInternalUser(input: {
     limit: 1,
   });
   if (!current[0]) throw createApiError("NOT_FOUND", "User internal tidak ditemukan.", 404);
-  if (String(current[0].role) === "super_admin") {
-    throw createApiError("FORBIDDEN", "Role super admin tidak dapat diubah dari menu ini.", 403);
+  if (input.role || input.status) {
+    assertManagedTarget(current[0]);
+    assertNotSelf(current[0], input.actorId);
   }
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (input.name !== undefined) patch.name = input.name.trim();
   if (input.role) patch.role = input.role;
   if (input.status) patch.status = input.status;
   const rows = await client.update<ProfileRow>("internal_user_profiles", patch, { id: input.id });
-  return mapProfile(rows[0] ?? { ...current[0], ...patch });
+  if (!rows[0]) throw createApiError("NOT_FOUND", "User internal tidak ditemukan.", 404);
+  return mapProfile(rows[0]);
+}
+
+export async function changeManagedInternalUserPassword(input: { id: string; actorId: string; password: string }) {
+  const profile = await getManagedProfile(input.id);
+  if (profile.role === "super_admin" && !isSelf(profile, input.actorId)) {
+    throw createApiError("FORBIDDEN", "Password Super Admin hanya dapat diubah oleh pemilik akun tersebut.", 403);
+  }
+  const response = await supabaseAuthAdminFetch(`/users/${encodeURIComponent(String(profile.auth_user_id))}`, {
+    method: "PUT", body: JSON.stringify({ password: input.password }),
+  });
+  if (!response.ok) throw createApiError("PROVIDER_ERROR", "Password belum berhasil diperbarui. Coba kembali.", 502);
+}
+
+export async function deleteManagedInternalUser(input: { id: string; actorId: string; confirmEmail: string }) {
+  const client = requireClient();
+  const profile = await getManagedProfile(input.id);
+  assertManagedTarget(profile);
+  assertNotSelf(profile, input.actorId);
+  if (String(profile.email).toLowerCase() !== input.confirmEmail.trim().toLowerCase()) {
+    throw createApiError("BAD_REQUEST", "Email konfirmasi tidak sesuai dengan user yang dipilih.", 400);
+  }
+  const authId = String(profile.auth_user_id);
+  // A login that also belongs to a customer must not be removed from this screen.
+  const [customers, memberships] = await Promise.all([
+    client.select("user_profiles", { filters: { auth_user_id: authId }, limit: 1 }),
+    client.select("company_memberships", { filters: { auth_user_id: authId }, limit: 1 }),
+  ]);
+  if (customers.length || memberships.length) {
+    throw createApiError("FORBIDDEN", "Akun ini juga terhubung dengan customer. Gunakan Nonaktifkan untuk mencabut akses internal.", 409);
+  }
+  const filters = { id: input.id, auth_user_id: authId, role: String(profile.role) };
+  const rows = await client.update("internal_user_profiles", { status: "inactive", updated_at: new Date().toISOString() }, filters);
+  if (!rows.length) throw createApiError("BAD_REQUEST", "Data user berubah. Muat ulang daftar sebelum menghapus.", 409);
+  // Retain the auth identity for historical references; do not cascade-delete business records.
+  const response = await supabaseAuthAdminFetch(`/users/${encodeURIComponent(authId)}`, {
+    method: "DELETE", body: JSON.stringify({ should_soft_delete: true }),
+  });
+  if (!response.ok && response.status !== 404) {
+    throw createApiError("PROVIDER_ERROR", "Akses internal sudah dinonaktifkan, tetapi akun login belum berhasil dihapus. Coba hapus kembali.", 502);
+  }
+  const removed = await client.delete("internal_user_profiles", { ...filters, status: "inactive" });
+  if (!removed.length) throw createApiError("BAD_REQUEST", "Akun login sudah dihapus, tetapi data profil berubah. Muat ulang daftar dan coba hapus kembali.", 409);
+  return mapProfile(profile);
+}
+
+async function getManagedProfile(id: string) {
+  const rows = await requireClient().select<ProfileRow>("internal_user_profiles", { filters: { id }, limit: 1 });
+  if (!rows[0]) throw createApiError("NOT_FOUND", "User internal tidak ditemukan.", 404);
+  return rows[0];
+}
+
+function isSelf(profile: ProfileRow, actorId: string) {
+  return profile.id === actorId || profile.auth_user_id === actorId;
+}
+
+function assertNotSelf(profile: ProfileRow, actorId: string) {
+  if (isSelf(profile, actorId)) throw createApiError("FORBIDDEN", "Akun yang sedang digunakan tidak dapat dihapus, dinonaktifkan, atau diubah perannya sendiri.", 409);
+}
+
+function assertManagedTarget(profile: ProfileRow) {
+  if (!MANAGED_ROLE_OPTIONS.some(option => option.value === profile.role)) {
+    throw createApiError("FORBIDDEN", "Akun sistem dan Super Admin tidak dapat dihapus atau diubah peran/statusnya dari menu ini.", 403);
+  }
 }
 
 function requireClient() {
@@ -112,7 +181,8 @@ async function createSupabaseAuthUser(input: { email: string; password: string; 
 }
 
 async function deleteSupabaseAuthUser(authUserId: string) {
-  await supabaseAuthAdminFetch(`/users/${encodeURIComponent(authUserId)}`, { method: "DELETE" });
+  const response = await supabaseAuthAdminFetch(`/users/${encodeURIComponent(authUserId)}`, { method: "DELETE" });
+  if (!response.ok) throw createApiError("PROVIDER_ERROR", "Pembersihan akun login gagal.", 502);
 }
 
 function supabaseAuthAdminFetch(path: string, init: RequestInit) {
