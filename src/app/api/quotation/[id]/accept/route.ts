@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { acceptQuotationByCustomer } from "@/features/quotation/quotation.service";
+import { acceptQuotationAndContinue } from "@/features/quotation/quotation.service";
 import { quotationCustomerActionBodySchema } from "@/features/quotation/quotation.validation";
 import { sanitizeQuotationForCustomer } from "@/features/quotation/quotation.utils";
 import { requireAuth } from "@/lib/security/auth-guard";
@@ -31,7 +31,7 @@ export async function POST(request: Request, context: RouteContext) {
     const session = requireAuth(request);
     requireRole(session, "quotation:create");
     requireCompanyAccess(session, session.companyId, request, "quotation", id);
-    const quotation = await acceptQuotationByCustomer({
+    const result = await acceptQuotationAndContinue({
       id,
       companyId: session.companyId,
       userId: session.userId,
@@ -40,7 +40,9 @@ export async function POST(request: Request, context: RouteContext) {
     });
     return NextResponse.json({
       ok: true,
-      quotation: sanitizeQuotationForCustomer(quotation),
+      quotation: sanitizeQuotationForCustomer(result.quotation),
+      orderId: result.orderId,
+      continuationPending: result.continuationPending,
     });
   } catch (error) {
     return safeErrorResponse(error, "Quotation belum bisa disetujui.", 400);

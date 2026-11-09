@@ -242,10 +242,12 @@ export function AdminQuotationStatusActions({
   quotation,
   defaultTaxRate,
   showProcessControl = true,
+  notesOnly = false,
 }: {
   quotation: QuotationRequestRecord;
   defaultTaxRate: number;
   showProcessControl?: boolean;
+  notesOnly?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -464,7 +466,7 @@ export function AdminQuotationStatusActions({
         </div>
       ) : null}
 
-      {canEditPricing ? (
+      {canEditPricing && !notesOnly ? (
         <form
           id="quotation-pricing"
           action={updatePricing}

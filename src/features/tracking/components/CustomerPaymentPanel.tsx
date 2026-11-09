@@ -102,9 +102,10 @@ export function CustomerPaymentPanel({
         ok?: boolean;
         paymentUrl?: string | null;
         error?: string;
+        message?: string;
       };
       if (!response.ok || !result.ok) {
-        throw new Error(result.error || "Tagihan pelunasan belum dapat dibuat.");
+        throw new Error(result.message || result.error || "Tautan pembayaran belum dapat dibuat. Silakan coba kembali.");
       }
       if (result.paymentUrl) window.location.assign(result.paymentUrl);
       else window.location.reload();
@@ -173,6 +174,12 @@ export function CustomerPaymentPanel({
         <p className="mt-3 text-sm font-semibold text-amber-800">
           Tautan pembayaran telah melewati masa berlaku. Hubungi tim Ofissio untuk memeriksa status pembayaran sebelum meminta tautan baru.
         </p>
+      ) : null}
+      {payment && !payment.paymentUrl && !linkExpired && ["pending", "waiting_payment"].includes(payment.status) ? (
+        <button type="button" onClick={createBalancePayment} disabled={creatingBalance} aria-busy={creatingBalance} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-900 px-4 py-3 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60">
+          {creatingBalance ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true"/> : null}
+          {creatingBalance ? "Menyiapkan pembayaran…" : "Lanjut ke pembayaran"}
+        </button>
       ) : null}
       {payment?.paymentUrl && !linkExpired && ["pending", "waiting_payment"].includes(payment.status) ? (
         <a

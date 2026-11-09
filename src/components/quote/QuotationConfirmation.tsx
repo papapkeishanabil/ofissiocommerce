@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Download, FileText, MessageCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -44,6 +44,7 @@ export function QuotationConfirmation({
   events = [],
 }: QuotationConfirmationProps) {
   const sp = useSearchParams();
+  const router = useRouter();
   const isNew = sp.get("new") === "1";
   const { session } = useAuth();
   const [quotation, setQuotation] = useState(initialQuotation);
@@ -110,7 +111,7 @@ export function QuotationConfirmation({
     : formatCustomerRequestNumber(quotation.quotationNumber, quotation.requestedProcessRoute);
   const requestTitle =
     quotation.requirementType === "standard_customization"
-      ? "Detail permintaan jadwal bordir"
+      ? "Pesanan bordir Anda"
       : quotation.requirementType === "custom_production"
         ? "Detail permintaan rencana produksi"
         : "Detail permintaan customer";
@@ -139,13 +140,19 @@ export function QuotationConfirmation({
           ok?: boolean;
           message?: string;
           quotation?: QuotationRequestRecord;
+          orderId?: string | null;
+          continuationPending?: boolean;
         };
         if (!response.ok || !result.ok || !result.quotation) {
           setActionMessage(result.message ?? "Action quotation belum berhasil.");
           return;
         }
         setQuotation(result.quotation);
-        setActionMessage(success);
+        if(action === "accept" && result.orderId) {
+          router.push(`/orders/${result.orderId}`);
+          return;
+        }
+        setActionMessage(result.continuationPending ? "Persetujuan Anda sudah tersimpan. Pesanan belum selesai disiapkan; klik ‘Lanjutkan pesanan’ untuk mencoba kembali. Anda tidak perlu mengisi ulang." : success);
       } catch {
         setActionMessage(
           "Koneksi terputus. Silakan coba kembali tanpa memuat ulang halaman.",
@@ -215,7 +222,7 @@ export function QuotationConfirmation({
             {isOfficialQuotation
               ? reviewCopy
               : quotation.requirementType === "standard_customization"
-                ? "Permintaan jadwal bordir sudah diterima Ofissio. Admin akan mengonfirmasi estimasi pengerjaan sebelum mengirim penawaran resmi."
+                ? "Pesanan Anda sedang ditinjau Ofissio. Kami akan mengirim rincian harga dan estimasi pengerjaan bersama untuk Anda periksa dan setujui. Anda tidak perlu mengisi ulang pesanan."
                 : quotation.requirementType === "custom_production"
                   ? "Permintaan produksi sudah diterima Ofissio. Tim akan meninjau spesifikasi, kapasitas, jadwal, dan termin pembayaran."
                   : "Permintaan Anda sudah diterima dan sedang ditinjau tim Ofissio."}
@@ -390,9 +397,9 @@ export function QuotationConfirmation({
           <Button
             type="button"
             disabled={!canAccept || isPending}
-            onClick={() => runCustomerAction("accept", "Quotation berhasil disetujui. Tim Ofissio akan menyiapkan convert ke order.")}
+            onClick={() => runCustomerAction("accept", "Penawaran sudah disetujui.")}
           >
-            Accept quotation
+            {quotation.requirementType === "standard_customization" ? "Setujui & lanjutkan" : "Setujui penawaran"}
           </Button>
           <Button
             type="button"
@@ -406,7 +413,7 @@ export function QuotationConfirmation({
               )
             }
           >
-            Reject
+            Tolak penawaran
           </Button>
           <Button
             type="button"
@@ -419,10 +426,11 @@ export function QuotationConfirmation({
               }
             }}
           >
-            Request revision
+            Minta perubahan
           </Button>
           </div>
         ) : null}
+        {quotation.requirementType === "standard_customization" && quotation.status === "accepted" && !quotation.convertedOrderId && <Button type="button" className="mt-4" disabled={isPending} onClick={() => runCustomerAction("accept","Penawaran sudah disetujui.")}>Lanjutkan pesanan</Button>}
         {quotation.convertedOrderId ? (
           <ButtonLink href={`/orders/${quotation.convertedOrderId}`} variant="secondary" className="mt-6">
             Lihat order
@@ -430,7 +438,7 @@ export function QuotationConfirmation({
         ) : null}
         {showDecisionControls && !canAccept && acceptDisabledReason ? (
           <p className="mt-3 text-sm font-semibold text-amber-800" role="status">
-            Accept quotation belum tersedia: {acceptDisabledReason}
+            Persetujuan belum tersedia: {acceptDisabledReason}
           </p>
         ) : null}
         {actionMessage ? (

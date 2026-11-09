@@ -1,3 +1,4 @@
+import { quotationEmbroideryLines } from "./quotation-embroidery-lines";
 import type { ValidatedCheckoutCartItem } from "@/features/checkout/checkout-cart.types";
 
 import type {
@@ -229,21 +230,15 @@ export function calculateQuotationPricing(
     const discountAmount = safeMoney(patch.discountAmount);
     const finalUnitPrice =
       patch.finalUnitPrice == null ? unitPrice : safeMoney(patch.finalUnitPrice);
-    const embroideryLines = patch.embroideryLines
-      ? item.embroideryLines.map((line) => {
-          const embroideryPatch = patch.embroideryLines?.find((candidate) => candidate.zoneId === line.zoneId);
-          if (!embroideryPatch) return line;
-          const embroideryUnitPrice = safeMoney(embroideryPatch.unitPrice);
-          const setupFee = safeMoney(embroideryPatch.setupFee);
-          return {
-            ...line,
-            unitPrice: embroideryUnitPrice,
-            setupFee,
-            setupFeeApplied: setupFee > 0,
-            subtotal: embroideryUnitPrice * item.totalQty + setupFee,
-          };
-        })
-      : item.embroideryLines;
+    const pricedZones = new Set(item.embroideryLines.map(line => line.zoneId));
+    const embroideryLines = quotationEmbroideryLines(item).flatMap(line => {
+      const override = patch.embroideryLines?.find(candidate => candidate.zoneId === line.zoneId);
+      if (!override && !pricedZones.has(line.zoneId)) return [];
+      if (!override) return [line];
+      const unitPrice = safeMoney(override.unitPrice);
+      const setupFee = safeMoney(override.setupFee);
+      return [{...line, quantity:item.totalQty, unitPrice, setupFee, setupFeeApplied:setupFee > 0, subtotal:unitPrice * item.totalQty + setupFee}];
+    });
     const embroideryTotal = embroideryLines.reduce((total, line) => total + line.subtotal, 0);
     const finalLineTotal = Math.max(
       0,
@@ -255,6 +250,7 @@ export function calculateQuotationPricing(
       lineSubtotal,
       discountAmount,
       finalUnitPrice,
+      missingEmbroideryPricingZones: (item.missingEmbroideryPricingZones ?? []).filter(zone => !embroideryLines.some(line => line.zoneId === zone)),
       embroideryLines,
       embroideryTotal,
       customizationTotal: embroideryTotal,
@@ -343,6 +339,7 @@ export function hasFinalQuotationPricing(quotation: QuotationRequestRecord) {
   return (
     quotation.items.length > 0 &&
     quotation.items.every((item) => {
+      if (item.missingEmbroideryPricingZones?.length) return false;
       const finalUnitPrice = Number(item.finalUnitPrice);
       const finalLineTotal = Number(item.finalLineTotal);
       return (

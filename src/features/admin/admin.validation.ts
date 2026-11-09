@@ -33,13 +33,7 @@ const optionalEmailSchema = z.preprocess(
   z.string().trim().email().max(160).nullable().optional(),
 );
 
-export const adminQuotationPatchSchema = z.union([
-  z.object({
-    action: z.literal("update_status"),
-    status: z.enum(ADMIN_QUOTATION_UPDATE_STATUSES),
-    internalNote: z.string().trim().max(500).optional(),
-  }),
-  z.object({
+export const adminQuotationPricingSchema = z.object({
     action: z.literal("update_pricing"),
     items: z
       .array(
@@ -66,7 +60,15 @@ export const adminQuotationPatchSchema = z.union([
     salesNotes: optionalTextSchema(1000),
     validUntil: optionalTextSchema(80),
     salesEmail: optionalEmailSchema,
+  });
+
+export const adminQuotationPatchSchema = z.union([
+  z.object({
+    action: z.literal("update_status"),
+    status: z.enum(ADMIN_QUOTATION_UPDATE_STATUSES),
+    internalNote: z.string().trim().max(500).optional(),
   }),
+  adminQuotationPricingSchema,
   z.object({
     action: z.literal("add_internal_note"),
     note: z.string().trim().min(1).max(1000),

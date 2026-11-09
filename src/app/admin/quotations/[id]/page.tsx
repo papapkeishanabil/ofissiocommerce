@@ -27,7 +27,7 @@ import {
 } from "@/features/admin/components/AdminQuotationStatusActions";
 import { AdminQuotationNotificationRead } from "@/features/admin-notifications/components/AdminQuotationNotificationRead";
 import { AdminWooSyncPanel } from "@/features/admin/components/AdminWooSyncPanel";
-import { AdminEmbroideryEstimateForm } from "@/features/admin/components/AdminEmbroideryEstimateForm";
+import { AdminEmbroideryWorkbench } from "@/features/admin/components/AdminEmbroideryWorkbench";
 import { AdminProductionPlanForm } from "@/features/admin/components/AdminProductionPlanForm";
 import { getAdminQuotationDetail } from "@/features/admin/admin.service";
 import { resolveAdminProductImages } from "@/features/admin/admin-product-images";
@@ -96,6 +96,7 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
   const briefIsPortal =
     quotation.productionBrief?.intakeChannel === "customer_portal";
   const briefEnriched = Boolean(quotation.productionBrief?.enrichedAt);
+  const isEmbroidery = quotation.requirementType === "standard_customization";
   const isOfficialQuotation = Boolean(
     ["quoted", "revision_requested", "accepted", "rejected", "expired", "converted_to_order", "cancelled"].includes(
         quotation.status,
@@ -112,60 +113,6 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {isOfficialQuotation ? "Kembali ke quotation" : "Kembali ke permintaan customer"}
       </Link>
-
-      {briefApprovalPending ? (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-soft-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="type-eyebrow text-amber-800">Tahap 1 dari 2, approval brief</p>
-              <h2 className="mt-1 text-lg font-black text-amber-950">
-                {briefApprovalStatus === "revision_requested"
-                  ? "Customer meminta revisi spesifikasi"
-                  : "Menunggu persetujuan customer"}
-              </h2>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-amber-800">
-                Brief ini belum menjadi quotation aktif. Kirim link approval kepada customer; pricing baru terbuka setelah brief disetujui.
-              </p>
-              {quotation.productionBrief?.approvalRevisionNote ? (
-                <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-sm font-semibold text-amber-950">
-                  Catatan customer: {quotation.productionBrief.approvalRevisionNote}
-                </p>
-              ) : null}
-            </div>
-            <AdminBriefApprovalLink briefId={quotation.id} />
-          </div>
-        </section>
-      ) : (
-        <AdminQuotationProgress status={quotation.status} requestMode={!isOfficialQuotation} />
-      )}
-
-      {quotation.source === "custom_request" &&
-      quotation.productionBrief &&
-      (!briefIsPortal || briefEnriched) ? (
-        <AdminBriefSignaturePanel quotation={quotation} />
-      ) : null}
-
-      {quotation.source === "custom_request" && briefIsPortal && !briefEnriched ? (
-        <AdminBriefEnrichmentStart quotationId={quotation.id} />
-      ) : null}
-
-      <AdminQuotationProcessControl quotation={quotation} />
-
-      {quotation.requirementType === "standard_customization" ? (
-        <AdminEmbroideryEstimateForm
-          quotationId={quotation.id}
-          initialEstimate={quotation.embroideryEstimate}
-          courierOptions={courierOptions}
-        />
-      ) : null}
-      {quotation.requirementType === "custom_production" ? (
-        <AdminProductionPlanForm
-          quotationId={quotation.id}
-          grandTotal={quotation.grandTotal ?? 0}
-          initialPlan={quotation.productionPlan}
-          courierOptions={courierOptions}
-        />
-      ) : null}
 
       {/* Page header */}
       <header className="overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-white to-slate-50/60 p-5 shadow-soft-sm">
@@ -189,22 +136,76 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
             </AdminBadge>
             <AdminProcessRouteBadge route={quotation.requestedProcessRoute} />
             <AdminBadge tone={adminStatusTone(quotation.status)}>{quotation.status}</AdminBadge>
-            {!briefIsPortal || briefEnriched ? (
+            {quotation.source === "custom_request" && (!briefIsPortal || briefEnriched) ? (
               <AdminBadge tone={briefApprovalStatus === "approved" ? "success" : "warning"}>
                 brief {briefApprovalStatusLabel(briefApprovalStatus)}
               </AdminBadge>
             ) : null}
-            <AdminBadge tone={adminStatusTone(quotation.emailStatus)}>{quotation.emailStatus}</AdminBadge>
+            {!isEmbroidery && <AdminBadge tone={adminStatusTone(quotation.emailStatus)}>{quotation.emailStatus}</AdminBadge>}
           </div>
         </div>
       </header>
 
-      <AdminQuotationStatusActions
+
+      {!isEmbroidery && (briefApprovalPending ? (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-soft-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="type-eyebrow text-amber-800">Tahap 1 dari 2, approval brief</p>
+              <h2 className="mt-1 text-lg font-black text-amber-950">
+                {briefApprovalStatus === "revision_requested"
+                  ? "Customer meminta revisi spesifikasi"
+                  : "Menunggu persetujuan customer"}
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-amber-800">
+                Brief ini belum menjadi quotation aktif. Kirim link approval kepada customer; pricing baru terbuka setelah brief disetujui.
+              </p>
+              {quotation.productionBrief?.approvalRevisionNote ? (
+                <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-sm font-semibold text-amber-950">
+                  Catatan customer: {quotation.productionBrief.approvalRevisionNote}
+                </p>
+              ) : null}
+            </div>
+            <AdminBriefApprovalLink briefId={quotation.id} />
+          </div>
+        </section>
+      ) : (
+        <AdminQuotationProgress status={quotation.status} requestMode={!isOfficialQuotation} />
+      ))}
+
+      {quotation.source === "custom_request" &&
+      quotation.productionBrief &&
+      (!briefIsPortal || briefEnriched) ? (
+        <AdminBriefSignaturePanel quotation={quotation} />
+      ) : null}
+
+      {quotation.source === "custom_request" && briefIsPortal && !briefEnriched ? (
+        <AdminBriefEnrichmentStart quotationId={quotation.id} />
+      ) : null}
+
+      {(!isEmbroidery || quotation.status === "accepted") && <AdminQuotationProcessControl quotation={quotation} />}
+
+      {isEmbroidery && <AdminEmbroideryWorkbench key={`${quotation.id}:${quotation.updatedAt}`} quotation={quotation} productImages={productImages} logoPreviews={logoPreviews} courierOptions={courierOptions} />}
+      {quotation.requirementType === "custom_production" ? (
+        <AdminProductionPlanForm
+          quotationId={quotation.id}
+          grandTotal={quotation.grandTotal ?? 0}
+          initialPlan={quotation.productionPlan}
+          courierOptions={courierOptions}
+        />
+      ) : null}
+
+
+      {!isEmbroidery && <AdminQuotationStatusActions
         quotation={quotation}
         defaultTaxRate={taxState.settings.rate}
         showProcessControl={false}
-      />
+      />}
 
+      <details className="rounded-xl border border-line bg-white p-4" open={!isEmbroidery}>
+        <summary className="min-h-11 cursor-pointer content-center text-sm font-bold text-ink">Dukungan & administrasi · PDF, riwayat, catatan, dan status pengiriman email</summary>
+        <div className="mt-4 space-y-5">
+      {isEmbroidery && <AdminQuotationStatusActions quotation={quotation} defaultTaxRate={taxState.settings.rate} showProcessControl={false} notesOnly />}
       <AdminSectionCard
         icon={FileText}
         eyebrow="Overview"
@@ -607,6 +608,8 @@ export default async function AdminQuotationDetailPage({ params }: PageProps) {
           </ol>
         )}
       </AdminSectionCard>
+        </div>
+      </details>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { repositoryRegistry } from "@/features/repositories/repository.factory";
 import { syncCheckoutCart } from "@/features/checkout/checkout-cart.service";
@@ -47,7 +47,9 @@ import type {
   ProductionPlan,
 } from "./quotation.types";
 import { BRIEF_APPROVAL_CONSENT_TEXT } from "./quotation.validation";
-import type { EmbroideryEstimatePayload } from "./embroidery-estimate.validation";
+import { embroideryEstimatePayloadSchema, type EmbroideryEstimatePayload } from "./embroidery-estimate.validation";
+import { quotationWorkbenchSchema } from "./quotation-workbench.validation";
+import { quotationEmbroideryLines } from "./quotation-embroidery-lines";
 import type { ProductionPlanPayload } from "./production-plan.validation";
 import { buildCustomProductionItem } from "./custom-quotation";
 import {
@@ -1389,6 +1391,49 @@ export async function addQuotationInternalNote(input: {
   return normalizeQuotationRecord(updated);
 }
 
+const workbenchOperations = new Map<string, Promise<unknown>>();
+
+export async function saveEmbroideryQuotationWorkbench(input: {
+  id: string;
+  payload: unknown;
+  actorId: string;
+  request?: Request;
+}) {
+  if (workbenchOperations.has(input.id)) throw createApiError("BAD_REQUEST", "Pesanan ini sedang disimpan. Tunggu sebentar sebelum mencoba kembali.",409);
+  const operation = saveEmbroideryWorkbenchUnlocked(input).finally(() => { workbenchOperations.delete(input.id); });
+  workbenchOperations.set(input.id,operation);
+  return operation;
+}
+
+async function saveEmbroideryWorkbenchUnlocked(input: {id:string;payload:unknown;actorId:string;request?:Request}) {
+  const payload=quotationWorkbenchSchema.parse(input.payload);
+  const current=await requireQuotation(input.id);
+  if(current.requirementType!=="standard_customization" || !isQuotationPricingEditable(current.status)) throw createApiError("BAD_REQUEST","Rincian pesanan ini sudah dikunci atau bukan pesanan bordir katalog.",400);
+  const ids=payload.pricing.items.map(item=>item.itemId);
+  if(new Set(ids).size!==ids.length || ids.length!==current.items.length || current.items.some(item=>!ids.includes(item.id))) throw createApiError("VALIDATION_ERROR","Daftar produk tidak sesuai pesanan. Muat ulang halaman.",400);
+  for(const item of payload.pricing.items) {
+    const original=current.items.find(candidate=>candidate.id===item.itemId)!;
+    const zones=quotationEmbroideryLines(original).map(line=>line.zoneId as string);
+    const overrides=item.embroideryLines??[];
+    if(new Set(overrides.map(line=>line.zoneId)).size!==overrides.length || overrides.some(line=>!zones.includes(line.zoneId))) throw createApiError("VALIDATION_ERROR","Posisi harga bordir tidak sesuai permintaan customer.",400);
+  }
+  const estimate=payload.estimate??current.embroideryEstimate??undefined;
+  if(payload.publish) {
+    if(!estimate) throw createApiError("VALIDATION_ERROR","Lengkapi estimasi pengerjaan sebelum mengirim ke customer.",400);
+    embroideryEstimatePayloadSchema.parse({...estimate,publishToCustomer:false});
+    const calculated=calculateQuotationPricing(current,payload.pricing);
+    const candidate={...current,...calculated};
+    if(!hasFinalQuotationPricing(candidate)) throw createApiError("VALIDATION_ERROR","Lengkapi harga produk dan seluruh posisi bordir sebelum mengirim.",400);
+    const finalized=finalizeQuotationForCustomer(candidate);
+    if(isQuotationExpired(finalized) || !calculated.validUntil) throw createApiError("VALIDATION_ERROR","Tentukan masa berlaku penawaran yang belum berakhir.",400);
+  }
+  await updateQuotationPricing({id:input.id,pricing:payload.pricing,actorId:input.actorId,request:input.request});
+  if(["draft","submitted","emailed"].includes(current.status)) await updateQuotationStatus({id:input.id,status:"under_review",actorId:input.actorId,actorType:"internal",note:"Harga dan kebutuhan bordir ditinjau melalui area kerja pesanan.",request:input.request});
+  if(payload.estimate) await updateEmbroideryConsultationEstimate({id:input.id,payload:{...payload.estimate,publishToCustomer:false},actorId:input.actorId,request:input.request});
+  if(payload.publish) return sendQuotationReadyToCustomer(input);
+  return {quotation:await requireQuotation(input.id)};
+}
+
 export async function sendQuotationReadyToCustomer(input: {
   id: string;
   actorId: string | null;
@@ -1404,11 +1449,11 @@ export async function sendQuotationReadyToCustomer(input: {
   }
   if (
     quotation.requirementType === "standard_customization" &&
-    quotation.embroideryEstimate?.status !== "sent_to_customer"
+    !["estimate_ready","sent_to_customer"].includes(quotation.embroideryEstimate?.status ?? "")
   ) {
     throw createApiError(
       "BAD_REQUEST",
-      "Quotation belum dapat dikirim karena estimasi supervisor bordir belum dipublikasikan.",
+      "Lengkapi estimasi pengerjaan bordir sebelum mengirim penawaran.",
       400,
     );
   }
@@ -1432,7 +1477,12 @@ export async function sendQuotationReadyToCustomer(input: {
   if (!hasFinalQuotationPricing(quotation)) {
     throw createApiError("BAD_REQUEST", "Penawaran final belum tersedia.", 400);
   }
-  const finalizedQuotation = finalizeQuotationForCustomer(quotation);
+  const finalizedQuotation = finalizeQuotationForCustomer({
+    ...quotation,
+    embroideryEstimate: quotation.requirementType === "standard_customization" && quotation.embroideryEstimate
+      ? {...quotation.embroideryEstimate,status:"sent_to_customer"}
+      : quotation.embroideryEstimate,
+  });
   if (isQuotationExpired(finalizedQuotation)) {
     throw createApiError(
       "BAD_REQUEST",
@@ -1492,6 +1542,7 @@ export async function sendQuotationReadyToCustomer(input: {
   const updated = await quotationRepository.update(quotation.id, {
     status: "quoted",
     validUntil: finalizedQuotation.validUntil,
+    embroideryEstimate: finalizedQuotation.embroideryEstimate,
     emailStatus,
     emailLogIds: nextEmailLogIds,
     emailResults: nextEmailResults,
@@ -1659,11 +1710,18 @@ export async function requestQuotationRevisionByCustomer(input: {
   return normalizeQuotationRecord(updated);
 }
 
-export async function convertQuotationToOrder(input: {
-  id: string;
-  actorId: string | null;
-  request?: Request;
-}) {
+type QuotationConversionInput = {id:string;actorId:string|null;actorType?:AuditActorType;request?:Request};
+const quotationConversions = new Map<string, ReturnType<typeof convertQuotationToOrderUnlocked>>();
+
+export async function convertQuotationToOrder(input: QuotationConversionInput) {
+  const pending=quotationConversions.get(input.id);
+  if(pending)return pending;
+  const operation=convertQuotationToOrderUnlocked(input).finally(()=>quotationConversions.delete(input.id));
+  quotationConversions.set(input.id,operation);
+  return operation;
+}
+
+async function convertQuotationToOrderUnlocked(input: QuotationConversionInput) {
   const quotation = await requireQuotation(input.id);
   if (quotation.convertedOrderId) {
     const existingOrder = await repositoryRegistry.orders.getOrderById({
@@ -1702,10 +1760,18 @@ export async function convertQuotationToOrder(input: {
     throw createApiError("BAD_REQUEST", "Harga final quotation belum lengkap.", 400);
   }
 
-  const now = new Date().toISOString();
-  const orderId = `ord_${randomUUID()}`;
-  const paymentId = `pay_${randomUUID()}`;
-  const referenceId = `OF-QUO-${quotation.quotationNumber.split("-").slice(-1)[0]}-${randomUUID().slice(0, 6).toUpperCase()}`;
+  const stableKey=quotation.requirementType === "standard_customization"
+    ? createHash("sha256").update(quotation.companyId+":"+quotation.id).digest("hex").slice(0,32)
+    : null;
+  const olderOrders=stableKey ? (await repositoryRegistry.orders.listOrdersByCompany(quotation.companyId)).filter(order=>order.quotationId===quotation.id) : [];
+  if(olderOrders.length>1)throw createApiError("BAD_REQUEST","Ada lebih dari satu referensi pesanan. Hubungi Ofissio untuk pemeriksaan.",409);
+  const orderId=olderOrders[0]?.id ?? (stableKey ? `ord_quotation_${stableKey}` : `ord_${randomUUID()}`);
+  const paymentId=stableKey ? `pay_quotation_${stableKey}` : `pay_${randomUUID()}`;
+  const existingOrder=stableKey ? await repositoryRegistry.orders.getOrderById({companyId:quotation.companyId,orderId}) : null;
+  if(existingOrder && existingOrder.quotationId!==quotation.id) throw createApiError("BAD_REQUEST","Referensi pesanan tidak sesuai penawaran.",409);
+  const existingPayment=existingOrder ? await repositoryRegistry.payments.getPaymentByOrderId?.({companyId:quotation.companyId,orderId}) : null;
+  const now=existingOrder?.createdAt??new Date().toISOString();
+  const referenceId=existingOrder?.orderNumber??(stableKey ? `OF-QUO-${stableKey.slice(0,12).toUpperCase()}` : `OF-QUO-${quotation.quotationNumber.split("-").slice(-1)[0]}-${randomUUID().slice(0,6).toUpperCase()}`);
   const orderItems = quotation.items.map((item) => ({
     ...item.itemSnapshot,
     priceFrom: item.finalUnitPrice ?? item.unitPrice ?? item.priceFrom,
@@ -1746,10 +1812,11 @@ export async function convertQuotationToOrder(input: {
           balanceStatus: "pending" as const,
         }
       : undefined;
-  const order: PaymentOrderRecord = {
+  const order: PaymentOrderRecord = existingOrder ?? {
     id: orderId,
     orderNumber: referenceId,
     cartId: `quote_${quotation.id}`,
+    orderNote: quotation.customerNotes ?? undefined,
     companyId: quotation.companyId,
     userId: quotation.userId,
     items: orderItems,
@@ -1787,7 +1854,7 @@ export async function convertQuotationToOrder(input: {
     createdAt: now,
     updatedAt: now,
   };
-  const payment: PaymentRecord = {
+  const payment: PaymentRecord = existingPayment ?? {
     id: paymentId,
     orderId,
     companyId: quotation.companyId,
@@ -1823,8 +1890,8 @@ export async function convertQuotationToOrder(input: {
     createdAt: now,
     updatedAt: now,
   };
-  await repositoryRegistry.orders.saveOrder?.({ paymentOrder: order });
-  await repositoryRegistry.payments.savePayment?.({ payment, order });
+  if(!existingOrder) await repositoryRegistry.orders.saveOrder?.({ paymentOrder: order });
+  if(!existingPayment) await repositoryRegistry.payments.savePayment?.({ payment, order });
   const tracking = mapPaymentOrderToTracking({
     order,
     paymentStatus: "waiting_payment",
@@ -1904,7 +1971,7 @@ export async function convertQuotationToOrder(input: {
     order,
     payment,
     actorId: input.actorId,
-    actorType: "internal",
+    actorType: input.actorType ?? "internal",
     request: input.request,
   });
   const updated = await quotationRepository.markConverted?.(quotation.id, orderId) ??
@@ -1936,7 +2003,7 @@ export async function convertQuotationToOrder(input: {
   await addQuotationEvent({
     quotation: updatedWithWoo ?? updated,
     actorId: input.actorId,
-    actorType: "internal",
+    actorType: input.actorType ?? "internal",
     eventType: "converted_to_order",
     oldStatus: quotation.status,
     newStatus: "converted_to_order",
@@ -1953,7 +2020,7 @@ export async function convertQuotationToOrder(input: {
   logAuditEvent({
     request: input.request,
     actorId: input.actorId,
-    actorType: "internal",
+    actorType: input.actorType ?? "internal",
     companyId: quotation.companyId,
     action: "quotation_converted_to_order",
     entityType: "quotation",
@@ -1972,6 +2039,31 @@ export async function convertQuotationToOrder(input: {
     tracking: preparedTracking,
     idempotent: false,
   };
+}
+
+/** Customer acceptance continues catalog embroidery directly into an order; retries reuse it. */
+type CustomerQuotationAcceptance = {id:string;companyId:string;userId:string;note?:string|null;request?:Request};
+const customerAcceptances = new Map<string, ReturnType<typeof acceptQuotationAndContinueUnlocked>>();
+export async function acceptQuotationAndContinue(input: CustomerQuotationAcceptance) {
+  const key=input.companyId+":"+input.id;
+  const pending=customerAcceptances.get(key);
+  if(pending)return pending;
+  const operation=acceptQuotationAndContinueUnlocked(input).finally(()=>customerAcceptances.delete(key));
+  customerAcceptances.set(key,operation);
+  return operation;
+}
+async function acceptQuotationAndContinueUnlocked(input: CustomerQuotationAcceptance) {
+  const current=await requireCompanyQuotation(input.id,input.companyId);
+  if(current.requirementType!=="standard_customization") return {quotation:await acceptQuotationByCustomer(input),orderId:null,continuationPending:false};
+  if(current.convertedOrderId) return {quotation:current,orderId:current.convertedOrderId,continuationPending:false};
+  const quotation=await acceptQuotationByCustomer(input);
+  try {
+    const converted=await convertQuotationToOrder({id:quotation.id,actorId:input.userId,actorType:"customer",request:input.request});
+    return {quotation:converted.quotation,orderId:converted.order?.id??null,continuationPending:!converted.order};
+  }catch(error){
+    logInternalError(error,{area:"customer_embroidery_order_continuation",quotationId:quotation.id});
+    return {quotation:await requireCompanyQuotation(quotation.id,input.companyId),orderId:null,continuationPending:true};
+  }
 }
 
 async function notifyConvertedOrderSafely(input: {

@@ -1,0 +1,62 @@
+import assert from "node:assert/strict";
+import { embroideryEstimateFixture, embroideryWorkbenchFixture, fixtureDate } from "../test-fixtures/product-variants/embroidery-workbench-data";
+import { sanitizeQuotationForCustomer } from "../src/features/quotation/quotation.utils";
+
+async function main(){
+  Object.assign(process.env,{DATABASE_PROVIDER:"mock",STORAGE_PROVIDER:"mock",EMAIL_PROVIDER:"mock",EMAIL_ENABLED:"true",PAYMENT_PROVIDER:"mock",WOOCOMMERCE_ENABLED:"false",WOOCOMMERCE_SYNC_ORDERS:"false",PRODUCT_SOURCE:"mock"});
+  globalThis.fetch=async()=>{throw new Error("Unexpected external request in workbench test");};
+  const {repositoryRegistry:repo}=await import("../src/features/repositories/repository.factory");
+  const service=await import("../src/features/quotation/quotation.service");
+  const quote=embroideryWorkbenchFixture();await repo.quotations.save(quote);
+  const input={id:quote.id,actorId:"fixture-admin",payload:{publish:true,estimate:embroideryEstimateFixture(),pricing:{action:"update_pricing",items:[{itemId:quote.items[0]!.id,unitPrice:85000,finalUnitPrice:85000,embroideryLines:[{zoneId:"left_chest",unitPrice:5000,setupFee:0},{zoneId:"right_chest",unitPrice:7000,setupFee:10000}]}],taxEnabled:true,taxRate:11,shippingEstimate:20000,validUntil:fixtureDate(7),salesNotes:"INTERNAL-ONLY",customerMessage:"Periksa posisi logo sebelum menyetujui."}}};
+  const invalid={...input,payload:{...input.payload,pricing:{...input.payload.pricing,items:[{...input.payload.pricing.items[0],embroideryLines:[]}]}}};
+  await assert.rejects(service.saveEmbroideryQuotationWorkbench(invalid),/Lengkapi harga/);
+  assert.equal((await repo.quotations.getById(quote.id))?.status,"submitted");
+  await assert.rejects(service.acceptQuotationAndContinue({id:quote.id,companyId:"wrong-tenant",userId:quote.userId}),/tidak ditemukan/);
+  const published=await service.saveEmbroideryQuotationWorkbench(input);
+  assert.equal(published.quotation.status,"quoted");
+  assert.equal(published.quotation.embroideryEstimate?.status,"sent_to_customer");
+  assert.deepEqual(published.quotation.items[0]?.missingEmbroideryPricingZones,[]);
+  assert.equal(published.quotation.items[0]?.embroideryTotal,106000);
+  assert.equal(published.quotation.grandTotal,892460);
+  assert.equal(sanitizeQuotationForCustomer(published.quotation).salesNotes,null);
+  assert.deepEqual(published.quotation.items[0]?.embroideryPlacements,quote.items[0]?.embroideryPlacements);
+  await assert.rejects(service.saveEmbroideryQuotationWorkbench(input),/dikunci/);
+  const customer={id:quote.id,companyId:quote.companyId,userId:quote.userId};
+  const accepted=await Promise.all([service.acceptQuotationAndContinue(customer),service.acceptQuotationAndContinue(customer)]);
+  assert(accepted[0]!.orderId);assert.equal(accepted[0]!.orderId,accepted[1]!.orderId);
+  const retry=await service.acceptQuotationAndContinue(customer);assert.equal(retry.orderId,accepted[0]!.orderId);
+  const orders=(await repo.orders.listOrdersByCompany(quote.companyId)).filter(order=>order.quotationId===quote.id);
+  assert.equal(orders.length,1);assert.equal(orders[0]?.status,"waiting_payment");
+  assert.deepEqual(orders[0]?.items[0]?.embroideryPlacements,quote.items[0]?.embroideryPlacements);
+  assert.equal(orders[0]?.calculation.customizationFee,106000);
+  assert.equal(orders[0]?.orderNote,quote.customerNotes);
+  const {createPaymentForOrder}=await import("../src/features/payment/payment.service");
+  const payment=await createPaymentForOrder({orderId:accepted[0]!.orderId!,companyId:quote.companyId,userId:quote.userId});
+  assert(payment.paymentUrl,"The customer's payment action must produce a mock payment link without waiting for admin");
+  // A partial conversion can be retried after a database failure without creating a new order.
+  const recover=embroideryWorkbenchFixture("workbench-recover");await repo.quotations.save(recover);
+  await service.saveEmbroideryQuotationWorkbench({...input,id:recover.id,payload:{...input.payload,pricing:{...input.payload.pricing,items:input.payload.pricing.items.map(item=>({...item,itemId:recover.items[0]!.id}))}}});
+  const originalSave=repo.payments.savePayment;let fail=true;
+  repo.payments.savePayment=async args=>{if(fail){fail=false;throw new Error("Fixture payment persistence interruption");}return originalSave?.call(repo.payments,args);};
+  const recoverCustomer={id:recover.id,companyId:recover.companyId,userId:recover.userId};
+  const interrupted=await service.acceptQuotationAndContinue(recoverCustomer);assert(interrupted.continuationPending);
+  const resumed=await service.acceptQuotationAndContinue(recoverCustomer);assert(resumed.orderId);assert(!resumed.continuationPending);
+  assert.equal((await repo.orders.listOrdersByCompany(quote.companyId)).filter(order=>order.quotationId===recover.id).length,1);
+  repo.payments.savePayment=originalSave;
+  // Failed email leaves a draft; draft estimate must not appear as sent to the customer.
+  const failed=embroideryWorkbenchFixture("workbench-email-failed");await repo.quotations.save(failed);
+  const {emailService}=await import("../src/features/email/email.service");
+  const originalSend=emailService.sendQuotationReadyNotifications;
+  emailService.sendQuotationReadyNotifications=async args=>(await originalSend.call(emailService,args)).map(result=>({...result,status:"failed" as const}));
+  await assert.rejects(service.saveEmbroideryQuotationWorkbench({...input,id:failed.id,payload:{...input.payload,pricing:{...input.payload.pricing,items:input.payload.pricing.items.map(item=>({...item,itemId:failed.items[0]!.id}))}}}),/Email penawaran/);
+  const draft=await repo.quotations.getById(failed.id);assert.equal(draft?.status,"under_review");assert.equal(draft?.embroideryEstimate?.status,"estimate_ready");
+  emailService.sendQuotationReadyNotifications=originalSend;
+  const previousAppEnv=process.env.APP_ENV;process.env.APP_ENV="production";
+  const {PATCH}=await import("../src/app/api/admin/quotations/[id]/workbench/route");
+  const forbidden=await PATCH(new Request("http://localhost/api/admin/quotations/workbench-fixture/workbench",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(input.payload)}),{params:Promise.resolve({id:quote.id})});
+  assert([401,403].includes(forbidden.status),"Workbench writes must require an internal admin session");
+  process.env.APP_ENV=previousAppEnv;
+  console.log("PASS: one-step pricing + estimate publication; missing tariff pricing; server totals; tenant and status guards; concurrent acceptance; one order; interrupted conversion recovery; no automatic payment; failed email retains draft. No external requests.");
+}
+void main();
